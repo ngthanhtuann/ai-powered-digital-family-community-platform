@@ -124,7 +124,7 @@ sequenceDiagram
     participant AuthS as AuthService
     participant Repo as UserRepository
     participant DB as PostgreSQL
-    participant Audit as AuditService
+    participant Audit as AuditLogger
 
     User->>App: Nhập email và mật khẩu
     App->>Nginx: POST /api/v1/auth/login
@@ -143,7 +143,7 @@ sequenceDiagram
         AuthS->>Audit: ghi LOGIN_FAILED
         AuthS-->>AuthC: 401 ErrorResponse (AUTH_001)
         AuthC-->>App: 401 ErrorResponse (AUTH_001)
-    else tài khoản bị khóa hoặc chưa kích hoạt
+    else tài khoản bị khóa
         AuthS->>Audit: ghi LOGIN_BLOCKED
         AuthS-->>AuthC: 403 ErrorResponse (AUTH_003)
         AuthC-->>App: 403 ErrorResponse (AUTH_003)
@@ -176,7 +176,7 @@ sequenceDiagram
     participant GW as AiGateway
     participant DB as PostgreSQL pgvector
     participant LL as LLM API
-    participant AU as AuditService
+    participant AU as AuditLogger
 
     U->>FE: Nhập câu hỏi
     FE->>NG: POST /api/v1/ai/chat kèm Bearer token
@@ -281,7 +281,7 @@ Hệ thống được thiết kế không chỉ để giải quyết các luồn
 * **Giá trị mang lại:** Sẵn sàng phân phối lưu lượng tải, tự động phục hồi khi tiến trình sập và đảm bảo an toàn dữ liệu cứng.
 
 ### 6.5. Kiểm vết và Lưu vết hệ thống (Audit Logging)
-* **Ghi log nghiệp vụ:** Hệ thống tích hợp một `AuditService` hoạt động ngầm để ghi nhận các sự kiện bảo mật quan trọng (ai, làm gì, lúc nào).
+* **Ghi log nghiệp vụ:** Hệ thống tích hợp interface chung `AuditLogger` (package `common`, mọi module gọi `AuditLogger.log`; xem `auth.md` mục 6.3) để ghi nhận các sự kiện bảo mật quan trọng (ai, làm gì, lúc nào).
 * **Truy xuất nguồn gốc:** Cột chuẩn cho các bảng nghiệp vụ: `id`, `created_at`, `updated_at`, `deleted_at`, thêm `created_by`, `updated_by`. Cột thời điểm dùng `TIMESTAMPTZ` (lưu UTC). (Tuyệt đối không dùng `created_date`).
 * **Bảo mật log:** Audit log chỉ ghi sự kiện, tuyệt đối không chứa nội dung prompt thô. Lịch sử hội thoại vẫn được lưu riêng ở bảng `ai_chat_message` theo đúng thời hạn trong `privacy.md`.
 

@@ -1,32 +1,1476 @@
-# Người viết: TV1. Theo quy ước ở ../conventions.md
+# Người viết: TV1 (Tuấn Nguyễn Thanh). Reviewer: TV4 (Huy Quốc). Task Jira: SCRUM-26. Theo quy ước ở ../conventions.md
 openapi: 3.0.3
 info:
   title: FamilyConnect - Auth, RBAC, Profile, Admin
-  version: 0.1.0
+  version: 1.0.0
+  description: |-
+    Đặc tả API cho module Auth, RBAC, Profile, Admin (SCRUM-26). Tài liệu use case: `docs/01-srs/use-cases/auth.md`.
+
+    **Quy ước chung** (theo conventions.md)
+    - JSON và tên query dùng camelCase; id dùng UUID; thời gian theo ISO 8601 kèm múi giờ; enum `UPPER_SNAKE_CASE`.
+    - Response thành công `{success, data, meta?}`; lỗi `{success:false, error:{code, message, details[]}}`. API xóa trả `200` với `data: null`.
+    - Danh sách có `page` (từ 0), `size` (mặc định 20, tối đa 100, vượt thì `400 VALID_001`), `sort`.
+
+    **Xác thực và phân quyền**
+    - Access token JWT gửi qua `Authorization: Bearer <token>` (mặc định 15 phút); refresh token mặc định 7 ngày, dùng một lần (xoay vòng). Chi tiết luồng ở auth.md mục 4.2.
+    - `x-roles` ở từng endpoint liệt kê vai trò được gọi, dùng 4 vai trò của srs.md Phụ lục A: `GUEST` (chưa đăng nhập), `MEMBER`, `BRANCH_ADMIN`, `SYSTEM_ADMIN`. "Thành viên chưa xác minh" là trạng thái của `MEMBER` (có `x-roles: MEMBER` nhưng bị chặn bởi `PERM_002` ở các API dữ liệu gia đình).
+    - Thứ tự kiểm tra mọi request: token (`AUTH_002`) → tài khoản bị khóa (`AUTH_003`) → đã xác minh với API dữ liệu gia đình (`PERM_002`) → đủ vai trò (`PERM_001`) → đúng phạm vi gia đình, chi (`PERM_001`). Chi tiết ở auth.md mục 4.3.
+    - `BRANCH_ADMIN` và việc "đã xác minh" không nằm trong token mà được tra từ bảng `member_verification` ở mỗi request, nên duyệt hoặc khóa có hiệu lực ngay.
+
+    **Mã lỗi riêng**: `AUTH_004` đến `AUTH_006` và `ADM_001` đến `ADM_003` (đều 409). Mã dùng chung `AUTH_001` đến `AUTH_003`, `PERM_001`, `PERM_002`, `VALID_001`, `NOT_FOUND_001`, `RATE_001`, `SERVER_001`.
+
+    **Ghi chú về URL**: động từ chỉ giữ `/auth/login`, `/auth/refresh` (conventions.md mục 1.1). Đăng ký là `POST /users`, đăng xuất là `DELETE /auth/sessions/current`, khôi phục là `POST /admin/restores`.
 servers:
-  - url: /api/v1
-paths: {}
-# Mẫu một endpoint (xóa dấu # và chỉnh lại):
-# paths:
-#   /auth/login:
-#     post:
-#       summary: Đăng nhập
-#       security: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               properties:
-#                 email: { type: string }
-#                 password: { type: string }
-#       responses:
-#         '200': { description: Thành công (access token, refresh token) }
-#         '401': { description: AUTH_001 sai email hoặc mật khẩu }
+- {url: /api/v1}
+security:
+- bearerAuth: []
+tags:
+- {name: Auth, description: 'Đăng ký, đăng nhập, token, đổi mật khẩu (UC-AUTH-01 đến 04).'}
+- {name: Profile, description: Hồ sơ cá nhân (UC-AUTH-05).}
+- {name: Membership, description: 'Xin tham gia gia đình, duyệt thành viên (UC-AUTH-06, 07).'}
+- {name: Admin, description: Quản lý người dùng (UC-AUTH-08).}
+- {name: Moderation, description: Kiểm duyệt nội dung (UC-AUTH-09).}
+- {name: Audit, description: Nhật ký kiểm toán (UC-AUTH-10).}
+- {name: Backup, description: Sao lưu và khôi phục (UC-AUTH-11).}
+- {name: Config, description: Cấu hình hệ thống (UC-AUTH-12).}
+paths:
+  /users:
+    post:
+      tags: [Auth]
+      summary: Đăng ký tài khoản (UC-AUTH-01)
+      description: 'Vai trò: công khai (`security: []`). Tạo tài khoản với vai trò toàn hệ thống `MEMBER`, trạng thái `ACTIVE`. Tài khoản **chưa xác minh** với gia đình nào: gọi API dữ liệu gia đình nhận `403 PERM_002` cho đến khi được duyệt (UC-AUTH-07). Không tự đăng nhập: client gọi tiếp `POST /auth/login`. Người dưới 16 tuổi không được tạo tài khoản (BR-AUTH-03).'
+      operationId: registerUser
+      x-roles: [GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+            example: {email: an.nguyen@example.com, password: Matkhau123, fullName: Nguyễn Văn An, phone: 0901234567, dateOfBirth: '1990-05-12'}
+      responses:
+        '201':
+          description: Đã tạo tài khoản
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '409':
+          description: 'AUTH_004: Email đã được đăng ký'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: AUTH_004
+                  message: Email đã được đăng ký
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập (UC-AUTH-02)
+      description: 'Vai trò: công khai (`security: []`). Trả access token (JWT) và refresh token kèm hồ sơ và trạng thái tham gia gia đình để frontend chọn màn hình. Sai email hoặc sai mật khẩu đều trả `401 AUTH_001` (không tiết lộ email có tồn tại hay không). Đúng mật khẩu nhưng tài khoản bị khóa trả `403 AUTH_003`. Giới hạn 5 lần mỗi phút theo IP và email (conventions.md mục 7.1), vượt thì `429 RATE_001`.'
+      operationId: login
+      x-roles: [GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+            example: {email: an.nguyen@example.com, password: Matkhau123}
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LoginResponse'}
+              example:
+                success: true
+                data:
+                  accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YjFjMmQzZS00ZjUwLTRhNjEtOGI3Mi0wYzFkMmUzZjRhNWIifQ.c2lnbmF0dXJl
+                  refreshToken: q3Xk9vT2mB7nLw1ZcR8dYe5HfJ0aPuGsNiOtKxVbMhA
+                  tokenType: Bearer
+                  expiresIn: 900
+                  user:
+                    id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                    email: an.nguyen@example.com
+                    fullName: Nguyễn Văn An
+                    phone: 0901234567
+                    dateOfBirth: '1990-05-12'
+                    roles: [MEMBER]
+                    status: ACTIVE
+                    createdAt: '2026-10-09T10:00:00+07:00'
+                    updatedAt: '2026-10-09T10:00:00+07:00'
+                  membership: {status: PENDING, role: MEMBER, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, branchName: Chi trưởng, joinRequestId: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f, rejectReason: null, canCreateFamily: true}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401':
+          description: Sai email hoặc mật khẩu (AUTH_001)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: AUTH_001
+                  message: Sai email hoặc mật khẩu
+                  details: []
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '429': {$ref: '#/components/responses/TooManyRequestsError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Làm mới token (UC-AUTH-03)
+      description: 'Vai trò: công khai (`security: []`), xác thực bằng refresh token trong body. Mỗi refresh token chỉ dùng **một lần**: thành công thì cấp cặp token mới và vô hiệu token cũ (xoay vòng). Token không tồn tại, hết hạn hoặc đã bị thu hồi trả `401 AUTH_002`. Tài khoản bị khóa trả `403 AUTH_003`.'
+      operationId: refreshToken
+      x-roles: [GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RefreshRequest'}
+            example: {refreshToken: q3Xk9vT2mB7nLw1ZcR8dYe5HfJ0aPuGsNiOtKxVbMhA}
+      responses:
+        '200':
+          description: Cặp token mới
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TokenResponse'}
+              example:
+                success: true
+                data: {accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YjFjMmQzZS00ZjUwLTRhNjEtOGI3Mi0wYzFkMmUzZjRhNWIifQ.c2lnbmF0dXJl, refreshToken: q3Xk9vT2mB7nLw1ZcR8dYe5HfJ0aPuGsNiOtKxVbMhA, tokenType: Bearer, expiresIn: 900}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /auth/sessions/current:
+    delete:
+      tags: [Auth]
+      summary: Đăng xuất (UC-AUTH-03)
+      description: 'Vai trò: mọi người đã đăng nhập. Thu hồi toàn bộ refresh token của người dùng; client xóa token đã lưu. Access token hiện tại vẫn hợp lệ đến khi hết hạn (mặc định tối đa 15 phút) vì server không lưu access token; riêng tài khoản bị khóa bị chặn ngay do trạng thái tài khoản được tra mỗi request (BR-AUTH-05). Dùng danh từ thay cho `POST /auth/logout` vì conventions.md mục 1.1 chỉ cho phép động từ ở `/auth/login`, `/auth/refresh`, `/ai/chat`.'
+      operationId: logout
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      responses:
+        '200':
+          description: Đã đăng xuất
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmptyResponse'}
+              example: {success: true, data: null}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /users/me/password:
+    put:
+      tags: [Auth]
+      summary: Đổi mật khẩu (UC-AUTH-04)
+      description: 'Vai trò: mọi người đã đăng nhập. Cần mật khẩu hiện tại. Thành công thì thu hồi mọi refresh token (phải đăng nhập lại ở thiết bị khác). Mật khẩu hiện tại sai trả `400 VALID_001` với `details[0].field = "currentPassword"` (không dùng `AUTH_001` để frontend không nhầm với đăng nhập sai).'
+      operationId: changePassword
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangePasswordRequest'}
+            example: {currentPassword: Matkhau123, newPassword: Matkhaumoi456}
+      responses:
+        '200':
+          description: Đã đổi mật khẩu
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmptyResponse'}
+              example: {success: true, data: null}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /users/me:
+    get:
+      tags: [Profile]
+      summary: Xem hồ sơ của tôi (UC-AUTH-05)
+      description: 'Vai trò: mọi người đã đăng nhập (kể cả thành viên chưa xác minh). Chỉ trả hồ sơ của chính mình.'
+      operationId: getMyProfile
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      responses:
+        '200':
+          description: Hồ sơ
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+    patch:
+      tags: [Profile]
+      summary: Cập nhật hồ sơ của tôi (UC-AUTH-05)
+      description: 'Vai trò: mọi người đã đăng nhập. Đổi họ tên, số điện thoại, ngày sinh. Ngày sinh mới phải cho tuổi từ 16 trở lên. Email không đổi được.'
+      operationId: updateMyProfile
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateProfileRequest'}
+            example: {fullName: Nguyễn Văn An B, phone: 0907654321}
+      responses:
+        '200':
+          description: Hồ sơ sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An B
+                  phone: 0907654321
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-12T09:30:00+07:00'
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /users/me/membership:
+    get:
+      tags: [Membership]
+      summary: Trạng thái tham gia gia đình của tôi (UC-AUTH-06)
+      description: 'Vai trò: mọi người đã đăng nhập. Trả bản ghi đang hiệu lực (`PENDING`, `APPROVED`); nếu không có thì bản `REJECTED` gần nhất (để hiện lý do); nếu không có nữa thì `NONE`. Frontend gọi sau khi đăng nhập và định kỳ ở màn chờ duyệt. Tài khoản `SYSTEM_ADMIN` luôn trả `NONE` với `canCreateFamily = true`.'
+      operationId: getMyMembership
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      responses:
+        '200':
+          description: Trạng thái
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MembershipResponse'}
+              example:
+                success: true
+                data: {status: PENDING, role: MEMBER, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, branchName: Chi trưởng, joinRequestId: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f, rejectReason: null, canCreateFamily: true}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/AccountLockedError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /join-requests:
+    post:
+      tags: [Membership]
+      summary: Gửi yêu cầu tham gia gia đình (UC-AUTH-06)
+      description: 'Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` và người đã thuộc gia đình nhận `403 PERM_001`. Gia đình hoặc chi không tồn tại trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).'
+      operationId: createJoinRequest
+      x-roles: [MEMBER]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/JoinRequestCreateRequest'}
+            example: {familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.'}
+      responses:
+        '201':
+          description: Đã gửi yêu cầu, chờ trưởng chi duyệt
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JoinRequestResponse'}
+              example:
+                success: true
+                data: {id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f, userId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, applicantName: Nguyễn Thị Hoa, applicantEmail: hoa.nguyen@example.com, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.', familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, status: PENDING, rejectReason: null, reviewedBy: null, reviewedAt: null, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'AUTH_005: Bạn đã thuộc một gia đình hoặc đang có yêu cầu chờ duyệt'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: AUTH_005
+                  message: Bạn đã thuộc một gia đình hoặc đang có yêu cầu chờ duyệt
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+    get:
+      tags: [Membership]
+      summary: Danh sách yêu cầu tham gia cần duyệt (UC-AUTH-07)
+      description: 'Vai trò: BRANCH_ADMIN, SYSTEM_ADMIN. `BRANCH_ADMIN` chỉ thấy yêu cầu thuộc gia đình của mình và trong chi mình quản lý kèm chi con (BR-AUTH-10); quản lý cả gia đình thì thấy mọi yêu cầu của gia đình. `SYSTEM_ADMIN` thấy tất cả, lọc thêm theo `familyId`. Mặc định `status = PENDING`. Có email và lời nhắn của người xin để trưởng chi đối chiếu.'
+      operationId: listJoinRequests
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+      - name: status
+        in: query
+        description: Lọc theo trạng thái; mặc định PENDING.
+        schema: {$ref: '#/components/schemas/JoinRequestStatus'}
+      - name: familyId
+        in: query
+        description: Chỉ dành cho SYSTEM_ADMIN; BRANCH_ADMIN bị bỏ qua.
+        schema: {type: string, format: uuid}
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      - {$ref: '#/components/parameters/SortCreated'}
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JoinRequestListResponse'}
+              example:
+                success: true
+                data:
+                - {id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f, userId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, applicantName: Nguyễn Thị Hoa, applicantEmail: hoa.nguyen@example.com, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.', familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, status: PENDING, rejectReason: null, reviewedBy: null, reviewedAt: null, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+                meta: {page: 0, size: 20, total: 1}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /join-requests/{id}:
+    patch:
+      tags: [Membership]
+      summary: Duyệt hoặc từ chối yêu cầu tham gia (UC-AUTH-07)
+      description: 'Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.'
+      operationId: reviewJoinRequest
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/Id'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/JoinRequestReviewRequest'}
+            example: {status: APPROVED, personId: 123e4567-e89b-12d3-a456-426614174000}
+      responses:
+        '200':
+          description: Yêu cầu sau khi xử lý
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/JoinRequestResponse'}
+              example:
+                success: true
+                data: {id: c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f, userId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, applicantName: Nguyễn Thị Hoa, applicantEmail: hoa.nguyen@example.com, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.', familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, status: APPROVED, rejectReason: null, reviewedBy: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, reviewedAt: '2026-10-12T10:15:00+07:00', createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T10:15:00+07:00'}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'AUTH_006: Yêu cầu đã được xử lý'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: AUTH_006
+                  message: Yêu cầu đã được xử lý
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+    delete:
+      tags: [Membership]
+      summary: Hủy yêu cầu tham gia của tôi (UC-AUTH-06)
+      description: 'Vai trò: người đã gửi yêu cầu. Chỉ hủy được yêu cầu `PENDING` của chính mình (trạng thái chuyển `CANCELLED`, dữ liệu giữ lại làm lịch sử). Yêu cầu của người khác trả `403 PERM_001`; đã xử lý trả `409 AUTH_006`.'
+      operationId: cancelJoinRequest
+      x-roles: [MEMBER]
+      parameters:
+      - {$ref: '#/components/parameters/Id'}
+      responses:
+        '200':
+          description: Đã hủy
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmptyResponse'}
+              example: {success: true, data: null}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'AUTH_006: Yêu cầu đã được xử lý'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: AUTH_006
+                  message: Yêu cầu đã được xử lý
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: Danh sách người dùng (UC-AUTH-08)
+      description: 'Vai trò: SYSTEM_ADMIN. Tìm theo họ tên hoặc email (`q`), lọc theo trạng thái và vai trò. Không bao giờ trả mật khẩu hay token.'
+      operationId: adminListUsers
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - name: q
+        in: query
+        description: Chứa trong họ tên hoặc email, không phân biệt hoa thường.
+        schema: {type: string, maxLength: 100}
+      - name: status
+        in: query
+        description: Lọc theo trạng thái tài khoản.
+        schema: {$ref: '#/components/schemas/UserStatus'}
+      - name: role
+        in: query
+        description: Lọc theo vai trò toàn hệ thống.
+        schema: {$ref: '#/components/schemas/GlobalRole'}
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      - {$ref: '#/components/parameters/SortCreated'}
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserListResponse'}
+              example:
+                success: true
+                data:
+                - id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  lockReason: null
+                  lastLoginAt: '2026-10-12T09:30:00+07:00'
+                  membership: {status: APPROVED, role: BRANCH_ADMIN, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: null, branchName: null, joinRequestId: null, rejectReason: null, canCreateFamily: false}
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                meta: {page: 0, size: 20, total: 1}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/users/{userId}:
+    get:
+      tags: [Admin]
+      summary: Chi tiết người dùng (UC-AUTH-08)
+      description: 'Vai trò: SYSTEM_ADMIN.'
+      operationId: adminGetUser
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/UserId'}
+      responses:
+        '200':
+          description: Chi tiết
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  lockReason: null
+                  lastLoginAt: '2026-10-12T09:30:00+07:00'
+                  membership: {status: APPROVED, role: BRANCH_ADMIN, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: null, branchName: null, joinRequestId: null, rejectReason: null, canCreateFamily: false}
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+    patch:
+      tags: [Admin]
+      summary: Khóa hoặc mở khóa tài khoản (UC-AUTH-08)
+      description: 'Vai trò: SYSTEM_ADMIN. Khóa: bắt buộc `lockReason`, thu hồi mọi refresh token của người đó, các request sau nhận `403 AUTH_003`. Không tự khóa chính mình và không khóa quản trị viên cuối cùng còn hoạt động (`409 ADM_001`).'
+      operationId: adminUpdateUserStatus
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/UserId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminUserStatusRequest'}
+            example: {status: LOCKED, lockReason: Đăng bài quảng cáo}
+      responses:
+        '200':
+          description: Sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: LOCKED
+                  lockReason: Đăng bài quảng cáo
+                  lastLoginAt: '2026-10-12T09:30:00+07:00'
+                  membership: {status: APPROVED, role: BRANCH_ADMIN, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: null, branchName: null, joinRequestId: null, rejectReason: null, canCreateFamily: false}
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'ADM_001: Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_001
+                  message: Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/users/{userId}/roles:
+    put:
+      tags: [Admin]
+      summary: Đổi vai trò toàn hệ thống (UC-AUTH-08)
+      description: 'Vai trò: SYSTEM_ADMIN. Ghi đè danh sách vai trò toàn hệ thống (`MEMBER`, `SYSTEM_ADMIN`). Vai trò `BRANCH_ADMIN` không đặt ở đây mà qua `PUT /admin/users/{userId}/membership`. Không tự thu quyền của mình và không thu quyền quản trị viên cuối cùng (`409 ADM_001`).'
+      operationId: adminSetUserRoles
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/UserId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminUserRolesRequest'}
+            example:
+              roles: [MEMBER, SYSTEM_ADMIN]
+      responses:
+        '200':
+          description: Sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER, SYSTEM_ADMIN]
+                  status: ACTIVE
+                  lockReason: null
+                  lastLoginAt: '2026-10-12T09:30:00+07:00'
+                  membership: {status: APPROVED, role: BRANCH_ADMIN, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: null, branchName: null, joinRequestId: null, rejectReason: null, canCreateFamily: false}
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'ADM_001: Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_001
+                  message: Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/users/{userId}/membership:
+    put:
+      tags: [Admin]
+      summary: Gán người dùng vào gia đình và vai trò (UC-AUTH-08)
+      description: 'Vai trò: SYSTEM_ADMIN. Đặt người dùng làm `MEMBER` hoặc `BRANCH_ADMIN` (kèm chi quản lý) của một gia đình, có hiệu lực ngay (đã xác minh). Dùng để gán trưởng chi cho gia đình do quản trị tạo hộ (UC-GEN-01 luồng 2d) hoặc đổi chi quản lý. Nếu người đó đang thuộc gia đình khác thì bản ghi cũ chuyển `REMOVED`. Gia đình hoặc chi không tồn tại trả `404 NOT_FOUND_001`; tài khoản `SYSTEM_ADMIN` không gán được (`400 VALID_001`).'
+      operationId: adminSetUserMembership
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/UserId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminMembershipRequest'}
+            example: {familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: null, role: BRANCH_ADMIN}
+      responses:
+        '200':
+          description: Sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserResponse'}
+              example:
+                success: true
+                data:
+                  id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  email: an.nguyen@example.com
+                  fullName: Nguyễn Văn An
+                  phone: 0901234567
+                  dateOfBirth: '1990-05-12'
+                  roles: [MEMBER]
+                  status: ACTIVE
+                  lockReason: null
+                  lastLoginAt: '2026-10-12T09:30:00+07:00'
+                  membership: {status: APPROVED, role: BRANCH_ADMIN, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, branchId: null, branchName: null, joinRequestId: null, rejectReason: null, canCreateFamily: false}
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/content-reports:
+    get:
+      tags: [Moderation]
+      summary: Danh sách nội dung bị báo cáo (UC-AUTH-09)
+      description: 'Vai trò: SYSTEM_ADMIN (kiểm duyệt toàn hệ thống, FR-ADM-02). Mặc định `status = PENDING`. Dữ liệu do module community cung cấp (nút "Báo cáo bài viết" thuộc community, SCRUM-50 bước 2).'
+      operationId: adminListContentReports
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - name: status
+        in: query
+        description: Mặc định PENDING.
+        schema: {$ref: '#/components/schemas/ReportStatus'}
+      - name: targetType
+        in: query
+        description: Lọc theo loại nội dung.
+        schema: {$ref: '#/components/schemas/ContentType'}
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      - {$ref: '#/components/parameters/SortCreated'}
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ContentReportListResponse'}
+              example:
+                success: true
+                data:
+                - {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., status: PENDING, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+                meta: {page: 0, size: 20, total: 1}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/content-reports/{id}:
+    patch:
+      tags: [Moderation]
+      summary: Xử lý báo cáo nội dung (UC-AUTH-09)
+      description: 'Vai trò: SYSTEM_ADMIN. `HIDE_CONTENT`: ẩn nội dung qua module community (đặt cột `hidden_at`; nội dung ẩn không hiện trên bảng tin) và ghi nhật ký `CONTENT_HIDDEN`. `DISMISS`: bỏ qua báo cáo. Báo cáo đã xử lý trả `409 ADM_002`.'
+      operationId: adminReviewContentReport
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/Id'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ContentReportReviewRequest'}
+            example: {action: HIDE_CONTENT}
+      responses:
+        '200':
+          description: Báo cáo sau khi xử lý
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ContentReportResponse'}
+              example:
+                success: true
+                data: {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., status: HIDDEN, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'ADM_002: Báo cáo đã được xử lý'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_002
+                  message: Báo cáo đã được xử lý
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/audit-logs:
+    get:
+      tags: [Audit]
+      summary: Xem nhật ký kiểm toán (UC-AUTH-10)
+      description: 'Vai trò: SYSTEM_ADMIN. Chỉ đọc, không có API sửa hay xóa. Sắp xếp mới nhất trước. `from`, `to` lọc theo `createdAt`.'
+      operationId: adminListAuditLogs
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - name: actorUserId
+        in: query
+        description: Người thực hiện.
+        schema: {type: string, format: uuid}
+      - name: action
+        in: query
+        description: Mã hành động, khớp chính xác.
+        schema: {type: string, maxLength: 60}
+      - name: from
+        in: query
+        description: Từ thời điểm (ISO-8601 kèm múi giờ).
+        schema: {type: string, format: date-time}
+      - name: to
+        in: query
+        description: Đến thời điểm.
+        schema: {type: string, format: date-time}
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      - name: sort
+        in: query
+        schema:
+          type: string
+          default: createdAt,desc
+          enum: ['createdAt,desc', 'createdAt,asc']
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditLogListResponse'}
+              example:
+                success: true
+                data:
+                - id: f6a7b8c9-d0e1-4f2a-9b3c-4d5e6f7a8b92
+                  actorUserId: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
+                  actorRole: SYSTEM_ADMIN
+                  action: USER_LOCKED
+                  targetType: USER
+                  targetId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33
+                  familyId: null
+                  ipAddress: 203.0.113.7
+                  detail: {reason: Đăng bài quảng cáo}
+                  createdAt: '2026-10-12T09:30:00+07:00'
+                meta: {page: 0, size: 20, total: 1}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/backups:
+    post:
+      tags: [Backup]
+      summary: Tạo bản sao lưu (UC-AUTH-11)
+      description: 'Vai trò: SYSTEM_ADMIN. Chạy script sao lưu: `pg_dump` cơ sở dữ liệu (gồm bảng vector) và nén thư mục tệp tải lên, lưu một tệp đặt tên theo ngày giờ vào thư mục `backups/` (SCRUM-86). Dữ liệu đồ án nhỏ nên chạy đồng bộ và trả về thông tin tệp. Mỗi lúc chỉ một việc sao lưu hoặc khôi phục (`409 ADM_003`). Ghi nhật ký `BACKUP_CREATED`.'
+      operationId: adminCreateBackup
+      x-roles: [SYSTEM_ADMIN]
+      responses:
+        '201':
+          description: Đã tạo bản sao lưu
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BackupFileResponse'}
+              example:
+                success: true
+                data: {id: familyconnect-20261012-020000, fileName: familyconnect-20261012-020000.tar.gz, fileSizeBytes: 15728640, createdAt: '2026-10-12T09:30:00+07:00'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '409':
+          description: 'ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_003
+                  message: Đang có tác vụ sao lưu hoặc khôi phục khác
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+    get:
+      tags: [Backup]
+      summary: Danh sách bản sao lưu (UC-AUTH-11)
+      description: 'Vai trò: SYSTEM_ADMIN. Liệt kê các tệp trong thư mục `backups/`, mới nhất trước.'
+      operationId: adminListBackups
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BackupFileListResponse'}
+              example:
+                success: true
+                data:
+                - {id: familyconnect-20261012-020000, fileName: familyconnect-20261012-020000.tar.gz, fileSizeBytes: 15728640, createdAt: '2026-10-12T09:30:00+07:00'}
+                meta: {page: 0, size: 20, total: 1}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/restores:
+    post:
+      tags: [Backup]
+      summary: Khôi phục từ bản sao lưu (UC-AUTH-11)
+      description: 'Vai trò: SYSTEM_ADMIN. **Ghi đè dữ liệu hiện tại** bằng bản sao lưu nên bắt buộc `confirmText = "RESTORE"`. Chạy script khôi phục (`pg_restore` và giải nén tệp), trả `200` khi xong (không tạo tài nguyên mới nên không dùng 201). Bản sao lưu không tồn tại trả `404 NOT_FOUND_001`; đang có tác vụ khác trả `409 ADM_003`. Ghi nhật ký `RESTORE_COMPLETED`.'
+      operationId: adminCreateRestore
+      x-roles: [SYSTEM_ADMIN]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RestoreCreateRequest'}
+            example: {backupId: familyconnect-20261012-020000, confirmText: RESTORE}
+      responses:
+        '200':
+          description: Đã khôi phục
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RestoreResultResponse'}
+              example:
+                success: true
+                data: {backupId: familyconnect-20261012-020000, restoredAt: '2026-10-12T09:45:00+07:00'}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_003
+                  message: Đang có tác vụ sao lưu hoặc khôi phục khác
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/configs:
+    get:
+      tags: [Config]
+      summary: Danh sách cấu hình hệ thống (UC-AUTH-12)
+      description: 'Vai trò: SYSTEM_ADMIN. Trả toàn bộ khóa cấu hình (số lượng nhỏ nên không phân trang, `meta.total` bằng số phần tử), kèm nhóm và giá trị mặc định để giao diện nhóm theo mục. Khóa bí mật (JWT secret, khóa LLM, mật khẩu cơ sở dữ liệu) **không nằm** ở đây mà ở biến môi trường.'
+      operationId: adminListConfigs
+      x-roles: [SYSTEM_ADMIN]
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemConfigListResponse'}
+              example:
+                success: true
+                data:
+                - {key: ai.chat.limit_per_hour, value: '20', valueType: INTEGER, group: AI, defaultValue: '20', description: Số câu hỏi trợ lý AI tối đa mỗi người mỗi giờ., updatedBy: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, updatedAt: '2026-10-12T09:30:00+07:00'}
+                meta: {page: 0, size: 100, total: 1}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /admin/configs/{key}:
+    put:
+      tags: [Config]
+      summary: Đổi giá trị cấu hình (UC-AUTH-12)
+      description: 'Vai trò: SYSTEM_ADMIN. Ghi đè giá trị của khóa đã có (không tạo khóa mới qua API). Giá trị phải đúng kiểu và khoảng cho phép (auth.md mục 5.3), sai trả `400 VALID_001`; khóa không tồn tại trả `404`. Nút "khôi phục mặc định" gửi lại `defaultValue`. Ghi nhật ký `CONFIG_CHANGED` kèm giá trị cũ và mới. Module khác đọc cấu hình qua bộ nhớ đệm tối đa 60 giây nên thay đổi có hiệu lực trong vòng 1 phút, không cần khởi động lại.'
+      operationId: adminUpdateConfig
+      x-roles: [SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/ConfigKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConfigUpdateRequest'}
+            example: {value: '30'}
+      responses:
+        '200':
+          description: Sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemConfigResponse'}
+              example:
+                success: true
+                data: {key: ai.chat.limit_per_hour, value: '30', valueType: INTEGER, group: AI, defaultValue: '20', description: Số câu hỏi trợ lý AI tối đa mỗi người mỗi giờ., updatedBy: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, updatedAt: '2026-10-12T09:30:00+07:00'}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Số trang, bắt đầu từ 0.
+      schema: {type: integer, minimum: 0, default: 0}
+    Size:
+      name: size
+      in: query
+      description: Số phần tử mỗi trang (tối đa 100, vượt thì 400 VALID_001).
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    SortCreated:
+      name: sort
+      in: query
+      schema:
+        type: string
+        default: createdAt,desc
+        enum: ['createdAt,desc', 'createdAt,asc']
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ConfigKey:
+      name: key
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[a-z0-9_.]{3,100}$'}
+      description: Khóa cấu hình, ví dụ `ai.chat.limit_per_hour`.
+  schemas:
+    PaginationMeta:
+      type: object
+      required: [page, size, total]
+      properties:
+        page: {type: integer, example: 0}
+        size: {type: integer, example: 20}
+        total: {type: integer, example: 1}
+    ErrorDetail:
+      type: object
+      required: [field, message]
+      properties:
+        field: {type: string}
+        message: {type: string}
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success: {type: boolean, example: false}
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: {type: string}
+            message: {type: string}
+            details:
+              type: array
+              description: Lỗi chi tiết từng trường; không có thì để mảng rỗng.
+              items: {$ref: '#/components/schemas/ErrorDetail'}
+    EmptyResponse:
+      type: object
+      description: Thao tác thành công không trả dữ liệu (`data` là null), dùng cho API xóa theo conventions.md mục 1.3.
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {type: object, nullable: true, example: null}
+    GlobalRole:
+      type: string
+      enum: [MEMBER, SYSTEM_ADMIN]
+      description: Vai trò toàn hệ thống (bảng `user_role`), đặt trong access token. `BRANCH_ADMIN` không nằm ở đây vì gắn với gia đình và chi (xem `Membership`).
+    MemberRole:
+      type: string
+      enum: [MEMBER, BRANCH_ADMIN]
+      description: Vai trò trong gia đình (bảng `member_verification`).
+    UserStatus:
+      type: string
+      enum: [ACTIVE, LOCKED]
+    MembershipStatus:
+      type: string
+      enum: [NONE, PENDING, APPROVED, REJECTED, REMOVED]
+      description: '`NONE`: chưa có yêu cầu. `PENDING`: chờ duyệt (chưa xác minh). `APPROVED`: đã xác minh. `REJECTED`: bị từ chối. `REMOVED`: đã chuyển sang gia đình khác do quản trị.'
+    JoinRequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELLED, REMOVED]
+    ContentType:
+      type: string
+      enum: [POST, COMMENT, EVENT, ANNOUNCEMENT]
+      description: Loại nội dung của module community có thể bị báo cáo.
+    ReportStatus:
+      type: string
+      enum: [PENDING, HIDDEN, DISMISSED]
+    ConfigValueType:
+      type: string
+      enum: [INTEGER, BOOLEAN, STRING]
+    User:
+      type: object
+      required: [id, email, fullName, phone, dateOfBirth, roles, status, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        fullName: {type: string}
+        phone: {type: string, nullable: true}
+        dateOfBirth: {type: string, format: date}
+        roles:
+          type: array
+          items: {$ref: '#/components/schemas/GlobalRole'}
+        status: {$ref: '#/components/schemas/UserStatus'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    Membership:
+      type: object
+      description: 'Trạng thái tham gia gia đình của người đang đăng nhập. Frontend dùng để chọn màn hình: NONE → nhập mã gia đình hoặc tạo gia đình; PENDING → màn chờ duyệt; APPROVED → vào ứng dụng.'
+      required: [status, role, familyId, familyName, branchId, branchName, joinRequestId, rejectReason, canCreateFamily]
+      properties:
+        status: {$ref: '#/components/schemas/MembershipStatus'}
+        role:
+          allOf:
+          - {$ref: '#/components/schemas/MemberRole'}
+          nullable: true
+        familyId: {type: string, format: uuid, nullable: true}
+        familyName: {type: string, nullable: true}
+        branchId: {type: string, format: uuid, description: 'Với `BRANCH_ADMIN`: chi quản lý (null là quản lý cả gia đình). Với `MEMBER`: chi người xin chọn, chỉ để thông tin.', nullable: true}
+        branchName: {type: string, nullable: true}
+        joinRequestId: {type: string, format: uuid, description: 'Có khi `status = PENDING`, để người dùng hủy yêu cầu.', nullable: true}
+        rejectReason: {type: string, nullable: true}
+        canCreateFamily: {type: boolean, description: True khi chưa là thành viên đã xác minh của gia đình nào (BR-GEN-15); `SYSTEM_ADMIN` luôn true.}
+    TokenData:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken: {type: string, description: 'JWT, hết hạn sau `expiresIn` giây (mặc định 900 = 15 phút, đọc từ `auth.access_token_minutes`).'}
+        refreshToken: {type: string, description: 'Chuỗi ngẫu nhiên không phải JWT, hết hạn sau 7 ngày (mặc định, `auth.refresh_token_days`), dùng một lần (xoay vòng mỗi lần refresh).'}
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn: {type: integer, description: Giây.}
+    LoginData:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn, user, membership]
+      properties:
+        accessToken: {type: string}
+        refreshToken: {type: string}
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn: {type: integer}
+        user: {$ref: '#/components/schemas/User'}
+        membership: {$ref: '#/components/schemas/Membership'}
+    JoinRequest:
+      type: object
+      required: [id, userId, applicantName, applicantEmail, message, familyId, branchId, status, rejectReason, reviewedBy, reviewedAt, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        userId: {type: string, format: uuid}
+        applicantName: {type: string}
+        applicantEmail: {type: string, format: email}
+        message: {type: string, nullable: true}
+        familyId: {type: string, format: uuid}
+        branchId: {type: string, format: uuid, description: Chi người xin chọn; null là xin vào cả gia đình., nullable: true}
+        status: {$ref: '#/components/schemas/JoinRequestStatus'}
+        rejectReason: {type: string, nullable: true}
+        reviewedBy: {type: string, format: uuid, nullable: true}
+        reviewedAt: {type: string, format: date-time, nullable: true}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ContentReport:
+      type: object
+      description: Báo cáo do module community lưu; admin đọc qua interface Java `ContentModerationPort`, không đọc trực tiếp bảng.
+      required: [id, targetType, targetId, familyId, reporterId, reason, contentSnippet, status, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        targetType: {$ref: '#/components/schemas/ContentType'}
+        targetId: {type: string, format: uuid}
+        familyId: {type: string, format: uuid}
+        reporterId: {type: string, format: uuid}
+        reason: {type: string, description: Lý do do người báo cáo nhập (dữ liệu của module community).}
+        contentSnippet: {type: string, description: Trích tối đa 200 ký tự nội dung bị báo cáo.}
+        status: {$ref: '#/components/schemas/ReportStatus'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    AdminUser:
+      type: object
+      required: [id, email, fullName, phone, dateOfBirth, roles, status, lockReason, lastLoginAt, membership, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        fullName: {type: string}
+        phone: {type: string, nullable: true}
+        dateOfBirth: {type: string, format: date}
+        roles:
+          type: array
+          items: {$ref: '#/components/schemas/GlobalRole'}
+        status: {$ref: '#/components/schemas/UserStatus'}
+        lockReason: {type: string, nullable: true}
+        lastLoginAt: {type: string, format: date-time, nullable: true}
+        membership: {$ref: '#/components/schemas/Membership'}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    AuditLog:
+      type: object
+      description: Bản ghi nhật ký chỉ thêm, không sửa nên không có `updatedAt` (ngoại lệ của conventions.md mục 5.1).
+      required: [id, actorUserId, actorRole, action, targetType, targetId, familyId, ipAddress, detail, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        actorUserId: {type: string, format: uuid, description: Null khi chưa xác định người thực hiện (ví dụ đăng nhập sai email)., nullable: true}
+        actorRole:
+          type: string
+          enum: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+          nullable: true
+        action: {type: string, description: 'Mã hành động, ví dụ LOGIN_FAILED, USER_LOCKED (danh mục ở auth.md mục 6.4).'}
+        targetType: {type: string, nullable: true}
+        targetId: {type: string, format: uuid, nullable: true}
+        familyId: {type: string, format: uuid, nullable: true}
+        ipAddress: {type: string, nullable: true}
+        detail: {type: object, additionalProperties: true, description: 'Thông tin bổ sung không nhạy cảm. Không chứa mật khẩu, token, nội dung câu hỏi AI.', nullable: true}
+        createdAt: {type: string, format: date-time}
+    BackupFile:
+      type: object
+      description: Một bản sao lưu là một tệp trong thư mục `backups/` (SCRUM-86), không có bảng riêng.
+      required: [id, fileName, fileSizeBytes, createdAt]
+      properties:
+        id: {type: string, description: Tên tệp bỏ phần đuôi; dùng làm `backupId` khi khôi phục.}
+        fileName: {type: string}
+        fileSizeBytes: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+    RestoreResult:
+      type: object
+      required: [backupId, restoredAt]
+      properties:
+        backupId: {type: string}
+        restoredAt: {type: string, format: date-time}
+    SystemConfig:
+      type: object
+      required: [key, value, valueType, group, defaultValue, description, updatedBy, updatedAt]
+      properties:
+        key: {type: string, example: ai.chat.limit_per_hour}
+        value: {type: string, description: Giá trị dạng chuỗi; `INTEGER` và `BOOLEAN` được kiểm tra theo `valueType`.}
+        valueType: {$ref: '#/components/schemas/ConfigValueType'}
+        group: {type: string, description: Nhóm hiển thị trên trang cấu hình.}
+        defaultValue: {type: string, description: 'Giá trị mặc định, dùng cho nút "khôi phục mặc định".'}
+        description: {type: string}
+        updatedBy: {type: string, format: uuid, nullable: true}
+        updatedAt: {type: string, format: date-time}
+    RegisterRequest:
+      type: object
+      required: [email, password, fullName, dateOfBirth]
+      properties:
+        email: {type: string, format: email, maxLength: 255}
+        password: {type: string, minLength: 8, maxLength: 72, description: Từ 8 đến 72 ký tự (BR-AUTH-02).}
+        fullName: {type: string, minLength: 1, maxLength: 150}
+        phone: {type: string, pattern: '^(\+84|0)[0-9]{9,10}$', nullable: true}
+        dateOfBirth: {type: string, format: date, description: Phải từ đủ 16 tuổi (BR-AUTH-03).}
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string}
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: {type: string}
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: {type: string}
+        newPassword: {type: string, minLength: 8, maxLength: 72}
+    UpdateProfileRequest:
+      type: object
+      minProperties: 1
+      description: Gửi các trường cần đổi (ít nhất một). Không đổi được email ở API này.
+      properties:
+        fullName: {type: string, minLength: 1, maxLength: 150}
+        phone: {type: string, pattern: '^(\+84|0)[0-9]{9,10}$', nullable: true}
+        dateOfBirth: {type: string, format: date}
+    JoinRequestCreateRequest:
+      type: object
+      required: [familyId]
+      properties:
+        familyId: {type: string, format: uuid, description: 'Mã gia đình muốn tham gia. Trưởng chi cung cấp cho người thân (xem auth.md mục 8, câu 2).'}
+        branchId: {type: string, format: uuid, description: Chi muốn tham gia; bỏ trống nếu không biết., nullable: true}
+        message: {type: string, maxLength: 255, description: Lời nhắn giới thiệu bản thân cho trưởng chi., nullable: true}
+    JoinRequestReviewRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [APPROVED, REJECTED]
+        rejectReason: {type: string, maxLength: 255, description: Chỉ dùng khi `REJECTED`., nullable: true}
+        personId: {type: string, format: uuid, description: 'Chỉ dùng khi `APPROVED`: gắn tài khoản với hồ sơ thành viên (`person`) có sẵn của gia đình.', nullable: true}
+    ContentReportReviewRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [HIDE_CONTENT, DISMISS]
+          description: '`HIDE_CONTENT`: ẩn nội dung bị báo cáo (đặt cột `hidden_at`, không xóa cứng). `DISMISS`: bỏ qua báo cáo.'
+    AdminUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: {$ref: '#/components/schemas/UserStatus'}
+        lockReason: {type: string, maxLength: 255, description: Bắt buộc khi `status = LOCKED`., nullable: true}
+    AdminUserRolesRequest:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/GlobalRole'}
+          uniqueItems: true
+          description: Danh sách đầy đủ vai trò toàn hệ thống (ghi đè). Luôn phải có `MEMBER`.
+    AdminMembershipRequest:
+      type: object
+      required: [familyId, role]
+      properties:
+        familyId: {type: string, format: uuid}
+        branchId: {type: string, format: uuid, description: 'Với `BRANCH_ADMIN`: chi quản lý, null là quản lý cả gia đình.', nullable: true}
+        role: {$ref: '#/components/schemas/MemberRole'}
+    RestoreCreateRequest:
+      type: object
+      required: [backupId, confirmText]
+      properties:
+        backupId: {type: string}
+        confirmText:
+          type: string
+          enum: [RESTORE]
+          description: Phải gửi đúng chữ `RESTORE` để xác nhận thao tác ghi đè dữ liệu.
+    ConfigUpdateRequest:
+      type: object
+      required: [value]
+      properties:
+        value: {type: string, maxLength: 500}
+    UserResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/User'}
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/LoginData'}
+    TokenResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/TokenData'}
+    MembershipResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/Membership'}
+    JoinRequestResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/JoinRequest'}
+    ContentReportResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/ContentReport'}
+    AdminUserResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/AdminUser'}
+    BackupFileResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/BackupFile'}
+    RestoreResultResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/RestoreResult'}
+    SystemConfigResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/SystemConfig'}
+    JoinRequestListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/JoinRequest'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    ContentReportListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/ContentReport'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    AdminUserListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/AdminUser'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    AuditLogListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/AuditLog'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    BackupFileListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/BackupFile'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    SystemConfigListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/SystemConfig'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+  responses:
+    BadRequestError:
+      description: Dữ liệu không hợp lệ (VALID_001)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: VALID_001
+              message: Dữ liệu yêu cầu không hợp lệ
+              details:
+              - {field: email, message: Email không đúng định dạng}
+    UnauthorizedError:
+      description: Thiếu, sai hoặc hết hạn token (AUTH_002)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: AUTH_002
+              message: Token không hợp lệ hoặc đã hết hạn
+              details: []
+    AccountLockedError:
+      description: Tài khoản bị khóa (AUTH_003)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: AUTH_003
+              message: Tài khoản đã bị khóa
+              details: []
+    ForbiddenError:
+      description: Không đủ quyền hoặc sai phạm vi (PERM_001), hoặc chưa được duyệt vào gia đình (PERM_002). Thứ tự kiểm tra ở auth.md mục 4.3.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          examples:
+            permRole:
+              summary: Không đủ quyền hoặc sai phạm vi (PERM_001)
+              value:
+                success: false
+                error:
+                  code: PERM_001
+                  message: Không đủ quyền truy cập tính năng này
+                  details: []
+            permFamily:
+              summary: Chưa được duyệt vào gia đình (PERM_002)
+              value:
+                success: false
+                error:
+                  code: PERM_002
+                  message: Chưa được duyệt vào gia đình
+                  details: []
+    NotFoundError:
+      description: Không tìm thấy dữ liệu (NOT_FOUND_001)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: NOT_FOUND_001
+              message: Tài nguyên không tồn tại
+              details: []
+    TooManyRequestsError:
+      description: Vượt giới hạn request (RATE_001). Có header `Retry-After` (giây).
+      headers:
+        Retry-After:
+          description: Số giây phải chờ trước khi thử lại.
+          schema: {type: integer}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: RATE_001
+              message: Bạn thao tác quá nhanh, vui lòng thử lại sau
+              details: []
+    InternalServerError:
+      description: Lỗi hệ thống (SERVER_001)
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorResponse'}
+          example:
+            success: false
+            error:
+              code: SERVER_001
+              message: Lỗi hệ thống, vui lòng thử lại sau
+              details: []
