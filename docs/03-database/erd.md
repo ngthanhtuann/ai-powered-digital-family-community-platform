@@ -27,7 +27,7 @@ erDiagram
 |---|---|---|---|
 | users, role, user_role, refresh_token, member_verification, audit_log, system_config | Auth/Admin | TV1 | |
 | family, branch, person, parent_child, marriage | Gia phả | TV2 | |
-| post, comment, reaction, media, announcement, notification, event, event_participant | Community/Events | TV3 | |
+| post, comment, reaction, media, announcement, notification, event, event_participant, content_report | Community/Events | TV3 | |
 | heritage_document, family_story, outstanding_member, profession_profile, education_profile | Heritage/Directory | TV4 | |
 | ai_embedding_chunk, ai_chat_session, ai_chat_message, ai_summary_cache | AI | TV5 | |
 

@@ -185,10 +185,13 @@ Tiền tố module đã thống nhất:
 | Directory      | `DIR_`  |
 | Dashboard      | `DSH_`  |
 | Administration | `ADM_`  |
+| Auth           | `AUTH_` |
 
 Mã lỗi riêng dùng cho các trường hợp vi phạm quy tắc nghiệp vụ và trả về HTTP `409 Conflict`, trừ khi tài liệu đã thống nhất quy định cụ thể khác.
 
 `AI_001` là mã dùng chung (HTTP `503`); mã nghiệp vụ riêng của module AI dùng từ `AI_002` trở đi.
+
+`AUTH_001` đến `AUTH_003` là mã dùng chung ở mục 3; mã nghiệp vụ riêng của module Auth dùng từ `AUTH_004` trở đi.
 
 Danh sách mã lỗi phải được ghi trong tài liệu use case và file OpenAPI tương ứng. Không tự ý tạo mã trùng hoặc thay đổi mã đã thống nhất.
 
