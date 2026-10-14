@@ -1,8 +1,9 @@
 # Design system
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-25
-> **Trạng thái:** Chờ review | **Phiên bản:** 0.4 (sửa theo review của TV1: WCAG AA, định dạng, khớp với Figma, đủ 3 cỡ màn hình theo NFR-01)
+> **Trạng thái:** Chờ review | **Phiên bản:** 0.5 (chuyển sang file Figma chung, đồng bộ màu trong Figma theo tài liệu, thêm mục 7)
 > Liên quan: `figma-links.md` (link Figma và ảnh wireframe), SCRUM-84 (bản mobile).
+> Figma: page [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) của file chung.
 
 ## 1. Bảng màu
 
@@ -177,3 +178,32 @@ export default {
   },
 };
 ```
+
+## 7. Token trong Figma
+
+File Figma chung (xem `figma-links.md`) có sẵn các biến và style theo đúng tài liệu này. Khi vẽ, chọn biến hoặc style, không nhập mã màu tay. Tên trong Figma dùng dấu `/` để gom nhóm nên khác tên token ở mục 6:
+
+| Biến Figma (collection `Color`) | Token `tailwind.config` | Mã màu |
+|---|---|---|
+| `brand/primary` | `primary` | `#2C1810` |
+| `brand/secondary` | `secondary` | `#C9A84C` (không chọn được cho màu chữ) |
+| `status/success`, `status/error`, `status/info`, `status/warning` | `success`, `error`, `info`, `warning` | Mục 1.1 |
+| `bg/background`, `bg/surface`, `bg/surface-muted` | `background`, `surface`, `surface-muted` | Mục 1.2 |
+| `bg/success-soft`, `bg/error-soft`, `bg/warning-soft`, `bg/info-soft` | `success-soft`, `error-soft`, `warning-soft`, `info-soft` | Mục 1.2 |
+| `text/primary`, `text/secondary`, `text/cream-on-dark` | `text-primary`, `text-secondary`, `cream-on-dark` | Mục 1.2 |
+| `border/default`, `border/strong` | `border`, `border-strong` | Mục 1.2 |
+| `state/gold-hover` | `gold-hover` | `#B79538` |
+
+- Collection `Size`: `space/4` đến `space/32`, `radius/control` (6), `radius/card` (12), `height/button` (44), `height/input` (42), `height/table-row` (44), `layout/sidebar` (240), `layout/header` (64), `focus/ring-width` (2).
+- Text style: `page-title`, `section-title`, `body`, `label`, `caption`, `metric` (mục 2).
+- Effect style: `shadow/card`, `shadow/overlay` (mục 3).
+
+### 7.1. Điểm Figma còn lệch tài liệu
+
+Các điểm dưới đây chưa sửa trong Figma, chờ TV5 quyết định:
+
+- Khung Desktop 1440: một số nút thấp hơn 44px ("Thêm thành viên" 28, "Tra cứu khác", "In kết quả", "Chia sẻ" 34, "Đóng" 29, "Thêm sự kiện" 25); ô tìm kiếm cao 32 (tài liệu ghi 42).
+- Màu chưa có trong mục 1: màu avatar và chú giải giới tính (`#E8A0C0`, `#B87A9E`, `#5C8A6E`), chữ và icon trên sidebar (`#A08060`, `#D4B896`), một số chữ nâu (`#5C4033`, `#6B5C4A`), một số nền và viền nhạt, nền Navigation Disabled/Error (`#594938`, `#6D2424`).
+- Bo góc 4, 5, 8, 10, 18, 20, 24 (tài liệu chỉ có 6, 12 và bo tròn).
+- Cỡ chữ ngoài mục 2: 9, 10, 11, 13, 15, 16, 20px và nhiều chữ để line-height tự động.
+- Nút phụ trong màn hình đang có nền Background và viền Border, giống trạng thái Disabled; nút secondary theo mục 4 là nền trắng, viền Border strong.
