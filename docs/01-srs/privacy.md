@@ -1,7 +1,7 @@
 # Bảo mật và quyền riêng tư dữ liệu gia đình
 
 > **Người viết:** TV1 (Tuấn Nguyễn Thanh) | **Reviewer:** TV4 (Huy Quốc) | **Task Jira:** SCRUM-17 | **Hạn nộp review:** Thứ Năm 8/10
-> **Trạng thái:** Nháp chờ review. Liên quan: NFR-13 trong [srs.md](srs.md), module AI (Lê Nhựt), `docs/04-api/conventions.md`.
+> **Trạng thái:** Đã merge vào `develop` (Sprint 1). Liên quan: NFR-13 trong [srs.md](srs.md), module AI (Lê Nhựt), `docs/04-api/conventions.md`.
 
 ## 1. Mục đích
 FamilyConnect lưu thông tin của người thật (họ tên, ngày sinh, liên hệ, quan hệ huyết thống, ảnh). Tài liệu quy định **ai được xem dữ liệu nào**, **quy tắc riêng cho trẻ em và người đã mất**, **dữ liệu nào được gửi cho AI bên ngoài** và các biện pháp bảo mật chính.

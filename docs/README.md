@@ -13,7 +13,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `01-srs/use-cases/auth.md` | Use case Auth, RBAC, Profile, Admin | TV1 Tuấn | TV4 | SCRUM-26 |
 | `01-srs/use-cases/genealogy.md` | Use case Gia phả | TV2 Trí | TV5 | SCRUM-18 |
 | `01-srs/use-cases/community-events.md` | Use case Community và Events | TV3 PiLo257 | TV1 | SCRUM-20 |
-| `01-srs/use-cases/heritage-directory-dashboard.md` | Use case Heritage, Directory, Dashboard | TV4 Huy Quốc | TV2 | SCRUM-22 |
+| `01-srs/use-cases/heritage-directory-dashboard.md` | Use case Heritage, Directory, Dashboard | TV4 Huy Quốc | TV1 | SCRUM-22 |
 | `01-srs/use-cases/ai.md` | Use case AI | TV5 Lê Nhựt | TV3 | SCRUM-34 |
 | `02-design/architecture.md` | Kiến trúc tổng thể (Web, Mobile, AI Service Layer) | TV4 Huy Quốc | TV2 | SCRUM-23 |
 | `02-design/algorithm-relationship.md` | Thuật toán quan hệ họ hàng | TV2 Trí | TV5 | SCRUM-19 |

@@ -12,8 +12,8 @@
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
 | id | UUID | PK | |
-| created_at | TIMESTAMP | NOT NULL | |
-| updated_at | TIMESTAMP | NOT NULL | |
-| deleted_at | TIMESTAMP | NULL | xóa mềm |
+| created_at | TIMESTAMPTZ | NOT NULL | |
+| updated_at | TIMESTAMPTZ | NOT NULL | |
+| deleted_at | TIMESTAMPTZ | NULL | xóa mềm |
 
 **Index:** ...

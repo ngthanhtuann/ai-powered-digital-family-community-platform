@@ -4,7 +4,7 @@
 > **Trạng thái:** Nháp 
 > Cách làm: tạo nhánh `docs/<mã SCRUM>-<tên-ngắn>` từ `develop`, điền vào file này, mở Pull Request vào `develop`. Xem `docs/README.md`.
 
-> Vẽ 4 quy trình bằng Mermaid (flowchart có phân làn) hoặc draw.io (BPMN). Mỗi quy trình có làn theo vai trò: Thành viên, Quản trị gia đình, Hệ thống, AI Service.
+> Vẽ 4 quy trình bằng Mermaid (flowchart có phân làn) hoặc draw.io (BPMN). Mỗi quy trình có làn theo vai trò: Thành viên, Trưởng chi, Hệ thống, AI Service.
 
 ## 1. Đăng ký, xác minh thành viên và tham gia gia đình
 ```mermaid

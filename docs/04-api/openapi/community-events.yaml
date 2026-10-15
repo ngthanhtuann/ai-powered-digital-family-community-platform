@@ -2,31 +2,3033 @@
 openapi: 3.0.3
 info:
   title: FamilyConnect - Community và Events
-  version: 0.1.0
+  version: 0.2.0
+  description: API Community và Events. Mọi endpoint có xác thực Bearer JWT và kiểm
+    tra family/branch scope theo người dùng đăng nhập.
 servers:
-  - url: /api/v1
-paths: {}
-# Mẫu một endpoint (xóa dấu # và chỉnh lại):
-# paths:
-#   /auth/login:
-#     post:
-#       summary: Đăng nhập
-#       security: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               properties:
-#                 email: { type: string }
-#                 password: { type: string }
-#       responses:
-#         '200': { description: Thành công (access token, refresh token) }
-#         '401': { description: AUTH_001 sai email hoặc mật khẩu }
+- url: /api/v1
+tags:
+- name: Community
+  description: Bài đăng, bình luận, reaction, media, thông báo
+- name: Events
+  description: Sự kiện, RSVP, người tham dự và thư viện ảnh
+paths:
+  /posts:
+    post:
+      tags:
+      - Community
+      summary: Tạo bài đăng
+      operationId: createPost
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Thông báo họp mặt gia đình cuối tuần
+                  type: POST
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  commentCount: 0
+                  reactionCounts:
+                    LIKE: 0
+                    LOVE: 0
+                    HAHA: 0
+                    SAD: 0
+                  myReaction: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCreateRequest'
+            example:
+              content: Thông báo họp mặt gia đình cuối tuần
+              type: POST
+    get:
+      tags:
+      - Community
+      summary: Danh sách bài đăng
+      operationId: listPosts
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Thông báo họp mặt gia đình cuối tuần
+                  type: POST
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  commentCount: 0
+                  reactionCounts:
+                    LIKE: 0
+                    LOVE: 0
+                    HAHA: 0
+                    SAD: 0
+                  myReaction: null
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/TypeFilter'
+      - $ref: '#/components/parameters/BranchFilter'
+  /posts/{id}:
+    get:
+      tags:
+      - Community
+      summary: Chi tiết bài đăng
+      operationId: getPost
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Thông báo họp mặt gia đình cuối tuần
+                  type: POST
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  commentCount: 0
+                  reactionCounts:
+                    LIKE: 0
+                    LOVE: 0
+                    HAHA: 0
+                    SAD: 0
+                  myReaction: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    patch:
+      tags:
+      - Community
+      summary: Sửa một phần bài đăng
+      operationId: updatePost
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Thông báo họp mặt gia đình cuối tuần
+                  type: POST
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  commentCount: 0
+                  reactionCounts:
+                    LIKE: 0
+                    LOVE: 0
+                    HAHA: 0
+                    SAD: 0
+                  myReaction: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostUpdateRequest'
+            example:
+              content: Cập nhật giờ họp mặt gia đình
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    delete:
+      tags:
+      - Community
+      summary: Xóa mềm bài đăng
+      operationId: deletePost
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /posts/{id}/comments:
+    get:
+      tags:
+      - Community
+      summary: Danh sách bình luận của bài đăng
+      operationId: listPostComments
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  postId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Mình sẽ tham gia.
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    post:
+      tags:
+      - Community
+      summary: Thêm bình luận
+      operationId: createComment
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  postId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Mình sẽ tham gia.
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+            example:
+              content: Mình sẽ tham gia.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /comments/{id}:
+    patch:
+      tags:
+      - Community
+      summary: Sửa bình luận của mình
+      operationId: updateComment
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  postId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Mình sẽ tham gia.
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentRequest'
+            example:
+              content: Mình sẽ tham gia.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    delete:
+      tags:
+      - Community
+      summary: Xóa bình luận
+      operationId: deleteComment
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /posts/{id}/reactions:
+    post:
+      tags:
+      - Community
+      summary: Thêm hoặc thay reaction
+      operationId: upsertReaction
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReactionResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  postId: 550e8400-e29b-41d4-a716-446655440000
+                  type: LIKE
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReactionRequest'
+            example:
+              type: LIKE
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    delete:
+      tags:
+      - Community
+      summary: Xóa reaction của mình
+      operationId: deleteReaction
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /posts/{id}/media:
+    get:
+      tags:
+      - Community
+      summary: Danh sách ảnh của bài đăng
+      operationId: listPostMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  ownerType: POST
+                  ownerId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  fileName: anh-ho-mat.jpg
+                  contentType: image/jpeg
+                  fileSize: 245760
+                  contentUrl: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+                  caption: null
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    post:
+      tags:
+      - Community
+      summary: Tải ảnh lên bài đăng
+      operationId: uploadPostMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  ownerType: POST
+                  ownerId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  fileName: anh-ho-mat.jpg
+                  contentType: image/jpeg
+                  fileSize: 245760
+                  contentUrl: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+                  caption: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedFile'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              additionalProperties: false
+              required:
+              - file
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /media:
+    post:
+      tags:
+      - Community
+      summary: Tải ảnh (hoặc tệp pdf của heritage) cho tài nguyên heritage hoặc person
+      operationId: uploadMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên
+        sở hữu do module heritage/genealogy quyết định. Ảnh bài đăng và sự kiện dùng
+        endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng
+        ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md
+        mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB.
+        Sai định dạng trả 415 FILE_002; quá kích thước trả 413 FILE_001.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  ownerType: PERSON
+                  ownerId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  fileName: anh-dai-dien.jpg
+                  contentType: image/jpeg
+                  fileSize: 120480
+                  contentUrl: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+                  caption: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedFile'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadMediaRequest'
+  /media/{id}/content:
+    get:
+      tags:
+      - Community
+      summary: Lấy nội dung ảnh hoặc tệp pdf sau kiểm tra quyền
+      operationId: getMediaContent
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Nội dung ảnh (hoặc tệp pdf của HERITAGE) được trả về sau khi kiểm tra quyền
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /media/{id}:
+    delete:
+      tags:
+      - Community
+      summary: Xóa media
+      operationId: deleteMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /announcements:
+    post:
+      tags:
+      - Community
+      summary: Tạo thông báo
+      operationId: createAnnouncement
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Lịch họp gia đình
+                  content: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+                  isPinned: false
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementRequest'
+            example:
+              title: Lịch họp gia đình
+              content: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+              isPinned: false
+    get:
+      tags:
+      - Community
+      summary: Danh sách thông báo
+      operationId: listAnnouncements
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Lịch họp gia đình
+                  content: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+                  isPinned: false
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/BranchFilter'
+  /announcements/{id}:
+    get:
+      tags:
+      - Community
+      summary: Chi tiết thông báo
+      operationId: getAnnouncement
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Lịch họp gia đình
+                  content: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+                  isPinned: false
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    patch:
+      tags:
+      - Community
+      summary: Sửa thông báo
+      operationId: updateAnnouncement
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Lịch họp gia đình
+                  content: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+                  isPinned: false
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementUpdateRequest'
+            example:
+              title: Lịch họp gia đình (cập nhật)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    delete:
+      tags:
+      - Community
+      summary: Xóa thông báo
+      operationId: deleteAnnouncement
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /notifications:
+    get:
+      tags:
+      - Community
+      summary: Danh sách thông báo của người đăng nhập
+      operationId: listNotifications
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  type: EVENT_REMINDER_24H
+                  refType: EVENT
+                  refId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Sự kiện Họp mặt gia đình sắp diễn ra.
+                  isRead: false
+                  title: 'Nhắc sự kiện: Họp mặt gia đình'
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/ReadFilter'
+  /notifications/{id}:
+    patch:
+      tags:
+      - Community
+      summary: Đánh dấu thông báo đã đọc
+      operationId: markNotificationRead
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  type: EVENT_REMINDER_24H
+                  refType: EVENT
+                  refId: 550e8400-e29b-41d4-a716-446655440000
+                  content: Sự kiện Họp mặt gia đình sắp diễn ra.
+                  isRead: true
+                  title: 'Nhắc sự kiện: Họp mặt gia đình'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReadRequest'
+            example: {}
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /content-reports:
+    post:
+      tags:
+      - Community
+      summary: Báo cáo nội dung vi phạm
+      operationId: createContentReport
+      x-roles: [MEMBER, BRANCH_ADMIN]
+      description: Thành viên đã xác minh báo cáo bài đăng, bình luận, sự kiện hoặc
+        thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một
+        lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn
+        tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò
+        hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Quản trị xử lý báo cáo
+        ở /admin/content-reports (auth.yaml, UC-AUTH-09).
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentReportResponse'
+              example:
+                success: true
+                data:
+                  id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81
+                  createdAt: '2026-10-12T09:30:00+07:00'
+                  updatedAt: '2026-10-12T09:30:00+07:00'
+                  targetType: POST
+                  targetId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01
+                  reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33
+                  reason: Bài đăng quảng cáo không liên quan.
+                  contentSnippet: Mua hàng giảm giá 50% tại...
+                  status: PENDING
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/DuplicateReportError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentReportRequest'
+            example:
+              targetType: POST
+              targetId: 550e8400-e29b-41d4-a716-446655440000
+              reason: Bài đăng quảng cáo không liên quan.
+  /events:
+    post:
+      tags:
+      - Events
+      summary: Tạo sự kiện
+      operationId: createEvent
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Họp mặt gia đình
+                  description: Buổi gặp mặt thường niên
+                  startAt: '2026-10-10T10:00:00+07:00'
+                  endAt: '2026-10-10T12:00:00+07:00'
+                  location: Nhà văn hóa
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  myRsvpStatus: null
+                  rsvpCounts:
+                    going: 0
+                    notGoing: 0
+                    maybe: 0
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+            example:
+              title: Họp mặt gia đình
+              startAt: '2026-10-10T10:00:00+07:00'
+    get:
+      tags:
+      - Events
+      summary: Danh sách sự kiện
+      operationId: listEvents
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Họp mặt gia đình
+                  description: Buổi gặp mặt thường niên
+                  startAt: '2026-10-10T10:00:00+07:00'
+                  endAt: '2026-10-10T12:00:00+07:00'
+                  location: Nhà văn hóa
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  myRsvpStatus: GOING
+                  rsvpCounts:
+                    going: 1
+                    notGoing: 0
+                    maybe: 0
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/BranchFilter'
+      - $ref: '#/components/parameters/FromFilter'
+      - $ref: '#/components/parameters/ToFilter'
+  /events/{id}:
+    get:
+      tags:
+      - Events
+      summary: Chi tiết sự kiện
+      operationId: getEvent
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Họp mặt gia đình
+                  description: Buổi gặp mặt thường niên
+                  startAt: '2026-10-10T10:00:00+07:00'
+                  endAt: '2026-10-10T12:00:00+07:00'
+                  location: Nhà văn hóa
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  myRsvpStatus: GOING
+                  rsvpCounts:
+                    going: 1
+                    notGoing: 0
+                    maybe: 0
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    patch:
+      tags:
+      - Events
+      summary: Sửa một phần sự kiện
+      operationId: updateEvent
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  branchId: 550e8400-e29b-41d4-a716-446655440000
+                  title: Họp mặt gia đình
+                  description: Buổi gặp mặt thường niên
+                  startAt: '2026-10-10T10:00:00+07:00'
+                  endAt: '2026-10-10T12:00:00+07:00'
+                  location: Nhà văn hóa
+                  createdBy: 550e8400-e29b-41d4-a716-446655440000
+                  myRsvpStatus: GOING
+                  rsvpCounts:
+                    going: 1
+                    notGoing: 0
+                    maybe: 0
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventUpdateRequest'
+            example:
+              title: Họp mặt gia đình (cập nhật)
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    delete:
+      tags:
+      - Events
+      summary: Xóa mềm sự kiện
+      operationId: deleteEvent
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /events/{id}/rsvp:
+    put:
+      tags:
+      - Events
+      summary: Tạo hoặc cập nhật RSVP
+      operationId: upsertEventRsvp
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  eventId: 550e8400-e29b-41d4-a716-446655440000
+                  userId: 550e8400-e29b-41d4-a716-446655440000
+                  rsvpStatus: GOING
+                  displayName: Nguyễn Văn A
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RsvpRequest'
+            example:
+              rsvpStatus: GOING
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /events/{id}/participants:
+    get:
+      tags:
+      - Events
+      summary: Danh sách người tham dự
+      operationId: listEventParticipants
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập. Mọi thành viên đã xác minh có quyền xem sự kiện đều
+        xem được danh sách (srs.md Phụ lục A); chỉ trả họ tên và trạng thái RSVP, không
+        kèm thông tin liên hệ. Thêm, gỡ người tham dự chỉ dành cho người tạo sự kiện,
+        BRANCH_ADMIN trong phạm vi và SYSTEM_ADMIN.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  eventId: 550e8400-e29b-41d4-a716-446655440000
+                  userId: 550e8400-e29b-41d4-a716-446655440000
+                  rsvpStatus: GOING
+                  displayName: Nguyễn Văn A
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - $ref: '#/components/parameters/RsvpFilter'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    post:
+      tags:
+      - Events
+      summary: Thêm người tham dự
+      operationId: addEventParticipant
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  eventId: 550e8400-e29b-41d4-a716-446655440000
+                  userId: 550e8400-e29b-41d4-a716-446655440000
+                  rsvpStatus: GOING
+                  displayName: Nguyễn Văn A
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/DuplicateError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantRequest'
+            example:
+              userId: 550e8400-e29b-41d4-a716-446655440001
+              rsvpStatus: GOING
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /events/{id}/media:
+    get:
+      tags:
+      - Events
+      summary: Danh sách ảnh sự kiện
+      operationId: listEventMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaListResponse'
+              example:
+                success: true
+                data:
+                - id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  ownerType: EVENT
+                  ownerId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  fileName: anh-ho-mat.jpg
+                  contentType: image/jpeg
+                  fileSize: 245760
+                  contentUrl: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+                  caption: null
+                meta:
+                  page: 0
+                  size: 20
+                  total: 1
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - $ref: '#/components/parameters/Sort'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+    post:
+      tags:
+      - Events
+      summary: Tải ảnh lên thư viện sự kiện
+      operationId: uploadEventMedia
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaResponse'
+              example:
+                success: true
+                data:
+                  id: 550e8400-e29b-41d4-a716-446655440000
+                  createdAt: '2026-10-09T10:00:00+07:00'
+                  updatedAt: '2026-10-09T10:00:00+07:00'
+                  ownerType: EVENT
+                  ownerId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 550e8400-e29b-41d4-a716-446655440000
+                  fileName: anh-ho-mat.jpg
+                  contentType: image/jpeg
+                  fileSize: 245760
+                  contentUrl: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+                  caption: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '413':
+          $ref: '#/components/responses/FileTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedFile'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              additionalProperties: false
+              required:
+              - file
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của id
+  /participants/{id}:
+    delete:
+      tags:
+      - Events
+      summary: Gỡ người tham dự
+      operationId: removeEventParticipant
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
+        theo người dùng đăng nhập.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+              example:
+                success: true
+                data: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID bản ghi người tham dự
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID của tài nguyên
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        default: createdAt,desc
+        example: createdAt,desc
+    TypeFilter:
+      name: type
+      in: query
+      schema:
+        type: string
+        enum:
+        - POST
+        - NEWS
+    BranchFilter:
+      name: branchId
+      in: query
+      schema:
+        type: string
+        format: uuid
+    FromFilter:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ToFilter:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+    RsvpFilter:
+      name: rsvpStatus
+      in: query
+      schema:
+        type: string
+        enum:
+        - GOING
+        - NOT_GOING
+        - MAYBE
+    ReadFilter:
+      name: isRead
+      in: query
+      schema:
+        type: boolean
+  schemas:
+    Post:
+      type: object
+      properties:
+        id: &id002
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        createdAt: &id001
+          type: string
+          format: date-time
+          example: '2026-10-10T10:00:00+07:00'
+        updatedAt: *id001
+        familyId: *id002
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+        content:
+          type: string
+          example: Thông báo họp mặt gia đình cuối tuần
+        type:
+          type: string
+          enum:
+          - POST
+          - NEWS
+          example: POST
+        createdBy: *id002
+        commentCount:
+          type: integer
+          minimum: 0
+          example: 0
+        reactionCounts:
+          type: object
+          properties:
+            LIKE:
+              type: integer
+              minimum: 0
+              example: 0
+            LOVE:
+              type: integer
+              minimum: 0
+              example: 0
+            HAHA:
+              type: integer
+              minimum: 0
+              example: 0
+            SAD:
+              type: integer
+              minimum: 0
+              example: 0
+          additionalProperties: false
+          required:
+          - LIKE
+          - LOVE
+          - HAHA
+          - SAD
+        myReaction:
+          type: string
+          nullable: true
+          enum:
+          - LIKE
+          - LOVE
+          - HAHA
+          - SAD
+          - null
+          description: Reaction hiện tại của người đăng nhập; null nếu chưa thả
+      additionalProperties: false
+      required:
+      - id
+      - familyId
+      - content
+      - type
+      - createdAt
+      - updatedAt
+      - commentCount
+      - reactionCounts
+      - myReaction
+    Comment:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        postId: *id002
+        content:
+          type: string
+          example: Mình sẽ tham gia.
+        createdBy: *id002
+      additionalProperties: false
+      required:
+      - id
+      - postId
+      - content
+      - createdBy
+      - createdAt
+      - updatedAt
+    Reaction:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        postId: *id002
+        type:
+          type: string
+          enum:
+          - LIKE
+          - LOVE
+          - HAHA
+          - SAD
+          example: LIKE
+        createdBy: *id002
+      additionalProperties: false
+      required:
+      - id
+      - postId
+      - type
+      - createdBy
+      - createdAt
+      - updatedAt
+    Media:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        ownerType:
+          type: string
+          enum:
+          - POST
+          - EVENT
+          - HERITAGE
+          - PERSON
+        ownerId: *id002
+        familyId: *id002
+        fileName:
+          type: string
+          example: anh-ho-mat.jpg
+          description: Tên tệp gốc đã làm sạch, chỉ để hiển thị
+        contentType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+          - image/webp
+          - application/pdf
+          description: Loại tệp (cột file_type). application/pdf chỉ có khi ownerType
+            là HERITAGE.
+        fileSize:
+          type: integer
+          format: int64
+          maximum: 10485760
+          description: Kích thước theo byte. Ảnh tối đa 5242880 (5 MB); tệp pdf của
+            HERITAGE tối đa 10485760 (10 MB).
+        contentUrl:
+          type: string
+          readOnly: true
+          example: /api/v1/media/550e8400-e29b-41d4-a716-446655440000/content
+          description: Đường dẫn lấy nội dung ảnh (cần Bearer JWT); không phải URL
+            công khai
+        caption:
+          type: string
+          nullable: true
+          maxLength: 255
+          example: Họp mặt gia đình 2026
+      additionalProperties: false
+      required:
+      - id
+      - ownerType
+      - ownerId
+      - familyId
+      - fileName
+      - contentType
+      - fileSize
+      - createdAt
+      - updatedAt
+      - contentUrl
+    Announcement:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        familyId: *id002
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          example: Lịch họp gia đình
+        content:
+          type: string
+          example: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+        isPinned:
+          type: boolean
+          example: false
+        createdBy: *id002
+      additionalProperties: false
+      required:
+      - id
+      - familyId
+      - title
+      - content
+      - isPinned
+      - createdAt
+      - updatedAt
+    Event:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        familyId: *id002
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+          example: Họp mặt gia đình
+        description:
+          type: string
+          nullable: true
+          example: Buổi gặp mặt thường niên
+        startAt: *id001
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-10-10T12:00:00+07:00'
+        location:
+          type: string
+          nullable: true
+          example: Nhà văn hóa
+        createdBy: *id002
+        myRsvpStatus:
+          type: string
+          nullable: true
+          enum:
+          - GOING
+          - NOT_GOING
+          - MAYBE
+          - null
+          description: RSVP hiện tại của người đăng nhập; null nếu chưa RSVP
+        rsvpCounts:
+          type: object
+          properties:
+            going:
+              type: integer
+              minimum: 0
+              example: 0
+            notGoing:
+              type: integer
+              minimum: 0
+              example: 0
+            maybe:
+              type: integer
+              minimum: 0
+              example: 0
+          additionalProperties: false
+          required:
+          - going
+          - notGoing
+          - maybe
+      additionalProperties: false
+      required:
+      - id
+      - familyId
+      - title
+      - startAt
+      - createdAt
+      - updatedAt
+      - myRsvpStatus
+      - rsvpCounts
+    Participant:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        eventId: *id002
+        userId: *id002
+        rsvpStatus:
+          type: string
+          enum:
+          - GOING
+          - NOT_GOING
+          - MAYBE
+        displayName:
+          type: string
+          example: Nguyễn Văn A
+      additionalProperties: false
+      required:
+      - id
+      - eventId
+      - userId
+      - rsvpStatus
+      - createdAt
+      - updatedAt
+    Notification:
+      type: object
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        type:
+          type: string
+          enum:
+          - EVENT_REMINDER_24H
+          - EVENT_REMINDER_1H
+          - ANNOUNCEMENT
+          example: EVENT_REMINDER_24H
+        title:
+          type: string
+          example: 'Nhắc sự kiện: Họp mặt gia đình'
+        refType:
+          type: string
+          nullable: true
+          example: EVENT
+        refId:
+          type: string
+          format: uuid
+          nullable: true
+        content:
+          type: string
+          example: Sự kiện Họp mặt gia đình sắp diễn ra.
+        isRead:
+          type: boolean
+          example: false
+      additionalProperties: false
+      required:
+      - id
+      - type
+      - title
+      - content
+      - isRead
+      - createdAt
+      - updatedAt
+    ContentType:
+      type: string
+      enum:
+      - POST
+      - COMMENT
+      - EVENT
+      - ANNOUNCEMENT
+      description: Loại nội dung có thể bị báo cáo (giống ContentType ở auth.yaml).
+    ReportStatus:
+      type: string
+      enum:
+      - PENDING
+      - HIDDEN
+      - DISMISSED
+    ContentReport:
+      type: object
+      description: Báo cáo nội dung vi phạm (bảng content_report). Cùng các trường
+        với ContentReport ở auth.yaml; module admin đọc qua interface Java ContentModerationPort.
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        targetType:
+          $ref: '#/components/schemas/ContentType'
+        targetId: *id002
+        familyId: *id002
+        reporterId: *id002
+        reason:
+          type: string
+          example: Bài đăng quảng cáo không liên quan.
+          description: Lý do do người báo cáo nhập
+        contentSnippet:
+          type: string
+          example: Mua hàng giảm giá 50% tại...
+          description: Trích tối đa 200 ký tự nội dung bị báo cáo
+        status:
+          $ref: '#/components/schemas/ReportStatus'
+      additionalProperties: false
+      required:
+      - id
+      - targetType
+      - targetId
+      - familyId
+      - reporterId
+      - reason
+      - contentSnippet
+      - status
+      - createdAt
+      - updatedAt
+    PostCreateRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+          example: Thông báo họp mặt gia đình cuối tuần
+        type:
+          type: string
+          enum:
+          - POST
+          - NEWS
+          example: POST
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+      required:
+      - content
+      - type
+    PostUpdateRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 5000
+          example: Cập nhật giờ họp mặt gia đình
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    CommentRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 1000
+          example: Mình sẽ tham gia.
+      additionalProperties: false
+      required:
+      - content
+    ReactionRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+          - LIKE
+          - LOVE
+          - HAHA
+          - SAD
+          example: LIKE
+      additionalProperties: false
+      required:
+      - type
+    AnnouncementRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Lịch họp gia đình
+        content:
+          type: string
+          maxLength: 5000
+          example: Cuộc họp bắt đầu lúc 9 giờ sáng Chủ nhật.
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+        isPinned:
+          type: boolean
+          example: false
+      additionalProperties: false
+      required:
+      - title
+      - content
+    AnnouncementUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Lịch họp gia đình (cập nhật)
+        content:
+          type: string
+          maxLength: 5000
+          example: Cuộc họp bắt đầu lúc 10 giờ sáng Chủ nhật.
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+        isPinned:
+          type: boolean
+          example: true
+      additionalProperties: false
+    EventRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Họp mặt gia đình
+        description:
+          type: string
+          maxLength: 5000
+          example: Buổi gặp mặt thường niên
+        startAt: *id001
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-10-10T12:00:00+07:00'
+        location:
+          type: string
+          maxLength: 255
+          example: Nhà văn hóa
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+      required:
+      - title
+      - startAt
+    EventUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          example: Họp mặt gia đình (cập nhật)
+        description:
+          type: string
+          maxLength: 5000
+          example: Nội dung đã cập nhật
+        startAt: *id001
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        location:
+          type: string
+          maxLength: 255
+        branchId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    RsvpRequest:
+      type: object
+      properties:
+        rsvpStatus:
+          type: string
+          enum:
+          - GOING
+          - NOT_GOING
+          - MAYBE
+          example: GOING
+      additionalProperties: false
+      required:
+      - rsvpStatus
+    ParticipantRequest:
+      type: object
+      properties:
+        userId: *id002
+        rsvpStatus:
+          type: string
+          enum:
+          - GOING
+          - NOT_GOING
+          - MAYBE
+          example: GOING
+          default: MAYBE
+          description: Mặc định MAYBE khi người tạo sự kiện thêm hộ
+      additionalProperties: false
+      required:
+      - userId
+    MarkReadRequest:
+      type: object
+      properties:
+        isRead:
+          type: boolean
+          enum:
+          - true
+          example: true
+      additionalProperties: false
+      required:
+      - isRead
+    ContentReportRequest:
+      type: object
+      properties:
+        targetType:
+          $ref: '#/components/schemas/ContentType'
+        targetId: *id002
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Bài đăng quảng cáo không liên quan.
+      additionalProperties: false
+      required:
+      - targetType
+      - targetId
+      - reason
+    ObjectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+      required:
+      - success
+      - data
+    ListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          nullable: true
+          example: null
+      additionalProperties: false
+      required:
+      - success
+      - data
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALID_001
+            message:
+              type: string
+              example: Dữ liệu không hợp lệ
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                additionalProperties: false
+                required:
+                - field
+                - message
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - details
+      additionalProperties: false
+      required:
+      - success
+      - error
+    PostResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Post'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    PostListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    CommentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Comment'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    CommentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    ReactionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Reaction'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    ReactionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reaction'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    MediaResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Media'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    MediaListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    AnnouncementResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Announcement'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    AnnouncementListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Announcement'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    EventResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Event'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    EventListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    ParticipantResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Participant'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    ParticipantListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    NotificationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Notification'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    NotificationListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 0
+            size:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+          additionalProperties: false
+          required:
+          - page
+          - size
+          - total
+      additionalProperties: false
+      required:
+      - success
+      - data
+      - meta
+    ContentReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/ContentReport'
+      additionalProperties: false
+      required:
+      - success
+      - data
+    UploadMediaRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        ownerType:
+          type: string
+          enum:
+          - HERITAGE
+          - PERSON
+        ownerId:
+          type: string
+          format: uuid
+        caption:
+          type: string
+          maxLength: 255
+      additionalProperties: false
+      required:
+      - file
+      - ownerType
+      - ownerId
+  responses:
+    AuthError:
+      description: Token hết hạn hoặc không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AUTH_002
+              message: Token hết hạn hoặc không hợp lệ
+              details: []
+    PermissionError:
+      description: Không đủ quyền
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            PERM_001:
+              summary: Không đủ quyền
+              value:
+                success: false
+                error:
+                  code: PERM_001
+                  message: Không đủ quyền truy cập
+                  details: []
+            PERM_002:
+              summary: Thành viên chưa được xác minh
+              value:
+                success: false
+                error:
+                  code: PERM_002
+                  message: Thành viên chưa được xác minh
+                  details: []
+    ValidationError:
+      description: Dữ liệu không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VALID_001
+              message: Dữ liệu không hợp lệ
+              details: []
+    NotFoundError:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND_001
+              message: Không tìm thấy tài nguyên
+              details: []
+    ConflictError:
+      description: Sự kiện đã bắt đầu; không thể RSVP
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: EVT_001
+              message: Sự kiện đã bắt đầu; không thể RSVP
+              details: []
+    FileTooLarge:
+      description: Tệp vượt kích thước cho phép (ảnh 5 MB; pdf của HERITAGE 10 MB)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: FILE_001
+              message: Tệp vượt kích thước cho phép
+              details: []
+    UnsupportedFile:
+      description: Chỉ hỗ trợ ảnh jpg, png, webp (và pdf khi ownerType là HERITAGE)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: FILE_002
+              message: Chỉ hỗ trợ ảnh jpg, png, webp
+              details: []
+    DuplicateError:
+      description: Dữ liệu đã tồn tại
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: CONFLICT_001
+              message: Người dùng đã có trong danh sách người tham dự
+              details: []
+    DuplicateReportError:
+      description: Người dùng đã báo cáo nội dung này
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: CONFLICT_001
+              message: Bạn đã báo cáo nội dung này
+              details: []
