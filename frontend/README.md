@@ -1,3 +1,47 @@
-# Frontend (Next.js)
+# FamilyConnect — Frontend
 
-Khung Next.js sẽ được tạo ở task **SCRUM-33** [2-08] (Huy Quốc). Thư mục này để trống cho đến lúc đó.
+Next.js (App Router) + TypeScript + Tailwind CSS.
+Thư viện: axios, @tanstack/react-query, react-hook-form, zod, @xyflow/react, recharts.
+
+## Chạy local
+
+Yêu cầu: Node.js 20+ và backend đang chạy (mặc định http://localhost:8080).
+
+```bash
+cd frontend
+cp .env.example .env.local      # chỉnh NEXT_PUBLIC_API_BASE_URL nếu cần
+npm install
+npm run dev                     # http://localhost:3000
+```
+
+Trang chủ hiển thị "Hello FamilyConnect" và trạng thái `/actuator/health` của backend.
+Nếu lỗi CORS, thêm `http://localhost:3000` vào danh sách origin của backend (biến môi trường).
+
+## Lệnh
+
+| Lệnh              | Mục đích                                                      |
+| ----------------- | ------------------------------------------------------------- |
+| `npm run dev`     | Chạy dev server                                               |
+| `npm run build`   | Build production                                              |
+| `npm run lint`    | ESLint                                                        |
+| `npm run format`  | Prettier                                                      |
+| `npm run gen:api` | Sinh kiểu từ `docs/04-api/openapi/` vào `services/generated/` |
+
+## Docker
+
+```bash
+docker build -t familyconnect-frontend --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 .
+docker run --rm -p 3000:3000 familyconnect-frontend
+```
+
+`NEXT_PUBLIC_*` được nhúng lúc build, nên truyền qua `--build-arg`.
+
+## Cấu trúc
+
+- `app/` — route, layout, providers.
+- `lib/api.ts` — axios client theo `docs/04-api/conventions.md`:
+  - đọc `success/data/meta`; lỗi `error.code/message/details` (`details` luôn là mảng);
+  - DELETE trả 200 `{success:true, data:null}`;
+  - `AUTH_002` → gọi `/auth/refresh` rồi gọi lại; `PERM_002` → `/pending-approval`; `PERM_001` → thông báo không đủ quyền.
+- `lib/nav.ts` — khung menu ẩn theo vai trò.
+- `services/` — kiểu sinh từ OpenAPI.
