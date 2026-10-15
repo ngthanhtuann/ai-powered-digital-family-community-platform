@@ -1,16 +1,24 @@
 spring:
   application:
     name: familyconnect-backend
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
   datasource:
     # Giá trị mặc định dùng cho máy local (docker compose up -d db).
     # Khi chạy trong Docker, docker-compose.yml ghi đè bằng biến môi trường.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/familyconnect}
     username: ${SPRING_DATASOURCE_USERNAME:familyconnect}
     password: ${SPRING_DATASOURCE_PASSWORD:familyconnect}
+
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate   # schema chỉ thay đổi qua Flyway migration
+      ddl-auto: validate
+
   flyway:
     enabled: true
     locations: classpath:db/migration
