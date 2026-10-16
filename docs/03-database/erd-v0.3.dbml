@@ -1,0 +1,462 @@
+// ERD tổng hợp FamilyConnect v0.3 (nháp). Dán vào dbdiagram.io.
+// Khóa ngoại thật (Ref) chỉ trong cùng module. Tham chiếu logic ghi ở cột note, vẽ nét đứt trong draw.io.
+
+Table family {
+  id uuid [pk, note: 'Khóa chính']
+  name varchar(150) [not null, note: 'Tên gia đình']
+  description text [note: 'Mô tả']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Gia đình / dòng họ'
+}
+
+Table branch {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình']
+  name varchar(150) [not null, note: 'Tên chi']
+  parent_branch_id uuid [note: 'Chi cha']
+  origin_person_id uuid [note: 'Người tổ của chi']
+  description text [note: 'Mô tả']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Chi họ'
+}
+
+Table person {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình']
+  branch_id uuid [note: 'Chi họ']
+  full_name varchar(150) [not null, note: 'Họ tên']
+  gender varchar(10) [not null, note: 'MALE, FEMALE, OTHER']
+  birth_date date [note: 'Người còn sống bắt buộc có (BR-GEN-17)']
+  birth_year smallint [note: 'Chỉ cho người đã mất không rõ ngày sinh']
+  birthplace varchar(255)
+  current_location varchar(255) [note: 'Nơi ở hiện tại (dashboard đang dùng tên cột current_province, xem xung đột X2)']
+  is_deceased boolean [not null]
+  death_date date
+  avatar_media_id uuid [note: 'Ảnh đại diện, tham chiếu media; tham chiếu logic -> media, không có FK']
+  user_id uuid [unique, note: 'Tài khoản nối với thành viên; tham chiếu logic -> users, không có FK']
+  note text [note: 'Ghi chú']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Thành viên (người)'
+}
+
+Table parent_child {
+  id uuid [pk, note: 'Khóa chính']
+  parent_id uuid [not null, note: 'Cha hoặc mẹ']
+  child_id uuid [not null, note: 'Con']
+  parent_role varchar(10) [not null, note: 'FATHER, MOTHER']
+  kind varchar(12) [not null, note: 'BIOLOGICAL, ADOPTED, STEP']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Quan hệ cha/mẹ - con · CHECK (parent_id <> child_id); UNIQUE (parent_id, child_id) WHERE deleted_at IS NULL; UNIQUE (child_id, parent_role) WHERE kind = BIOLOGICAL AND deleted_at IS NULL.'
+}
+
+Table marriage {
+  id uuid [pk, note: 'Khóa chính']
+  person1_id uuid [not null, note: 'Người 1']
+  person2_id uuid [not null, note: 'Người 2']
+  status varchar(10) [not null, note: 'MARRIED, DIVORCED, WIDOWED']
+  start_date date [note: 'Ngày kết hôn']
+  end_date date [note: 'Ngày ly hôn hoặc góa']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Hôn nhân · CHECK (person1_id <> person2_id).'
+}
+
+Table post {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình sở hữu; tham chiếu logic -> family, không có FK']
+  branch_id uuid [note: 'NULL = cả gia đình; tham chiếu logic -> branch, không có FK']
+  content text [not null, note: 'Nội dung']
+  type varchar(20) [not null, note: 'POST, NEWS']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Bài đăng (POST hoặc NEWS)'
+}
+
+Table comment {
+  id uuid [pk, note: 'Khóa chính']
+  post_id uuid [not null, note: 'Bài đăng']
+  content text [not null, note: 'Nội dung']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Bình luận'
+}
+
+Table reaction {
+  id uuid [pk, note: 'Khóa chính']
+  post_id uuid [not null, note: 'Bài đăng']
+  type varchar(20) [not null, note: 'LIKE, LOVE, HAHA, SAD']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Reaction · UNIQUE (post_id, created_by) WHERE deleted_at IS NULL.'
+}
+
+Table media {
+  id uuid [pk, note: 'Khóa chính']
+  owner_type varchar(20) [not null, note: 'POST, EVENT, HERITAGE, PERSON']
+  owner_id uuid [not null, note: 'Tài nguyên sở hữu (theo owner_type); tham chiếu logic -> post, không có FK']
+  family_id uuid [not null, note: 'Gia đình, dùng lọc quyền; tham chiếu logic -> family, không có FK']
+  file_size bigint [not null, note: 'Byte']
+  file_name varchar(255) [not null, note: 'Tên gốc đã làm sạch']
+  storage_key varchar(255) [not null, unique, note: 'Khóa lưu trữ nội bộ']
+  caption varchar(255) [note: 'Chú thích']
+  file_type varchar(100) [not null, note: 'MIME']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Ảnh và tệp tải lên (dùng chung cho cả hệ thống)'
+}
+
+Table announcement {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  branch_id uuid [note: 'NULL = cả gia đình; tham chiếu logic -> branch, không có FK']
+  is_pinned boolean [not null, note: 'Ghim']
+  title varchar(255) [not null]
+  content text [not null]
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Thông báo ghim'
+}
+
+Table notification {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Người nhận; tham chiếu logic -> users, không có FK']
+  ref_type varchar(30) [note: 'EVENT, ANNOUNCEMENT']
+  ref_id uuid [note: 'Tài nguyên tham chiếu']
+  type varchar(50) [not null, note: 'EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT']
+  title varchar(255) [not null]
+  content text [not null]
+  is_read boolean [not null]
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Thông báo gửi từng người dùng · UNIQUE (user_id, ref_id, type) WHERE deleted_at IS NULL AND ref_id IS NOT NULL. created_by cho phép NULL (thông báo do hệ thống tạo).'
+}
+
+Table event {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình tổ chức; tham chiếu logic -> family, không có FK']
+  branch_id uuid [note: 'NULL = cả gia đình; tham chiếu logic -> branch, không có FK']
+  title varchar(255) [not null, note: 'Tên']
+  description text
+  start_at timestamptz [not null, note: 'Bắt đầu']
+  end_at timestamptz [note: 'Kết thúc']
+  location varchar(255) [note: 'Địa điểm']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Sự kiện (events) · TV3 PiLo257 · Sự kiện'
+}
+
+Table event_participant {
+  id uuid [pk, note: 'Khóa chính']
+  event_id uuid [not null, note: 'Sự kiện']
+  user_id uuid [not null, note: 'Người tham dự (tài khoản); tham chiếu logic -> users, không có FK']
+  rsvp_status varchar(20) [not null, note: 'GOING, NOT_GOING, MAYBE']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Sự kiện (events) · TV3 PiLo257 · Người tham dự và RSVP · UNIQUE (event_id, user_id) WHERE deleted_at IS NULL.'
+}
+
+Table heritage_document {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  title varchar(255) [not null]
+  description text
+  category varchar(100)
+  media_id uuid [not null, note: 'Tệp, tham chiếu media; tham chiếu logic -> media, không có FK']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Tài liệu lịch sử (kho lưu trữ số)'
+}
+
+Table family_story {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  title varchar(255) [not null]
+  content text [not null]
+  related_person_id uuid [note: 'Người liên quan; tham chiếu logic -> person, không có FK']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Câu chuyện gia đình'
+}
+
+Table outstanding_member {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  person_id uuid [not null, note: 'Thành viên; tham chiếu logic -> person, không có FK']
+  achievement text [not null, note: 'Thành tích']
+  display_order int [not null, note: 'Thứ tự hiển thị']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Người tiêu biểu · UNIQUE (family_id, person_id) WHERE deleted_at IS NULL.'
+}
+
+Table profession_profile {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  person_id uuid [not null, note: 'Thành viên; tham chiếu logic -> person, không có FK']
+  job_title varchar(150) [not null, note: 'Chức danh']
+  company varchar(255)
+  work_location varchar(255)
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Hồ sơ nghề nghiệp (1 dòng mỗi người, từ 16 tuổi) · UNIQUE (person_id) WHERE deleted_at IS NULL.'
+}
+
+Table education_profile {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
+  person_id uuid [not null, note: 'Thành viên; tham chiếu logic -> person, không có FK']
+  school varchar(255) [not null, note: 'Trường']
+  degree varchar(100) [note: 'Bằng cấp']
+  graduation_year int [note: 'Năm tốt nghiệp']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Hồ sơ học vấn (1 dòng mỗi người) · UNIQUE (person_id) WHERE deleted_at IS NULL.'
+}
+
+Table users {
+  id uuid [pk, note: 'Khóa chính']
+  email varchar(255) [not null, note: 'Chữ thường; UNIQUE WHERE deleted_at IS NULL']
+  password_hash varchar(100) [not null, note: 'Hash BCrypt, không trả ra API']
+  full_name varchar(150) [not null, note: 'Họ tên']
+  phone varchar(20)
+  date_of_birth date [not null, note: 'Tuổi tối thiểu 16 kiểm ở service (BR-AUTH-03)']
+  status varchar(20) [not null, note: 'ACTIVE, LOCKED']
+  lock_reason varchar(255) [note: 'Bắt buộc khi LOCKED (service)']
+  last_login_at timestamptz [note: 'Đăng nhập thành công gần nhất']
+  created_by uuid [note: 'NULL khi tự đăng ký']
+  updated_by uuid
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tài khoản và hồ sơ cá nhân (mật khẩu BCrypt) · Chỉ mục (status). Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table role {
+  id uuid [pk, note: 'Khóa chính']
+  code varchar(30) [not null, unique, note: 'GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN']
+  name varchar(100) [not null, note: 'Tên hiển thị']
+  description varchar(255)
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Danh mục vai trò · Dữ liệu khởi tạo 4 dòng (Flyway). GUEST không gán vào user_role; BRANCH_ADMIN nằm ở member_verification.role. Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table user_role {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Người dùng']
+  role_id uuid [not null, note: 'Vai trò']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Vai trò toàn hệ thống của người dùng (MEMBER, SYSTEM_ADMIN) · UNIQUE (user_id, role_id) WHERE deleted_at IS NULL. Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table refresh_token {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Người dùng']
+  token_hash varchar(64) [not null, unique, note: 'SHA-256 dạng hex']
+  expires_at timestamptz [not null, note: 'Hết hạn']
+  revoked_at timestamptz [note: 'Đã dùng, đăng xuất hoặc thu hồi']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Refresh token (chỉ lưu hash) · Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table member_verification {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Người xin tham gia hoặc thành viên']
+  family_id uuid [not null, note: 'Gia đình, không FK; tham chiếu logic -> family, không có FK']
+  branch_id uuid [note: 'Chi, không FK; BRANCH_ADMIN: NULL = cả gia đình; tham chiếu logic -> branch, không có FK']
+  role varchar(20) [not null, note: 'MEMBER, BRANCH_ADMIN']
+  status varchar(20) [not null, note: 'PENDING, APPROVED, REJECTED, CANCELLED, REMOVED']
+  message varchar(255) [note: 'Lời nhắn của người xin']
+  reject_reason varchar(255) [note: 'Lý do từ chối']
+  reviewed_by uuid [note: 'Người duyệt']
+  reviewed_at timestamptz
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Yêu cầu tham gia gia đình và tình trạng thành viên · UNIQUE (user_id) WHERE status IN (PENDING, APPROVED) AND deleted_at IS NULL (mỗi người một gia đình, BR-AUTH-08). Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table audit_log {
+  id uuid [pk, note: 'Khóa chính']
+  actor_user_id uuid [note: 'Người thực hiện, không FK; NULL khi chưa xác định; tham chiếu logic -> users, không có FK']
+  actor_role varchar(20) [note: 'Vai trò hiệu lực']
+  action varchar(60) [not null, note: 'Mã hành động (mục 6.4 auth.md)']
+  target_type varchar(40) [note: 'Loại đối tượng']
+  target_id uuid [note: 'Đối tượng, tùy target_type, không FK']
+  family_id uuid [note: 'Gia đình liên quan; tham chiếu logic -> family, không có FK']
+  ip_address varchar(45)
+  detail jsonb [note: 'Thông tin bổ sung không nhạy cảm']
+  created_at timestamptz [not null, note: 'Thời điểm thao tác']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Nhật ký kiểm toán (chỉ thêm, không sửa) · Ngoại lệ quy ước: chỉ có id và created_at (bản ghi chỉ thêm). Chỉ mục (created_at DESC), (actor_user_id, created_at DESC), (action, created_at DESC). Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table system_config {
+  id uuid [pk, note: 'Khóa chính']
+  config_key varchar(100) [not null, note: 'UNIQUE WHERE deleted_at IS NULL']
+  config_value varchar(500) [not null]
+  value_type varchar(20) [not null, note: 'INTEGER, BOOLEAN, STRING']
+  config_group varchar(50) [not null, note: 'Nhóm hiển thị']
+  default_value varchar(500) [not null, note: 'Giá trị mặc định']
+  description varchar(255) [not null]
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'Người sửa']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tham số cấu hình hệ thống · Trạng thái: Đầy đủ (tài liệu chờ review)'
+}
+
+Table ai_embedding_chunk {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
+  source_type varchar(40) [not null, note: 'PERSON, POST, STORY, DOCUMENT']
+  source_id uuid [not null, note: 'ID nguồn của module sở hữu, không FK; tham chiếu logic -> person hoặc post hoặc family_story hoặc heritage_document, không có FK']
+  chunk_no integer [not null, note: 'Thứ tự chunk trong nguồn']
+  content text [not null, note: 'Nội dung đã lọc dữ liệu nhạy cảm']
+  embedding vector(768) [not null, note: 'gemini-embedding-001, 768 chiều (ADR; thử 1536 nếu tiếng Việt không đạt)']
+  content_hash varchar(64) [not null, note: 'Phát hiện nội dung thay đổi']
+  metadata jsonb [not null, note: 'Metadata không nhạy cảm']
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'AI · TV5 Lê Nhựt · Đoạn văn bản + vector (pgvector) để tìm kiếm ngữ nghĩa và RAG · UNIQUE (family_id, source_type, source_id, chunk_no) WHERE deleted_at IS NULL. Chỉ mục HNSW cosine trên embedding. Cần CREATE EXTENSION vector. created_by cho phép NULL (tác vụ nền).'
+}
+
+Table ai_chat_session {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
+  user_id uuid [not null, note: 'Chủ phiên, không FK liên module; tham chiếu logic -> users, không có FK']
+  title varchar(200) [note: 'Tiêu đề phiên']
+  status varchar(20) [not null, note: 'ACTIVE, ARCHIVED']
+  last_message_at timestamptz [note: 'Tin nhắn gần nhất']
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'AI · TV5 Lê Nhựt · Phiên trò chuyện · Chỉ mục (family_id, user_id, updated_at DESC) và (user_id, deleted_at).'
+}
+
+Table ai_chat_message {
+  id uuid [pk, note: 'Khóa chính']
+  session_id uuid [not null, note: 'Phiên (cùng module)']
+  role varchar(20) [not null, note: 'USER, ASSISTANT, SYSTEM']
+  content text [not null, note: 'Nội dung (theo chính sách lưu trữ và riêng tư)']
+  sources jsonb [not null, note: 'Nguồn đã dùng, không chứa nội dung nhạy cảm']
+  model_name varchar(100) [note: 'Model LLM']
+  input_tokens integer [note: 'Token đầu vào']
+  output_tokens integer [note: 'Token đầu ra']
+  latency_ms integer [note: 'Độ trễ tổng']
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'AI · TV5 Lê Nhựt · Tin nhắn trong phiên · Chỉ mục (session_id, created_at).'
+}
+
+Table ai_summary_cache {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
+  source_type varchar(40) [not null, note: 'Loại nguồn']
+  source_id uuid [not null, note: 'ID nguồn, không FK liên module; tham chiếu logic -> post hoặc family_story hoặc heritage_document hoặc person, không có FK']
+  source_version_hash varchar(64) [not null, note: 'Hash phiên bản nguồn']
+  summary text [not null, note: 'Tóm tắt đã lọc']
+  model_name varchar(100) [not null, note: 'Model tạo tóm tắt']
+  expires_at timestamptz [not null, note: 'Hạn cache']
+  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'AI · TV5 Lê Nhựt · Cache kết quả tóm tắt · Chỉ mục (family_id, source_type, source_id, source_version_hash) và (expires_at); unique partial khi deleted_at IS NULL.'
+}
+
+Ref: branch.family_id > family.id
+Ref: branch.parent_branch_id > branch.id
+Ref: branch.origin_person_id > person.id
+Ref: person.family_id > family.id
+Ref: person.branch_id > branch.id
+Ref: parent_child.parent_id > person.id
+Ref: parent_child.child_id > person.id
+Ref: marriage.person1_id > person.id
+Ref: marriage.person2_id > person.id
+Ref: comment.post_id > post.id
+Ref: reaction.post_id > post.id
+Ref: event_participant.event_id > event.id
+Ref: user_role.user_id > users.id
+Ref: user_role.role_id > role.id
+Ref: refresh_token.user_id > users.id
+Ref: member_verification.user_id > users.id
+Ref: member_verification.reviewed_by > users.id
+Ref: system_config.updated_by > users.id
+Ref: ai_chat_message.session_id > ai_chat_session.id
+Ref: users.created_by > users.id
+Ref: users.updated_by > users.id
