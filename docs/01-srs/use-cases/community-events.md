@@ -487,7 +487,7 @@ Màn hình và wireframe của module Community và Events được quản lý t
 
 `docs/05-ui/figma-links.md`
 
-Link Figma và ảnh wireframe sẽ được bổ sung theo tiến độ thiết kế UI của nhóm.
+Link Figma sẽ được bổ sung theo tiến độ thiết kế UI của nhóm.
 
 Ghi chú cho wireframe SCRUM-30: cần có nút "Báo cáo" trên bài đăng, bình luận, sự kiện và thông báo (BR-COM-12).
 
