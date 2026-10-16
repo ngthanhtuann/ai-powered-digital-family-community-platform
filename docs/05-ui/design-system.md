@@ -1,13 +1,8 @@
 # Design system
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-25
-<<<<<<< HEAD
 > **Trạng thái:** Chờ review | **Phiên bản:** 0.6 (layout và menu theo vai trò, bổ sung các variant Sprint 2, bộ icon, mục 5.2 và mục 8 hướng dẫn dùng)
 > Liên quan: `figma-links.md` (link Figma), SCRUM-84 (bản mobile).
-=======
-> **Trạng thái:** Chờ review | **Phiên bản:** 0.5 (chuyển sang file Figma chung, đồng bộ màu trong Figma theo tài liệu, thêm mục 7)
-> Liên quan: `figma-links.md` (link Figma và ảnh wireframe), SCRUM-84 (bản mobile).
->>>>>>> a1fe733da56ef9a6cf542ce627fcce3093e68e49
 > Figma: page [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) của file chung.
 
 ## 1. Bảng màu
