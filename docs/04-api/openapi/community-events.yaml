@@ -1124,6 +1124,61 @@ paths:
           type: string
           format: uuid
         description: UUID của id
+  /content-reports:
+    post:
+      tags:
+      - Community
+      summary: Báo cáo nội dung vi phạm
+      operationId: createContentReport
+      x-roles: [MEMBER, BRANCH_ADMIN]
+      description: Thành viên đã xác minh báo cáo bài đăng, bình luận, sự kiện hoặc
+        thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một
+        lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn
+        tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò
+        hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Quản trị xử lý báo cáo
+        ở /admin/content-reports (auth.yaml, UC-AUTH-09).
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentReportResponse'
+              example:
+                success: true
+                data:
+                  id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81
+                  createdAt: '2026-10-12T09:30:00+07:00'
+                  updatedAt: '2026-10-12T09:30:00+07:00'
+                  targetType: POST
+                  targetId: 550e8400-e29b-41d4-a716-446655440000
+                  familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01
+                  reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33
+                  reason: Bài đăng quảng cáo không liên quan.
+                  contentSnippet: Mua hàng giảm giá 50% tại...
+                  status: PENDING
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/DuplicateReportError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentReportRequest'
+            example:
+              targetType: POST
+              targetId: 550e8400-e29b-41d4-a716-446655440000
+              reason: Bài đăng quảng cáo không liên quan.
   /events:
     post:
       tags:
@@ -2118,6 +2173,55 @@ components:
       - isRead
       - createdAt
       - updatedAt
+    ContentType:
+      type: string
+      enum:
+      - POST
+      - COMMENT
+      - EVENT
+      - ANNOUNCEMENT
+      description: Loại nội dung có thể bị báo cáo (giống ContentType ở auth.yaml).
+    ReportStatus:
+      type: string
+      enum:
+      - PENDING
+      - HIDDEN
+      - DISMISSED
+    ContentReport:
+      type: object
+      description: Báo cáo nội dung vi phạm (bảng content_report). Cùng các trường
+        với ContentReport ở auth.yaml; module admin đọc qua interface Java ContentModerationPort.
+      properties:
+        id: *id002
+        createdAt: *id001
+        updatedAt: *id001
+        targetType:
+          $ref: '#/components/schemas/ContentType'
+        targetId: *id002
+        familyId: *id002
+        reporterId: *id002
+        reason:
+          type: string
+          example: Bài đăng quảng cáo không liên quan.
+          description: Lý do do người báo cáo nhập
+        contentSnippet:
+          type: string
+          example: Mua hàng giảm giá 50% tại...
+          description: Trích tối đa 200 ký tự nội dung bị báo cáo
+        status:
+          $ref: '#/components/schemas/ReportStatus'
+      additionalProperties: false
+      required:
+      - id
+      - targetType
+      - targetId
+      - familyId
+      - reporterId
+      - reason
+      - contentSnippet
+      - status
+      - createdAt
+      - updatedAt
     PostCreateRequest:
       type: object
       properties:
@@ -2309,6 +2413,22 @@ components:
       additionalProperties: false
       required:
       - isRead
+    ContentReportRequest:
+      type: object
+      properties:
+        targetType:
+          $ref: '#/components/schemas/ContentType'
+        targetId: *id002
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Bài đăng quảng cáo không liên quan.
+      additionalProperties: false
+      required:
+      - targetType
+      - targetId
+      - reason
     ObjectResponse:
       type: object
       properties:
@@ -2758,6 +2878,18 @@ components:
       - success
       - data
       - meta
+    ContentReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/ContentReport'
+      additionalProperties: false
+      required:
+      - success
+      - data
     UploadMediaRequest:
       type: object
       properties:
@@ -2887,4 +3019,16 @@ components:
             error:
               code: CONFLICT_001
               message: Người dùng đã có trong danh sách người tham dự
+              details: []
+    DuplicateReportError:
+      description: Người dùng đã báo cáo nội dung này
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: CONFLICT_001
+              message: Bạn đã báo cáo nội dung này
               details: []
