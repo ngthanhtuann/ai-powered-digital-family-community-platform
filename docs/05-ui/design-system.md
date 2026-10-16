@@ -219,10 +219,7 @@ File Figma chung (xem `figma-links.md`) có sẵn các biến và style theo đ�
 | `text/primary`, `text/secondary`, `text/cream-on-dark` | `text-primary`, `text-secondary`, `cream-on-dark` | Mục 1.2 |
 | `border/default`, `border/strong` | `border`, `border-strong` | Mục 1.2 |
 | `state/gold-hover` | `gold-hover` | `#B79538` |
-<<<<<<< HEAD
 | `accent/xanh-lá`, `accent/hồng`, `accent/hồng-nhạt` | `accent-green`, `accent-pink`, `accent-pink-soft` | `#5C8A6E`, `#B87A9E`, `#E8A0C0`: chỉ dùng cho chú giải và avatar trong cây gia phả, luôn kèm nhãn chữ |
-=======
->>>>>>> a1fe733da56ef9a6cf542ce627fcce3093e68e49
 
 - Collection `Size`: `space/4` đến `space/32`, `radius/control` (6), `radius/card` (12), `height/button` (44), `height/input` (42), `height/table-row` (44), `layout/sidebar` (240), `layout/header` (64), `focus/ring-width` (2).
 - Text style: `page-title`, `section-title`, `body`, `label`, `caption`, `metric` (mục 2).
@@ -230,7 +227,6 @@ File Figma chung (xem `figma-links.md`) có sẵn các biến và style theo đ�
 
 ### 7.1. Điểm Figma còn lệch tài liệu
 
-<<<<<<< HEAD
 Đã xử lý ở v0.6: nút desktop dưới 44px; ô tìm kiếm và ô chọn về 42px; màu ngoài bảng màu (chữ `#A08060`, `#5C4033`, `#6B5C4A`, `#D4B896` và các nền, viền nhạt) gắn về biến mục 1; màu cây gia phả thành biến `accent/*`; bo góc 4, 5, 8, 10 về 6 hoặc 12; chữ dưới 12px về `caption`; thêm kiểu nút Secondary. Sidebar và header cũ thay bằng component mục 5.2.
 
 Còn lại, chờ TV5 quyết định:
@@ -253,12 +249,3 @@ Bản đầy đủ có trên page `01 Design system`, khung "Hướng dẫn dùn
 7. **Màu và chữ:** chỉ dùng biến collection `Color` và 6 text style; không gõ mã màu, không detach, không ghi đè màu.
 8. **Nội dung:** chữ trên màn hình bằng tiếng Việt cho người dùng; API, UUID, mã lỗi, tên trường ghi ở dòng "Ghi chú FR / API" dưới khung.
 9. **Xong việc:** dán link khung vào `figma-links.md` (không xuất ảnh), nhờ TV5 kiểm tra đồng bộ.
-=======
-Các điểm dưới đây chưa sửa trong Figma, chờ TV5 quyết định:
-
-- Khung Desktop 1440: một số nút thấp hơn 44px ("Thêm thành viên" 28, "Tra cứu khác", "In kết quả", "Chia sẻ" 34, "Đóng" 29, "Thêm sự kiện" 25); ô tìm kiếm cao 32 (tài liệu ghi 42).
-- Màu chưa có trong mục 1: màu avatar và chú giải giới tính (`#E8A0C0`, `#B87A9E`, `#5C8A6E`), chữ và icon trên sidebar (`#A08060`, `#D4B896`), một số chữ nâu (`#5C4033`, `#6B5C4A`), một số nền và viền nhạt, nền Navigation Disabled/Error (`#594938`, `#6D2424`).
-- Bo góc 4, 5, 8, 10, 18, 20, 24 (tài liệu chỉ có 6, 12 và bo tròn).
-- Cỡ chữ ngoài mục 2: 9, 10, 11, 13, 15, 16, 20px và nhiều chữ để line-height tự động.
-- Nút phụ trong màn hình đang có nền Background và viền Border, giống trạng thái Disabled; nút secondary theo mục 4 là nền trắng, viền Border strong.
->>>>>>> a1fe733da56ef9a6cf542ce627fcce3093e68e49
