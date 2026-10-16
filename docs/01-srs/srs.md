@@ -113,7 +113,7 @@ Ma trận phân quyền chi tiết: xem **Phụ lục A**.
 | FR-AUTH-01 | Đăng ký và xác thực người dùng | User registration and authentication | Must | S3 | SCRUM-35, 36 |
 | FR-AUTH-02 | Phân quyền theo vai trò (RBAC) | Role-Based Access Control (RBAC) | Must | S4 | SCRUM-43 |
 | FR-AUTH-03 | Quản lý hồ sơ người dùng | User profile management | Must | S4 | SCRUM-43 |
-| FR-AUTH-04 | Xác minh thành viên gia đình | Family member verification | Must | S6 | SCRUM-57 |
+| FR-AUTH-04 | Xác minh thành viên gia đình | Family member verification | Must | S3-S6 | SCRUM-35, 57 |
 | **Family & Genealogy Management** | | | | | |
 | FR-GEN-01 | Quản lý gia đình | Family management | Must | S3 | SCRUM-37 |
 | FR-GEN-02 | Quản lý chi họ | Branch management | Must | S3 | SCRUM-37 |
@@ -261,7 +261,7 @@ Cột trống được điền dần trong các sprint sau; mỗi hàng nối y�
 
 | Mã FR/NFR | Use case | Bảng DB | API | Màn hình | Test case | Task Jira |
 |---|---|---|---|---|---|---|
-| FR-AUTH-01 | UC-AUTH-01, 02, 03 | users, role, user_role, refresh_token | POST /auth/register, /auth/login, /auth/refresh | Đăng nhập, Đăng ký | TC-AUTH-001 | SCRUM-35, 36 |
+| FR-AUTH-01 | UC-AUTH-01, 02, 03, 04 | users, role, user_role, refresh_token | POST /users, /auth/login, /auth/refresh | Đăng nhập, Đăng ký | TC-AUTH-001 | SCRUM-35, 36 |
 | FR-GEN-08 | UC-GEN-08 | parent_child, person | GET /relationships | Tra quan hệ | | SCRUM-51 |
 | FR-AI-02 | UC-AI-02 | ai_embedding_chunk, ai_chat_session, ai_chat_message | POST /ai/chat | Chat AI | | SCRUM-55, 63 |
 | (điền thêm) | | | | | | |

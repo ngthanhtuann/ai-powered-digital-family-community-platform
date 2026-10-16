@@ -32,7 +32,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 - File viết bằng **Markdown**, tên file **chữ thường, không dấu, nối bằng gạch ngang**.
 - **Mỗi người chỉ sửa file của mình.** Chỉ Tuấn sửa `srs.md` và file này; người khác gửi nội dung cho Tuấn.
 - Sơ đồ: dùng **Mermaid** trong Markdown (GitHub tự vẽ) hoặc vẽ bằng draw.io rồi xuất ảnh PNG vào `images/` và chèn vào bằng `![mô tả](../images/ten-anh.png)`.
-- Wireframe vẽ trong Figma, chỉ lưu link và ảnh xuất ra trong `05-ui/`.
+- Wireframe vẽ trong Figma, chỉ lưu link trong `05-ui/figma-links.md`, không xuất ảnh wireframe vào repo.
 - Mã yêu cầu dùng thống nhất: `FR-<NHÓM>-<số>` (chức năng), `NFR-<số>` (phi chức năng), `UC-<NHÓM>-<số>` (use case).
 - Mọi thay đổi sau **Docs Gate** (cuối Sprint 2) phải cập nhật lại tài liệu gốc (ERD, OpenAPI, SRS) trước khi sửa code.
 

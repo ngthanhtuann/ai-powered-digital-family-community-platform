@@ -1,6 +1,6 @@
 # Wireframe và link Figma
 
-> Mỗi người vẽ màn hình của module mình theo design system của TV5, có cả bản **mobile (điện thoại)**. Dán link Figma (quyền comment) và ảnh xuất ra.
+> Mỗi người vẽ màn hình của module mình theo design system của TV5, có cả bản **mobile (điện thoại)**. Chỉ dán link Figma (quyền xem hoặc comment), **không xuất ảnh wireframe vào repo**; muốn xem thì mở link.
 
 ## File Figma chung
 
@@ -13,9 +13,11 @@ Cả nhóm vẽ trong một file: [FamilyConnect — Java](https://www.figma.com
 | `02` đến `06` | Mỗi page có 2 section: "User flow" và "Màn hình (360 / 768 / 1440)" |
 | `99 Nháp` | Vẽ thử, không dùng để review |
 
-Quy ước đặt tên khung: `<Mã UC> Tên màn hình / <cỡ>`, ví dụ `UC01 Đăng nhập / 360`.
+Quy ước đặt tên khung: `<Mã UC> Tên màn hình / <cỡ>`, ví dụ `UC-AUTH-02 Đăng nhập / 360`.
 
 Màu và chữ dùng biến (collection `Color`, `Size`) và style có sẵn trong file, không nhập mã màu tay. Tên biến và token tương ứng xem mục 7 của `design-system.md`.
+
+**Trước khi vẽ:** đọc khung "Hướng dẫn dùng (đọc trước khi vẽ)" trên page `01 Design system` (cũng có ở `design-system.md` mục 8). Header, sidebar, điều hướng mobile lấy từ `Layout/Header`, `Layout/Sidebar`, `Layout/Điều hướng mobile`; chọn `Vai trò` và mục đang chọn theo `design-system.md` mục 5.2. Màn mẫu làm đúng cách: page `02 Auth và Admin`.
 
 ## Link theo module
 
@@ -23,7 +25,7 @@ Màu và chữ dùng biến (collection `Color`, `Size`) và style có sẵn tro
 |---|---|---|---|---|
 | Design system | TV5 Lê Nhựt | SCRUM-25 | [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) | Chờ review |
 | Gia phả (danh sách, cây, chi tiết, tra quan hệ) | TV2 Trí | SCRUM-29 | [03 Gia phả](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-217) | |
-| Community và Events | TV3 PiLo257 | SCRUM-30 | [04 Community và Events](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-219) | |
+| Community và Events | TV3 PiLo257 | SCRUM-30 | [04 Community và Events](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=152-103) | |
 | Heritage, Directory, Dashboard | TV4 Huy Quốc | SCRUM-32 | [05 Heritage, Directory, Dashboard](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-221) | |
 | Mobile | TV5 Lê Nhựt | SCRUM-84 | [06 Mobile](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-223) | |
 | Auth, Admin | TV1 Tuấn | SCRUM-26 | [02 Auth và Admin](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-215) | |
@@ -32,5 +34,6 @@ Trang bìa: [00 Cover](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?
 
 File cũ của TV5 ([Untitled](https://www.figma.com/design/tblrnrxE2SZWtuI3SNPOxp/Untitled?node-id=0-1)) không dùng nữa; nội dung đã chép sang page `01 Design system` và sửa màu theo `design-system.md`.
 
-## Ảnh wireframe
-> Chèn ảnh đã xuất vào `../images/` rồi liên kết: `![Màn hình đăng nhập](../images/login.png)`.
+## Không lưu ảnh wireframe
+
+Figma là nguồn duy nhất của wireframe. Không xuất ảnh khung vào `docs/images/` để tránh ảnh cũ lệch với Figma và làm repo nặng. Người ngoài nhóm mở link với quyền xem. Ảnh chụp màn hình cho báo cáo cuối kỳ lấy từ ứng dụng thật (`report-outline.md` mục 4).
