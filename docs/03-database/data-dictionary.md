@@ -1,7 +1,7 @@
 # Từ điển dữ liệu
 
-> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.2 (nháp)
-> Nguồn: `genealogy.md` (TV2), `community-events.md` (TV3, đã merge), `heritage-directory-dashboard.md` (TV4, đã merge). `auth.md` (TV1) và `ai.md` (TV5) mới là khung trống nên chỉ có tên bảng và mục đích.
+> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.3 (nháp, khớp ERD v0.4, 30 bảng)
+> Nguồn: `genealogy.md` (TV2, bản 14/10), `community-events.md` (TV3, đã merge, có `content_report`), `heritage-directory-dashboard.md` (TV4), `auth.md` mục 5 (TV1, chờ review), `ai.md` mục 5 (TV5, bản nháp SCRUM-34, đã đối chiếu khớp 4 bảng AI, chờ review).
 > Mỗi bảng một khối. Quy ước: khóa chính UUID; `TIMESTAMPTZ`; xóa mềm `deleted_at`; khóa ngoại chỉ trong cùng module; cột "tham chiếu logic" chỉ lưu UUID có index, service kiểm tra.
 
 ## Auth và quản trị (auth, admin)
@@ -190,11 +190,13 @@ Người sở hữu: **TV2 Trí**
 | birth_date | DATE | NULL | Người còn sống bắt buộc có (BR-GEN-17) |
 | birth_year | SMALLINT | NULL | Chỉ cho người đã mất không rõ ngày sinh |
 | birthplace | VARCHAR(255) |  |  |
-| current_location | VARCHAR(255) |  | Nơi ở hiện tại (dashboard đang dùng tên cột current_province, xem xung đột X2) |
+| current_province | VARCHAR(100) |  | Tỉnh/thành nơi ở hiện tại (lọc FR-DIR-04, thống kê dashboard) |
+| current_address | VARCHAR(255) |  | Địa chỉ nơi ở hiện tại |
 | is_deceased | BOOLEAN | NOT NULL DEFAULT FALSE |  |
 | death_date | DATE | NULL, CHECK (death_date >= birth_date) |  |
+| burial_place | VARCHAR(255) | NULL | Nơi an táng |
 | avatar_media_id | UUID | NULL | Ảnh đại diện, tham chiếu media → `media` (tham chiếu logic) |
-| user_id | UUID | NULL, UNIQUE | Tài khoản nối với thành viên → `users` (tham chiếu logic) |
+| user_id | UUID | NULL, UNIQUE (WHERE user_id IS NOT NULL AND deleted_at IS NULL) | Tài khoản nối với thành viên → `users` (tham chiếu logic) |
 | note | TEXT |  | Ghi chú |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |
@@ -261,6 +263,7 @@ Người sở hữu: **TV3 PiLo257**
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Bị quản trị ẩn (kiểm duyệt), khác `deleted_at` |
 
 ### `comment`
 
@@ -276,6 +279,7 @@ Người sở hữu: **TV3 PiLo257**
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Bị quản trị ẩn (kiểm duyệt), khác `deleted_at` |
 
 ### `reaction`
 
@@ -332,6 +336,29 @@ Người sở hữu: **TV3 PiLo257**
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Bị quản trị ẩn (kiểm duyệt), khác `deleted_at` |
+
+### `content_report`
+
+**Mục đích:** Báo cáo nội dung vi phạm (BR-COM-12).  **Người sở hữu:** TV3 PiLo257.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | Khóa chính |
+| family_id | UUID | NOT NULL | Gia đình của nội dung → `family` (tham chiếu logic) |
+| target_type | VARCHAR(20) | NOT NULL, CHECK | POST, COMMENT, EVENT, ANNOUNCEMENT |
+| target_id | UUID | NOT NULL | Nội dung bị báo cáo, theo `target_type` (tham chiếu logic, không FK) |
+| reporter_id | UUID | NOT NULL | Người báo cáo → `users` (tham chiếu logic) |
+| reason | VARCHAR(255) | NOT NULL | Lý do |
+| content_snippet | VARCHAR(200) | NOT NULL | Trích đoạn nội dung lúc báo cáo |
+| status | VARCHAR(20) | NOT NULL, CHECK, DEFAULT 'PENDING' | PENDING, HIDDEN, DISMISSED |
+| created_by | UUID | NOT NULL | Người tạo → `users` (tham chiếu logic) |
+| updated_by | UUID | NULL | Người cập nhật → `users` (tham chiếu logic) |
+| created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
+| updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
+| deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+
+Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHERE deleted_at IS NULL`; `(status, created_at)`.
 
 ### `notification`
 
@@ -378,6 +405,7 @@ Người sở hữu: **TV3 PiLo257**
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Bị quản trị ẩn (kiểm duyệt), khác `deleted_at` |
 
 ### `event_participant`
 

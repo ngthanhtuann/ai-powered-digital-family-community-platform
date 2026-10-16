@@ -1,4 +1,4 @@
-// ERD tổng hợp FamilyConnect v0.3 (nháp). Dán vào dbdiagram.io.
+// ERD tổng hợp FamilyConnect v0.4 (nháp). Dán vào dbdiagram.io.
 // Khóa ngoại thật (Ref) chỉ trong cùng module. Tham chiếu logic ghi ở cột note, vẽ nét đứt trong draw.io.
 
 Table family {
@@ -37,9 +37,11 @@ Table person {
   birth_date date [note: 'Người còn sống bắt buộc có (BR-GEN-17)']
   birth_year smallint [note: 'Chỉ cho người đã mất không rõ ngày sinh']
   birthplace varchar(255)
-  current_location varchar(255) [note: 'Nơi ở hiện tại (dashboard đang dùng tên cột current_province, xem xung đột X2)']
+  current_province varchar(100) [note: 'Tỉnh/thành nơi ở hiện tại (lọc FR-DIR-04, thống kê dashboard)']
+  current_address varchar(255) [note: 'Địa chỉ nơi ở hiện tại']
   is_deceased boolean [not null]
-  death_date date
+  death_date date [note: 'CHECK (death_date >= birth_date)']
+  burial_place varchar(255) [note: 'Nơi an táng']
   avatar_media_id uuid [note: 'Ảnh đại diện, tham chiếu media; tham chiếu logic -> media, không có FK']
   user_id uuid [unique, note: 'Tài khoản nối với thành viên; tham chiếu logic -> users, không có FK']
   note text [note: 'Ghi chú']
@@ -91,6 +93,7 @@ Table post {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
+  hidden_at timestamptz [note: 'Bị quản trị ẩn (kiểm duyệt), khác deleted_at']
   Note: 'Cộng đồng (community) · TV3 PiLo257 · Bài đăng (POST hoặc NEWS)'
 }
 
@@ -103,6 +106,7 @@ Table comment {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
+  hidden_at timestamptz [note: 'Bị quản trị ẩn (kiểm duyệt), khác deleted_at']
   Note: 'Cộng đồng (community) · TV3 PiLo257 · Bình luận'
 }
 
@@ -148,7 +152,25 @@ Table announcement {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
+  hidden_at timestamptz [note: 'Bị quản trị ẩn (kiểm duyệt), khác deleted_at']
   Note: 'Cộng đồng (community) · TV3 PiLo257 · Thông báo ghim'
+}
+
+Table content_report {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Gia đình của nội dung; tham chiếu logic -> family, không có FK']
+  target_type varchar(20) [not null, note: 'POST, COMMENT, EVENT, ANNOUNCEMENT']
+  target_id uuid [not null, note: 'Nội dung bị báo cáo (theo target_type); tham chiếu logic, không có FK']
+  reporter_id uuid [not null, note: 'Người báo cáo; tham chiếu logic -> users, không có FK']
+  reason varchar(255) [not null, note: 'Lý do']
+  content_snippet varchar(200) [not null, note: 'Trích đoạn nội dung lúc báo cáo']
+  status varchar(20) [not null, default: 'PENDING', note: 'PENDING, HIDDEN, DISMISSED']
+  created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
+  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Cộng đồng (community) · TV3 PiLo257 · Báo cáo nội dung vi phạm (BR-COM-12) · UNIQUE (target_type, target_id, reporter_id) WHERE deleted_at IS NULL · index (status, created_at).'
 }
 
 Table notification {
@@ -182,6 +204,7 @@ Table event {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
+  hidden_at timestamptz [note: 'Bị quản trị ẩn (kiểm duyệt), khác deleted_at']
   Note: 'Sự kiện (events) · TV3 PiLo257 · Sự kiện'
 }
 
