@@ -304,6 +304,26 @@ export interface paths {
         patch: operations["markNotificationRead"];
         trace?: never;
     };
+    "/content-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Báo cáo nội dung vi phạm
+         * @description Thành viên đã xác minh báo cáo bài đăng, bình luận, sự kiện hoặc thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Quản trị xử lý báo cáo ở /admin/content-reports (auth.yaml, UC-AUTH-09).
+         */
+        post: operations["createContentReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -769,6 +789,58 @@ export interface components {
             /** @example false */
             isRead: boolean;
         };
+        /**
+         * @description Loại nội dung có thể bị báo cáo (giống ContentType ở auth.yaml).
+         * @enum {string}
+         */
+        ContentType: "POST" | "COMMENT" | "EVENT" | "ANNOUNCEMENT";
+        /** @enum {string} */
+        ReportStatus: "PENDING" | "HIDDEN" | "DISMISSED";
+        /** @description Báo cáo nội dung vi phạm (bảng content_report). Cùng các trường với ContentReport ở auth.yaml; module admin đọc qua interface Java ContentModerationPort. */
+        ContentReport: {
+            /**
+             * Format: uuid
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-10T10:00:00+07:00
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-10-10T10:00:00+07:00
+             */
+            updatedAt: string;
+            targetType: components["schemas"]["ContentType"];
+            /**
+             * Format: uuid
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            targetId: string;
+            /**
+             * Format: uuid
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            familyId: string;
+            /**
+             * Format: uuid
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            reporterId: string;
+            /**
+             * @description Lý do do người báo cáo nhập
+             * @example Bài đăng quảng cáo không liên quan.
+             */
+            reason: string;
+            /**
+             * @description Trích tối đa 200 ký tự nội dung bị báo cáo
+             * @example Mua hàng giảm giá 50% tại...
+             */
+            contentSnippet: string;
+            status: components["schemas"]["ReportStatus"];
+        };
         PostCreateRequest: {
             /** @example Thông báo họp mặt gia đình cuối tuần */
             content: string;
@@ -880,6 +952,16 @@ export interface components {
              * @enum {boolean}
              */
             isRead: true;
+        };
+        ContentReportRequest: {
+            targetType: components["schemas"]["ContentType"];
+            /**
+             * Format: uuid
+             * @example 550e8400-e29b-41d4-a716-446655440000
+             */
+            targetId: string;
+            /** @example Bài đăng quảng cáo không liên quan. */
+            reason: string;
         };
         ObjectResponse: {
             /** @example true */
@@ -1067,6 +1149,11 @@ export interface components {
                 total: number;
             };
         };
+        ContentReportResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["ContentReport"];
+        };
         UploadMediaRequest: {
             /** Format: binary */
             file: string;
@@ -1213,6 +1300,25 @@ export interface components {
                  *       "error": {
                  *         "code": "CONFLICT_001",
                  *         "message": "Người dùng đã có trong danh sách người tham dự",
+                 *         "details": []
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Người dùng đã báo cáo nội dung này */
+        DuplicateReportError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "success": false,
+                 *       "error": {
+                 *         "code": "CONFLICT_001",
+                 *         "message": "Bạn đã báo cáo nội dung này",
                  *         "details": []
                  *       }
                  *     }
@@ -2312,6 +2418,59 @@ export interface operations {
             401: components["responses"]["AuthError"];
             403: components["responses"]["PermissionError"];
             404: components["responses"]["NotFoundError"];
+        };
+    };
+    createContentReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "targetType": "POST",
+                 *       "targetId": "550e8400-e29b-41d4-a716-446655440000",
+                 *       "reason": "Bài đăng quảng cáo không liên quan."
+                 *     }
+                 */
+                "application/json": components["schemas"]["ContentReportRequest"];
+            };
+        };
+        responses: {
+            /** @description Thành công */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "id": "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81",
+                     *         "createdAt": "2026-10-12T09:30:00+07:00",
+                     *         "updatedAt": "2026-10-12T09:30:00+07:00",
+                     *         "targetType": "POST",
+                     *         "targetId": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "familyId": "3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01",
+                     *         "reporterId": "2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33",
+                     *         "reason": "Bài đăng quảng cáo không liên quan.",
+                     *         "contentSnippet": "Mua hàng giảm giá 50% tại...",
+                     *         "status": "PENDING"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ContentReportResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["AuthError"];
+            403: components["responses"]["PermissionError"];
+            404: components["responses"]["NotFoundError"];
+            409: components["responses"]["DuplicateReportError"];
         };
     };
     listEvents: {

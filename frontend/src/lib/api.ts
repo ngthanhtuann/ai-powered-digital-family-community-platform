@@ -6,6 +6,7 @@ import type {
   ApiSuccess,
   PageParams,
 } from './api-types';
+import type { components as AuthComponents } from '@/services/generated/auth';
 import { tokenStorage } from './token-storage';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
@@ -38,23 +39,30 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// Refresh dùng 1 request chung để nhiều request 401 không gọi refresh song song.
-let refreshing: Promise<string> | null = null;
+type RefreshRequest = AuthComponents['schemas']['RefreshRequest'];
+type RefreshResponse = AuthComponents['schemas']['TokenResponse'];
 
-function refreshAccessToken(): Promise<string> {
+// Refresh dùng 1 request chung để nhiều request 401 không gọi refresh song song.
+let refreshing: Promise<AuthComponents['schemas']['TokenData']> | null = null;
+
+function refreshAccessToken(): Promise<AuthComponents['schemas']['TokenData']> {
   if (!refreshing) {
     const refreshToken = tokenStorage.getRefresh();
     // Dùng axios trần để không đi qua interceptor (tránh lặp vô hạn).
-    // Giả định: body { refreshToken }, data { accessToken, refreshToken? } — đối chiếu OpenAPI auth.
+    if (!refreshToken) {
+      return Promise.reject(new Error('Không tìm thấy refresh token.'));
+    }
     refreshing = axios
-      .post<ApiSuccess<{ accessToken: string; refreshToken?: string }>>(
-        `${API_BASE_URL}${API_PREFIX}/auth/refresh`,
-        { refreshToken },
-      )
+      .post<RefreshResponse>(`${API_BASE_URL}${API_PREFIX}/auth/refresh`, {
+        refreshToken,
+      } satisfies RefreshRequest)
       .then((res) => {
-        const { accessToken, refreshToken: next } = res.data.data;
-        tokenStorage.set(accessToken, next);
-        return accessToken;
+        if (res.data.success !== true) {
+          throw new Error('Backend không xác nhận refresh token thành công.');
+        }
+        const tokens = res.data.data;
+        tokenStorage.set(tokens.accessToken, tokens.refreshToken);
+        return tokens;
       })
       .finally(() => {
         refreshing = null;
@@ -93,7 +101,7 @@ client.interceptors.response.use(
         if (original && !original._retried && tokenStorage.getRefresh()) {
           original._retried = true;
           try {
-            const token = await refreshAccessToken();
+            const token = (await refreshAccessToken()).accessToken;
             original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
             return client.request(original);
           } catch {

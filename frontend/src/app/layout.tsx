@@ -18,10 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={inter.variable}>
       <body className="font-sans">
-        <Providers>
-          {/* Khung rỗng: SCRUM-40 (3-06) sẽ thêm header/sidebar. Menu lọc theo vai trò: lib/nav.ts */}
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

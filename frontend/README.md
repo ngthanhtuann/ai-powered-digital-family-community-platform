@@ -19,13 +19,13 @@ Nếu lỗi CORS, thêm `http://localhost:3000` vào danh sách origin của bac
 
 ## Lệnh
 
-| Lệnh              | Mục đích                                                      |
-| ----------------- | ------------------------------------------------------------- |
-| `npm run dev`     | Chạy dev server                                               |
-| `npm run build`   | Build production                                              |
-| `npm run lint`    | ESLint                                                        |
-| `npm run format`  | Prettier                                                      |
-| `npm run gen:api` | Sinh kiểu từ `docs/04-api/openapi/` vào `services/generated/` |
+| Lệnh              | Mục đích                                                             |
+| ----------------- | -------------------------------------------------------------------- |
+| `npm run dev`     | Chạy dev server                                                      |
+| `npm run build`   | Build production                                                     |
+| `npm run lint`    | ESLint                                                               |
+| `npm run format`  | Prettier                                                             |
+| `npm run gen:api` | Sinh kiểu từ `../docs/04-api/openapi/` vào `src/services/generated/` |
 
 ## Docker
 
@@ -35,13 +35,15 @@ docker run --rm -p 3000:3000 familyconnect-frontend
 ```
 
 `NEXT_PUBLIC_*` được nhúng lúc build, nên truyền qua `--build-arg`.
+Backend đọc danh sách origin CORS từ `CORS_ALLOWED_ORIGINS` trong file `.env` ở thư mục gốc repo.
 
 ## Cấu trúc
 
-- `app/` — route, layout, providers.
-- `lib/api.ts` — axios client theo `docs/04-api/conventions.md`:
+- `src/app/` — route, layout, providers.
+- `src/components/` — UI component dùng lại.
+- `src/lib/api.ts` — axios client theo `docs/04-api/conventions.md`:
   - đọc `success/data/meta`; lỗi `error.code/message/details` (`details` luôn là mảng);
   - DELETE trả 200 `{success:true, data:null}`;
   - `AUTH_002` → gọi `/auth/refresh` rồi gọi lại; `PERM_002` → `/pending-approval`; `PERM_001` → thông báo không đủ quyền.
-- `lib/nav.ts` — khung menu ẩn theo vai trò.
-- `services/` — kiểu sinh từ OpenAPI.
+- `src/lib/nav.ts` — khung menu ẩn theo vai trò.
+- `src/services/` — kiểu sinh từ OpenAPI. Chỉ commit output của `npm run gen:api`; không sửa tay.

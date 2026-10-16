@@ -2,8 +2,8 @@
 export default function PendingApprovalPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-3 px-6">
-      <h1 className="text-2xl font-semibold">Tài khoản đang chờ duyệt</h1>
-      <p className="text-muted">
+      <h1 className="text-page-title">Tài khoản đang chờ duyệt</h1>
+      <p className="text-body text-text-secondary">
         Quản trị viên của gia đình chưa xác minh tài khoản của bạn. Bạn sẽ dùng được chức năng này
         sau khi được duyệt.
       </p>
