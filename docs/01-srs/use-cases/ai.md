@@ -80,7 +80,7 @@ Mẫu mô tả một bảng:
 | | /api/v1/... | | |
 
 ## 7. Màn hình liên quan
-> Dán link Figma và ảnh wireframe (xem `docs/05-ui/figma-links.md`).
+> Dán link Figma (xem `docs/05-ui/figma-links.md`).
 
 ## 8. Câu hỏi còn mở
 - [ ] ...
