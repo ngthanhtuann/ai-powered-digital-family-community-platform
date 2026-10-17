@@ -62,6 +62,8 @@ Theo `docs/04-api/conventions.md` mục 7.3:
 - Request upload sử dụng `multipart/form-data`, trường tệp tên `file`.
 - Tổng dung lượng tệp trong một request tối đa 10 MB.
 - Spring cấu hình `max-request-size` là **11 MB** để chừa phần đầu multipart.
+- Spring cấu hình `max-file-size` là **10 MB** (bằng giới hạn PDF của Heritage). Giới hạn 5 MB của ảnh do code kiểm tra theo loại tệp. Nếu đặt `max-file-size` 5 MB thì Spring chặn luôn PDF hợp lệ từ 5 đến 10 MB (lỗi tìm thấy khi demo, đã sửa ở spike commit `cec4ab7`; kiểm lại ở mục 7, dòng 4b).
+- Khi Spring chặn request vượt cỡ (`MaxUploadSizeExceededException`), backend vẫn phải trả đúng chuẩn lỗi `413 FILE_001` (`success:false, error:{code,message,details}`), không để body rỗng (spike dùng `@RestControllerAdvice` bắt lỗi này, commit `cec4ab7`; kiểm lại ở mục 7, dòng 4c).
 - Nginx cấu hình `client_max_body_size 11m` để request hợp lệ không bị Nginx chặn trước khi đến backend; phối hợp TV4 khi cấu hình Docker/Nginx.
 - Tệp vượt giới hạn trả HTTP `413` với mã `FILE_001`.
 - Định dạng không được hỗ trợ trả HTTP `415` với mã `FILE_002`.
@@ -99,30 +101,31 @@ Không xóa vật lý ngay trong luồng request thông thường. Tác vụ d�
 
 Volume `uploads` phải được sao lưu cùng thời điểm với cơ sở dữ liệu PostgreSQL để tránh tình trạng bản ghi database và tệp vật lý không đồng bộ.
 
-Yêu cầu sao lưu và khôi phục volume `uploads` cùng cơ sở dữ liệu phải được cập nhật trong `docs/07-deploy/deploy.md`.
+Cách sao lưu và khôi phục volume `uploads` cùng cơ sở dữ liệu ghi vào `docs/07-deploy/deploy.md` ở task SCRUM-68, SCRUM-77 (TV4, Sprint 7-8, mục backup/restore).
 
 ## 7. Kết quả demo và kiểm thử
 
-**Trạng thái: Chưa xác minh đầy đủ bằng demo.**
+Chạy ngày 17/10/2026 trên nhánh `spike/SCRUM-31-upload-storage` (commit `cec4ab7`, đã sửa `max-file-size` và lỗi `413 FILE_001` sau lần chạy đầu ở `8e6c8be`) bằng `docker compose up --build`: container `db` (pgvector:pg16) và `backend`, volume `uploads` mount vào `/var/lib/familyconnect/media`. Bằng chứng: ảnh `../images/adr-upload-demo.png` (lệnh `curl`, `docker exec` và kết quả thật).
 
-| Kiểm tra | Kết quả |
-|---|---|
-| Upload ảnh PNG hợp lệ | PASS |
-| Tải nội dung qua `GET /api/v1/media/{id}/content` | PASS |
-| Upload PDF hợp lệ cho Heritage | Chưa xác minh |
-| Từ chối tệp vượt giới hạn | Chưa xác minh |
-| Từ chối định dạng không được hỗ trợ | Chưa xác minh |
-| Tên tệp lưu trữ sử dụng UUID | Chưa xác minh |
-| Kiểm tra quyền khi tải tệp | Chưa xác minh |
-| Tệp không tồn tại / đã xóa mềm | Chưa xác minh |
+![Kết quả demo upload](../images/adr-upload-demo.png)
 
-Kết quả đã xác minh:
+| # | Kiểm tra | Kết quả thực tế | Đánh giá |
+|---|---|---|---|
+| 1 | Upload ảnh PNG hợp lệ (`ownerType = PERSON`) | `201`, `contentType = image/png`, `contentUrl = /api/v1/media/{id}/content`, không trả `storageKey` | PASS |
+| 2 | Tải nội dung qua `GET /api/v1/media/{id}/content` | `200`, `Content-Type: image/png` | PASS |
+| 3 | Upload PDF hợp lệ cho Heritage (45 byte) | `201`, `contentType = application/pdf` | PASS |
+| 4a | Ảnh 6 MB (vượt 5 MB) | `413 FILE_001` "Ảnh vượt quá giới hạn 5 MB" | PASS |
+| 4b | PDF Heritage 8 MB (hợp lệ, dưới 10 MB) | `201`, `contentType = application/pdf` | PASS |
+| 4c | PDF Heritage 12 MB (vượt 10 MB) | `413 FILE_001` do Spring chặn, trả đúng chuẩn lỗi | PASS |
+| 5 | Định dạng không hỗ trợ: đuôi `.png` nhưng nội dung là văn bản; tệp GIF; PDF với `ownerType = PERSON` | Cả 3 trả `415 FILE_002` | PASS |
+| 6 | Tệp nằm trong volume `uploads`, tên UUID | `docker exec ... ls` chỉ thấy `<uuid>.png`, `<uuid>.pdf`, không dùng tên gốc; `docker inspect` xác nhận volume mount vào `/var/lib/familyconnect/media` | PASS |
+| 7 | Id không tồn tại | `404 NOT_FOUND_001` | PASS |
+| 8a | Tạo lại container backend (`--force-recreate`): tệp còn trong volume | Cả 3 tệp đã upload (1 PNG, 2 PDF) vẫn còn | PASS |
+| 8b | Tạo lại container: tải lại ảnh đã upload | `404`, vì spike giữ metadata trong bộ nhớ, mất khi khởi động lại (`V2__create_media_table.sql` của spike đang rỗng) | FAIL (giới hạn của spike) |
+| 9 | Kiểm tra quyền khi tải tệp (`403 PERM_001`) | Không kiểm được: spike để `anyRequest().permitAll()`, chưa có đăng nhập | Chưa xác minh |
+| 10 | Bản ghi đã xóa mềm trả `404` | Không kiểm được: spike chưa có bảng `media` và chức năng xóa | Chưa xác minh |
 
-- Upload PNG hợp lệ trả về HTTP `201`, có `id` dạng UUID, `contentType` là `image/png` và `contentUrl` sử dụng `/api/v1/media/{id}/content`.
-- API upload không trả `storageKey` ra response công khai.
-- `GET /api/v1/media/{id}/content` với media vừa upload trả HTTP `200` và `Content-Type: image/png`.
-
-Các trường hợp còn lại chỉ được cập nhật thành `PASS` sau khi chạy demo thực tế và có bằng chứng tương ứng.
+Kết luận: phương án Docker named volume lưu và tải được ảnh, PDF; tệp giữ lại khi tạo lại container; nhận diện định dạng theo nội dung tệp và đặt tên UUID đúng quy ước (10 PASS). Lần chạy đầu (`8e6c8be`) dòng 4a, 4b bị FAIL do cấu hình spike; đã sửa theo mục 5.1 và chạy lại đạt. Lỗi 8b cho thấy metadata bắt buộc lưu ở bảng `media` (như mục 5.1, 5.3), không giữ trong bộ nhớ. Dòng 9, 10 kiểm ở task Media chính thức, khi đã có xác thực (SCRUM-35) và bảng `media`.
 
 ## 8. Tài liệu tham chiếu
 
@@ -130,4 +133,4 @@ Các trường hợp còn lại chỉ được cập nhật thành `PASS` sau kh
 - `docs/01-srs/use-cases/community-events.md`, BR-COM-08 và BR-COM-10.
 - `docs/02-design/architecture.md`.
 - `docs/07-deploy/deploy.md`.
-- `docs/05-ui/heritage-directory-dashboard.md`, phần quy định giữ tệp khi Heritage sử dụng xóa mềm.
+- `docs/01-srs/use-cases/heritage-directory-dashboard.md`, mục "Xóa tài liệu (9/10/2026)": xóa mềm `heritage_document` thì giữ tệp và bản ghi `media`.
