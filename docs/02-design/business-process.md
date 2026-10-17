@@ -1,9 +1,11 @@
 # Mô hình hóa quy trình nghiệp vụ
 
 > **Người viết:** TV3 (PiLo257) | **Reviewer:** TV1 (Tuấn Nguyễn Thanh) | **Task Jira:** SCRUM-83 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)  
-> **Trạng thái:** Nháp
+> **Trạng thái:** Chờ review
 
-Các sơ đồ sử dụng thống nhất bốn làn: **Thành viên**, **Trưởng chi (BRANCH_ADMIN)**, **Hệ thống** và **AI Service**.
+Các sơ đồ sử dụng thống nhất bốn làn: **Thành viên**, **Trưởng chi (BRANCH_ADMIN)**, **Hệ thống** và **AI Service**. Theo `srs.md` mục 2, **AI Service** là hệ thống LLM bên ngoài mà lớp AI gọi tới; các bước kiểm tra, tìm ngữ cảnh và lưu dữ liệu nằm ở làn **Hệ thống**.
+
+Cách đọc: ô vàng hình thoi là điểm rẽ nhánh; ô đỏ là lỗi trả về và kết thúc nhánh đó; ô cam là cảnh báo, người dùng xác nhận thì đi tiếp; ô viền nét đứt là trạng thái chờ. File gốc để sửa: `docs/images/business-process-<số>.drawio` (mở bằng draw.io), sửa xong xuất lại file `.drawio.png` cùng tên.
 
 ## 1. Đăng ký, xác minh thành viên và tham gia gia đình
 
