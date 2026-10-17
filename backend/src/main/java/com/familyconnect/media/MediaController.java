@@ -8,8 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/media")
@@ -22,59 +22,128 @@ public class MediaController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("ownerType") String ownerType,
+            @RequestParam("ownerId") UUID ownerId,
+            @RequestParam(value = "caption", required = false) String caption
+    ) {
         try {
-            String storageKey = uploadService.saveImage(file);
+            MediaUploadService.StoredMedia media =
+                    uploadService.save(
+                            file,
+                            ownerType,
+                            ownerId,
+                            caption
+                    );
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(
-                    new UploadResponse(storageKey, "Upload thành công")
+            MediaData data = new MediaData(
+                    media.id(),
+                    media.ownerType(),
+                    media.ownerId(),
+                    media.fileName(),
+                    media.contentType(),
+                    media.fileSize(),
+                    "/api/v1/media/" + media.id() + "/content",
+                    media.caption()
             );
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new SuccessResponse<>(true, data));
+
+        } catch (MediaUploadService.FileTooLargeException e) {
+            return error(
+                    HttpStatus.PAYLOAD_TOO_LARGE,
+                    "FILE_001",
+                    e.getMessage()
+            );
+
+        } catch (MediaUploadService.UnsupportedFileException e) {
+            return error(
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "FILE_002",
+                    e.getMessage()
+            );
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(
-                    new ErrorResponse(e.getMessage())
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "VALID_001",
+                    e.getMessage()
             );
+
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().body(
-                    new ErrorResponse("Không thể lưu file")
+            return error(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "SERVER_001",
+                    "Không thể lưu tệp"
             );
         }
     }
 
-    @GetMapping("/{storageKey}/content")
-    public ResponseEntity<?> getContent(@PathVariable String storageKey)
+    @GetMapping("/{id}/content")
+    public ResponseEntity<?> getContent(@PathVariable UUID id)
             throws IOException {
 
-        if (storageKey.contains("/") || storageKey.contains("\\")
-                || storageKey.contains("..")) {
-            return ResponseEntity.badRequest().body(
-                    new ErrorResponse("Tên file không hợp lệ")
+        MediaUploadService.StoredMedia media =
+                uploadService.findById(id).orElse(null);
+
+        if (media == null || !Files.isRegularFile(media.path())) {
+            return error(
+                    HttpStatus.NOT_FOUND,
+                    "NOT_FOUND_001",
+                    "Không tìm thấy tài nguyên"
             );
-        }
-
-        String configuredPath = System.getenv("MEDIA_STORAGE_PATH");
-        if (configuredPath == null || configuredPath.isBlank()) {
-            configuredPath = "uploads";
-        }
-
-        Path storagePath = Paths.get(configuredPath)
-                .toAbsolutePath().normalize();
-        Path filePath = storagePath.resolve(storageKey).normalize();
-
-        if (!filePath.getParent().equals(storagePath)
-                || !Files.isRegularFile(filePath)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) {
-            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
 
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .body(Files.readAllBytes(filePath));
+                .contentType(MediaType.parseMediaType(
+                        media.contentType()
+                ))
+                .body(Files.readAllBytes(media.path()));
     }
 
-    public record UploadResponse(String storageKey, String message) {}
-    public record ErrorResponse(String message) {}
+    private ResponseEntity<ErrorResponse> error(
+            HttpStatus status,
+            String code,
+            String message
+    ) {
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
+                        false,
+                        new ErrorDetail(
+                                code,
+                                message,
+                                List.of()
+                        )
+                )
+        );
+    }
+
+    public record SuccessResponse<T>(
+            boolean success,
+            T data
+    ) {}
+
+    public record MediaData(
+            UUID id,
+            String ownerType,
+            UUID ownerId,
+            String fileName,
+            String contentType,
+            long fileSize,
+            String contentUrl,
+            String caption
+    ) {}
+
+    public record ErrorResponse(
+            boolean success,
+            ErrorDetail error
+    ) {}
+
+    public record ErrorDetail(
+            String code,
+            String message,
+            List<Object> details
+    ) {}
 }

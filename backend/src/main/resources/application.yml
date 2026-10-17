@@ -5,7 +5,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 5MB
-      max-request-size: 10MB
+      max-request-size: 11MB
 
   datasource:
     # Giá trị mặc định dùng cho máy local (docker compose up -d db).

@@ -9,14 +9,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class MediaUploadService {
 
-    private static final long MAX_FILE_SIZE = 5L * 1024 * 1024;
+    private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
+    private static final long MAX_PDF_SIZE = 10L * 1024 * 1024;
 
     private final Path storagePath;
+
+    // Chỉ dùng cho spike/demo.
+    // Implementation thật sẽ lưu metadata vào bảng media.
+    private final Map<UUID, StoredMedia> registry = new ConcurrentHashMap<>();
 
     public MediaUploadService() throws IOException {
         String configuredPath = System.getenv("MEDIA_STORAGE_PATH");
@@ -32,71 +40,150 @@ public class MediaUploadService {
         Files.createDirectories(storagePath);
     }
 
-    public String saveImage(MultipartFile file) throws IOException {
+    public StoredMedia save(
+            MultipartFile file,
+            String ownerType,
+            UUID ownerId,
+            String caption
+    ) throws IOException {
+
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File không được để trống");
         }
 
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File vượt quá giới hạn 5 MB");
+        if (ownerType == null || ownerType.isBlank()) {
+            throw new IllegalArgumentException("ownerType không được để trống");
         }
 
-        String originalName = file.getOriginalFilename();
+        String normalizedOwnerType = ownerType.toUpperCase(Locale.ROOT);
 
-        if (originalName == null || originalName.isBlank()) {
-            throw new IllegalArgumentException("Tên file không hợp lệ");
-        }
-
-        String extension = getAllowedExtension(originalName);
-        String detectedType = detectImageType(file);
-
-        if (!extension.equals(detectedType)) {
+        if (!normalizedOwnerType.equals("HERITAGE")
+                && !normalizedOwnerType.equals("PERSON")) {
             throw new IllegalArgumentException(
-                    "Định dạng file không hợp lệ hoặc không khớp nội dung"
+                    "ownerType chỉ nhận HERITAGE hoặc PERSON"
             );
         }
 
-        String storageKey = UUID.randomUUID() + "." + extension;
+        if (ownerId == null) {
+            throw new IllegalArgumentException("ownerId không được để trống");
+        }
+
+        String originalName = sanitizeFileName(file.getOriginalFilename());
+        String extension = getExtension(originalName);
+        DetectedFile detected = detectFileType(file);
+
+        if (!extension.equals(detected.extension())) {
+            throw new UnsupportedFileException(
+                    "Phần mở rộng không khớp nội dung thực tế của tệp"
+            );
+        }
+
+        if (detected.extension().equals("pdf")) {
+            if (!normalizedOwnerType.equals("HERITAGE")) {
+                throw new UnsupportedFileException(
+                        "PDF chỉ được phép khi ownerType = HERITAGE"
+                );
+            }
+
+            if (file.getSize() > MAX_PDF_SIZE) {
+                throw new FileTooLargeException(
+                        "PDF vượt quá giới hạn 10 MB"
+                );
+            }
+        } else if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new FileTooLargeException(
+                    "Ảnh vượt quá giới hạn 5 MB"
+            );
+        }
+
+        UUID id = UUID.randomUUID();
+
+        String storageKey =
+                UUID.randomUUID() + "." + detected.extension();
+
         Path destination = storagePath.resolve(storageKey).normalize();
 
         if (!destination.getParent().equals(storagePath)) {
-            throw new IllegalArgumentException("Đường dẫn file không hợp lệ");
+            throw new IllegalArgumentException(
+                    "Đường dẫn file không hợp lệ"
+            );
         }
 
         try (InputStream input = file.getInputStream()) {
             Files.copy(input, destination);
         }
 
-        return storageKey;
+        StoredMedia media = new StoredMedia(
+                id,
+                storageKey,
+                normalizedOwnerType,
+                ownerId,
+                originalName,
+                detected.mimeType(),
+                file.getSize(),
+                caption,
+                destination
+        );
+
+        registry.put(id, media);
+
+        return media;
     }
 
-    private String getAllowedExtension(String filename) {
+    public Optional<StoredMedia> findById(UUID id) {
+        return Optional.ofNullable(registry.get(id));
+    }
+
+    private String sanitizeFileName(String originalName) {
+        if (originalName == null || originalName.isBlank()) {
+            throw new IllegalArgumentException("Tên file không hợp lệ");
+        }
+
+        String cleaned = originalName.replace('\\', '/');
+
+        int slash = cleaned.lastIndexOf('/');
+        if (slash >= 0) {
+            cleaned = cleaned.substring(slash + 1);
+        }
+
+        if (cleaned.isBlank()) {
+            throw new IllegalArgumentException("Tên file không hợp lệ");
+        }
+
+        return cleaned;
+    }
+
+    private String getExtension(String filename) {
         int dot = filename.lastIndexOf('.');
 
-        if (dot < 0) {
-            throw new IllegalArgumentException("File phải có phần mở rộng");
+        if (dot < 0 || dot == filename.length() - 1) {
+            throw new UnsupportedFileException(
+                    "File phải có phần mở rộng hợp lệ"
+            );
         }
 
         String extension = filename.substring(dot + 1)
                 .toLowerCase(Locale.ROOT);
 
-        if (!extension.equals("jpg")
-                && !extension.equals("jpeg")
-                && !extension.equals("png")
-                && !extension.equals("webp")) {
-            throw new IllegalArgumentException(
-                    "Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP"
-            );
+        if (extension.equals("jpeg")) {
+            extension = "jpg";
         }
 
-        if (extension.equals("jpeg")) {
-            return "jpg";
+        if (!extension.equals("jpg")
+                && !extension.equals("png")
+                && !extension.equals("webp")
+                && !extension.equals("pdf")) {
+            throw new UnsupportedFileException(
+                    "Chỉ hỗ trợ JPG, PNG, WEBP hoặc PDF của Heritage"
+            );
         }
 
         return extension;
     }
 
-    private String detectImageType(MultipartFile file) throws IOException {
+    private DetectedFile detectFileType(MultipartFile file)
+            throws IOException {
+
         byte[] bytes = new byte[12];
 
         try (InputStream input = file.getInputStream()) {
@@ -106,7 +193,7 @@ public class MediaUploadService {
                     && (bytes[0] & 0xFF) == 0xFF
                     && (bytes[1] & 0xFF) == 0xD8
                     && (bytes[2] & 0xFF) == 0xFF) {
-                return "jpg";
+                return new DetectedFile("jpg", "image/jpeg");
             }
 
             if (count >= 8
@@ -118,7 +205,7 @@ public class MediaUploadService {
                     && bytes[5] == 0x0A
                     && bytes[6] == 0x1A
                     && bytes[7] == 0x0A) {
-                return "png";
+                return new DetectedFile("png", "image/png");
             }
 
             if (count >= 12
@@ -130,12 +217,57 @@ public class MediaUploadService {
                     && bytes[9] == 'E'
                     && bytes[10] == 'B'
                     && bytes[11] == 'P') {
-                return "webp";
+                return new DetectedFile("webp", "image/webp");
+            }
+
+            if (count >= 5
+                    && bytes[0] == '%'
+                    && bytes[1] == 'P'
+                    && bytes[2] == 'D'
+                    && bytes[3] == 'F'
+                    && bytes[4] == '-') {
+                return new DetectedFile(
+                        "pdf",
+                        "application/pdf"
+                );
             }
         }
 
-        throw new IllegalArgumentException(
-                "Không nhận diện được nội dung ảnh JPG, PNG hoặc WEBP"
+        throw new UnsupportedFileException(
+                "Không nhận diện được nội dung JPG, PNG, WEBP hoặc PDF"
         );
+    }
+
+    public record StoredMedia(
+            UUID id,
+            String storageKey,
+            String ownerType,
+            UUID ownerId,
+            String fileName,
+            String contentType,
+            long fileSize,
+            String caption,
+            Path path
+    ) {}
+
+    private record DetectedFile(
+            String extension,
+            String mimeType
+    ) {}
+
+    public static class FileTooLargeException
+            extends IllegalArgumentException {
+
+        public FileTooLargeException(String message) {
+            super(message);
+        }
+    }
+
+    public static class UnsupportedFileException
+            extends IllegalArgumentException {
+
+        public UnsupportedFileException(String message) {
+            super(message);
+        }
     }
 }
