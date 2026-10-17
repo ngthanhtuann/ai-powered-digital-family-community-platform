@@ -202,7 +202,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | Mô tả ngắn | Hệ thống gửi nhắc nhở cho người dùng liên quan đến sự kiện. |
 | Tiền điều kiện | Sự kiện tồn tại và có thông tin thời gian phù hợp để gửi nhắc nhở. |
 | Luồng chính | 1. Hệ thống kiểm tra các sự kiện sắp diễn ra.<br>2. Hệ thống xác định người dùng cần nhận nhắc nhở.<br>3. Hệ thống tạo và gửi thông báo nhắc nhở.<br>4. Hệ thống lưu thông tin thông báo. |
-| Luồng thay thế / ngoại lệ | 2a. Không có người dùng phù hợp, hệ thống không gửi thông báo.<br>3a. Gửi thông báo thất bại, hệ thống ghi nhận trạng thái lỗi. |
+| Luồng thay thế / ngoại lệ | 2a. Không có người dùng phù hợp, hệ thống không gửi thông báo. |
 | Hậu điều kiện | Người dùng liên quan nhận được nhắc nhở hoặc hệ thống ghi nhận trạng thái gửi. |
 | Quy tắc nghiệp vụ | BR-EVT-05 |
 
@@ -227,6 +227,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | BR-EVT-05 | Nhắc nhở chỉ hướng đến người đã RSVP `GOING` hoặc `MAYBE`; nhắc vào 24 giờ và 1 giờ trước `start_at` (đã chốt 9/10/2026). Mỗi mốc nhắc có loại riêng (`EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`) nên ràng buộc duy nhất `(user_id, ref_id, type)` khi có `ref_id` vừa chống gửi trùng vừa cho phép đủ 2 lần nhắc; nếu sau này đổi mốc nhắc thì đổi tên loại tương ứng. Kênh gửi: thông báo trong ứng dụng (bản ghi `notification`, web và mobile cùng đọc qua `GET /notifications`); push notification trên mobile là phần mở rộng, không thuộc phạm vi cam kết. Mỗi người nhận có một bản ghi `notification` riêng (bảng có `user_id` và `is_read` theo từng người). |
 | BR-COM-11 | Khi bài đăng được tạo/sửa/xóa, module thông báo cho module `ai` qua interface `AiGateway` để cập nhật embedding; không gọi REST nội bộ. |
 | BR-EVT-06 | Khi sự kiện được tạo/sửa/xóa, module thông báo cho module `ai` qua interface `AiGateway` để cập nhật embedding; không gọi REST nội bộ. |
+| BR-COM-12 | Báo cáo nội dung vi phạm (SCRUM-50; `auth.md` UC-AUTH-09, BR-AUTH-15). Thành viên đã xác minh được báo cáo bài đăng, bình luận, sự kiện, thông báo trong phạm vi mình xem được; mỗi người chỉ báo cáo một lần cho mỗi nội dung, báo cáo trùng trả HTTP 409 `CONFLICT_001`. Báo cáo lưu ở bảng `content_report`. Module Community cài đặt interface `ContentModerationPort` (`findReports`, `hideContent`, `dismissReport`) để module admin đọc và xử lý. Ẩn nội dung: đặt `hidden_at` của nội dung và chuyển báo cáo sang `HIDDEN`; bỏ qua: chuyển báo cáo sang `DISMISSED`. Khi trưởng chi hoặc quản trị gỡ nội dung của người khác, module gọi `AuditLogger.log` với action `CONTENT_DELETED`. |
 
 Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộc gia đình A gọi dữ liệu gia đình B phải bị từ chối. Các thao tác xóa bài, bình luận và sự kiện phải phát sinh audit log qua cơ chế chung của hệ thống.
 
@@ -244,6 +245,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 | `notification` | Thông báo gửi người dùng | Hoàn thành |
 | `event` | Sự kiện | Hoàn thành |
 | `event_participant` | Người tham dự và trạng thái RSVP | Hoàn thành |
+| `content_report` | Báo cáo nội dung vi phạm (BR-COM-12) | Hoàn thành |
 
 **Bảng `post`**
 
@@ -259,6 +261,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Thời điểm bị quản trị ẩn, khác `deleted_at` |
 
 **Bảng `comment`**
 
@@ -272,6 +275,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Thời điểm bị quản trị ẩn, khác `deleted_at` |
 
 **Bảng `reaction`**
 
@@ -324,6 +328,7 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Thời điểm bị quản trị ẩn, khác `deleted_at` |
 
 **Bảng `notification`**
 
@@ -360,6 +365,7 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+| hidden_at | TIMESTAMPTZ | NULL | Thời điểm bị quản trị ẩn, khác `deleted_at` |
 
 **Ràng buộc:** Nếu có `end_at` thì thời gian kết thúc phải lớn hơn `start_at`.
 
@@ -379,12 +385,33 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 
 **Ràng buộc:** `event_id` là FK tới `event(id)` (cùng module); `user_id` chỉ lưu UUID của `users(id)` thuộc module auth, không tạo FK, service kiểm tra người dùng tồn tại và cùng `family_id`; chỉ mục duy nhất từng phần `(event_id, user_id) WHERE deleted_at IS NULL` bảo đảm một RSVP hoạt động cho mỗi người/sự kiện. `created_by` là người thực hiện thao tác (có thể khác `user_id`).
 
+**Bảng `content_report`**
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | Mã báo cáo |
+| family_id | UUID | NOT NULL | Gia đình của nội dung bị báo cáo; kiểm tra ở service, không FK sang module khác |
+| target_type | VARCHAR(20) | NOT NULL, CHECK | `POST`, `COMMENT`, `EVENT` hoặc `ANNOUNCEMENT` |
+| target_id | UUID | NOT NULL | ID nội dung bị báo cáo; kiểm tra ở service |
+| reporter_id | UUID | NOT NULL | Người báo cáo; tham chiếu `users(id)` của module auth, kiểm tra ở service, không FK chéo module |
+| reason | VARCHAR(255) | NOT NULL | Lý do do người báo cáo nhập |
+| content_snippet | VARCHAR(200) | NOT NULL | Trích tối đa 200 ký tự nội dung bị báo cáo |
+| status | VARCHAR(20) | NOT NULL, CHECK, DEFAULT 'PENDING' | `PENDING`, `HIDDEN` hoặc `DISMISSED` |
+| created_by | UUID | NOT NULL | Người tạo bản ghi (người báo cáo) |
+| updated_by | UUID | NULL | Người cập nhật (quản trị xử lý báo cáo) |
+| created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
+| updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
+| deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+
+**Ràng buộc:** chỉ mục duy nhất từng phần `(target_type, target_id, reporter_id) WHERE deleted_at IS NULL` bảo đảm mỗi người chỉ báo cáo một lần cho mỗi nội dung (BR-COM-12). **Chỉ mục:** `(status, created_at)`.
+
 ### Khóa ngoại và chỉ mục
 
 - Khóa ngoại chỉ dùng trong cùng module (`architecture.md` mục 7, quyết định 9): `comment.post_id` → `post(id)`; `reaction.post_id` → `post(id)`; `event_participant.event_id` → `event(id)`.
 - `notification.user_id` và `event_participant.user_id` tham chiếu `users(id)` của module auth (tên bảng `users` đã chốt ở `architecture.md` mục 7): chỉ lưu UUID có chỉ mục, không tạo FK; service kiểm tra tồn tại và `family_id` qua interface Java của module auth.
 - `family_id`, `branch_id`, `created_by`, `updated_by` thuộc module khác: lưu UUID và kiểm tra quyền ở service, không tạo FK chéo module.
-- Chỉ mục đề xuất: `post(family_id, created_at DESC)`; `comment(post_id, created_at)`; `reaction(post_id, created_by) WHERE deleted_at IS NULL` UNIQUE; `event(family_id, start_at)`; `event_participant(event_id, user_id) WHERE deleted_at IS NULL` UNIQUE; `notification(user_id, is_read, created_at DESC)`; `notification(user_id, ref_id, type) WHERE deleted_at IS NULL AND ref_id IS NOT NULL` UNIQUE; `media(owner_type, owner_id)`.
+- Chỉ mục đề xuất: `post(family_id, created_at DESC)`; `comment(post_id, created_at)`; `reaction(post_id, created_by) WHERE deleted_at IS NULL` UNIQUE; `event(family_id, start_at)`; `event_participant(event_id, user_id) WHERE deleted_at IS NULL` UNIQUE; `notification(user_id, is_read, created_at DESC)`; `notification(user_id, ref_id, type) WHERE deleted_at IS NULL AND ref_id IS NOT NULL` UNIQUE; `media(owner_type, owner_id)`; `content_report(status, created_at)`; `content_report(target_type, target_id, reporter_id) WHERE deleted_at IS NULL` UNIQUE.
+- Nội dung (`post`, `comment`, `event`, `announcement`) có `hidden_at` khác NULL không hiện ở bảng tin và các danh sách.
 
 ### 6.1. Mã lỗi nghiệp vụ của module
 
@@ -427,6 +454,7 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 | DELETE | `/api/v1/announcements/{id}` | Xóa thông báo | BRANCH_ADMIN trong phạm vi; SYSTEM_ADMIN |
 | GET | `/api/v1/notifications` | Danh sách thông báo của người đăng nhập | Chủ tài khoản |
 | PATCH | `/api/v1/notifications/{id}` | Đánh dấu đã đọc (body `{"isRead": true}`) | Chủ tài khoản |
+| POST | `/api/v1/content-reports` | Báo cáo nội dung vi phạm (body: `targetType`, `targetId`, `reason`) | MEMBER đã xác minh; BRANCH_ADMIN |
 | POST | `/api/v1/events` | Tạo sự kiện | MEMBER đã xác minh, BRANCH_ADMIN, SYSTEM_ADMIN |
 | GET | `/api/v1/events` | Danh sách sự kiện, lọc thời gian | Thành viên có quyền xem |
 | GET | `/api/v1/events/{id}` | Chi tiết sự kiện | Thành viên có quyền xem |
@@ -451,6 +479,7 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 - `events` và `heritage` sử dụng ảnh thông qua Java interface của module `community`; không tạo bảng ảnh riêng. `genealogy` lưu ảnh đại diện qua `person.avatar_media_id` (UUID, không FK) trỏ vào `media` (`owner_type = PERSON`).
 - Khi bài đăng hoặc sự kiện được tạo, sửa hay xóa, module tương ứng gọi `AiGateway` để thông báo module `ai` cập nhật embedding; không gọi REST nội bộ.
 - Ảnh không được công khai bằng URL lưu trữ trực tiếp; endpoint nội dung phải kiểm tra quyền truy cập trước khi trả file.
+- Module `community` cài đặt `ContentModerationPort` (`findReports`, `hideContent`, `dismissReport`; `auth.md` mục 6.3) để module admin đọc và xử lý báo cáo, không join trực tiếp bảng `content_report`; khi trưởng chi hoặc quản trị gỡ nội dung của người khác, gọi `AuditLogger.log` với action `CONTENT_DELETED` (BR-COM-12).
 
 ## 8. Màn hình liên quan
 
@@ -458,7 +487,9 @@ Màn hình và wireframe của module Community và Events được quản lý t
 
 `docs/05-ui/figma-links.md`
 
-Link Figma và ảnh wireframe sẽ được bổ sung theo tiến độ thiết kế UI của nhóm.
+Link Figma sẽ được bổ sung theo tiến độ thiết kế UI của nhóm.
+
+Ghi chú cho wireframe SCRUM-30: cần có nút "Báo cáo" trên bài đăng, bình luận, sự kiện và thông báo (BR-COM-12).
 
 ## 9. Câu hỏi còn mở
 
