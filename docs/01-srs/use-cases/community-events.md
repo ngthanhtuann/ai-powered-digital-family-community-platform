@@ -202,7 +202,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | Mô tả ngắn | Hệ thống gửi nhắc nhở cho người dùng liên quan đến sự kiện. |
 | Tiền điều kiện | Sự kiện tồn tại và có thông tin thời gian phù hợp để gửi nhắc nhở. |
 | Luồng chính | 1. Hệ thống kiểm tra các sự kiện sắp diễn ra.<br>2. Hệ thống xác định người dùng cần nhận nhắc nhở.<br>3. Hệ thống tạo và gửi thông báo nhắc nhở.<br>4. Hệ thống lưu thông tin thông báo. |
-| Luồng thay thế / ngoại lệ | 2a. Không có người dùng phù hợp, hệ thống không gửi thông báo.<br>3a. Gửi thông báo thất bại, hệ thống ghi nhận trạng thái lỗi. |
+| Luồng thay thế / ngoại lệ | 2a. Không có người dùng phù hợp, hệ thống không gửi thông báo. |
 | Hậu điều kiện | Người dùng liên quan nhận được nhắc nhở hoặc hệ thống ghi nhận trạng thái gửi. |
 | Quy tắc nghiệp vụ | BR-EVT-05 |
 
