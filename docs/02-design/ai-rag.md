@@ -9,37 +9,101 @@ Xem `docs/decisions/adr-ai-spike.md`.
 
 ## 2. Pipeline RAG
 ```mermaid
-flowchart LR
-  A[Dữ liệu: person, bài đăng, tài liệu] --> B[Chia đoạn]
-  B --> C[Tạo embedding]
-  C --> D[(ai_embedding_chunk - pgvector)]
-  Q[Câu hỏi] --> E[Embedding câu hỏi]
-  E --> F[Top-k, lọc family_id]
-  D --> F
-  F --> G[Ghép prompt] --> H[LLM] --> I[Trả lời + nguồn]
+flowchart TD
+    A["Dữ liệu nguồn qua interface genealogy/community/heritage"] --> B["Kiểm tra quyền và chính sách riêng tư"]
+    B --> C["Chuẩn hóa và chia đoạn"]
+    C --> D["Loại dữ liệu không được gửi LLM"]
+    D --> E["Gemini Embedding: outputDimensionality=768"]
+    E --> F[("public.ai_embedding_chunk / pgvector")]
+    U["Câu hỏi của người dùng"] --> V["Xác thực JWT, xác minh tài khoản, rate limit"]
+    V --> W["Xác định family_id và quyền từ security context"]
+    W --> X["Embedding câu hỏi: 768 chiều"]
+    X --> Y["Top-k retrieval + filter family_id + ACL + deleted_at IS NULL"]
+    F --> Y
+    Y --> Z{"Có ngữ cảnh đủ liên quan?"}
+    Z -- "Không" --> N["Trả 'Không tìm thấy thông tin.'"]
+    Z -- "Có" --> P["Lọc dữ liệu nhạy cảm lần cuối"]
+    P --> Q["Ghép system prompt + context + question"]
+    Q --> R["Gemini LLM qua Spring AI"]
+    R --> S["Kiểm tra câu trả lời và nguồn"]
+    S --> T["Lưu lịch sử nếu được phép; trả lời + nguồn"]
 ```
 
 ## 3. Phân đoạn dữ liệu
-> Mỗi person thành một đoạn mô tả; bài đăng/câu chuyện cắt khoảng 300-500 từ.
+### 3.1. Quy tắc phân đoạn
+- **Hồ sơ một người (`PERSON`)**: một đoạn mô tả cho mỗi người nếu nội dung ngắn; nếu dài thì chia đoạn có thứ tự và lưu `chunk_no`.
+- **Bài đăng/câu chuyện (`POST`, `STORY`)**: khoảng 300–500 từ mỗi đoạn. Khi cần chia nhiều đoạn, giữ metadata nguồn, gia đình và thứ tự đoạn.
+- **Tài liệu (`DOCUMENT`)**: chia theo tiêu đề/đoạn văn tự nhiên; tránh cắt giữa câu hoặc tách bảng khỏi phần giải thích liên quan.
+- Mỗi chunk lưu `family_id`, `source_type`, `source_id`, `chunk_no`, `content_hash` và metadata tối thiểu cần cho truy xuất.
+- Khi nguồn đổi nội dung, tính lại hash và embedding; cập nhật hoặc vô hiệu hóa chunk cũ. Khi nguồn bị xóa hoặc quyền thay đổi, xóa mềm/vô hiệu hóa chunk và bảo đảm truy vấn không trả chunk đó.
+- Không đưa mật khẩu, số điện thoại, thông tin trẻ em hoặc trường dữ liệu bị cấm trong `privacy.md` mục 8 vào chunk gửi cho nhà cung cấp LLM. Cần kiểm tra chính sách riêng tư trước khi tạo embedding bên ngoài, không chỉ trước khi gọi chat LLM.
+
+### 3.2. Model và số chiều
+- Nhà cung cấp: Google Gemini, tích hợp qua Spring AI.
+- Model embedding đã dùng trong spike: `gemini-embedding-001`.
+- Quyết định schema: `outputDimensionality = 768`, kiểu cột pgvector `vector(768)`, chỉ mục HNSW.
+- Lý do: ADR ghi nhận chỉ mục HNSW/IVFFlat của `vector` có giới hạn 2000 chiều; 768 nằm trong giới hạn và giảm dung lượng so với 3072 chiều.
+- Nếu bộ đánh giá 10 truy vấn tiếng Việt không đạt, thử 1536 chiều, đo lại chất lượng và hiệu năng rồi cập nhật ADR/ERD trước khi đổi schema.
+- Không ghi rằng 768 đã được đánh giá chất lượng đạt; đây là quyết định thiết kế cần xác minh bằng test.
 
 ## 4. Prompt hệ thống mẫu
+```text
+Bạn là trợ lý gia phả của FamilyConnect.
+
+NGUYÊN TẮC:
+1. Chỉ trả lời dựa trên CONTEXT được cung cấp trong yêu cầu hiện tại.
+2. Nếu CONTEXT không chứa thông tin đủ để trả lời, hãy trả lời chính xác:
+   "Không tìm thấy thông tin."
+3. Không bịa tên, ngày tháng, nghề nghiệp, quan hệ họ hàng hoặc sự kiện.
+4. Không suy luận một quan hệ họ hàng mới. Với câu hỏi về quan hệ, chỉ diễn đạt
+   kết quả đã được tính bởi thuật toán quan hệ của module genealogy.
+5. Không tiết lộ thông tin ngoài quyền xem của người dùng.
+6. Không nhắc lại hoặc suy đoán dữ liệu nhạy cảm; nếu context chứa dữ liệu không
+   phù hợp, bỏ qua dữ liệu đó.
+7. Nếu trả lời được, nêu nguồn dựa trên source_id/source_type được cung cấp.
+8. Trả lời bằng tiếng Việt, ngắn gọn, rõ ràng. Phân biệt rõ dữ kiện và điều
+   chưa có trong nguồn.
+
+CONTEXT:
+{retrieved_context}
+
+QUESTION:
+{user_question}
+
+Hãy trả lời theo các nguyên tắc trên.
 ```
-Bạn là trợ lý gia phả. Chỉ trả lời dựa trên ngữ cảnh được cung cấp.
-Nếu ngữ cảnh không có thông tin, trả lời "Không tìm thấy thông tin".
-...
-```
+
+Các placeholder phải được thay bằng dữ liệu đã lọc và đã kiểm tra quyền ở backend; không ghép trực tiếp nội dung client chưa kiểm soát vào system prompt.
 
 ## 5. Xử lý khi AI không biết, và giới hạn
-> Ngưỡng điểm tối thiểu, cache, giới hạn số câu hỏi mỗi người/giờ, xử lý timeout.
+### 5.1. Khi không có câu trả lời
+- Không có kết quả truy xuất hoặc tất cả kết quả thấp hơn ngưỡng: trả `Không tìm thấy thông tin.`; không gọi LLM.
+- Có kết quả nhưng không chứa dữ kiện trả lời câu hỏi: prompt yêu cầu trả đúng câu trên; kiểm thử kết quả trước khi coi tính năng đạt.
+- Không dùng ngưỡng tương đồng làm bằng chứng duy nhất rằng câu trả lời đúng. Điểm cao không bảo đảm nội dung có đủ dữ kiện; cần đánh giá trên bộ câu hỏi và đáp án kỳ vọng.
+- Ngưỡng `0.88` là giá trị thử nghiệm ban đầu từ spike, chưa phải ngưỡng tối ưu. Cần lưu lại truy vấn, top score, kết quả mong đợi và quyết định đúng/sai trên bộ test.
+- Không trả nội dung hoặc score của chunk người dùng không có quyền xem.
+
+### 5.2. Rate limit, cache và timeout
+- Rate limit theo tài khoản/người dùng và khoảng thời gian cấu hình. Khi vượt giới hạn, trả HTTP 429 `RATE_001`.
+- Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn.
+- Lỗi đầu vào không hợp lệ: dùng HTTP 400 và mã `AI_002` theo API conventions.
+- `ai_summary_cache` chỉ dùng khi `family_id`, nguồn, hash phiên bản, quyền truy cập và tham số tóm tắt khớp; cache hết hạn hoặc nguồn đổi thì không sử dụng.
+- Hạn mức Gemini Free Tier có thể chặn demo; không lặp gọi để vượt quota. Chi phí thực tế cho nhóm cần tính sau khi ghi token usage và số lượt gọi; không tự điền con số khi chưa có dữ liệu.
 
 ## 6. Quyền dữ liệu
-> Lọc theo `family_id` và quyền xem; không gửi mật khẩu/số điện thoại cho LLM (xem `privacy.md`).
+1. Tài khoản chưa xác minh không được gọi AI: HTTP 403 `PERM_002`.
+2. Trước khi truy xuất, xác định `family_id` và quyền xem của người dùng; áp dụng filter ngay trong retrieval.
+3. Không truy vấn trực tiếp bảng của `genealogy`, `community` hoặc `heritage`; lấy nguồn qua interface Java của module sở hữu.
+4. Chỉ đưa vào prompt các trường được phép theo `docs/01-srs/privacy.md`. Theo ghi chú ADR hiện có, không gửi mật khẩu, số điện thoại và thông tin trẻ dưới 16 tuổi.
+5. Gói Gemini miễn phí có ghi chú rằng nội dung gửi đi có thể được dùng để cải thiện sản phẩm. Chỉ dùng dữ liệu giả trong phát triển/thử nghiệm; trước khi dùng dữ liệu gia đình thật, cần đánh giá lại điều khoản và cấu hình gói phù hợp.
+6. Không ghi API key, token xác thực hoặc context nhạy cảm vào log. Log tối thiểu mã lỗi, thời gian xử lý và số token nếu có.
+7. Các module khác gọi AI qua interface Java `AiGateway`; không gọi REST nội bộ và không đọc/ghi trực tiếp các bảng `ai_*`.
 
 ## 7. Các dịch vụ AI
 | Dịch vụ | API | Ghi chú |
 |---|---|---|
-| Tìm kiếm ngữ nghĩa | GET /api/v1/search | |
-| Chatbot | POST /api/v1/ai/chat | |
-| Giải thích quan hệ | POST /api/v1/ai/relationship-explanations | dùng kết quả của thuật toán, không để LLM tự suy luận |
-| Tóm tắt | POST /api/v1/ai/summaries | |
-| Gợi ý | GET /api/v1/ai/recommendations | |
+| Tìm kiếm ngữ nghĩa | `GET /api/v1/search` | Embedding truy vấn, top-k, lọc quyền, trả kết quả |
+| Chatbot RAG | `POST /api/v1/ai/chat` | Retrieval, prompt, Gemini, nguồn và lịch sử |
+| Giải thích quan hệ | `POST /api/v1/ai/relationship-explanations` | Thuật toán genealogy trước, LLM diễn đạt sau |
+| Tóm tắt | `POST /api/v1/ai/summaries` | Lấy nguồn qua interface, cache theo hash |
+| Gợi ý | `GET /api/v1/ai/recommendations` | Tìm ứng viên trong phạm vi quyền |

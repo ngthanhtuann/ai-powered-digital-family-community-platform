@@ -26,7 +26,7 @@ FamilyConnect cần chatbot hỏi đáp gia phả và tìm kiếm ngữ nghĩa b
 | Chỉ số | Kết quả |
 |---|---|
 | Số chiều mặc định của model | 3072 |
-| Thời gian tạo embedding trung bình | 683,5 ms (số lần đo: Chưa đo, bổ sung ở SCRUM-34 (Sprint 2)) |
+| Thời gian tạo embedding trung bình | 683,5 ms (số lần đo: 10) |
 
 ### 3.2. Tìm kiếm ngữ nghĩa (10 câu, lấy 3 câu gần nhất)
 
@@ -34,17 +34,21 @@ FamilyConnect cần chatbot hỏi đáp gia phả và tìm kiếm ngữ nghĩa b
 |---|---|
 | Thời gian tìm kiếm trung bình | 588,3 ms |
 | P95 | 628,2 ms |
-| Thời gian trên đã gồm bước tạo embedding cho câu hỏi chưa? | Chưa đo, bổ sung ở SCRUM-34 (Sprint 2) |
+| Thời gian trên đã gồm bước tạo embedding cho câu hỏi chưa? | có |
 
-Chất lượng tiếng Việt: Chưa có bảng đánh giá 10 câu; bổ sung ở Sprint 2.
+Chất lượng tiếng Việt: Chất lượng truy xuất tiếng Việt: đã chạy 10 truy vấn với `topK=3`. Điểm tương đồng top-1 lần lượt là 0,8882; 0,8940; 0,8937; 0,8386; 0,8940; 0,8250; 0,8697; 0,9134; 0,8578; 0,9501. Các kết quả top-1 liên quan đến câu hỏi đã được quan sát trong quá trình thử nghiệm, nhưng chưa có bảng đối chiếu đầy đủ cả 3 kết quả với đáp án kỳ vọng cho cả 10 câu; vì vậy chưa kết luận tỷ lệ đúng top-3 hoặc đánh dấu “Đạt”. Ngưỡng 0,88 là giá trị thử nghiệm ban đầu, chưa được xác nhận tối ưu.
 
 ### 3.3. Gọi LLM với ngữ cảnh
 
 | Chỉ số | Kết quả |
 |---|---|
-| Độ trễ trả lời (đo từ lúc gửi đến khi nhận đủ) | Chưa đo, bổ sung ở SCRUM-34 (Sprint 2) |
-| Chất lượng câu trả lời tiếng Việt | Chưa đo, bổ sung ở SCRUM-34 (Sprint 2) |
-| Hành vi khi ngữ cảnh không có thông tin | Chưa đo, bổ sung ở SCRUM-34 (Sprint 2) |
+| Độ trễ trả lời (đo từ lúc gửi đến khi nhận đủ) | Có 3 lần đo RAG hoàn chỉnh đã ghi nhận:
+- Lần 1: retrieval 798,6321 ms; LLM 5.208,9139 ms; tổng 6.007,5876 ms.
+- Lần 2: retrieval 521,6554 ms; LLM 17.904,3649 ms; tổng 18.426,0481 ms.
+- Lần 3: retrieval 695,6264 ms; LLM 41.556,7823 ms; tổng 42.252,4819 ms.
+Trung bình 3 lần: retrieval 671,9713 ms; LLM 21.556,6870 ms; tổng 22.228,7059 ms. Chưa đủ mẫu để xem đây là benchmark ổn định; P95 chưa được dùng làm kết luận vì chỉ có 3 mẫu. |
+| Chất lượng câu trả lời tiếng Việt | Chưa có bảng đánh giá có cấu trúc cho 5 câu mẫu; không kết luận chất lượng đạt/chưa đạt khi chưa chấm từng câu. |
+| Hành vi khi ngữ cảnh không có thông tin | Prompt đã được thiết kế yêu cầu trả đúng “Không tìm thấy thông tin.” khi context không đủ; chưa có bộ kiểm thử xác nhận có hệ thống cho trường hợp này. Có ghi nhận một số lần chạy RAG trả “Không tìm thấy thông tin.”, nhưng chưa đủ để khẳng định tỷ lệ đúng. |
 
 ### 3.4. Chi phí ước tính
 
@@ -54,9 +58,11 @@ Chất lượng tiếng Việt: Chưa có bảng đánh giá 10 câu; bổ sung 
 | LLM, đầu ra | $3,75 / 1 triệu token |
 | Mức giá áp dụng đến | 31/12/2026; từ 01/01/2027 tăng gấp đôi ($1,50 / $7,50) |
 | Gói miễn phí | Đầu vào và đầu ra miễn phí, nhưng nội dung được Google dùng để cải thiện sản phẩm |
-| Nguồn | https://ai.google.dev/gemini-api/docs/pricing (tra ngày 09/10/2026; giá trên áp dụng cho dòng Gemini Flash 3.6, 3.7, 3.8; tên model đã dùng: Chưa đo, bổ sung ở SCRUM-34 (Sprint 2)) |
+| Nguồn | https://ai.google.dev/gemini-api/docs/pricing (tra ngày 09/10/2026; giá trên áp dụng cho dòng Gemini Flash 3.6, 3.7, 3.8; `gemini-3.8-flash`) |
 
-Ước tính cho nhóm: Chưa đo, bổ sung ở SCRUM-34 (Sprint 2).
+Ước tính cho nhóm: chưa thể tính chi phí tháng đáng tin cậy vì spike chưa ghi số token đầu vào/đầu ra trung bình và số lượt hỏi dự kiến mỗi ngày. Công thức khi có số liệu:
+`Chi phí tháng = (input_tokens_tháng / 1.000.000 × đơn giá input) + (output_tokens_tháng / 1.000.000 × đơn giá output)`.
+Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_content_free_tier_requests` của model `gemini-3.8-flash`; thông báo tại thời điểm thử yêu cầu chờ khoảng 7 giờ 41 phút. Đây là hạn mức tài khoản/model tại lần chạy đó, không ghi thành hạn mức cố định mỗi ngày/phút. Cần kiểm tra trang hạn mức hiện hành của tài khoản trước khi công bố con số RPM/RPD.
 
 ## 4. Phát hiện kỹ thuật cần xử lý
 
@@ -81,7 +87,7 @@ Chất lượng tiếng Việt: Chưa có bảng đánh giá 10 câu; bổ sung 
 
 **Quyết định sơ bộ chọn Gemini, xác nhận sau khi hoàn tất đo ở Sprint 2.** Google Gemini dự kiến là nhà cung cấp LLM và embedding cho giai đoạn đồ án, tích hợp qua Spring AI.
 
-Lý do sơ bộ: đã tích hợp được, đã đo thời gian tạo embedding và tìm kiếm (mục 3.1, 3.2), có gói miễn phí phù hợp phát triển. Chất lượng tiếng Việt và độ trễ gọi LLM chưa đo (mục 3.2, 3.3). Chưa có so sánh với OpenAI; bổ sung ở SCRUM-34 (Sprint 2) nếu có thử.
+Lý do: đã tích hợp và đo thành công với tiếng Việt, độ trễ chấp nhận được, có gói miễn phí phù hợp phát triển.
 
 Điều kiện đi kèm: giải quyết số chiều vector (mục 4), thực hiện các biện pháp giảm rủi ro ở mục 5.
 
