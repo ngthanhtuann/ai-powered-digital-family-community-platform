@@ -4,7 +4,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 5MB
+      # Bằng giới hạn PDF của Heritage (10 MB); giới hạn 5 MB của ảnh do MediaUploadService kiểm tra.
+      max-file-size: 10MB
       max-request-size: 11MB
 
   datasource:
