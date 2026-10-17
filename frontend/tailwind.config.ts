@@ -25,6 +25,10 @@ const config: Config = {
         'error-soft': '#FCE4EC',
         'warning-soft': '#FFF3E0',
         'info-soft': '#E3F2FD',
+        // Chỉ dùng cho cây gia phả, luôn kèm nhãn chữ (design-system.md mục 6).
+        'accent-green': '#5C8A6E',
+        'accent-pink': '#B87A9E',
+        'accent-pink-soft': '#E8A0C0',
       },
       fontSize: {
         'page-title': ['24px', { lineHeight: '32px', fontWeight: '700' }],
