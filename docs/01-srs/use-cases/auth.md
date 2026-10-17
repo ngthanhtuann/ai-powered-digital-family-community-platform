@@ -136,7 +136,7 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 | Mô tả ngắn | Trưởng chi xem danh sách yêu cầu trong phạm vi quản lý, duyệt hoặc từ chối. `SYSTEM_ADMIN` duyệt được tất cả. |
 | Tiền điều kiện | Đã đăng nhập với vai trò `BRANCH_ADMIN` hoặc `SYSTEM_ADMIN`; có yêu cầu `PENDING` trong phạm vi. |
 | Luồng chính | 1. Người duyệt mở màn "Yêu cầu tham gia"; hệ thống trả các yêu cầu `PENDING` trong phạm vi (họ tên, email, lời nhắn).<br>2. Người duyệt chọn một yêu cầu, bấm Duyệt (có thể chọn hồ sơ thành viên có sẵn để gắn với tài khoản).<br>3. Hệ thống kiểm tra phạm vi và yêu cầu còn `PENDING`.<br>4. Hệ thống chuyển `APPROVED`, ghi `reviewed_by`, `reviewed_at`; nếu có hồ sơ thành viên thì gắn tài khoản qua module Gia phả; ghi nhật ký `JOIN_APPROVED`.<br>5. Người xin có quyền xem dữ liệu gia đình từ request kế tiếp. |
-| Luồng thay thế / ngoại lệ | 2a. Từ chối kèm lý do (tối đa 255 ký tự): chuyển `REJECTED`, ghi `JOIN_REJECTED`.<br>3a. Yêu cầu ngoài phạm vi hoặc của gia đình khác: `403 PERM_001`.<br>3b. Yêu cầu không còn `PENDING`: `409 AUTH_006`.<br>4a. Hồ sơ gắn tài khoản không hợp lệ (người dưới 16 tuổi, đã gắn tài khoản khác): trả lỗi `GEN_xxx` của module Gia phả, yêu cầu vẫn `PENDING`. |
+| Luồng thay thế / ngoại lệ | 2a. Từ chối kèm lý do (tối đa 255 ký tự): chuyển `REJECTED`, ghi `JOIN_REJECTED`.<br>3a. Yêu cầu ngoài phạm vi hoặc của gia đình khác: `403 PERM_001`.<br>3b. Yêu cầu không còn `PENDING`: `409 AUTH_006`.<br>4a. Hồ sơ gắn tài khoản không hợp lệ (người dưới 16 tuổi, đã gắn tài khoản khác, hồ sơ không thuộc gia đình của yêu cầu): trả lỗi `GEN_xxx` của module Gia phả, yêu cầu vẫn `PENDING`. |
 | Hậu điều kiện | Yêu cầu ở trạng thái `APPROVED` hoặc `REJECTED`; người được duyệt là thành viên đã xác minh. |
 | Quy tắc nghiệp vụ | BR-AUTH-10, BR-AUTH-11, BR-AUTH-12 |
 
@@ -334,10 +334,10 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | BR-AUTH-08 | **Một gia đình mỗi người** (`genealogy.md` BR-GEN-15): một người dùng có tối đa một bản ghi `member_verification` ở trạng thái `PENDING` hoặc `APPROVED` (ràng buộc duy nhất từng phần). `SYSTEM_ADMIN` **không** là thành viên của gia đình nào (không xin tham gia được, không bị gán làm thành viên); quyền xem mọi gia đình đến từ vai trò. |
 | BR-AUTH-09 | **Yêu cầu tham gia.** Người xin gửi `familyId` (bắt buộc), `branchId` (tùy chọn) và lời nhắn; hệ thống hỏi module Gia phả xem gia đình và chi có tồn tại. Cấu hình `membership.approval_mode` (SCRUM-94): `MANUAL` (mặc định) chờ trưởng chi duyệt; `AUTO` duyệt ngay với vai trò `MEMBER`. |
 | BR-AUTH-10 | **Phạm vi của trưởng chi** (`genealogy.md` BR-GEN-14): `BRANCH_ADMIN` có `branch_id` NULL quản lý cả gia đình; có giá trị thì quản lý chi đó và các chi con (module Gia phả trả lời `isBranchWithin`). Trưởng chi chỉ xem và duyệt yêu cầu của gia đình mình: yêu cầu gắn một chi thì người quản lý cả gia đình hoặc quản lý chi đó (hay chi tổ tiên của chi đó) được xử lý; yêu cầu không chọn chi chỉ người quản lý cả gia đình và `SYSTEM_ADMIN` xử lý. Ngoài phạm vi hoặc gia đình khác: `403 PERM_001`. |
-| BR-AUTH-11 | **Hiệu lực duyệt, từ chối, hủy.** `APPROVED`: người xin là `MEMBER` đã xác minh, có hiệu lực ngay ở request kế tiếp, không cần đăng nhập lại; `personId` (tùy chọn) gắn tài khoản với `person` có sẵn qua module Gia phả (BR-GEN-16 cấm gắn người dưới 16 tuổi). `REJECTED`: lý do tùy chọn tối đa 255 ký tự, người xin được gửi yêu cầu mới. `CANCELLED`: người xin tự hủy yêu cầu `PENDING`. Việc nâng lên `BRANCH_ADMIN` không làm ở bước duyệt mà do `SYSTEM_ADMIN` gán (UC-AUTH-08), đúng Phụ lục A. Mọi bản ghi giữ lại làm lịch sử. |
+| BR-AUTH-11 | **Hiệu lực duyệt, từ chối, hủy.** `APPROVED`: người xin là `MEMBER` đã xác minh, có hiệu lực ngay ở request kế tiếp, không cần đăng nhập lại; `personId` (tùy chọn) gắn tài khoản với `person` có sẵn qua module Gia phả (BR-GEN-16 cấm gắn người dưới 16 tuổi). **Một nguồn sự thật về gia đình của tài khoản là `member_verification`:** chỉ gắn `person.user_id` khi `person.family_id` bằng `family_id` của bản ghi `APPROVED`; module Gia phả kiểm tra qua `MembershipQuery` (cả khi gắn từ UC-GEN-03). `REJECTED`: lý do tùy chọn tối đa 255 ký tự, người xin được gửi yêu cầu mới. `CANCELLED`: người xin tự hủy yêu cầu `PENDING`. Việc nâng lên `BRANCH_ADMIN` không làm ở bước duyệt mà do `SYSTEM_ADMIN` gán (UC-AUTH-08), đúng Phụ lục A. Mọi bản ghi giữ lại làm lịch sử. |
 | BR-AUTH-12 | **Chủ gia đình.** Khi người dùng thường tạo gia đình (UC-GEN-01 bước 4), module Gia phả gọi `MembershipCommand.assignFamilyOwner(userId, familyId)` trong cùng giao dịch: tạo `member_verification` `APPROVED`, vai trò `BRANCH_ADMIN`, `branch_id` NULL; yêu cầu `PENDING` đang có của người đó chuyển `CANCELLED`. Khi `SYSTEM_ADMIN` tạo gia đình hộ thì không gọi hàm này; trưởng chi được gán sau (UC-AUTH-08). |
 | BR-AUTH-13 | **Khóa và vai trò.** Khóa bắt buộc có lý do và thu hồi mọi refresh token của người đó. Vai trò toàn hệ thống (`user_role`) chỉ gồm `MEMBER` và `SYSTEM_ADMIN`, luôn có `MEMBER`. Không tự khóa mình, không tự thu quyền `SYSTEM_ADMIN` của mình, không khóa hoặc thu quyền quản trị viên hoạt động cuối cùng (`ADM_001`). Chỉ `SYSTEM_ADMIN` đổi vai trò (Phụ lục A). |
-| BR-AUTH-14 | **Gán gia đình bởi quản trị.** `PUT /admin/users/{userId}/membership` đặt `APPROVED` với vai trò `MEMBER` hoặc `BRANCH_ADMIN` (kèm `branch_id`) ngay lập tức; bản ghi cũ của người đó (nếu thuộc gia đình khác) chuyển `REMOVED`, yêu cầu `PENDING` chuyển `CANCELLED`. Gia đình và chi phải tồn tại. |
+| BR-AUTH-14 | **Gán gia đình bởi quản trị.** `PUT /admin/users/{userId}/membership` đặt `APPROVED` với vai trò `MEMBER` hoặc `BRANCH_ADMIN` (kèm `branch_id`) ngay lập tức; bản ghi cũ của người đó (nếu thuộc gia đình khác) chuyển `REMOVED`, yêu cầu `PENDING` chuyển `CANCELLED`; nếu tài khoản đang gắn với `person` của gia đình cũ thì gỡ liên kết qua `GenealogyPort.unlinkAccount` trong cùng giao dịch (giữ quy tắc ở BR-AUTH-11). Gia đình và chi phải tồn tại. |
 | BR-AUTH-15 | **Kiểm duyệt nội dung** (SCRUM-50, Phụ lục A). Có hai tầng: (1) gỡ bài đăng, bình luận, sự kiện của người khác do trưởng chi trong chi mình quản lý và quản trị làm ngay trên bảng tin (thuộc Community); (2) kiểm duyệt toàn hệ thống (hàng đợi báo cáo) chỉ `SYSTEM_ADMIN`, thuộc module này. Bảng lưu báo cáo và nút "Báo cáo bài viết" do module Community (TV3) làm; module admin đọc và xử lý qua interface Java `ContentModerationPort`, không join trực tiếp (quyết định 9). Nội dung bị ẩn bằng cột trạng thái, không xóa cứng. |
 | BR-AUTH-16 | **Nhật ký kiểm toán** (NFR-11, FR-ADM-03). Mọi module ghi qua interface `AuditLogger` (mục 6.3), không tự ghi bảng `audit_log`: người thực hiện, hành động, đối tượng, địa chỉ IP, thời điểm. Không ghi mật khẩu, token, nội dung câu hỏi AI. Bản ghi chỉ thêm, không có API sửa hay xóa; chỉ `SYSTEM_ADMIN` xem. Danh mục hành động ở mục 6.4. |
 | BR-AUTH-17 | **Sao lưu và khôi phục** (SCRUM-86). Phạm vi: cơ sở dữ liệu PostgreSQL (gồm bảng vector) và thư mục tệp tải lên. Mỗi bản sao lưu là một tệp đặt tên theo ngày giờ trong thư mục `backups/` (nằm ngoài Git), không có bảng riêng. Mỗi lúc chỉ một việc sao lưu hoặc khôi phục (`ADM_003`). Khôi phục bắt buộc gõ `RESTORE`, thu hồi mọi refresh token sau khi xong. Chỉ `SYSTEM_ADMIN` gọi. |
@@ -353,6 +353,8 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 > **Gửi TV2 (Trí) gộp vào ERD tổng (SCRUM-28).** Module này có đúng **7 bảng**, khớp danh sách của TV1 trong `erd.md` mục 3. Quy ước (`architecture.md` mục 7, quyết định 4 và 9): tên bảng `snake_case` số ít (ngoại lệ duy nhất là `users` vì `user` là từ khóa PostgreSQL); khóa chính `id` kiểu `UUID` (`DEFAULT gen_random_uuid()`); thời điểm dùng `TIMESTAMPTZ`; xóa mềm bằng `deleted_at`; bảng nghiệp vụ có thêm `created_by`, `updated_by`; mật khẩu băm BCrypt; schema chỉ đổi qua Flyway.
 >
 > **Khóa ngoại (FK) chỉ dùng giữa các bảng của module này.** Cột tham chiếu sang module khác (`family_id`, `branch_id`, `target_id`) chỉ lưu UUID có index, service kiểm tra qua interface Java (mục 6.3).
+>
+> **Cột ghi người thực hiện không có FK** (`created_by`, `updated_by`, `reviewed_by`, `actor_user_id`), kể cả khi trỏ tới `users` trong module này: chỉ lưu UUID để truy vết, giống mọi module khác (`architecture.md` quyết định 4). Lý do: đây là dữ liệu ghi nhận chứ không phải quan hệ nghiệp vụ, không dùng để join (tên người hiển thị lấy qua `UserDirectory`), và `system_config`, `audit_log` thuộc package `admin`. FK chỉ giữ cho quan hệ nghiệp vụ: `user_role` tới `users`, `role`; `refresh_token`, `member_verification.user_id` tới `users`.
 
 ### 5.1 Danh sách bảng
 
@@ -364,7 +366,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | `refresh_token` | Refresh token (chỉ lưu hash) | SCRUM-35 | FK tới `users` |
 | `member_verification` | Yêu cầu tham gia gia đình và tình trạng thành viên (ai thuộc gia đình nào, chi nào, đã xác minh chưa, vai trò) | Thiết kế ở SCRUM-26; làm cùng SCRUM-35 (Sprint 3) vì module Gia phả (SCRUM-37) cần ngay (mục 8, câu 3) | FK tới `users`; `family_id`, `branch_id` chỉ là UUID |
 | `audit_log` | Nhật ký kiểm toán | SCRUM-57 (Sprint 6) | Không có FK |
-| `system_config` | Tham số cấu hình hệ thống | SCRUM-94 (Sprint 7) | FK `updated_by` tới `users` |
+| `system_config` | Tham số cấu hình hệ thống | SCRUM-94 (Sprint 7) | Không có FK |
 
 Mọi bảng có đủ `created_at`, `updated_at`, `deleted_at`; `users`, `member_verification`, `system_config` thêm `created_by`, `updated_by`. **Ngoại lệ duy nhất:** `audit_log` là bản ghi chỉ thêm nên chỉ có `id` và `created_at` (người thực hiện nằm ở `actor_user_id`).
 
@@ -376,7 +378,7 @@ erDiagram
   USERS ||--o{ MEMBER_VERIFICATION : "xin tham gia / thuộc gia đình"
 ```
 
-> `audit_log` và `system_config` không vẽ quan hệ: `audit_log` không có FK; `system_config.updated_by` trỏ tới `users` nhưng chỉ để ghi nhận. `member_verification.family_id`, `branch_id` trỏ tới `family`, `branch` của module Gia phả bằng UUID thường, không vẽ FK.
+> `audit_log` và `system_config` không vẽ quan hệ: `audit_log` không có FK; `system_config.updated_by` chỉ lưu UUID người sửa, không FK. `member_verification.family_id`, `branch_id` trỏ tới `family`, `branch` của module Gia phả bằng UUID thường, không vẽ FK.
 
 ### 5.2 Đặc tả từng bảng
 
@@ -395,8 +397,8 @@ erDiagram
 | created_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
 | updated_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
-| created_by | UUID | NULL, FK `users(id)` | NULL khi tự đăng ký |
-| updated_by | UUID | NULL, FK `users(id)` | |
+| created_by | UUID | NULL | NULL khi tự đăng ký; không FK (cột người thực hiện) |
+| updated_by | UUID | NULL | Không FK |
 
 Index: `UNIQUE (email) WHERE deleted_at IS NULL`; `(status)`.
 
@@ -450,7 +452,7 @@ Index: `UNIQUE (token_hash)`; `(user_id)`; `(expires_at)`.
 | status | VARCHAR(20) | NOT NULL, `DEFAULT 'PENDING'`, `CHECK (status IN ('PENDING','APPROVED','REJECTED','CANCELLED','REMOVED'))` | `APPROVED` là đã xác minh |
 | message | VARCHAR(255) | NULL | Lời nhắn của người xin |
 | reject_reason | VARCHAR(255) | NULL | Lý do từ chối |
-| reviewed_by | UUID | NULL, FK `users(id)` | Người duyệt |
+| reviewed_by | UUID | NULL | Người duyệt; không FK |
 | reviewed_at | TIMESTAMPTZ | NULL | |
 | created_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
 | updated_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
@@ -490,7 +492,7 @@ Index: `(created_at DESC)`; `(actor_user_id, created_at DESC)`; `(action, create
 | updated_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | Thời điểm sửa |
 | deleted_at | TIMESTAMPTZ | NULL | |
 | created_by | UUID | NULL | |
-| updated_by | UUID | NULL, FK `users(id)` | Người sửa |
+| updated_by | UUID | NULL | Người sửa; không FK |
 
 Index: `UNIQUE (config_key) WHERE deleted_at IS NULL`.
 
@@ -628,7 +630,8 @@ public interface GenealogyPort {                               // module Gia ph�
     Optional<String> findFamilyName(UUID familyId);            // rỗng nếu không tồn tại
     Optional<String> findBranchName(UUID familyId, UUID branchId);
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);   // chính nó hoặc chi con
-    void linkAccount(UUID familyId, UUID personId, UUID userId);                    // đặt person.user_id; ném lỗi GEN_xxx nếu không hợp lệ
+    void unlinkAccount(UUID userId);                                                // đặt person.user_id = NULL ở hồ sơ đang gắn tài khoản này (nếu có)
+    void linkAccount(UUID familyId, UUID personId, UUID userId);                    // đặt person.user_id; person phải thuộc familyId (BR-AUTH-11); ném lỗi GEN_xxx nếu không hợp lệ
 }
 
 public interface ContentModerationPort {                       // module Community (TV3) cài đặt
