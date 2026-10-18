@@ -1,7 +1,7 @@
 # SRS: Đặc tả yêu cầu phần mềm FamilyConnect
 
 > **Người viết:** TV1 (Tuấn Nguyễn Thanh) | **Reviewer:** TV4 (Huy Quốc) | **Task Jira:** SCRUM-14 | **Hạn nộp review:** Thứ Năm 8/10
-> **Phiên bản:** 0.2 (bản nháp đầy đủ, chờ nhóm họp chốt ở các mục đánh dấu "cần nhóm xác nhận") | **Ngày:** 6/10/2026
+> **Phiên bản:** 0.3 (các mục nhóm tự quyết đã chốt ngày 9/10/2026; còn chờ giảng viên xác nhận ở mục 3 và báo giảng viên mục 7.2) | **Ngày:** 9/10/2026
 > **Nguyên tắc viết:** mọi yêu cầu trong tài liệu này **bám theo đề tài giảng viên giao** (mục 3.2 a đến g). Phần nhóm tự bổ sung được ghi rõ là "bổ sung của nhóm".
 
 ---
@@ -113,7 +113,7 @@ Ma trận phân quyền chi tiết: xem **Phụ lục A**.
 | FR-AUTH-01 | Đăng ký và xác thực người dùng | User registration and authentication | Must | S3 | SCRUM-35, 36 |
 | FR-AUTH-02 | Phân quyền theo vai trò (RBAC) | Role-Based Access Control (RBAC) | Must | S4 | SCRUM-43 |
 | FR-AUTH-03 | Quản lý hồ sơ người dùng | User profile management | Must | S4 | SCRUM-43 |
-| FR-AUTH-04 | Xác minh thành viên gia đình | Family member verification | Must | S6 | SCRUM-57 |
+| FR-AUTH-04 | Xác minh thành viên gia đình | Family member verification | Must | S3-S6 | SCRUM-35, 57 |
 | **Family & Genealogy Management** | | | | | |
 | FR-GEN-01 | Quản lý gia đình | Family management | Must | S3 | SCRUM-37 |
 | FR-GEN-02 | Quản lý chi họ | Branch management | Must | S3 | SCRUM-37 |
@@ -224,7 +224,7 @@ Toàn bộ nội dung đề tài yêu cầu:
 - 11 sản phẩm bàn giao (đề tài mục f), đối chiếu ở **Phụ lục B**.
 - 5 gói công việc (đề tài mục g): phân tích và thiết kế; phát triển nền tảng; Mobile và tích hợp AI; trực quan hóa và phân tích; kiểm thử và triển khai.
 
-### 7.2 Mục thực hiện ở mức độ giảm (cần nhóm xác nhận, nên báo giảng viên)
+### 7.2 Mục thực hiện ở mức độ giảm (nhóm đã chốt 9/10/2026, cần báo giảng viên)
 Đề tài yêu cầu các mục này; nhóm làm ở mức sau vì giới hạn 8 tuần:
 | Mục | Mức độ thực hiện | Lý do |
 |---|---|---|
@@ -261,21 +261,22 @@ Cột trống được điền dần trong các sprint sau; mỗi hàng nối y�
 
 | Mã FR/NFR | Use case | Bảng DB | API | Màn hình | Test case | Task Jira |
 |---|---|---|---|---|---|---|
-| FR-AUTH-01 | UC-AUTH-01, 02, 03 | user, role, user_role, refresh_token | POST /auth/register, /auth/login, /auth/refresh | Đăng nhập, Đăng ký | TC-AUTH-001 | SCRUM-35, 36 |
+| FR-AUTH-01 | UC-AUTH-01, 02, 03, 04 | users, role, user_role, refresh_token | POST /users, /auth/login, /auth/refresh | Đăng nhập, Đăng ký | TC-AUTH-001 | SCRUM-35, 36 |
 | FR-GEN-08 | UC-GEN-08 | parent_child, person | GET /relationships | Tra quan hệ | | SCRUM-51 |
-| FR-AI-02 | UC-AI-02 | embedding_chunk, chat_session, chat_message | POST /ai/chat | Chat AI | | SCRUM-55, 63 |
+| FR-AI-02 | UC-AI-02 | ai_embedding_chunk, ai_chat_session, ai_chat_message | POST /ai/chat | Chat AI | | SCRUM-55, 63 |
 | (điền thêm) | | | | | | |
 
 ---
 
 ## Phụ lục A. Ma trận phân quyền (role x chức năng)
-`Không` = không được; `Có` = được; ghi chú trong ngoặc là phạm vi dữ liệu. **Cần nhóm xác nhận.**
+`Không` = không được; `Có` = được; ghi chú trong ngoặc là phạm vi dữ liệu. **Đã chốt 9/10/2026** (leader quyết định, báo lại nhóm ở họp Sprint 2).
 
 | Chức năng | Khách (GUEST) | Thành viên chưa xác minh | Thành viên (MEMBER) | Trưởng chi (BRANCH_ADMIN) | Quản trị (SYSTEM_ADMIN) |
 |---|---|---|---|---|---|
 | Đăng ký, đăng nhập | Có | Có | Có | Có | Có |
 | Xem và sửa hồ sơ của chính mình | Không | Có | Có | Có | Có |
 | Xin tham gia gia đình | Không | Có | Không (đã tham gia) | Không | Không |
+| Tạo gia đình mới (người tạo trở thành trưởng chi của gia đình đó) | Không | Có (nếu chưa thuộc gia đình nào) | Không (đã thuộc gia đình) | Không | Có |
 | Duyệt hoặc từ chối yêu cầu tham gia | Không | Không | Không | Có (gia đình/chi của mình) | Có |
 | Xem cây gia phả và danh sách thành viên | Không | Không | Có (gia đình của mình) | Có | Có |
 | Thêm, sửa, xóa thành viên, quan hệ cha-mẹ-con, hôn nhân | Không | Không | Không | Có | Có |
@@ -291,12 +292,15 @@ Cột trống được điền dần trong các sprint sau; mỗi hàng nối y�
 | Xem dashboard thống kê | Không | Không | Không | Có (gia đình/chi của mình) | Có |
 | Tạo báo cáo PDF, xuất CSV | Không | Không | Không | Có | Có |
 | Quản lý người dùng (khóa, đổi vai trò) | Không | Không | Không | Không | Có |
-| Kiểm duyệt nội dung | Không | Không | Không | Không | Có |
+| Gỡ bài đăng, bình luận, sự kiện của người khác | Không | Không | Không | Có (chi mình quản lý, kèm chi con) | Có |
+| Kiểm duyệt nội dung (toàn hệ thống, FR-ADM-02) | Không | Không | Không | Không | Có |
 | Xem nhật ký kiểm toán | Không | Không | Không | Không | Có |
 | Sao lưu, khôi phục dữ liệu | Không | Không | Không | Không | Có |
 | Cấu hình hệ thống | Không | Không | Không | Không | Có |
 
 > Ghi chú: "Thành viên chưa xác minh" là một **trạng thái** của vai trò `MEMBER` (chờ trưởng chi duyệt), không phải vai trò riêng. Vì vậy hệ thống chỉ có 4 vai trò: GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN.
+
+> Ghi chú: Phạm vi của `BRANCH_ADMIN` là chi được gán (kèm các chi con); nếu không gán chi cụ thể thì quản lý cả gia đình. Mỗi người dùng thuộc tối đa một gia đình. Bảng người dùng đặt tên `users` (vì `user` là từ khóa PostgreSQL).
 
 ---
 

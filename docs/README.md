@@ -13,7 +13,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `01-srs/use-cases/auth.md` | Use case Auth, RBAC, Profile, Admin | TV1 Tuấn | TV4 | SCRUM-26 |
 | `01-srs/use-cases/genealogy.md` | Use case Gia phả | TV2 Trí | TV5 | SCRUM-18 |
 | `01-srs/use-cases/community-events.md` | Use case Community và Events | TV3 PiLo257 | TV1 | SCRUM-20 |
-| `01-srs/use-cases/heritage-directory-dashboard.md` | Use case Heritage, Directory, Dashboard | TV4 Huy Quốc | TV2 | SCRUM-22 |
+| `01-srs/use-cases/heritage-directory-dashboard.md` | Use case Heritage, Directory, Dashboard | TV4 Huy Quốc | TV1 | SCRUM-22 |
 | `01-srs/use-cases/ai.md` | Use case AI | TV5 Lê Nhựt | TV3 | SCRUM-34 |
 | `02-design/architecture.md` | Kiến trúc tổng thể (Web, Mobile, AI Service Layer) | TV4 Huy Quốc | TV2 | SCRUM-23 |
 | `02-design/algorithm-relationship.md` | Thuật toán quan hệ họ hàng | TV2 Trí | TV5 | SCRUM-19 |
@@ -32,7 +32,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 - File viết bằng **Markdown**, tên file **chữ thường, không dấu, nối bằng gạch ngang**.
 - **Mỗi người chỉ sửa file của mình.** Chỉ Tuấn sửa `srs.md` và file này; người khác gửi nội dung cho Tuấn.
 - Sơ đồ: dùng **Mermaid** trong Markdown (GitHub tự vẽ) hoặc vẽ bằng draw.io rồi xuất ảnh PNG vào `images/` và chèn vào bằng `![mô tả](../images/ten-anh.png)`.
-- Wireframe vẽ trong Figma, chỉ lưu link và ảnh xuất ra trong `05-ui/`.
+- Wireframe vẽ trong Figma, chỉ lưu link trong `05-ui/figma-links.md`, không xuất ảnh wireframe vào repo.
 - Mã yêu cầu dùng thống nhất: `FR-<NHÓM>-<số>` (chức năng), `NFR-<số>` (phi chức năng), `UC-<NHÓM>-<số>` (use case).
 - Mọi thay đổi sau **Docs Gate** (cuối Sprint 2) phải cập nhật lại tài liệu gốc (ERD, OpenAPI, SRS) trước khi sửa code.
 

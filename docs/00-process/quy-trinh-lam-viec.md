@@ -138,7 +138,7 @@ Mỗi bước dưới đây có **ví dụ cụ thể**. Hai ví dụ chạy xuy
 | Người làm | Trí (TV2) | Tuấn (TV1) |
 | Reviewer | Lê Nhựt (TV5) | Huy Quốc (TV4) |
 | Nhánh | `docs/SCRUM-18-genealogy` | `feature/SCRUM-35-auth-backend` |
-| Kết quả | File `docs/01-srs/use-cases/genealogy.md` | API `/auth/register`, `/auth/login` |
+| Kết quả | File `docs/01-srs/use-cases/genealogy.md` | API `POST /users` (đăng ký), `/auth/login` |
 
 ### Bước 1. Chọn task trên Jira
 
