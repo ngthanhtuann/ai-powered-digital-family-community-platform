@@ -1,7 +1,7 @@
 # ADR: Spike AI, RAG, Spring AI, pgvector
 
 > **Người làm:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-24
-> **Trạng thái:** Chờ review (còn các mục chưa đo, bổ sung ở Sprint 2) | **Ngày thử nghiệm:** chưa ghi, bổ sung ở SCRUM-34 (Sprint 2)
+> **Trạng thái:** Chờ review (còn bảng đánh giá top-3 và chấm chất lượng câu trả lời, mục 3.2 và 3.3) | **Ngày thử nghiệm:** số liệu đo được ghi ngày 14/10/2026 (commit `d8c7417`, SCRUM-34); giá tra ngày 09/10/2026. TV5 xác nhận lại ngày chạy thực tế nếu khác.
 > Mã thử nghiệm nằm ở nhánh `spike/SCRUM-24-rag` (không merge vào `develop`). **Không có API key trong repo.** Thiết kế chi tiết RAG viết ở `ai-rag.md` (SCRUM-34, Sprint 2).
 
 ## 1. Bối cảnh
@@ -14,13 +14,8 @@ FamilyConnect cần chatbot hỏi đáp gia phả và tìm kiếm ngữ nghĩa b
 |---|---|
 | Nhà cung cấp | Google Gemini API (gói miễn phí) |
 | Model embedding | `gemini-embedding-001` |
-<<<<<<< HEAD
 | Model LLM | `gemini-3.8-flash` |
 | Thư viện | Spring AI `2.0.1` (BOM); pgvector extension chạy trong image `pgvector/pgvector:pg18` |
-=======
-| Model LLM | Chưa đo, bổ sung ở SCRUM-34 (Sprint 2) |
-| Thư viện | Spring AI, pgvector (phiên bản chưa ghi, bổ sung ở SCRUM-34 (Sprint 2)) |
->>>>>>> fb449954f8db30772790e8813fccec1b0e00ea6e
 | Dữ liệu thử | 10 câu tiếng Việt về gia phả (dữ liệu giả, không dùng dữ liệu thật của gia đình) |
 | Khóa API | Biến môi trường `GEMINI_API_KEY`, không commit |
 
@@ -47,11 +42,7 @@ Chất lượng tiếng Việt: Chất lượng truy xuất tiếng Việt: đã
 
 | Chỉ số | Kết quả |
 |---|---|
-| Độ trễ trả lời (đo từ lúc gửi đến khi nhận đủ) | Có 3 lần đo RAG hoàn chỉnh đã ghi nhận:
-- Lần 1: retrieval 798,6321 ms; LLM 5.208,9139 ms; tổng 6.007,5876 ms.
-- Lần 2: retrieval 521,6554 ms; LLM 17.904,3649 ms; tổng 18.426,0481 ms.
-- Lần 3: retrieval 695,6264 ms; LLM 41.556,7823 ms; tổng 42.252,4819 ms.
-Trung bình 3 lần: retrieval 671,9713 ms; LLM 21.556,6870 ms; tổng 22.228,7059 ms. Chưa đủ mẫu để xem đây là benchmark ổn định; P95 chưa được dùng làm kết luận vì chỉ có 3 mẫu. |
+| Độ trễ trả lời (đo từ lúc gửi đến khi nhận đủ) | Có 3 lần đo RAG hoàn chỉnh đã ghi nhận:<br>- Lần 1: retrieval 798,6 ms; LLM 5.208,9 ms; tổng 6.007,6 ms.<br>- Lần 2: retrieval 521,7 ms; LLM 17.904,4 ms; tổng 18.426,0 ms.<br>- Lần 3: retrieval 695,6 ms; LLM 41.556,8 ms; tổng 42.252,5 ms.<br>Trung bình 3 lần: retrieval 672,0 ms; LLM 21.556,7 ms; tổng 22.228,7 ms. Chưa đủ mẫu để xem đây là benchmark ổn định; P95 chưa được dùng làm kết luận vì chỉ có 3 mẫu. |
 | Chất lượng câu trả lời tiếng Việt | Chưa có bảng đánh giá có cấu trúc cho 5 câu mẫu; không kết luận chất lượng đạt/chưa đạt khi chưa chấm từng câu. |
 | Hành vi khi ngữ cảnh không có thông tin | Prompt đã được thiết kế yêu cầu trả đúng “Không tìm thấy thông tin.” khi context không đủ; chưa có bộ kiểm thử xác nhận có hệ thống cho trường hợp này. Có ghi nhận một số lần chạy RAG trả “Không tìm thấy thông tin.”, nhưng chưa đủ để khẳng định tỷ lệ đúng. |
 
@@ -84,7 +75,7 @@ Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_cont
 | Gói miễn phí giới hạn số yêu cầu, có thể hết hạn mức khi demo | Cao | Cache câu trả lời (`ai_summary_cache`), giới hạn số câu hỏi mỗi người mỗi giờ (RATE_001), có phương án chuyển nhà cung cấp |
 | Dữ liệu gia đình gửi ra dịch vụ bên ngoài; theo trang giá của Google, nội dung gửi qua gói miễn phí được dùng để cải thiện sản phẩm | Cao | Chỉ gửi ngữ cảnh đã lọc theo `family_id` và quyền xem; không gửi mật khẩu, số điện thoại, thông tin trẻ dưới 16 tuổi (`privacy.md`); dùng dữ liệu giả khi thử; chuyển sang gói trả phí (không dùng dữ liệu để huấn luyện) trước khi chạy với dữ liệu thật |
 | LLM bịa thông tin ngoài ngữ cảnh | Trung bình | Prompt chỉ cho trả lời theo ngữ cảnh; ngưỡng điểm tối thiểu; kèm nguồn trong câu trả lời |
-| Độ trễ khoảng 0,6 giây cho mỗi bước tìm kiếm, cộng thời gian LLM | Trung bình | Tìm kiếm và gọi LLM chạy bất đồng bộ trên giao diện; có chỉ báo đang tải; timeout trả AI_001 |
+| Độ trễ: tìm kiếm khoảng 0,6 giây, nhưng gọi LLM đo được 5 đến 42 giây (trung bình 21,6 giây, 3 lần đo) | Cao | Giao diện chạy bất đồng bộ, có chỉ báo đang tải; đặt thời gian chờ tối đa cho lời gọi LLM (đề xuất 30 giây, cấu hình được), quá thời gian trả 503 `AI_001`; đo lại khi có gói trả phí |
 | Phụ thuộc một nhà cung cấp | Thấp | Gọi qua interface của Spring AI để đổi nhà cung cấp bằng cấu hình |
 | Giá LLM tăng gấp đôi từ 01/01/2027 | Trung bình | Tính chi phí theo giá mới trong báo cáo cuối kỳ; cân nhắc giới hạn số câu hỏi |
 
@@ -92,7 +83,7 @@ Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_cont
 
 **Quyết định sơ bộ chọn Gemini, xác nhận sau khi hoàn tất đo ở Sprint 2.** Google Gemini dự kiến là nhà cung cấp LLM và embedding cho giai đoạn đồ án, tích hợp qua Spring AI.
 
-Lý do: đã tích hợp và đo thành công với tiếng Việt, độ trễ chấp nhận được, có gói miễn phí phù hợp phát triển.
+Lý do: đã tích hợp và đo thành công với tiếng Việt; tìm kiếm ngữ nghĩa nhanh (khoảng 0,6 giây); có gói miễn phí phù hợp giai đoạn phát triển. Độ trễ gọi LLM ở gói miễn phí còn cao và dao động (5 đến 42 giây), nên chưa coi là đạt; cần đo lại và áp dụng thời gian chờ ở mục 5.
 
 Điều kiện đi kèm: giải quyết số chiều vector (mục 4), thực hiện các biện pháp giảm rủi ro ở mục 5.
 
@@ -100,3 +91,4 @@ Lý do: đã tích hợp và đo thành công với tiếng Việt, độ trễ 
 
 - SCRUM-34: viết `ai-rag.md` (phân đoạn dữ liệu, prompt hệ thống, ngưỡng điểm, giới hạn, quyền dữ liệu) dựa trên quyết định này.
 - Bảng `ai_embedding_chunk` đưa vào ERD (SCRUM-28) với cột `vector(768)`.
+- TV5: lập bảng đối chiếu cho 10 câu hỏi (câu hỏi, 3 kết quả gần nhất, đáp án kỳ vọng, đúng/sai) và chấm 5 câu trả lời mẫu; chỉ đánh dấu "Đạt" khi có bảng này.

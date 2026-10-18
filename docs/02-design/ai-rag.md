@@ -1,7 +1,7 @@
 # Thiết kế AI và RAG
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-34 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2); spike: SCRUM-24 hạn Thứ Tư 7/10
-> **Trạng thái:** Nháp 
+> **Trạng thái:** Chờ review
 > Cách làm: tạo nhánh `docs/<mã SCRUM>-<tên-ngắn>` từ `develop`, điền vào file này, mở Pull Request vào `develop`. Xem `docs/README.md`.
 
 ## 1. Kết quả spike (SCRUM-24)
@@ -18,7 +18,7 @@ flowchart TD
     U["Câu hỏi của người dùng"] --> V["Xác thực JWT, xác minh tài khoản, rate limit"]
     V --> W["Xác định family_id và quyền từ security context"]
     W --> X["Embedding câu hỏi: 768 chiều"]
-    X --> Y["Top-k retrieval + filter family_id + ACL + deleted_at IS NULL"]
+    X --> Y["Top-k retrieval + filter family_id, branch_id được xem, deleted_at IS NULL"]
     F --> Y
     Y --> Z{"Có ngữ cảnh đủ liên quan?"}
     Z -- "Không" --> N["Trả 'Không tìm thấy thông tin.'"]
@@ -34,9 +34,11 @@ flowchart TD
 - **Hồ sơ một người (`PERSON`)**: một đoạn mô tả cho mỗi người nếu nội dung ngắn; nếu dài thì chia đoạn có thứ tự và lưu `chunk_no`.
 - **Bài đăng/câu chuyện (`POST`, `STORY`)**: khoảng 300–500 từ mỗi đoạn. Khi cần chia nhiều đoạn, giữ metadata nguồn, gia đình và thứ tự đoạn.
 - **Tài liệu (`DOCUMENT`)**: chia theo tiêu đề/đoạn văn tự nhiên; tránh cắt giữa câu hoặc tách bảng khỏi phần giải thích liên quan.
-- Mỗi chunk lưu `family_id`, `source_type`, `source_id`, `chunk_no`, `content_hash` và metadata tối thiểu cần cho truy xuất.
-- Khi nguồn đổi nội dung, tính lại hash và embedding; cập nhật hoặc vô hiệu hóa chunk cũ. Khi nguồn bị xóa hoặc quyền thay đổi, xóa mềm/vô hiệu hóa chunk và bảo đảm truy vấn không trả chunk đó.
-- Không đưa mật khẩu, số điện thoại, thông tin trẻ em hoặc trường dữ liệu bị cấm trong `privacy.md` mục 8 vào chunk gửi cho nhà cung cấp LLM. Cần kiểm tra chính sách riêng tư trước khi tạo embedding bên ngoài, không chỉ trước khi gọi chat LLM.
+- **Sự kiện (`EVENT`)**: một đoạn gồm tên, thời gian, địa điểm, mô tả (BR-EVT-06).
+- Mỗi chunk lưu `family_id`, `branch_id` (NULL là toàn gia đình, BR-13 trong `ai.md`), `source_type`, `source_id`, `chunk_no`, `content_hash` và metadata tối thiểu cần cho truy xuất.
+- Chỉ mục dùng chung cho mọi vai trò, nên đoạn `PERSON` chỉ chứa trường Thành viên được xem theo BR-GEN-10 (họ tên, năm sinh, quan hệ, nghề nghiệp, tỉnh/thành); người dưới 16 tuổi chỉ họ tên và quan hệ (BR-GEN-18).
+- Khi nguồn đổi nội dung, tính lại hash và embedding; cập nhật hoặc vô hiệu hóa chunk cũ. Khi nguồn bị xóa, bị ẩn do kiểm duyệt (`hidden_at`) hoặc quyền thay đổi, module sở hữu gọi `AiGateway.removeSource`; module `ai` xóa mềm/vô hiệu hóa chunk và bảo đảm truy vấn không trả chunk đó.
+- Không đưa mật khẩu, số điện thoại, thông tin trẻ em hoặc trường dữ liệu bị cấm trong `privacy.md` mục 6 vào chunk gửi cho nhà cung cấp LLM. Cần kiểm tra chính sách riêng tư trước khi tạo embedding bên ngoài, không chỉ trước khi gọi chat LLM.
 
 ### 3.2. Model và số chiều
 - Nhà cung cấp: Google Gemini, tích hợp qua Spring AI.
@@ -85,19 +87,22 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 
 ### 5.2. Rate limit, cache và timeout
 - Rate limit theo tài khoản/người dùng và khoảng thời gian cấu hình. Khi vượt giới hạn, trả HTTP 429 `RATE_001`.
-- Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn.
-- Lỗi đầu vào không hợp lệ: dùng HTTP 400 và mã `AI_002` theo API conventions.
+- Rate limit chat: 20 câu/giờ/người dùng (`conventions.md` mục 7.1, khóa cấu hình `ai.chat.limit_per_hour`).
+- Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn. Thời gian chờ tối đa cho một lời gọi LLM đề xuất 30 giây, cấu hình được (spike đo 5 đến 42 giây).
+- Lỗi đầu vào không hợp lệ: HTTP 400, mã `VALID_001` theo `conventions.md`.
+- Quản trị tắt tính năng (`ai.search.enabled`, `ai.chat.enabled`, `ai.summary.enabled`): HTTP 409, mã `AI_002`.
 - `ai_summary_cache` chỉ dùng khi `family_id`, nguồn, hash phiên bản, quyền truy cập và tham số tóm tắt khớp; cache hết hạn hoặc nguồn đổi thì không sử dụng.
 - Hạn mức Gemini Free Tier có thể chặn demo; không lặp gọi để vượt quota. Chi phí thực tế cho nhóm cần tính sau khi ghi token usage và số lượt gọi; không tự điền con số khi chưa có dữ liệu.
 
 ## 6. Quyền dữ liệu
 1. Tài khoản chưa xác minh không được gọi AI: HTTP 403 `PERM_002`.
-2. Trước khi truy xuất, xác định `family_id` và quyền xem của người dùng; áp dụng filter ngay trong retrieval.
+2. Trước khi truy xuất, xác định `family_id`, vai trò và các chi người dùng được xem (qua `MembershipQuery`); áp dụng filter `family_id` và `branch_id` ngay trong retrieval (nội dung theo chi chỉ hiện cho chi đó và chi con, BR-COM-03).
 3. Không truy vấn trực tiếp bảng của `genealogy`, `community` hoặc `heritage`; lấy nguồn qua interface Java của module sở hữu.
-4. Chỉ đưa vào prompt các trường được phép theo `docs/01-srs/privacy.md`. Theo ghi chú ADR hiện có, không gửi mật khẩu, số điện thoại và thông tin trẻ dưới 16 tuổi.
+4. Chỉ đưa vào prompt và chỉ mục các trường được phép theo `docs/01-srs/privacy.md` mục 6. Không bao giờ gửi mật khẩu, token, email, số điện thoại, địa chỉ chi tiết, địa chỉ IP, dữ liệu gia đình khác; người dưới 16 tuổi chỉ họ tên và quan hệ.
 5. Gói Gemini miễn phí có ghi chú rằng nội dung gửi đi có thể được dùng để cải thiện sản phẩm. Chỉ dùng dữ liệu giả trong phát triển/thử nghiệm; trước khi dùng dữ liệu gia đình thật, cần đánh giá lại điều khoản và cấu hình gói phù hợp.
-6. Không ghi API key, token xác thực hoặc context nhạy cảm vào log. Log tối thiểu mã lỗi, thời gian xử lý và số token nếu có.
+6. Không ghi API key, token xác thực hoặc context nhạy cảm vào log. Log tối thiểu mã lỗi, thời gian xử lý và số token nếu có; nhật ký kiểm toán không chứa nội dung câu hỏi (BR-AUTH-16).
 7. Các module khác gọi AI qua interface Java `AiGateway`; không gọi REST nội bộ và không đọc/ghi trực tiếp các bảng `ai_*`.
+8. Câu trả lời, tóm tắt, giải thích do AI tạo được giao diện gắn nhãn "Do AI tạo" (`privacy.md` mục 6).
 
 ## 7. Các dịch vụ AI
 | Dịch vụ | API | Ghi chú |

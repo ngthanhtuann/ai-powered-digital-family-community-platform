@@ -3,7 +3,7 @@ info:
   title: FamilyConnect AI API
   version: 1.0.0
   description: 'API cho tìm kiếm ngữ nghĩa, chatbot RAG, diễn giải quan hệ, tóm tắt và gợi ý. Tài khoản phải được
-    xác minh. Tất cả truy xuất phải kiểm tra family_id và quyền xem.
+    xác minh. Tất cả truy xuất phải kiểm tra family_id, phạm vi chi (branch_id) và quyền xem. Mã lỗi theo ai.md mục 6.2.
 
     '
 servers:
@@ -119,6 +119,8 @@ paths:
                       code: PERM_002
                       message: Tài khoản chưa được xác minh để sử dụng AI.
                       details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -237,6 +239,8 @@ paths:
                       code: PERM_002
                       message: Tài khoản chưa được xác minh để sử dụng AI.
                       details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -451,6 +455,8 @@ paths:
                       code: PERM_002
                       message: Tài khoản chưa được xác minh để sử dụng AI.
                       details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -478,6 +484,7 @@ paths:
           - POST
           - STORY
           - DOCUMENT
+          - EVENT
       - in: query
         name: contextId
         required: false
@@ -566,6 +573,8 @@ paths:
                       code: PERM_002
                       message: Tài khoản chưa được xác minh để sử dụng AI.
                       details: []
+        '404':
+          $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -590,6 +599,7 @@ components:
           - POST
           - STORY
           - DOCUMENT
+          - EVENT
         sourceId:
           type: string
           format: uuid
@@ -608,6 +618,7 @@ components:
           - POST
           - STORY
           - DOCUMENT
+          - EVENT
         sourceId:
           type: string
           format: uuid
@@ -674,8 +685,8 @@ components:
               code: AUTH_002
               message: Token hết hạn hoặc không hợp lệ.
               details: []
-    Forbidden:
-      description: Không đủ quyền truy cập dữ liệu gia đình
+    FeatureDisabled:
+      description: Tính năng AI đang bị quản trị tắt qua cấu hình (ai.search.enabled, ai.chat.enabled, ai.summary.enabled)
       content:
         application/json:
           schema:
@@ -683,20 +694,8 @@ components:
           example:
             success: false
             error:
-              code: PERM_001
-              message: Bạn không có quyền truy cập dữ liệu này.
-              details: []
-    Unverified:
-      description: Tài khoản chưa được xác minh
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          example:
-            success: false
-            error:
-              code: PERM_002
-              message: Tài khoản chưa được xác minh để sử dụng AI.
+              code: AI_002
+              message: Tính năng AI đang tạm tắt.
               details: []
     NotFound:
       description: Không tìm thấy nguồn hoặc thành viên được yêu cầu
