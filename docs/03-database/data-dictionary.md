@@ -1,7 +1,7 @@
 # Từ điển dữ liệu
 
-> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.3 (nháp, khớp ERD v0.4, 30 bảng)
-> Nguồn: `genealogy.md` (TV2, bản 14/10), `community-events.md` (TV3, đã merge, có `content_report`), `heritage-directory-dashboard.md` (TV4), `auth.md` mục 5 (TV1, chờ review), `ai.md` mục 5 (TV5, bản nháp SCRUM-34, đã đối chiếu khớp 4 bảng AI, chờ review).
+> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.4 (khớp ERD v0.5, 30 bảng)
+> Nguồn: `genealogy.md` (TV2, bản 14/10), `community-events.md` (TV3, đã merge, có `content_report`), `heritage-directory-dashboard.md` (TV4), `auth.md` mục 5 (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` mục 5 (TV5, đã merge PR #35).
 > Mỗi bảng một khối. Quy ước: khóa chính UUID; `TIMESTAMPTZ`; xóa mềm `deleted_at`; khóa ngoại chỉ trong cùng module; cột "tham chiếu logic" chỉ lưu UUID có index, service kiểm tra.
 
 ## Auth và quản trị (auth, admin)
@@ -10,7 +10,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `users`
 
-**Mục đích:** Tài khoản và hồ sơ cá nhân (mật khẩu BCrypt).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Tài khoản và hồ sơ cá nhân (mật khẩu BCrypt).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -23,8 +23,8 @@ Người sở hữu: **TV1 Tuấn**
 | status | VARCHAR(20) | NOT NULL DEFAULT ACTIVE, CHECK | ACTIVE, LOCKED |
 | lock_reason | VARCHAR(255) | NULL | Bắt buộc khi LOCKED (service) |
 | last_login_at | TIMESTAMPTZ | NULL | Đăng nhập thành công gần nhất |
-| created_by | UUID | NULL, FK users | NULL khi tự đăng ký → `users.id` (FK, cùng module) |
-| updated_by | UUID | NULL, FK users |  → `users.id` (FK, cùng module) |
+| created_by | UUID | NULL | NULL khi tự đăng ký; chỉ lưu UUID, không FK (cột người thực hiện, `auth.md` mục 5) |
+| updated_by | UUID | NULL | Chỉ lưu UUID, không FK (cột người thực hiện) |
 | created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
@@ -33,7 +33,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `role`
 
-**Mục đích:** Danh mục vai trò.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Danh mục vai trò.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `user_role`
 
-**Mục đích:** Vai trò toàn hệ thống của người dùng (MEMBER, SYSTEM_ADMIN).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Vai trò toàn hệ thống của người dùng (MEMBER, SYSTEM_ADMIN).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -64,7 +64,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `refresh_token`
 
-**Mục đích:** Refresh token (chỉ lưu hash).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Refresh token (chỉ lưu hash).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `member_verification`
 
-**Mục đích:** Yêu cầu tham gia gia đình và tình trạng thành viên.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Yêu cầu tham gia gia đình và tình trạng thành viên.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -91,7 +91,7 @@ Người sở hữu: **TV1 Tuấn**
 | status | VARCHAR(20) | NOT NULL DEFAULT PENDING, CHECK | PENDING, APPROVED, REJECTED, CANCELLED, REMOVED |
 | message | VARCHAR(255) | NULL | Lời nhắn của người xin |
 | reject_reason | VARCHAR(255) | NULL | Lý do từ chối |
-| reviewed_by | UUID | NULL, FK | Người duyệt → `users.id` (FK, cùng module) |
+| reviewed_by | UUID | NULL | Người duyệt; chỉ lưu UUID, không FK (cột người thực hiện) |
 | reviewed_at | TIMESTAMPTZ | NULL |  |
 | created_by | UUID | NULL | Không FK → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Không FK → `users` (tham chiếu logic) |
@@ -103,7 +103,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `audit_log`
 
-**Mục đích:** Nhật ký kiểm toán (chỉ thêm, không sửa).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Nhật ký kiểm toán (chỉ thêm, không sửa).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -122,7 +122,7 @@ Người sở hữu: **TV1 Tuấn**
 
 ### `system_config`
 
-**Mục đích:** Tham số cấu hình hệ thống.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ (tài liệu chờ review).
+**Mục đích:** Tham số cấu hình hệ thống.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -134,7 +134,7 @@ Người sở hữu: **TV1 Tuấn**
 | default_value | VARCHAR(500) | NOT NULL | Giá trị mặc định |
 | description | VARCHAR(255) | NOT NULL |  |
 | created_by | UUID | NULL | Không FK → `users` (tham chiếu logic) |
-| updated_by | UUID | NULL, FK | Người sửa → `users.id` (FK, cùng module) |
+| updated_by | UUID | NULL | Người sửa; chỉ lưu UUID, không FK (cột người thực hiện) |
 | created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
@@ -535,8 +535,9 @@ Người sở hữu: **TV5 Lê Nhựt**
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL, INDEX | Phạm vi gia đình → `family` (tham chiếu logic) |
-| source_type | VARCHAR(40) | NOT NULL | PERSON, POST, STORY, DOCUMENT |
-| source_id | UUID | NOT NULL, INDEX | ID nguồn của module sở hữu, không FK → `person` hoặc `post` hoặc `family_story` hoặc `heritage_document` (tham chiếu logic) |
+| branch_id | UUID | NULL | Phạm vi chi của nguồn (`ai.md` BR-13); NULL là toàn gia đình → `branch.id` (tham chiếu logic, không FK) |
+| source_type | VARCHAR(40) | NOT NULL, CHECK | `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT` |
+| source_id | UUID | NOT NULL, INDEX | ID nguồn của module sở hữu, không FK → `person` hoặc `post` hoặc `family_story` hoặc `heritage_document` (tham chiếu logic); với `EVENT` → `event.id` |
 | chunk_no | INTEGER | NOT NULL, CHECK (chunk_no >= 0) | Thứ tự chunk trong nguồn |
 | content | TEXT | NOT NULL | Nội dung đã lọc dữ liệu nhạy cảm |
 | embedding | VECTOR(768) | NOT NULL | gemini-embedding-001, 768 chiều (ADR; thử 1536 nếu tiếng Việt không đạt) |
@@ -548,7 +549,7 @@ Người sở hữu: **TV5 Lê Nhựt**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Ràng buộc bổ sung:** UNIQUE (family_id, source_type, source_id, chunk_no) WHERE deleted_at IS NULL. Chỉ mục HNSW cosine trên embedding. Cần CREATE EXTENSION vector. created_by cho phép NULL (tác vụ nền).
+**Ràng buộc bổ sung:** UNIQUE (family_id, source_type, source_id, chunk_no) WHERE deleted_at IS NULL; chỉ mục (family_id, branch_id). Chỉ mục HNSW cosine trên embedding. Cần CREATE EXTENSION vector. created_by cho phép NULL (tác vụ nền).
 
 ### `ai_chat_session`
 

@@ -304,12 +304,12 @@ Table users {
   status varchar(20) [not null, note: 'ACTIVE, LOCKED']
   lock_reason varchar(255) [note: 'Bắt buộc khi LOCKED (service)']
   last_login_at timestamptz [note: 'Đăng nhập thành công gần nhất']
-  created_by uuid [note: 'NULL khi tự đăng ký']
-  updated_by uuid
+  created_by uuid [note: 'NULL khi tự đăng ký; chỉ lưu UUID, không FK (người thực hiện)']
+  updated_by uuid [note: 'Chỉ lưu UUID, không FK (người thực hiện)']
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tài khoản và hồ sơ cá nhân (mật khẩu BCrypt) · Chỉ mục (status). Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tài khoản và hồ sơ cá nhân (mật khẩu BCrypt) · Chỉ mục (status). Trạng thái: Đầy đủ'
 }
 
 Table role {
@@ -320,7 +320,7 @@ Table role {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Danh mục vai trò · Dữ liệu khởi tạo 4 dòng (Flyway). GUEST không gán vào user_role; BRANCH_ADMIN nằm ở member_verification.role. Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Danh mục vai trò · Dữ liệu khởi tạo 4 dòng (Flyway). GUEST không gán vào user_role; BRANCH_ADMIN nằm ở member_verification.role. Trạng thái: Đầy đủ'
 }
 
 Table user_role {
@@ -330,7 +330,7 @@ Table user_role {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Vai trò toàn hệ thống của người dùng (MEMBER, SYSTEM_ADMIN) · UNIQUE (user_id, role_id) WHERE deleted_at IS NULL. Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Vai trò toàn hệ thống của người dùng (MEMBER, SYSTEM_ADMIN) · UNIQUE (user_id, role_id) WHERE deleted_at IS NULL. Trạng thái: Đầy đủ'
 }
 
 Table refresh_token {
@@ -342,7 +342,7 @@ Table refresh_token {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Refresh token (chỉ lưu hash) · Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Refresh token (chỉ lưu hash) · Trạng thái: Đầy đủ'
 }
 
 Table member_verification {
@@ -354,14 +354,14 @@ Table member_verification {
   status varchar(20) [not null, note: 'PENDING, APPROVED, REJECTED, CANCELLED, REMOVED']
   message varchar(255) [note: 'Lời nhắn của người xin']
   reject_reason varchar(255) [note: 'Lý do từ chối']
-  reviewed_by uuid [note: 'Người duyệt']
+  reviewed_by uuid [note: 'Người duyệt; chỉ lưu UUID, không FK (người thực hiện)']
   reviewed_at timestamptz
   created_by uuid [note: 'tham chiếu logic -> users, không có FK']
   updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Yêu cầu tham gia gia đình và tình trạng thành viên · UNIQUE (user_id) WHERE status IN (PENDING, APPROVED) AND deleted_at IS NULL (mỗi người một gia đình, BR-AUTH-08). Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Yêu cầu tham gia gia đình và tình trạng thành viên · UNIQUE (user_id) WHERE status IN (PENDING, APPROVED) AND deleted_at IS NULL (mỗi người một gia đình, BR-AUTH-08). Trạng thái: Đầy đủ'
 }
 
 Table audit_log {
@@ -375,7 +375,7 @@ Table audit_log {
   ip_address varchar(45)
   detail jsonb [note: 'Thông tin bổ sung không nhạy cảm']
   created_at timestamptz [not null, note: 'Thời điểm thao tác']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Nhật ký kiểm toán (chỉ thêm, không sửa) · Ngoại lệ quy ước: chỉ có id và created_at (bản ghi chỉ thêm). Chỉ mục (created_at DESC), (actor_user_id, created_at DESC), (action, created_at DESC). Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Nhật ký kiểm toán (chỉ thêm, không sửa) · Ngoại lệ quy ước: chỉ có id và created_at (bản ghi chỉ thêm). Chỉ mục (created_at DESC), (actor_user_id, created_at DESC), (action, created_at DESC). Trạng thái: Đầy đủ'
 }
 
 Table system_config {
@@ -387,18 +387,19 @@ Table system_config {
   default_value varchar(500) [not null, note: 'Giá trị mặc định']
   description varchar(255) [not null]
   created_by uuid [note: 'tham chiếu logic -> users, không có FK']
-  updated_by uuid [note: 'Người sửa']
+  updated_by uuid [note: 'Người sửa; chỉ lưu UUID, không FK (người thực hiện)']
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tham số cấu hình hệ thống · Trạng thái: Đầy đủ (tài liệu chờ review)'
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tham số cấu hình hệ thống · Trạng thái: Đầy đủ'
 }
 
 Table ai_embedding_chunk {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
-  source_type varchar(40) [not null, note: 'PERSON, POST, STORY, DOCUMENT']
-  source_id uuid [not null, note: 'ID nguồn của module sở hữu, không FK; tham chiếu logic -> person hoặc post hoặc family_story hoặc heritage_document, không có FK']
+  branch_id uuid [note: 'Phạm vi chi của nguồn (ai.md BR-13); NULL là toàn gia đình; tham chiếu logic -> branch, không có FK']
+  source_type varchar(40) [not null, note: 'CHECK IN (PERSON, POST, STORY, DOCUMENT, EVENT)']
+  source_id uuid [not null, note: 'ID nguồn của module sở hữu, không FK; tham chiếu logic -> person hoặc post hoặc family_story hoặc heritage_document hoặc event, không có FK']
   chunk_no integer [not null, note: 'Thứ tự chunk trong nguồn']
   content text [not null, note: 'Nội dung đã lọc dữ liệu nhạy cảm']
   embedding vector(768) [not null, note: 'gemini-embedding-001, 768 chiều (ADR; thử 1536 nếu tiếng Việt không đạt)']
@@ -409,7 +410,7 @@ Table ai_embedding_chunk {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'AI · TV5 Lê Nhựt · Đoạn văn bản + vector (pgvector) để tìm kiếm ngữ nghĩa và RAG · UNIQUE (family_id, source_type, source_id, chunk_no) WHERE deleted_at IS NULL. Chỉ mục HNSW cosine trên embedding. Cần CREATE EXTENSION vector. created_by cho phép NULL (tác vụ nền).'
+  Note: 'AI · TV5 Lê Nhựt · Đoạn văn bản + vector (pgvector) để tìm kiếm ngữ nghĩa và RAG · UNIQUE (family_id, source_type, source_id, chunk_no) WHERE deleted_at IS NULL; chỉ mục (family_id, branch_id). Chỉ mục HNSW cosine trên embedding. Cần CREATE EXTENSION vector. created_by cho phép NULL (tác vụ nền).'
 }
 
 Table ai_chat_session {
@@ -478,8 +479,4 @@ Ref: user_role.user_id > users.id
 Ref: user_role.role_id > role.id
 Ref: refresh_token.user_id > users.id
 Ref: member_verification.user_id > users.id
-Ref: member_verification.reviewed_by > users.id
-Ref: system_config.updated_by > users.id
 Ref: ai_chat_message.session_id > ai_chat_session.id
-Ref: users.created_by > users.id
-Ref: users.updated_by > users.id
