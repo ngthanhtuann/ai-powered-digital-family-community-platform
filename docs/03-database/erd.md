@@ -1,7 +1,7 @@
 # ERD tổng hợp và quy ước đặt tên CSDL
 
 > **Người viết:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03)
-> **Phiên bản:** v0.5 (18/10/2026) | **Trạng thái:** Chờ review lại. Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
+> **Phiên bản:** v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
 > **Nguồn:** `genealogy.md` (TV2), `community-events.md` (TV3), `heritage-directory-dashboard.md` (TV4), `auth.md` (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` (TV5, đã merge PR #35), quy ước ở `architecture.md` mục 7 và cập nhật của TV1 ngày 09/10/2026. Tất cả đối chiếu trên nhánh `develop` ngày 18/10/2026.
 > **Sản phẩm kèm theo:** ảnh `../images/erd.png` và `../images/erd.svg`; file nguồn `erd.dbml` (dán vào dbdiagram.io) và `erd.dot` (Graphviz) cùng thư mục với file này; `data-dictionary.md` (từ điển dữ liệu 30 bảng). Mỗi lần sửa thì ghi đè các file này và tăng số phiên bản ở dòng trên, không tạo file ảnh mới.
 ---
@@ -92,7 +92,7 @@
 | `audit_log.family_id` | `family.id` | TV1 |
 | `audit_log.target_id` (theo `target_type`) | bảng nguồn bất kỳ | TV1 (chỉ ghi nhận, không kiểm tra) |
 | `ai_embedding_chunk.family_id`, `ai_chat_session.family_id`, `ai_summary_cache.family_id` | `family.id` | TV5 |
-| `ai_embedding_chunk.branch_id` | `branch.id` | TV5 (NULL là toàn gia đình; lọc phạm vi chi, `ai.md` BR-13) |
+| `ai_embedding_chunk.branch_id` | `branch.id` | TV5 (NULL là toàn gia đình; lọc phạm vi chi, `ai.md` BR-AI-13) |
 | `ai_chat_session.user_id` | `users.id` | TV5 |
 | `ai_embedding_chunk.source_id` (theo `source_type`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`) | `person`, `post`, `family_story`, `heritage_document`, `event` | TV5 (chỉ lưu id, không FK) |
 | `ai_summary_cache.source_id` (theo `source_type`) | bảng nguồn tương ứng | TV5 (chỉ lưu id, không FK) |
@@ -130,8 +130,8 @@ Tiêu chí hoàn thành: "ERD không còn khóa ngoại treo" (hiểu theo mục
 
 ## 7. Họp xác nhận và đóng băng
 
-- Nhóm trưởng (TV1) đã chốt X6, X12, X14, X15, X17 (16/10/2026). Việc còn lại: họp 30 phút xác nhận ERD v1 (TV2 ghi biên bản), rồi đóng băng. Mọi thay đổi sau đó qua **Flyway migration** và báo cả nhóm.
+- Nhóm trưởng (TV1) đã chốt X6, X12, X14, X15, X17 (16/10/2026). Họp ngày 18/10/2026 xác nhận ERD v0.5 và đóng băng. Mọi thay đổi sau đó qua **Flyway migration** và báo cả nhóm.
 
 | Ngày họp | Người dự | Điểm đã chốt | Việc còn lại |
 |---|---|---|---|
-| | | | |
+| 18/10/2026 | TV1, TV2, TV3, TV4, TV5 | ERD v0.5 (30 bảng, 17 khóa ngoại trong cùng module); đóng băng, thay đổi sau qua Flyway migration | X4 (nên ghi rõ, không chặn đóng băng) |

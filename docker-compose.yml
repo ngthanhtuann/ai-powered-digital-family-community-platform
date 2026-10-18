@@ -8,10 +8,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-familyconnect}
       POSTGRES_USER: ${POSTGRES_USER:-familyconnect}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
+    # Chỉ mở cho chính máy này để chạy backend bằng IDE (privacy.md mục 7); bản triển khai (SCRUM-68) bỏ cổng này.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-familyconnect} -d ${POSTGRES_DB:-familyconnect}"]
       interval: 5s
@@ -39,5 +40,5 @@ services:
   # frontend: sẽ thêm ở các task sau (Next.js, SCRUM-33)
 
 volumes:
-  db_data:
+  pgdata:
   uploads:

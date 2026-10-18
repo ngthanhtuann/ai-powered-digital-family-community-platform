@@ -14,7 +14,8 @@ info:
     - Module dashboard không có bảng riêng; dữ liệu lấy qua interface Java của genealogy, community, events.
     - Phân quyền theo bảng "Ai được làm gì" của `srs.md`: MEMBER **không** xem dashboard và không xuất báo cáo; chỉ BRANCH_ADMIN và SYSTEM_ADMIN thêm/sửa/xóa tài liệu lịch sử và quản lý người tiêu biểu (MEMBER chỉ xem).
     - API xóa trả `200` với `{success: true, data: null}`, không dùng `204`; danh sách có `page`, `size`, `sort` (size tối đa 100, vượt thì `400 VALID_001`).
-    - Xuất PDF (FR-DSH-05) để Sprint 6-7 (SCRUM-62, SCRUM-95), hiện chỉ hỗ trợ CSV.
+    - Báo cáo FR-DSH-05: xuất CSV (UC-DSH-02, SCRUM-62) và xuất PDF (UC-DSH-03, SCRUM-95).
+    - `SYSTEM_ADMIN` không thuộc gia đình nào nên phải truyền `familyId` ở các API danh sách, tạo mới và thống kê (conventions.md mục 6.2).
 servers:
   - url: /api/v1
 security:
@@ -25,7 +26,7 @@ tags:
   - name: Heritage
     description: Tài liệu lịch sử, câu chuyện, thư viện ảnh, người tiêu biểu (UC-HER-01 đến UC-HER-04).
   - name: Dashboard
-    description: Thống kê và báo cáo nhân khẩu học (UC-DSH-01, UC-DSH-02).
+    description: Thống kê, xuất báo cáo CSV và PDF (UC-DSH-01 đến UC-DSH-03).
 
 paths:
   /directory/members:
@@ -41,6 +42,7 @@ paths:
       operationId: searchMembers
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - name: job
           in: query
           description: Nghề nghiệp (so khớp chứa, không phân biệt hoa thường).
@@ -213,6 +215,7 @@ paths:
       operationId: getDocuments
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - name: category
           in: query
           description: Phân loại (ví dụ gia-pha, sac-phong, di-chuc, ban-do).
@@ -242,6 +245,8 @@ paths:
         xem conventions.md mục 7.3).
         Sau khi tạo, module ai được thông báo qua interface để cập nhật embedding.
       operationId: createDocument
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       requestBody:
         required: true
@@ -351,6 +356,7 @@ paths:
       operationId: getStories
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/SortCreated'
@@ -374,6 +380,8 @@ paths:
         `relatedPersonId` (nếu có) phải thuộc cùng gia đình, nếu không trả 403 PERM_001; không tồn tại trả 404.
         Sau khi tạo, module ai được thông báo cập nhật embedding.
       operationId: createStory
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       requestBody:
         required: true
@@ -485,6 +493,7 @@ paths:
       operationId: getHeritagePhotos
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/SortCreated'
@@ -511,6 +520,7 @@ paths:
       operationId: getOutstandingMembers
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - name: sort
@@ -539,6 +549,8 @@ paths:
         `personId` phải thuộc cùng gia đình, nếu không trả 403 PERM_001; không tồn tại trả 404.
         Người đã có trong danh sách (chưa xóa mềm) trả 409 HER_001.
       operationId: createOutstandingMember
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       requestBody:
         required: true
@@ -632,6 +644,7 @@ paths:
       operationId: getDashboardStats
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - name: branchId
           in: query
           description: Lọc theo chi họ (tùy chọn).
@@ -658,10 +671,11 @@ paths:
         Cột: id, fullName, birthYear, gender, relationship, generation, jobTitle, workLocation.
         Không xuất thông tin liên hệ và địa chỉ chi tiết. Với trẻ dưới 16 tuổi chỉ xuất id, fullName, relationship, birthYear.
         Tệp mã hóa UTF-8 có BOM để Excel đọc đúng tiếng Việt. Chống chèn công thức: ô bắt đầu bằng `=`, `+`, `-`, `@`
-        được thêm dấu `'` phía trước. Mỗi lần xuất ghi audit log (SCRUM-57). PDF để Sprint 6-7 (SCRUM-62, SCRUM-95).
+        được thêm dấu `'` phía trước. Mỗi lần xuất ghi audit log (SCRUM-57). Báo cáo PDF: `GET /dashboard/reports/{reportType}/pdf` (UC-DSH-03, SCRUM-95).
       operationId: exportMembersCsv
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
+        - $ref: '#/components/parameters/FamilyId'
         - name: format
           in: query
           description: Định dạng xuất. Hiện chỉ hỗ trợ csv.
@@ -689,6 +703,44 @@ paths:
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
 
+  /dashboard/reports/{reportType}/pdf:
+    get:
+      tags: [Dashboard]
+      summary: Xuất báo cáo thống kê PDF (UC-DSH-03)
+      description: |
+        Vai trò: BRANCH_ADMIN (trong phạm vi chi của mình, hoặc cả gia đình nếu không có chi), SYSTEM_ADMIN. MEMBER gọi trả 403 PERM_001.
+        Ba loại báo cáo theo `srs.md` mục 7.2, dùng cùng số liệu với UC-DSH-01:
+        `GENEALOGY` (FR-DSH-01, FR-DSH-04: tổng thành viên, theo thế hệ, giới tính, nghề nghiệp, nơi ở),
+        `COMMUNITY` (FR-DSH-02: bài đăng theo tuần), `EVENTS` (FR-DSH-03: sự kiện sắp tới).
+        Không in thông tin liên hệ, địa chỉ chi tiết; thống kê nghề nghiệp, nơi ở loại trẻ dưới 16 tuổi. Mỗi lần xuất ghi audit log (SCRUM-57).
+      operationId: exportReportPdf
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+        - $ref: '#/components/parameters/FamilyId'
+        - name: reportType
+          in: path
+          required: true
+          description: Loại báo cáo.
+          schema: { type: string, enum: [GENEALOGY, COMMUNITY, EVENTS] }
+        - name: branchId
+          in: query
+          description: Chi họ cần xuất (tùy chọn, phải thuộc phạm vi của người dùng).
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tải file PDF thành công
+          headers:
+            Content-Disposition:
+              description: Tên tệp theo loại báo cáo và ngày xuất.
+              schema: { type: string, example: 'attachment; filename="genealogy-20261009.pdf"' }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -697,6 +749,12 @@ components:
       bearerFormat: JWT
 
   parameters:
+    FamilyId:
+      name: familyId
+      in: query
+      required: false
+      description: Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2).
+      schema: { type: string, format: uuid }
     Page:
       name: page
       in: query
@@ -1043,7 +1101,7 @@ components:
         success: { type: boolean, example: false }
         error:
           type: object
-          required: [code, message]
+          required: [code, message, details]
           properties:
             code: { type: string }
             message: { type: string }

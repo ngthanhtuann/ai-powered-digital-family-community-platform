@@ -1,7 +1,8 @@
 # ADR: Spike AI, RAG, Spring AI, pgvector
 
 > **Người làm:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-24
-> **Trạng thái:** Chờ review (còn bảng đánh giá top-3 và chấm chất lượng câu trả lời, mục 3.2 và 3.3) | **Ngày thử nghiệm:** số liệu đo được ghi ngày 14/10/2026 (commit `d8c7417`, SCRUM-34); giá tra ngày 09/10/2026. TV5 xác nhận lại ngày chạy thực tế nếu khác.
+> **Ngày:** 09/10/2026 (chốt `vector(768)`), cập nhật 14/10/2026 (số liệu đo) và 18/10/2026 (phiên bản Spring Boot, mục 4) | **Người quyết định:** TV5 đề xuất, TV1 chốt (`erd.md` X12)
+> **Trạng thái:** Đã merge vào `develop`; chọn Gemini ở mức sơ bộ (còn bảng đánh giá top-3 và chấm chất lượng câu trả lời, mục 3.2 và 3.3) | **Ngày thử nghiệm:** số liệu đo được ghi ngày 14/10/2026 (commit `d8c7417`, SCRUM-34); giá tra ngày 09/10/2026. TV5 xác nhận lại ngày chạy thực tế nếu khác.
 > Mã thử nghiệm nằm ở nhánh `spike/SCRUM-24-rag` (không merge vào `develop`). **Không có API key trong repo.** Thiết kế chi tiết RAG viết ở `ai-rag.md` (SCRUM-34, Sprint 2).
 
 ## 1. Bối cảnh
@@ -67,6 +68,7 @@ Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_cont
    - Dùng kiểu `halfvec(3072)` (chỉ mục tối đa 4000 chiều).
    - **Quyết định cho thiết kế (đã chốt 9/10/2026):** dùng `outputDimensionality = 768`, cột `vector(768)` với chỉ mục HNSW. Lý do: nằm trong giới hạn 2000 chiều của chỉ mục, nhẹ nhất về lưu trữ và tốc độ, đủ cho dữ liệu gia phả cỡ vài trăm đến vài nghìn đoạn. SCRUM-34 ghi vào `ai-rag.md`; nếu bảng đánh giá 10 câu tiếng Việt ở Sprint 2 không đạt thì thử lại với 1536.
 2. **Tên bảng.** Bảng vector đặt là `ai_embedding_chunk` (tiền tố `ai_` theo `architecture.md` mục 7), không dùng `embedding_chunk`.
+3. **Phiên bản Spring Boot (chốt 18/10/2026).** Spring AI 2.0.x (bản dùng trong spike) chỉ chạy trên Spring Boot 4 (https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now, tra ngày 18/10/2026), trong khi `backend/pom.xml` đang là Spring Boot 3.3.5. Quyết định: nâng Spring Boot lên 4.x để dùng Spring AI 2.0.x như spike đã đo. Việc nâng `pom.xml` (kèm springdoc bản tương thích) làm ở một task code đầu Sprint 3, có chạy test; không gộp vào task tài liệu. Dự án chạy PostgreSQL bằng image `pgvector/pgvector:pg16` (`docker-compose.yml`, `ci.yml`), khác bản `pg18` dùng khi spike.
 
 ## 5. Rủi ro
 

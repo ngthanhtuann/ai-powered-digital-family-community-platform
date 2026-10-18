@@ -1,4 +1,4 @@
-// ERD tổng hợp FamilyConnect v0.4 (nháp). Dán vào dbdiagram.io.
+// ERD tổng hợp FamilyConnect v0.5 (đã đóng băng 18/10/2026). Dán vào dbdiagram.io.
 // Khóa ngoại thật (Ref) chỉ trong cùng module. Tham chiếu logic ghi ở cột note, vẽ nét đứt trong draw.io.
 
 Table family {
@@ -397,7 +397,7 @@ Table system_config {
 Table ai_embedding_chunk {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
-  branch_id uuid [note: 'Phạm vi chi của nguồn (ai.md BR-13); NULL là toàn gia đình; tham chiếu logic -> branch, không có FK']
+  branch_id uuid [note: 'Phạm vi chi của nguồn (ai.md BR-AI-13); NULL là toàn gia đình; tham chiếu logic -> branch, không có FK']
   source_type varchar(40) [not null, note: 'CHECK IN (PERSON, POST, STORY, DOCUMENT, EVENT)']
   source_id uuid [not null, note: 'ID nguồn của module sở hữu, không FK; tham chiếu logic -> person hoặc post hoặc family_story hoặc heritage_document hoặc event, không có FK']
   chunk_no integer [not null, note: 'Thứ tự chunk trong nguồn']

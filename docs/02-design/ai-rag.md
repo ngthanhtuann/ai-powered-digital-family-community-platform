@@ -1,8 +1,7 @@
 # Thiết kế AI và RAG
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-34 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2); spike: SCRUM-24 hạn Thứ Tư 7/10
-> **Trạng thái:** Chờ review
-> Cách làm: tạo nhánh `docs/<mã SCRUM>-<tên-ngắn>` từ `develop`, điền vào file này, mở Pull Request vào `develop`. Xem `docs/README.md`.
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2)
 
 ## 1. Kết quả spike (SCRUM-24)
 Xem `docs/decisions/adr-ai-spike.md`.
@@ -35,7 +34,7 @@ flowchart TD
 - **Bài đăng/câu chuyện (`POST`, `STORY`)**: khoảng 300–500 từ mỗi đoạn. Khi cần chia nhiều đoạn, giữ metadata nguồn, gia đình và thứ tự đoạn.
 - **Tài liệu (`DOCUMENT`)**: chia theo tiêu đề/đoạn văn tự nhiên; tránh cắt giữa câu hoặc tách bảng khỏi phần giải thích liên quan.
 - **Sự kiện (`EVENT`)**: một đoạn gồm tên, thời gian, địa điểm, mô tả (BR-EVT-06).
-- Mỗi chunk lưu `family_id`, `branch_id` (NULL là toàn gia đình, BR-13 trong `ai.md`), `source_type`, `source_id`, `chunk_no`, `content_hash` và metadata tối thiểu cần cho truy xuất.
+- Mỗi chunk lưu `family_id`, `branch_id` (NULL là toàn gia đình, BR-AI-13 trong `ai.md`), `source_type`, `source_id`, `chunk_no`, `content_hash` và metadata tối thiểu cần cho truy xuất.
 - Chỉ mục dùng chung cho mọi vai trò, nên đoạn `PERSON` chỉ chứa trường Thành viên được xem theo BR-GEN-10 (họ tên, năm sinh, quan hệ, nghề nghiệp, tỉnh/thành); người dưới 16 tuổi chỉ họ tên và quan hệ (BR-GEN-18).
 - Khi nguồn đổi nội dung, tính lại hash và embedding; cập nhật hoặc vô hiệu hóa chunk cũ. Khi nguồn bị xóa, bị ẩn do kiểm duyệt (`hidden_at`) hoặc quyền thay đổi, module sở hữu gọi `AiGateway.removeSource`; module `ai` xóa mềm/vô hiệu hóa chunk và bảo đảm truy vấn không trả chunk đó.
 - Không đưa mật khẩu, số điện thoại, thông tin trẻ em hoặc trường dữ liệu bị cấm trong `privacy.md` mục 6 vào chunk gửi cho nhà cung cấp LLM. Cần kiểm tra chính sách riêng tư trước khi tạo embedding bên ngoài, không chỉ trước khi gọi chat LLM.
@@ -107,7 +106,7 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 ## 7. Các dịch vụ AI
 | Dịch vụ | API | Ghi chú |
 |---|---|---|
-| Tìm kiếm ngữ nghĩa | `GET /api/v1/search` | Embedding truy vấn, top-k, lọc quyền, trả kết quả |
+| Tìm kiếm ngữ nghĩa | `GET /api/v1/ai/search` | Embedding truy vấn, top-k, lọc quyền, trả kết quả |
 | Chatbot RAG | `POST /api/v1/ai/chat` | Retrieval, prompt, Gemini, nguồn và lịch sử |
 | Giải thích quan hệ | `POST /api/v1/ai/relationship-explanations` | Thuật toán genealogy trước, LLM diễn đạt sau |
 | Tóm tắt | `POST /api/v1/ai/summaries` | Lấy nguồn qua interface, cache theo hash |

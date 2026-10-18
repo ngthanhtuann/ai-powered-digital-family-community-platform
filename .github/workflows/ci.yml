@@ -34,3 +34,24 @@ jobs:
       - name: Build và chạy test
         run: mvn -B verify
         working-directory: backend
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Kiểu sinh từ OpenAPI phải khớp bản đã commit
+        run: |
+          npm run gen:api
+          git diff --exit-code -- src/services/generated
+      - run: npm run lint
+      - run: npm run build

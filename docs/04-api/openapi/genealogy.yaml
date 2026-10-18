@@ -392,7 +392,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-              example: { success: false, error: { code: GEN_004, message: Thành viên còn quan hệ, hãy gỡ quan hệ trước, details: [] } }
+              example: { success: false, error: { code: GEN_004, message: 'Thành viên còn quan hệ, hãy gỡ quan hệ trước', details: [] } }
 
   /persons/{personId}/parents:
     parameters:
@@ -664,7 +664,7 @@ components:
         success: { type: boolean, example: false }
         error:
           type: object
-          required: [code, message]
+          required: [code, message, details]
           properties:
             code: { type: string, example: GEN_005 }
             message: { type: string }
@@ -672,6 +672,7 @@ components:
               type: array
               items:
                 type: object
+                required: [field, message]
                 properties:
                   field: { type: string }
                   message: { type: string }
@@ -679,7 +680,7 @@ components:
       type: object
       properties:
         success: { type: boolean, example: true }
-        data: { nullable: true, example: null }
+        data: { type: object, nullable: true, example: null }
     Meta:
       type: object
       properties:

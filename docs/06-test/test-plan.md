@@ -1,7 +1,7 @@
 # Kế hoạch kiểm thử (Test Plan)
 
 > **Người viết:** TV1 (Tuấn Nguyễn Thanh) | **Reviewer:** TV4 (Huy Quốc) | **Task Jira:** SCRUM-27 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)
-> **Trạng thái:** Chờ review | Mẫu test case: [test-case-template.md](test-case-template.md)
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2) | Mẫu test case: [test-case-template.md](test-case-template.md)
 
 ## 1. Các mức kiểm thử
 
@@ -23,7 +23,7 @@
 | TV4 | TV1 (Auth, Admin) |
 | TV5 | TV2 (Gia phả) |
 
-Khi task code sang cột **Testing**, người test chéo chạy test case của module đó, điền kết quả vào mẫu test case, và báo bug theo mục 5. (Bảng này khác bảng reviewer PR trong `quy-trinh-lam-viec.md` mục 2.3.)
+Khi task code sang cột **Testing**, người test chéo chạy test case của module đó, điền kết quả vào mẫu test case, và báo bug theo mục 5. (Bảng này giống bảng reviewer PR trong `quy-trinh-lam-viec.md` mục 2.3.)
 
 ## 3. Những nhóm test bắt buộc
 
@@ -50,6 +50,7 @@ Mỗi API có một test case: gia đình A gọi dữ liệu gia đình B (đ�
 |---|---|
 | Ảnh `jpg`/`png`/`webp` ≤ 5 MB | 201 |
 | Ảnh > 5 MB | 413 `FILE_001` |
+| Tổng dung lượng tệp trong một request > 10 MB | 413 `FILE_001` |
 | `pdf` ≤ 10 MB, `owner_type = HERITAGE` | 201 |
 | `pdf` > 10 MB, HERITAGE | 413 `FILE_001` |
 | `pdf` với owner khác HERITAGE, hoặc định dạng khác | 415 `FILE_002` |
@@ -80,6 +81,7 @@ Không còn khóa ngoại DB giữa các module, nên mỗi API nhận `media_id
 |---|---|
 | Chưa xác minh | 403 `PERM_002` |
 | Hỏi quá 20 câu/giờ | 429 `RATE_001` |
+| Quản trị tắt tính năng (`ai.search.enabled`, `ai.chat.enabled`, `ai.summary.enabled` = `false`) | 409 `AI_002` |
 | Truy vấn | Chỉ trả dữ liệu của gia đình người hỏi |
 | Không có thông tin | Trả "Không tìm thấy thông tin" |
 | LLM lỗi | 503 `AI_001`, chức năng khác vẫn chạy |
@@ -88,7 +90,7 @@ Không còn khóa ngoại DB giữa các module, nên mỗi API nhận `media_id
 Mỗi màn hình web kiểm tra ở 3 cỡ **360, 768, 1440 px** (NFR-01): không vỡ bố cục, không cuộn ngang, thao tác chính dùng được.
 
 ### 3.9. Xác thực (`AUTH`)
-Đăng nhập đúng nhận token; sai mật khẩu 401 `AUTH_001`; sai quá 5 lần/phút 429 `RATE_001`; token hết hạn 401 `AUTH_002`, làm mới bằng `POST /auth/refresh`; tài khoản khóa 403 `AUTH_003`.
+Đăng nhập đúng nhận token; sai mật khẩu 401 `AUTH_001`; quá 5 lần đăng nhập mỗi phút theo IP và email 429 `RATE_001`; token hết hạn 401 `AUTH_002`, làm mới bằng `POST /auth/refresh`; tài khoản khóa 403 `AUTH_003`.
 
 ### 3.10. Thuật toán quan hệ họ hàng
 Dùng 53 ca mẫu có sẵn trong `algorithm-relationship.md` mục 7 (SCRUM-42), không chép lại.

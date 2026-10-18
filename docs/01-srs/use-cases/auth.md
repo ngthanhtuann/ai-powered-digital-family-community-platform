@@ -1,7 +1,7 @@
 # Use case: Auth, RBAC, Profile, Admin
 
 > **Người viết:** TV1 (Tuấn Nguyễn Thanh) | **Reviewer:** TV4 (Huy Quốc) | **Task Jira:** SCRUM-26 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)
-> **Trạng thái:** Chờ review | **Nhánh:** `docs/SCRUM-26-auth`
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2) | **Nhánh:** `docs/SCRUM-26-auth`
 > **Bám theo:** `srs.md` mục 3 (FR-AUTH-01 đến 04, FR-ADM-01 đến 05) và Phụ lục A bản 0.3; `privacy.md`; `04-api/conventions.md`; `02-design/architecture.md`; `03-database/erd.md`; mô tả cập nhật sau Sprint 1 của SCRUM-35, 43, 50, 57, 86, 94 trên Jira. Đặc tả API đầy đủ (request, response mẫu, mã lỗi) ở `docs/04-api/openapi/auth.yaml`.
 
 ---
@@ -121,9 +121,9 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 |---|---|
 | Mã FR liên quan | FR-AUTH-04 |
 | Actor | Thành viên chưa xác minh |
-| Mô tả ngắn | Người mới đăng ký xin tham gia một gia đình có sẵn bằng mã gia đình; chờ trưởng chi duyệt. Người chưa được duyệt không xem được dữ liệu gia đình. (Người muốn lập gia đình mới dùng UC-GEN-01.) |
+| Mô tả ngắn | Người mới đăng ký xin tham gia một gia đình có sẵn bằng mã gia đình (`familyId` của gia đình, không phải mã mời; BR-AUTH-09); chờ trưởng chi duyệt. Người chưa được duyệt không xem được dữ liệu gia đình. (Người muốn lập gia đình mới dùng UC-GEN-01.) |
 | Tiền điều kiện | Đã đăng nhập; chưa thuộc gia đình nào và chưa có yêu cầu đang chờ; không phải `SYSTEM_ADMIN`. |
-| Luồng chính | 1. Sau đăng nhập, ứng dụng gọi `GET /users/me/membership`; nếu `NONE` hiện màn "Nhập mã gia đình hoặc tạo gia đình".<br>2. Người dùng nhập mã gia đình (do người thân hoặc trưởng chi cung cấp), chọn chi (tùy chọn) và viết lời nhắn.<br>3. Hệ thống kiểm tra gia đình và chi tồn tại (qua module Gia phả) và người dùng chưa thuộc gia đình nào.<br>4. Hệ thống tạo `member_verification` với `status = PENDING`, `role = MEMBER`; ghi nhật ký `JOIN_REQUESTED`.<br>5. Ứng dụng hiện màn chờ duyệt và hỏi lại `GET /users/me/membership` định kỳ.<br>6. Khi `status = APPROVED`, ứng dụng vào màn hình chính của gia đình. |
+| Luồng chính | 1. Sau đăng nhập, ứng dụng gọi `GET /users/me/membership`; nếu `NONE` hiện màn "Nhập mã gia đình hoặc tạo gia đình".<br>2. Người dùng nhập mã gia đình (`familyId`, do người thân hoặc trưởng chi cung cấp), chọn chi (tùy chọn) và viết lời nhắn.<br>3. Hệ thống kiểm tra gia đình và chi tồn tại (qua module Gia phả) và người dùng chưa thuộc gia đình nào.<br>4. Hệ thống tạo `member_verification` với `status = PENDING`, `role = MEMBER`; ghi nhật ký `JOIN_REQUESTED`.<br>5. Ứng dụng hiện màn chờ duyệt và hỏi lại `GET /users/me/membership` định kỳ.<br>6. Khi `status = APPROVED`, ứng dụng vào màn hình chính của gia đình. |
 | Luồng thay thế / ngoại lệ | 3a. Gia đình hoặc chi không tồn tại: `404 NOT_FOUND_001`.<br>3b. Đã thuộc gia đình hoặc đang có yêu cầu chờ: `409 AUTH_005`.<br>3c. Tài khoản `SYSTEM_ADMIN`: `403 PERM_001`.<br>4a. Cấu hình `membership.approval_mode = AUTO`: yêu cầu được duyệt ngay (`APPROVED`), bỏ qua bước chờ.<br>5a. Người dùng hủy yêu cầu (`DELETE /join-requests/{id}`): trạng thái `CANCELLED`, ghi `JOIN_CANCELLED`.<br>6a. Bị từ chối (`REJECTED`): màn chờ hiện lý do; người dùng được gửi yêu cầu mới. |
 | Hậu điều kiện | Có bản ghi `PENDING` (hoặc `APPROVED` nếu tự duyệt). |
 | Quy tắc nghiệp vụ | BR-AUTH-07, BR-AUTH-08, BR-AUTH-09 |
@@ -565,7 +565,7 @@ Tất cả API nằm dưới `/api/v1`, theo `docs/04-api/conventions.md`: thàn
 | GET | `/api/v1/admin/configs` | Danh sách cấu hình hệ thống | UC-AUTH-12 | SYSTEM_ADMIN | 401, 403 |
 | PUT | `/api/v1/admin/configs/{key}` | Đổi giá trị cấu hình | UC-AUTH-12 | SYSTEM_ADMIN | 400, 401, 403, 404 |
 
-Cột "HTTP lỗi": `401` là `AUTH_002` (riêng đăng nhập là `AUTH_001`); `403` là `AUTH_003`, `PERM_001` hoặc `PERM_002` tùy endpoint; `409` là mã riêng ở mục 6.2. Danh sách lỗi theo từng endpoint ở `auth.yaml`. UC-AUTH-13 (RBAC) không có endpoint riêng, áp dụng cho mọi endpoint không công khai.
+Cột "HTTP lỗi": `401` là `AUTH_002` (riêng đăng nhập là `AUTH_001`); `403` là `AUTH_003`, `PERM_001` hoặc `PERM_002` tùy endpoint; `409` là mã riêng ở mục 6.2; `500 SERVER_001` có ở mọi endpoint nên không ghi vào cột. Danh sách lỗi theo từng endpoint ở `auth.yaml`. UC-AUTH-13 (RBAC) không có endpoint riêng, áp dụng cho mọi endpoint không công khai.
 
 ### 6.2 Mã lỗi
 
@@ -582,7 +582,7 @@ Mã chung dùng nguyên (`conventions.md` mục 3): `AUTH_001`, `AUTH_002`, `AUT
 
 Các trường hợp còn lại dùng mã chung: mật khẩu hiện tại sai, mật khẩu yếu, chưa đủ 16 tuổi, `confirmText` sai, giá trị cấu hình sai kiểu (đều `400 VALID_001` kèm `details`); gia đình, chi, bản sao lưu không tồn tại (`404 NOT_FOUND_001`). Lỗi khi gắn tài khoản vào hồ sơ thành viên (ví dụ `GEN_012`) là mã của module Gia phả, API duyệt chỉ chuyển tiếp.
 
-> **Đề nghị bổ sung `conventions.md` mục 3.1:** thêm hàng tiền tố `AUTH_` (mã riêng từ `AUTH_004`; `AUTH_001` đến `AUTH_003` giữ nghĩa dùng chung). Tiền tố `ADM_` đã có.
+> `conventions.md` mục 3.1 đã có tiền tố `AUTH_` (mã riêng từ `AUTH_004`; `AUTH_001` đến `AUTH_003` giữ nghĩa dùng chung) và `ADM_`.
 
 ### 6.3 Liên kết với module khác
 
@@ -646,7 +646,7 @@ public interface ContentModerationPort {                       // module Communi
 | Với | Cần làm | Task |
 |---|---|---|
 | TV2 Trí (Gia phả, ERD) | Gộp 7 bảng ở mục 5 vào ERD tổng; cài `GenealogyPort`; gọi `MembershipCommand.assignFamilyOwner` khi tạo gia đình | SCRUM-28, 37 |
-| TV3 PiLo (Community) | Làm bảng báo cáo và nút "Báo cáo bài viết"; cài `ContentModerationPort`; gọi `AuditLogger` khi trưởng chi gỡ nội dung; đọc `upload.*` từ `SystemConfigQuery` | SCRUM-20, 38, 50, 86 |
+| TV3 PiLo257 (Community) | Làm bảng báo cáo và nút "Báo cáo bài viết"; cài `ContentModerationPort`; gọi `AuditLogger` khi trưởng chi gỡ nội dung; đọc `upload.*` từ `SystemConfigQuery` | SCRUM-20, 38, 50, 86 |
 | TV4 Huy Quốc (Heritage, Directory, Dashboard, web) | Dùng `UserDirectory` lấy tên tác giả; dựng API client web từ `auth.yaml`; Docker: thêm volume `backups/` và công cụ `pg_dump` | SCRUM-33, 39, 68 |
 | TV5 Lê Nhựt (AI, mobile) | Gọi `MembershipQuery.requireVerified` trước khi dùng AI; đọc `ai.*` từ `SystemConfigQuery`; mobile lưu token bằng `expo-secure-store` | SCRUM-55, 85 |
 
@@ -681,7 +681,7 @@ Tên hành động `UPPER_SNAKE_CASE`. Nhóm hành động của module này (c�
 
 ## 7. Màn hình liên quan
 
-Chưa có wireframe cho các màn dưới đây (SCRUM-29, 30, 32, 84 không gồm Auth và Admin; xem mục 8, câu 5). Khi có sẽ dán link Figma vào `docs/05-ui/figma-links.md`; tuân thủ `docs/05-ui/design-system.md`.
+Wireframe các màn dưới đây ở page `02 Auth và Admin` của file Figma chung (link ở `docs/05-ui/figma-links.md`), vẽ theo `docs/05-ui/design-system.md`.
 
 | Màn hình | Web | Mobile | Vai trò | UC | Task Jira |
 |---|---|---|---|---|---|
@@ -701,9 +701,9 @@ Các mục dưới đây là điểm tài liệu gốc chưa nói rõ; TV1 đã 
 
 - [ ] **1. Quên mật khẩu qua email.** Khung sườn ghi "Đổi mật khẩu / quên mật khẩu", nhưng SRS và Jira không có hạ tầng gửi email (SMTP) hay bảng mã đặt lại. (Bản này chỉ làm đổi mật khẩu khi đã đăng nhập; nếu cần quên mật khẩu thì phải thêm dịch vụ email và 1 bảng.)
 - [ ] **2. Người xin tham gia biết mã gia đình bằng cách nào?** Module Gia phả không có API tìm hoặc liệt kê gia đình (cố ý, để không lộ dòng họ). (Người xin nhập `familyId` do người thân hoặc trưởng chi cung cấp; cần trang gia đình của Trí hiển thị mã gia đình cho trưởng chi sao chép.)
-- [x] **3. Lịch làm `member_verification`: đã chốt 13/10/2026.** SRS xếp FR-AUTH-04 ở Sprint 6 (SCRUM-57), nhưng Gia phả (SCRUM-37, Sprint 3) cần `MembershipQuery` và `assignFamilyOwner` ngay để cổng `PERM_002` hoạt động. Quyết định: bảng `member_verification` và các interface ở mục 6.3 làm cùng SCRUM-35 (Sprint 3); SCRUM-57 làm API xin tham gia, duyệt và màn hình duyệt, cùng nhật ký. Đã cập nhật mô tả SCRUM-35 và SCRUM-57 trên Jira; còn lại cột Sprint của FR-AUTH-04 trong `srs.md` (TV1 sửa tay).
-- [ ] **4. `SYSTEM_ADMIN` không thuộc gia đình nào** (BR-AUTH-08), nên các API lấy `family_id` từ người đăng nhập (bài đăng, sự kiện, danh bạ, dashboard, AI) cần quy ước cho quản trị. (Đề xuất quản trị truyền thêm `familyId`; các module xác nhận khi viết tài liệu Sprint 2.)
-- [ ] **5. Wireframe màn Auth và Admin chưa có task nào** (mục 7). (TV1 vẽ trong Sprint 3 hoặc thêm vào task có sẵn.)
-- [ ] **6. Bảng báo cáo vi phạm và nút "Báo cáo bài viết"** thuộc Community (SCRUM-50 bước 2) nhưng `community-events.md` chưa có bảng này. (TV3 thêm vào tài liệu Community; module này đã khai báo `ContentModerationPort` để đọc.)
+- [x] **3. Lịch làm `member_verification`: đã chốt 13/10/2026.** SRS xếp FR-AUTH-04 ở Sprint 6 (SCRUM-57), nhưng Gia phả (SCRUM-37, Sprint 3) cần `MembershipQuery` và `assignFamilyOwner` ngay để cổng `PERM_002` hoạt động. Quyết định: bảng `member_verification` và các interface ở mục 6.3 làm cùng SCRUM-35 (Sprint 3); SCRUM-57 làm API xin tham gia, duyệt và màn hình duyệt, cùng nhật ký. Đã cập nhật mô tả SCRUM-35 và SCRUM-57 trên Jira và cột Sprint của FR-AUTH-04 trong `srs.md` (S3-S6).
+- [x] **4. `SYSTEM_ADMIN` không thuộc gia đình nào** (BR-AUTH-08): đã chốt 18/10/2026. Các API danh sách, tạo mới và thống kê lấy gia đình từ người đăng nhập có tham số `familyId`, bắt buộc với `SYSTEM_ADMIN` (`conventions.md` mục 6.2); đã thêm vào `community-events.yaml`, `heritage-directory-dashboard.yaml`, `ai.yaml`.
+- [x] **5. Wireframe màn Auth và Admin:** đã vẽ ở page `02 Auth và Admin` (mục 7).
+- [x] **6. Bảng báo cáo vi phạm và nút "Báo cáo bài viết":** `community-events.md` đã có bảng `content_report` và BR-COM-12 (ERD X16).
 - [ ] **7. Sao lưu và khôi phục:** cần thư mục/volume `backups/` và công cụ `pg_dump`, `pg_restore` trong image backend (Docker, SCRUM-68, 77); SCRUM-86 chọn cách chạy script (gọi từ backend hay ngoài).
-- [ ] **8. Bổ sung `conventions.md` và `srs.md`.** `conventions.md` mục 3.1 thêm tiền tố `AUTH_` (mục 6.2); `srs.md` mục 8, dòng FR-AUTH-01 ghi `POST /auth/register` cần sửa thành `POST /users`. Ma trận mục 4.1 giữ đúng Phụ lục A nên không cần sửa Phụ lục A.
+- [x] **8. Bổ sung `conventions.md` và `srs.md`:** `conventions.md` mục 3.1 đã có tiền tố `AUTH_`; `srs.md` mục 8 đã ghi `POST /users`.

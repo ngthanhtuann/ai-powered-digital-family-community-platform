@@ -1,7 +1,7 @@
 # Mô hình hóa quy trình nghiệp vụ
 
 > **Người viết:** TV3 (PiLo257) | **Reviewer:** TV1 (Tuấn Nguyễn Thanh) | **Task Jira:** SCRUM-83 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)  
-> **Trạng thái:** Chờ review
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2)
 
 Các sơ đồ sử dụng thống nhất bốn làn: **Thành viên**, **Trưởng chi (BRANCH_ADMIN)**, **Hệ thống** và **AI Service**. Theo `srs.md` mục 2, **AI Service** là hệ thống LLM bên ngoài mà lớp AI gọi tới; các bước kiểm tra, tìm ngữ cảnh và lưu dữ liệu nằm ở làn **Hệ thống**.
 
