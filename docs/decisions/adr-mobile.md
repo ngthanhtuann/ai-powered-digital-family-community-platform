@@ -1,11 +1,14 @@
 # ADR: Công nghệ Mobile
 
+> **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-84
+> **Trạng thái:** Chờ review. Thiết kế chi tiết (điều hướng, kiến trúc, xử lý lỗi) ở [`mobile.md`](../02-design/mobile.md).
+
 ## 1. Bối cảnh
 Dự án cần ứng dụng mobile chạy trên iOS và Android. Web hiện sử dụng Next.js, vì vậy việc lựa chọn công nghệ có thể tận dụng kiến thức và hệ sinh thái React hiện có. Ứng dụng mobile dự kiến gọi cùng REST API `/api/v1` với web; tài liệu này không giả định rằng mobile sẽ dùng chung giao diện hoặc mã UI với web.
 
 ## 2. Quyết định
 **Chọn React Native + Expo** để phát triển ứng dụng mobile cho iOS và Android.
-Định hướng triển khai ban đầu là dùng Expo và Expo Router. Nếu sau này xuất hiện yêu cầu native đặc biệt mà Expo chưa đáp ứng trực tiếp, nhóm sẽ đánh giá giải pháp phù hợp thay vì mặc định loại bỏ Expo.
+Điều hướng dùng **React Navigation** (stack gốc chọn nhánh theo trạng thái đăng nhập, menu drawer trong ứng dụng), cấu trúc `src/` gồm `navigation/`, `screens/`, `components/`, `services/` theo `architecture.md` mục 5 và mục 7, quyết định 2. Không dùng Expo Router. Nếu sau này xuất hiện yêu cầu native đặc biệt mà Expo chưa đáp ứng trực tiếp, nhóm sẽ đánh giá giải pháp phù hợp thay vì mặc định loại bỏ Expo.
 
 ## 3. Lý do lựa chọn
 - **Phù hợp với hệ sinh thái hiện tại:** React Native dùng React và JavaScript/TypeScript, gần với nền tảng React/Next.js của web.
@@ -29,13 +32,14 @@ Bảng trên là so sánh ở mức phục vụ quyết định dự án, không
 ### Lợi ích kỳ vọng
 - Giảm thời gian làm quen công nghệ cho thành viên đã biết React.
 - Có thể tổ chức mobile theo component và quy ước TypeScript.
-- Có thể dùng chung hợp đồng REST API `/api/v1` với web nếu backend hỗ trợ các client đó.
+- Dùng chung REST API `/api/v1` và cùng một hợp đồng OpenAPI với web.
 
 ### Chi phí và giới hạn cần lưu ý
 - Giao diện web không thể được dùng trực tiếp như giao diện React Native; cần xây dựng màn hình mobile riêng.
 - Cần kiểm thử trên thiết bị iOS và Android, đặc biệt với thông báo, quyền truy cập ảnh và lưu token.
 - Cần cấu hình môi trường API cho máy phát triển, thiết bị thật và bản build.
-- Việc đăng nhập mobile phụ thuộc vào cơ chế xác thực và hợp đồng API của backend; cần xác nhận cách cấp, làm mới và thu hồi token.
+- Đăng nhập mobile theo luồng JWT ở `use-cases/auth.md` mục 4.2: access token 15 phút, refresh token 7 ngày gửi trong body `POST /api/v1/auth/refresh`, dùng một lần và xoay vòng; cả hai lưu bằng `expo-secure-store`.
+- Kiểu dữ liệu API sinh bằng `openapi-typescript` từ `docs/04-api/openapi/` vào `src/services/generated/`, dùng chung hợp đồng với web (`conventions.md` mục 8).
 
 ## 6. Phạm vi áp dụng
 Các chức năng dự kiến trên mobile gồm: đăng nhập/đăng ký/hồ sơ, bảng tin và tạo bài, sự kiện và RSVP, thông báo, xem cây gia phả và tra quan hệ, chat AI, tìm kiếm, danh bạ và Heritage.
