@@ -14,8 +14,8 @@ FamilyConnect cần chatbot hỏi đáp gia phả và tìm kiếm ngữ nghĩa b
 |---|---|
 | Nhà cung cấp | Google Gemini API (gói miễn phí) |
 | Model embedding | `gemini-embedding-001` |
-| Model LLM | [Nhựt điền tên model chính xác, ví dụ phiên bản Flash đã gọi] |
-| Thư viện | Spring AI [điền phiên bản], pgvector [điền phiên bản] |
+| Model LLM | `gemini-3.8-flash` |
+| Thư viện | Spring AI `2.0.1` (BOM); pgvector extension chạy trong image `pgvector/pgvector:pg18` |
 | Dữ liệu thử | 10 câu tiếng Việt về gia phả (dữ liệu giả, không dùng dữ liệu thật của gia đình) |
 | Khóa API | Biến môi trường `GEMINI_API_KEY`, không commit |
 

@@ -9,14 +9,13 @@ Module `ai` cung cấp tìm kiếm ngữ nghĩa, hỏi đáp gia phả bằng RA
 
 ### Actor
 - **Thành viên đã xác minh (`MEMBER`)**: sử dụng các chức năng AI trong phạm vi dữ liệu mà mình được phép xem.
-- **Quản trị nhánh (`BRANCH_ADMIN`)**: sử dụng các chức năng AI trong phạm vi gia đình/nhánh mà quyền quản trị cho phép; không được mặc nhiên xem dữ liệu ngoài phạm vi đó.
+- **Trưởng chi (`BRANCH_ADMIN`)**: sử dụng các chức năng AI trong phạm vi gia đình/nhánh mà quyền quản trị cho phép; không được mặc nhiên xem dữ liệu ngoài phạm vi đó.
 - **Quản trị hệ thống (`SYSTEM_ADMIN`)**: có quyền gọi API theo phân quyền hệ thống; không được bỏ qua các quy tắc bảo vệ dữ liệu gia đình.
 - **Dịch vụ nội bộ qua `AiGateway`**: actor hệ thống cho lời gọi từ module khác; phải truyền danh tính người dùng/ngữ cảnh quyền để AI kiểm tra quyền thay cho người dùng cuối.
 
 Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, mã `PERM_002`. Khi vượt giới hạn câu hỏi: HTTP `429`, mã `RATE_001`.
 
 ## 2. Danh sách use case
-> Các mã `FR-AI-01`…`FR-AI-05` bên dưới là mã tạm theo bản nháp hiện có. Đối chiếu với `docs/01-srs/srs.md` trước khi merge; không coi là mã FR chính thức nếu SRS tổng dùng mã khác.
 
 | Mã UC | Tên | Actor chính | Mã FR dự kiến | Ưu tiên |
 |---|---|---|---|---|
@@ -31,7 +30,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-AI-01 (tạm; cần đối chiếu SRS tổng) |
-| Actor | Thành viên đã xác minh; quản trị nhánh; quản trị hệ thống |
+| Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Tìm nội dung liên quan theo ý nghĩa truy vấn thay vì chỉ khớp từ khóa. |
 | Tiền điều kiện | Người dùng đã đăng nhập và xác minh; có quyền xem dữ liệu thuộc `family_id`; truy vấn không rỗng. |
 | Dữ liệu đầu vào | `query` tiếng Việt; `familyId` lấy từ ngữ cảnh đã xác thực, không tin giá trị do client tự khai; `limit` tùy chọn. |
@@ -45,7 +44,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-AI-02 (tạm; cần đối chiếu SRS tổng) |
-| Actor | Thành viên đã xác minh; quản trị nhánh; quản trị hệ thống |
+| Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Trả lời câu hỏi về gia phả dựa trên dữ liệu được truy xuất, có nguồn tham chiếu. |
 | Tiền điều kiện | Đã đăng nhập, đã xác minh, được phép xem dữ liệu thuộc gia đình; câu hỏi hợp lệ; chưa vượt hạn mức. |
 | Dữ liệu đầu vào | `question`; `sessionId` tùy chọn; `familyId` và quyền lấy từ security context. |
@@ -59,7 +58,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-AI-03 (tạm; cần đối chiếu SRS tổng) |
-| Actor | Thành viên đã xác minh; quản trị nhánh; quản trị hệ thống |
+| Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Diễn đạt dễ hiểu quan hệ giữa hai người dựa trên kết quả thuật toán quan hệ của module genealogy. |
 | Tiền điều kiện | Người dùng đã xác minh; có quyền xem cả hai hồ sơ và đường quan hệ cần thiết. |
 | Dữ liệu đầu vào | `personAId`, `personBId`, ngôn ngữ đầu ra tùy chọn. |
@@ -73,7 +72,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-AI-04 (tạm; cần đối chiếu SRS tổng) |
-| Actor | Thành viên đã xác minh; quản trị nhánh; quản trị hệ thống |
+| Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Tóm tắt một bài đăng, câu chuyện hoặc tài liệu mà người dùng có quyền xem. |
 | Tiền điều kiện | Đã đăng nhập và xác minh; có quyền xem nguồn; nguồn tồn tại và chưa bị xóa. |
 | Dữ liệu đầu vào | `sourceType`, `sourceId`, `maxLength` tùy chọn. |
@@ -87,7 +86,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-AI-05 (tạm; cần đối chiếu SRS tổng) |
-| Actor | Thành viên đã xác minh; quản trị nhánh; quản trị hệ thống |
+| Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Đề xuất thành viên hoặc tài nguyên liên quan dựa trên nội dung và ngữ cảnh được phép truy cập. |
 | Tiền điều kiện | Đã đăng nhập và xác minh; có quyền xem phạm vi dữ liệu đề xuất. |
 | Dữ liệu đầu vào | `contextType` và `contextId` tùy chọn; `limit`; bộ lọc loại tài nguyên tùy chọn. |
