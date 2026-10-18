@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/search": {
+    "/ai/search": {
         parameters: {
             query?: never;
             header?: never;
@@ -126,7 +126,8 @@ export interface components {
             code: string;
             message: string;
             details: {
-                [key: string]: unknown;
+                field: string;
+                message: string;
             }[];
         };
     };
@@ -261,7 +262,7 @@ export interface operations {
                 /** @example Ai là ông nội của Nguyễn Minh? */
                 q: string;
                 limit?: number;
-                /** @description Phạm vi yêu cầu; server bắt buộc đối chiếu với security context. Không được dùng giá trị này để mở rộng quyền. */
+                /** @description Gia đình cần xem. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: string;
             };
             header?: never;
@@ -342,7 +343,7 @@ export interface operations {
                     sessionId?: string | null;
                     /**
                      * Format: uuid
-                     * @description Phải đối chiếu với quyền trong security context.
+                     * @description Gia đình cần hỏi. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2).
                      */
                     familyId?: string;
                 };
@@ -555,6 +556,8 @@ export interface operations {
                 contextType?: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
                 contextId?: string;
                 limit?: number;
+                /** @description Gia đình cần gợi ý khi không truyền contextId. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: string;
             };
             header?: never;
             path?: never;

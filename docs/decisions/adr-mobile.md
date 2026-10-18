@@ -1,7 +1,8 @@
 # ADR: Công nghệ Mobile
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-84
-> **Trạng thái:** Chờ review. Thiết kế chi tiết (điều hướng, kiến trúc, xử lý lỗi) ở [`mobile.md`](../02-design/mobile.md).
+> **Ngày:** 18/10/2026 (merge PR #37) | **Người quyết định:** TV5 đề xuất, TV1 duyệt
+> **Trạng thái:** Đã chọn. Thiết kế chi tiết (điều hướng, kiến trúc, xử lý lỗi) ở [`mobile.md`](../02-design/mobile.md).
 
 ## 1. Bối cảnh
 Dự án cần ứng dụng mobile chạy trên iOS và Android. Web hiện sử dụng Next.js, vì vậy việc lựa chọn công nghệ có thể tận dụng kiến thức và hệ sinh thái React hiện có. Ứng dụng mobile dự kiến gọi cùng REST API `/api/v1` với web; tài liệu này không giả định rằng mobile sẽ dùng chung giao diện hoặc mã UI với web.

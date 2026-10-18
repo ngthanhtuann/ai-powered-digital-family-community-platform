@@ -305,9 +305,33 @@ export interface paths {
          *     Cột: id, fullName, birthYear, gender, relationship, generation, jobTitle, workLocation.
          *     Không xuất thông tin liên hệ và địa chỉ chi tiết. Với trẻ dưới 16 tuổi chỉ xuất id, fullName, relationship, birthYear.
          *     Tệp mã hóa UTF-8 có BOM để Excel đọc đúng tiếng Việt. Chống chèn công thức: ô bắt đầu bằng `=`, `+`, `-`, `@`
-         *     được thêm dấu `'` phía trước. Mỗi lần xuất ghi audit log (SCRUM-57). PDF để Sprint 6-7 (SCRUM-62, SCRUM-95).
+         *     được thêm dấu `'` phía trước. Mỗi lần xuất ghi audit log (SCRUM-57). Báo cáo PDF: `GET /dashboard/reports/{reportType}/pdf` (UC-DSH-03, SCRUM-95).
          */
         get: operations["exportMembersCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/reports/{reportType}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Xuất báo cáo thống kê PDF (UC-DSH-03)
+         * @description Vai trò: BRANCH_ADMIN (trong phạm vi chi của mình, hoặc cả gia đình nếu không có chi), SYSTEM_ADMIN. MEMBER gọi trả 403 PERM_001.
+         *     Ba loại báo cáo theo `srs.md` mục 7.2, dùng cùng số liệu với UC-DSH-01:
+         *     `GENEALOGY` (FR-DSH-01, FR-DSH-04: tổng thành viên, theo thế hệ, giới tính, nghề nghiệp, nơi ở),
+         *     `COMMUNITY` (FR-DSH-02: bài đăng theo tuần), `EVENTS` (FR-DSH-03: sự kiện sắp tới).
+         *     Không in thông tin liên hệ, địa chỉ chi tiết; thống kê nghề nghiệp, nơi ở loại trẻ dưới 16 tuổi. Mỗi lần xuất ghi audit log (SCRUM-57).
+         */
+        get: operations["exportReportPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -610,7 +634,7 @@ export interface components {
                 code: string;
                 message: string;
                 /** @description Lỗi chi tiết từng trường; không có thì để mảng rỗng. */
-                details?: components["schemas"]["ErrorDetail"][];
+                details: components["schemas"]["ErrorDetail"][];
             };
         };
     };
@@ -726,6 +750,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+        FamilyId: string;
         /** @description Số trang, bắt đầu từ 0. */
         Page: number;
         /** @description Số phần tử mỗi trang. */
@@ -743,6 +769,8 @@ export interface operations {
     searchMembers: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Nghề nghiệp (so khớp chứa, không phân biệt hoa thường). */
                 job?: string;
                 /** @description Tỉnh/thành đang sinh sống (person.current_province). */
@@ -911,6 +939,8 @@ export interface operations {
     getDocuments: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Phân loại (ví dụ gia-pha, sac-phong, di-chuc, ban-do). */
                 category?: string;
                 /** @description Số trang, bắt đầu từ 0. */
@@ -942,7 +972,10 @@ export interface operations {
     };
     createDocument: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1062,6 +1095,8 @@ export interface operations {
     getStories: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Số trang, bắt đầu từ 0. */
                 page?: components["parameters"]["Page"];
                 /** @description Số phần tử mỗi trang. */
@@ -1091,7 +1126,10 @@ export interface operations {
     };
     createStory: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1211,6 +1249,8 @@ export interface operations {
     getHeritagePhotos: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Số trang, bắt đầu từ 0. */
                 page?: components["parameters"]["Page"];
                 /** @description Số phần tử mỗi trang. */
@@ -1241,6 +1281,8 @@ export interface operations {
     getOutstandingMembers: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Số trang, bắt đầu từ 0. */
                 page?: components["parameters"]["Page"];
                 /** @description Số phần tử mỗi trang. */
@@ -1270,7 +1312,10 @@ export interface operations {
     };
     createOutstandingMember: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1365,6 +1410,8 @@ export interface operations {
     getDashboardStats: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Lọc theo chi họ (tùy chọn). */
                 branchId?: string;
             };
@@ -1392,6 +1439,8 @@ export interface operations {
     exportMembersCsv: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 /** @description Định dạng xuất. Hiện chỉ hỗ trợ csv. */
                 format?: "csv";
                 /** @description Chi họ cần xuất (tùy chọn, phải thuộc phạm vi của người dùng). */
@@ -1417,6 +1466,40 @@ export interface operations {
                      *     5b0f2f6e-8d3a-4c1e-9a52-7e1d3c4b9a10,Nguyễn Bảo Na,2014,,Cháu nội,,,
                      */
                     "text/csv; charset=UTF-8": string;
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    exportReportPdf: {
+        parameters: {
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+                /** @description Chi họ cần xuất (tùy chọn, phải thuộc phạm vi của người dùng). */
+                branchId?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Loại báo cáo. */
+                reportType: "GENEALOGY" | "COMMUNITY" | "EVENTS";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tải file PDF thành công */
+            200: {
+                headers: {
+                    /** @description Tên tệp theo loại báo cáo và ngày xuất. */
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
             400: components["responses"]["BadRequestError"];

@@ -66,13 +66,13 @@ Commit tốt và commit không nên viết:
 
 ### 2.3 Ai duyệt ai (test chéo)
 
-| Người làm | Reviewer |
-|---|---|
-| TV1 Tuấn | TV4 Huy Quốc |
-| TV2 Trí | TV5 Lê Nhựt |
-| TV3 PiLo257 | TV1 Tuấn |
-| TV4 Huy Quốc | TV2 Trí |
-| TV5 Lê Nhựt | TV3 PiLo257 |
+| Người làm | Tài khoản GitHub | Reviewer |
+|---|---|---|
+| TV1 Tuấn | `ngthanhtuann` | TV4 Huy Quốc |
+| TV2 Trí | `MinhTri230926` | TV5 Lê Nhựt |
+| TV3 PiLo257 | `PiLo2507` | TV1 Tuấn |
+| TV4 Huy Quốc | `laquochuy47-create` | TV2 Trí |
+| TV5 Lê Nhựt | `Nhut-26` | TV3 PiLo257 |
 
 Tên reviewer cũng ghi ngay ở đầu mô tả mỗi task trên Jira ("Reviewer (test chéo): TV4").
 

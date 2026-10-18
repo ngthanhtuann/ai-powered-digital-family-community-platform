@@ -1328,6 +1328,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+        FamilyId: string;
         /** @description UUID của tài nguyên */
         Id: string;
         Page: number;
@@ -1349,6 +1351,8 @@ export interface operations {
     listPosts: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["Size"];
                 sort?: components["parameters"]["Sort"];
@@ -1408,7 +1412,10 @@ export interface operations {
     };
     createPost: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2093,6 +2100,8 @@ export interface operations {
     listAnnouncements: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["Size"];
                 sort?: components["parameters"]["Sort"];
@@ -2144,7 +2153,10 @@ export interface operations {
     };
     createAnnouncement: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2384,7 +2396,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                /** @example {} */
+                /**
+                 * @example {
+                 *       "isRead": true
+                 *     }
+                 */
                 "application/json": components["schemas"]["MarkReadRequest"];
             };
         };
@@ -2476,6 +2492,8 @@ export interface operations {
     listEvents: {
         parameters: {
             query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
                 page?: components["parameters"]["Page"];
                 size?: components["parameters"]["Size"];
                 sort?: components["parameters"]["Sort"];
@@ -2537,7 +2555,10 @@ export interface operations {
     };
     createEvent: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                familyId?: components["parameters"]["FamilyId"];
+            };
             header?: never;
             path?: never;
             cookie?: never;

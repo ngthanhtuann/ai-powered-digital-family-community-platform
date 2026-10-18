@@ -16,7 +16,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `01-srs/use-cases/heritage-directory-dashboard.md` | Use case Heritage, Directory, Dashboard | TV4 Huy Quốc | TV1 | SCRUM-22 |
 | `01-srs/use-cases/ai.md` | Use case AI | TV5 Lê Nhựt | TV3 | SCRUM-34 |
 | `02-design/architecture.md` | Kiến trúc tổng thể (Web, Mobile, AI Service Layer) | TV4 Huy Quốc | TV2 | SCRUM-23 |
-| `02-design/algorithm-relationship.md` | Thuật toán quan hệ họ hàng | TV2 Trí | TV5 | SCRUM-19 |
+| `02-design/algorithm-relationship.md` | Thuật toán quan hệ họ hàng | TV2 Trí | TV1 | SCRUM-19 |
 | `02-design/ai-rag.md` | Thiết kế AI/RAG | TV5 Lê Nhựt | TV3 | SCRUM-34 |
 | `02-design/business-process.md` | Mô hình hóa quy trình nghiệp vụ | TV3 PiLo257 | TV1 | SCRUM-83 |
 | `02-design/mobile.md` | Thiết kế Mobile (React Native + Expo) | TV5 Lê Nhựt | TV3 | SCRUM-84 |
@@ -27,6 +27,8 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `06-test/test-plan.md` | Kế hoạch kiểm thử | TV1 Tuấn | TV4 | SCRUM-27 |
 | `decisions/` | Ghi quyết định kỹ thuật (ADR) | người quyết định | | SCRUM-24, 31, 84 |
 | `07-deploy/`, `08-user-guide/`, `09-report/` | Triển khai, hướng dẫn sử dụng, báo cáo cuối | Sprint 7-8 | | |
+
+> Cột Reviewer ghi người duyệt ở đầu mỗi tài liệu. Trên GitHub, các PR tài liệu Sprint 1-2 có Approve đều do TV1 duyệt, một số PR Sprint 1 được merge khi chưa có Approve. Từ Sprint 3, mỗi PR cần Approve của reviewer theo bảng test chéo ở `00-process/quy-trinh-lam-viec.md` mục 2.3.
 
 ## Quy ước chung
 - File viết bằng **Markdown**, tên file **chữ thường, không dấu, nối bằng gạch ngang**.

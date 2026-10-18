@@ -281,9 +281,9 @@ export interface components {
                 /** @example GEN_005 */
                 code: string;
                 message: string;
-                details?: {
-                    field?: string;
-                    message?: string;
+                details: {
+                    field: string;
+                    message: string;
                 }[];
             };
         };
@@ -291,7 +291,7 @@ export interface components {
             /** @example true */
             success?: boolean;
             /** @example null */
-            data?: unknown;
+            data?: Record<string, never> | null;
         };
         Meta: {
             page?: number;
@@ -1444,8 +1444,7 @@ export interface operations {
                      *       "success": false,
                      *       "error": {
                      *         "code": "GEN_004",
-                     *         "message": "Thành viên còn quan hệ",
-                     *         "hãy gỡ quan hệ trước": null,
+                     *         "message": "Thành viên còn quan hệ, hãy gỡ quan hệ trước",
                      *         "details": []
                      *       }
                      *     }

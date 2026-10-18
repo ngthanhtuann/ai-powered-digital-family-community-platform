@@ -14,7 +14,7 @@ tags:
 - name: AI Search
 - name: AI Assistant
 paths:
-  /search:
+  /ai/search:
     get:
       tags:
       - AI Search
@@ -44,8 +44,8 @@ paths:
       - in: query
         name: familyId
         required: false
-        description: 'Phạm vi yêu cầu; server bắt buộc đối chiếu với security context. Không được dùng giá trị này
-          để mở rộng quyền.
+        description: 'Gia đình cần xem. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò
+          khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2).
 
           '
         schema:
@@ -159,7 +159,9 @@ paths:
                 familyId:
                   type: string
                   format: uuid
-                  description: Phải đối chiếu với quyền trong security context.
+                  description: Gia đình cần hỏi. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001).
+                    Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md
+                    mục 6.2).
             example:
               question: Ai là ông nội của Nguyễn Minh?
               sessionId: null
@@ -499,6 +501,17 @@ paths:
           minimum: 1
           maximum: 10
           default: 5
+      - in: query
+        name: familyId
+        required: false
+        description: 'Gia đình cần gợi ý khi không truyền contextId. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu
+          thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001
+          (conventions.md mục 6.2).
+
+          '
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Danh sách gợi ý trong phạm vi quyền xem
@@ -659,7 +672,14 @@ components:
           type: array
           items:
             type: object
-            additionalProperties: true
+            required:
+            - field
+            - message
+            properties:
+              field:
+                type: string
+              message:
+                type: string
   responses:
     ValidationError:
       description: Dữ liệu đầu vào không hợp lệ

@@ -1,7 +1,7 @@
 # Thiết kế Mobile (React Native + Expo)
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-84 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)
-> **Trạng thái:** Chờ review
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2)
 > Căn cứ: `architecture.md` mục 5 và 7, `design-system.md` mục 4, 5.1, 5.2, `use-cases/auth.md` mục 4.2, `conventions.md` mục 2, 3, 8, `srs.md` mục 3 và Phụ lục A (bản trên `develop`).
 
 ## 1. Chọn công nghệ
@@ -44,7 +44,7 @@ flowchart TD
     L -- "Đăng nhập thành công" --> M
     M -- "APPROVED" --> APP["Ứng dụng: Tổng quan + menu drawer"]
     M -- "PENDING" --> P["UC-AUTH-06 Chờ duyệt"]
-    M -- "NONE" --> J["UC-AUTH-06 Nhập mã gia đình hoặc tạo gia đình"]
+    M -- "NONE" --> J["UC-AUTH-06 Nhập mã gia đình (familyId) hoặc tạo gia đình"]
     J -- "Gửi mã" --> P
     J -- "Tạo gia đình (UC-GEN-01)" --> APP
     P -- "Làm mới: APPROVED" --> APP
@@ -68,7 +68,7 @@ Bất kỳ lúc nào: nhận `401 AUTH_002` mà làm mới token thất bại th
 |---|---|---|---|
 | Xác thực | Đăng nhập | UC-AUTH-02 | `UC-AUTH-02 Đăng nhập / 360` |
 | Xác thực | Đăng ký | UC-AUTH-01 | Chưa có |
-| Tham gia gia đình | Nhập mã gia đình hoặc tạo gia đình | UC-AUTH-06, UC-GEN-01 | Chưa có |
+| Tham gia gia đình | Nhập mã gia đình (`familyId`, không phải mã mời, BR-AUTH-09) hoặc tạo gia đình | UC-AUTH-06, UC-GEN-01 | Chưa có |
 | Tham gia gia đình | Chờ duyệt | UC-AUTH-06 | Chưa có |
 | Trang chủ | Tổng quan | (trang chủ, `design-system.md` mục 5.2) | Chưa có (bản web ở page 05) |
 | Menu | Menu drawer | | `Menu / 360` |
@@ -118,7 +118,7 @@ Dùng cùng thư viện với web (`frontend/package.json`), không thêm thư v
 
 ### 4.3. Token
 Theo `use-cases/auth.md` mục 4.2:
-- Access token là JWT hạn 15 phút, gửi ở header `Authorization: Bearer <token>`. Refresh token hạn 7 ngày, gửi trong **body** của `POST /api/v1/auth/refresh`, **chỉ dùng một lần** và được xoay vòng: mỗi lần làm mới nhận cặp mới, token cũ bị thu hồi (BR-AUTH-06).
+- Access token là JWT hạn 15 phút, gửi ở header `Authorization: Bearer <token>`. Refresh token hạn 7 ngày, gửi trong **body** của `POST /api/v1/auth/refresh`, **chỉ dùng một lần** và được xoay vòng: mỗi lần làm mới nhận cặp mới, token cũ bị thu hồi (BR-AUTH-05, BR-AUTH-06).
 - Lưu cả hai token bằng `expo-secure-store` (Keychain trên iOS, Keystore trên Android). Không lưu ở `AsyncStorage`, không đưa vào URL hay log.
 - Nhiều request cùng nhận `AUTH_002` thì chỉ gọi refresh một lần, các request đang chờ dùng chung kết quả (một promise dùng chung, như `frontend/src/lib/api.ts`), sau đó gọi lại mỗi request đúng một lần.
 - Đăng xuất: gọi `DELETE /api/v1/auth/sessions/current`, rồi xóa token khỏi SecureStore và về màn Đăng nhập.
@@ -142,7 +142,7 @@ Theo `use-cases/auth.md` mục 4.2:
 | `RATE_001` | 429 | Báo người dùng, đọc header `Retry-After` và khóa nút gửi đến hết thời gian chờ |
 | `FILE_001`, `FILE_002` | 413, 415 | Báo ảnh quá dung lượng hoặc sai định dạng (`jpg`, `png`, `webp`, tối đa 5 MB, BR-COM-08) |
 | `AI_001` | 503 | Báo "Trợ lý AI tạm thời không khả dụng", có nút thử lại |
-| `AI_002` | 409 | Báo "Tính năng AI đang tạm tắt", ẩn ô nhập (`ai.md` BR-12) |
+| `AI_002` | 409 | Báo "Tính năng AI đang tạm tắt", ẩn ô nhập (`ai.md` BR-AI-12) |
 | Mã riêng khác (`GEN_xxx`, `EVT_001`...) | 409 | Hiện `error.message` server trả về |
 | `SERVER_001` hoặc mất mạng | 500 hoặc không có phản hồi | Báo lỗi chung kèm nút thử lại (mục 4.6) |
 

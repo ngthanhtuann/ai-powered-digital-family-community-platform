@@ -504,7 +504,7 @@ export interface components {
         /** @description Trạng thái tham gia gia đình của người đang đăng nhập. Frontend dùng để chọn màn hình: NONE → nhập mã gia đình hoặc tạo gia đình; PENDING → màn chờ duyệt; APPROVED → vào ứng dụng. */
         Membership: {
             status: components["schemas"]["MembershipStatus"];
-            role: components["schemas"]["MemberRole"] | null;
+            role: (string & components["schemas"]["MemberRole"]) | null;
             /** Format: uuid */
             familyId: string | null;
             familyName: string | null;
@@ -1011,7 +1011,7 @@ export interface operations {
                  *       "email": "an.nguyen@example.com",
                  *       "password": "Matkhau123",
                  *       "fullName": "Nguyễn Văn An",
-                 *       "phone": 901234567,
+                 *       "phone": "0901234567",
                  *       "dateOfBirth": "1990-05-12"
                  *     }
                  */
@@ -1032,7 +1032,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"
@@ -1106,7 +1106,7 @@ export interface operations {
                      *           "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *           "email": "an.nguyen@example.com",
                      *           "fullName": "Nguyễn Văn An",
-                     *           "phone": 901234567,
+                     *           "phone": "0901234567",
                      *           "dateOfBirth": "1990-05-12",
                      *           "roles": [
                      *             "MEMBER"
@@ -1291,7 +1291,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"
@@ -1322,7 +1322,7 @@ export interface operations {
                 /**
                  * @example {
                  *       "fullName": "Nguyễn Văn An B",
-                 *       "phone": 907654321
+                 *       "phone": "0907654321"
                  *     }
                  */
                 "application/json": components["schemas"]["UpdateProfileRequest"];
@@ -1342,7 +1342,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An B",
-                     *         "phone": 907654321,
+                     *         "phone": "0907654321",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"
@@ -1699,7 +1699,7 @@ export interface operations {
                      *           "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *           "email": "an.nguyen@example.com",
                      *           "fullName": "Nguyễn Văn An",
-                     *           "phone": 901234567,
+                     *           "phone": "0901234567",
                      *           "dateOfBirth": "1990-05-12",
                      *           "roles": [
                      *             "MEMBER"
@@ -1762,7 +1762,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"
@@ -1829,7 +1829,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"
@@ -1918,7 +1918,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER",
@@ -2007,7 +2007,7 @@ export interface operations {
                      *         "id": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
                      *         "email": "an.nguyen@example.com",
                      *         "fullName": "Nguyễn Văn An",
-                     *         "phone": 901234567,
+                     *         "phone": "0901234567",
                      *         "dateOfBirth": "1990-05-12",
                      *         "roles": [
                      *           "MEMBER"

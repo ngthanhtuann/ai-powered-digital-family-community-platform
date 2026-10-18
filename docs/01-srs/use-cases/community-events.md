@@ -24,7 +24,7 @@ Module Community và Events cung cấp các chức năng phục vụ việc chia
 - Chỉ thành viên đã được xác minh mới được truy cập các nội dung yêu cầu quyền thành viên.
 - Quyền tạo, sửa và xóa nội dung được kiểm tra theo vai trò và quyền của người dùng.
 - Người dùng chỉ được sửa hoặc xóa nội dung do mình tạo, hoặc nội dung mà vai trò của mình được phép quản lý.
-- Mọi truy vấn phải giới hạn theo `family_id` của người đăng nhập; không tin `family_id` do client gửi. Người dùng thuộc gia đình A gọi dữ liệu gia đình B phải bị từ chối (chống IDOR).
+- Mọi truy vấn phải giới hạn theo `family_id` của người đăng nhập; không tin `family_id` do client gửi; riêng `SYSTEM_ADMIN` (không thuộc gia đình nào) truyền `familyId` ở API danh sách, tạo mới và thống kê (`conventions.md` mục 6.2). Người dùng thuộc gia đình A gọi dữ liệu gia đình B phải bị từ chối (chống IDOR).
 - `branch_id = NULL` biểu thị phạm vi toàn gia đình; có `branch_id` thì nội dung thuộc phạm vi chi. Nội dung có `branch_id` của chi X hiển thị cho thành viên thuộc chi X và các chi con của X (đi theo `branch.parent_branch_id`, cùng chiều với phạm vi quản lý của `BRANCH_ADMIN` ở BR-GEN-14); thành viên của chi cha hoặc chi khác nhánh không thấy. `BRANCH_ADMIN` quản lý cả gia đình và `SYSTEM_ADMIN` thấy tất cả. (Đã chốt 9/10/2026.)
 
 ### Phân trang
@@ -211,7 +211,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | Mã | Quy tắc |
 |---|---|
 | BR-COM-01 | Chỉ thành viên đã đăng nhập và được xác minh mới được gọi các API yêu cầu quyền thành viên; người chưa xác minh nhận HTTP 403 với mã `PERM_002`. |
-| BR-COM-02 | Mọi truy vấn dữ liệu Community phải giới hạn theo `family_id` lấy từ ngữ cảnh người dùng đã đăng nhập; không tin `family_id` do client tự gửi. Yêu cầu truy cập dữ liệu của gia đình khác phải bị từ chối (chống IDOR). |
+| BR-COM-02 | Mọi truy vấn dữ liệu Community phải giới hạn theo `family_id` lấy từ ngữ cảnh người dùng đã đăng nhập; không tin `family_id` do client tự gửi; riêng `SYSTEM_ADMIN` (không thuộc gia đình nào) truyền `familyId` ở API danh sách, tạo mới và thống kê (`conventions.md` mục 6.2). Yêu cầu truy cập dữ liệu của gia đình khác phải bị từ chối (chống IDOR). |
 | BR-COM-03 | `post`, `announcement` và `event` có `branch_id UUID NULL`: `NULL` là phạm vi toàn gia đình; có giá trị là phạm vi chi. Nội dung có `branch_id` của chi X hiển thị cho thành viên thuộc chi X và các chi con của X (đi theo `branch.parent_branch_id`, cùng chiều với phạm vi quản lý của `BRANCH_ADMIN` ở BR-GEN-14); thành viên của chi cha hoặc chi khác nhánh không thấy. `BRANCH_ADMIN` quản lý cả gia đình và `SYSTEM_ADMIN` thấy tất cả. |
 | BR-COM-04 | `type=POST` cho phép MEMBER đã xác minh tạo bài thường; `type=NEWS` chỉ cho `BRANCH_ADMIN` trở lên. MEMBER không được đổi `type` khi PATCH bài đăng. |
 | BR-COM-05 | Chỉ người tạo được sửa bài. Xóa bài được phép với người tạo, `BRANCH_ADMIN` trong phạm vi chi, hoặc `SYSTEM_ADMIN` khi kiểm duyệt (FR-ADM-02); `BRANCH_ADMIN` chỉ gỡ bài thuộc chi mình quản lý, không phải quyền kiểm duyệt toàn hệ thống; xóa mềm qua `deleted_at`. |
@@ -338,7 +338,7 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 | user_id | UUID | NOT NULL | Người nhận thông báo; tham chiếu `users(id)` của module auth, kiểm tra ở service, không FK chéo module |
 | ref_type | VARCHAR(30) | NULL | Loại tài nguyên tham chiếu, ví dụ EVENT hoặc ANNOUNCEMENT |
 | ref_id | UUID | NULL | ID tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | `EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`, `ANNOUNCEMENT` (đối chiếu SRS nếu còn loại khác) |
+| type | VARCHAR(50) | NOT NULL, CHECK | `EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`, `ANNOUNCEMENT` |
 | title | VARCHAR(255) | NOT NULL | Tiêu đề |
 | content | TEXT | NOT NULL | Nội dung |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE | Trạng thái đã đọc |
@@ -487,7 +487,7 @@ Màn hình và wireframe của module Community và Events được quản lý t
 
 `docs/05-ui/figma-links.md`
 
-Link Figma sẽ được bổ sung theo tiến độ thiết kế UI của nhóm.
+Wireframe ở page `04 Community và Events` của file Figma chung (SCRUM-30).
 
 Ghi chú cho wireframe SCRUM-30: cần có nút "Báo cáo" trên bài đăng, bình luận, sự kiện và thông báo (BR-COM-12).
 

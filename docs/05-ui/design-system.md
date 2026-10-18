@@ -1,7 +1,7 @@
 # Design system
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-25
-> **Trạng thái:** Chờ review | **Phiên bản:** 0.6 (layout và menu theo vai trò, bổ sung các variant Sprint 2, bộ icon, mục 5.2 và mục 8 hướng dẫn dùng)
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2) | **Phiên bản:** 0.6 (layout và menu theo vai trò, bổ sung các variant Sprint 2, bộ icon, mục 5.2 và mục 8 hướng dẫn dùng)
 > Liên quan: `figma-links.md` (link Figma), SCRUM-84 (bản mobile).
 > Figma: page [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) của file chung.
 
@@ -116,7 +116,7 @@ Theo NFR-01 trong `srs.md`, giao diện web dùng được ở 3 cỡ màn hình
 | Tablet 768 đến 1023px | 768 | Không có sidebar cố định; padding 24px; thống kê bốn cột; nội dung một cột (riêng khối "Hoạt động" hai cột); điều hướng đặt cuối trang |
 | Mobile < 768px | 360 | Header gọn; padding 16px; thống kê hai cột x hai hàng; nội dung một cột; điều hướng đặt cuối trang; form chọn hai người xếp dọc; nút có thể xuống dòng |
 
-Menu dạng drawer (mở bằng nút Menu) là hướng cải tiến khi làm frontend, chưa vẽ trong Figma. Phạm vi Figma của SCRUM-25: màn hình Tổng quan ở 3 cỡ; các màn hình của từng module vẽ theo design system này (xem `figma-links.md`; bản mobile của các module do SCRUM-84).
+Bản web: menu dạng drawer (mở bằng nút Menu) là hướng cải tiến khi làm frontend, chưa vẽ trong Figma. App mobile đã có khung `Menu / 360` trên page `06 Mobile` (`mobile.md` mục 3). Phạm vi Figma của SCRUM-25: màn hình Tổng quan ở 3 cỡ; các màn hình của từng module vẽ theo design system này (xem `figma-links.md`; bản mobile của các module do SCRUM-84).
 
 ### 5.2. Menu theo vai trò
 
@@ -234,7 +234,7 @@ Còn lại, chờ TV5 quyết định:
 - Cỡ chữ 13, 15, 16, 20px và chữ để line-height tự động trong các màn Tổng quan (chưa gắn text style vì đổi cỡ sẽ làm lệch bố cục).
 - Chữ trắng trên `accent/xanh-lá` (3.9) và `accent/hồng` (3.3) chưa đạt 4.5; nên dùng chữ to và đậm (từ 18px đậm) hoặc đổi sang màu đậm hơn.
 - Component `Table` chỉ có 3 cột cố định, chưa thêm được cột "Thao tác"; `Avatar` (dạng hàng danh sách) và `Card`, `Modal` vẫn dùng 4 variant chung Default, Hover, Disabled, Error.
-- 5 khung mobile theo module (SCRUM-84) đã chuyển sang page `06 Mobile`, còn header và điều hướng vẽ tay, chưa đặt tên theo mã UC.
+- Page `06 Mobile` (SCRUM-84): tình trạng và việc còn lại ghi ở `mobile.md` mục 5.
 
 ## 8. Hướng dẫn dùng (cho người vẽ màn hình)
 

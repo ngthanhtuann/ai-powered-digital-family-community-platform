@@ -4,7 +4,8 @@ info:
   title: FamilyConnect - Community và Events
   version: 0.2.0
   description: API Community và Events. Mọi endpoint có xác thực Bearer JWT và kiểm
-    tra family/branch scope theo người dùng đăng nhập.
+    tra family/branch scope theo người dùng đăng nhập. SYSTEM_ADMIN không thuộc gia
+    đình nào nên phải truyền `familyId` ở các API danh sách và tạo mới (conventions.md mục 6.2).
 servers:
 - url: /api/v1
 tags:
@@ -19,6 +20,8 @@ paths:
       - Community
       summary: Tạo bài đăng
       operationId: createPost
+      parameters:
+      - $ref: '#/components/parameters/FamilyId'
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
         theo người dùng đăng nhập.
@@ -114,6 +117,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
       parameters:
+      - $ref: '#/components/parameters/FamilyId'
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/Sort'
@@ -803,6 +807,8 @@ paths:
       - Community
       summary: Tạo thông báo
       operationId: createAnnouncement
+      parameters:
+      - $ref: '#/components/parameters/FamilyId'
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
         theo người dùng đăng nhập.
@@ -887,6 +893,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
       parameters:
+      - $ref: '#/components/parameters/FamilyId'
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/Sort'
@@ -1115,7 +1122,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/MarkReadRequest'
-            example: {}
+            example: {isRead: true}
       parameters:
       - name: id
         in: path
@@ -1185,6 +1192,8 @@ paths:
       - Events
       summary: Tạo sự kiện
       operationId: createEvent
+      parameters:
+      - $ref: '#/components/parameters/FamilyId'
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
         theo người dùng đăng nhập.
@@ -1282,6 +1291,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
       parameters:
+      - $ref: '#/components/parameters/FamilyId'
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/Size'
       - $ref: '#/components/parameters/Sort'
@@ -1763,6 +1773,14 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    FamilyId:
+      name: familyId
+      in: query
+      required: false
+      description: Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2).
+      schema:
+        type: string
+        format: uuid
     Id:
       name: id
       in: path
