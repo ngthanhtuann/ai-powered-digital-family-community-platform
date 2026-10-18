@@ -1,32 +1,740 @@
-# Người viết: TV5. Theo quy ước ở ../conventions.md
 openapi: 3.0.3
 info:
-  title: FamilyConnect - AI
-  version: 0.1.0
+  title: FamilyConnect AI API
+  version: 1.0.0
+  description: 'API cho tìm kiếm ngữ nghĩa, chatbot RAG, diễn giải quan hệ, tóm tắt và gợi ý. Tài khoản phải được
+    xác minh. Tất cả truy xuất phải kiểm tra family_id, phạm vi chi (branch_id) và quyền xem. Mã lỗi theo ai.md mục 6.2.
+
+    '
 servers:
-  - url: /api/v1
-paths: {}
-# Mẫu một endpoint (xóa dấu # và chỉnh lại):
-# paths:
-#   /auth/login:
-#     post:
-#       summary: Đăng nhập
-#       security: []
-#       requestBody:
-#         required: true
-#         content:
-#           application/json:
-#             schema:
-#               type: object
-#               properties:
-#                 email: { type: string }
-#                 password: { type: string }
-#       responses:
-#         '200': { description: Thành công (access token, refresh token) }
-#         '401': { description: AUTH_001 sai email hoặc mật khẩu }
+- url: /api/v1
+security:
+- bearerAuth: []
+tags:
+- name: AI Search
+- name: AI Assistant
+paths:
+  /search:
+    get:
+      tags:
+      - AI Search
+      summary: Tìm kiếm ngữ nghĩa
+      operationId: semanticSearch
+      x-roles:
+      - MEMBER
+      - BRANCH_ADMIN
+      - SYSTEM_ADMIN
+      parameters:
+      - in: query
+        name: q
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 500
+        example: Ai là ông nội của Nguyễn Minh?
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+      - in: query
+        name: familyId
+        required: false
+        description: 'Phạm vi yêu cầu; server bắt buộc đối chiếu với security context. Không được dùng giá trị này
+          để mở rộng quyền.
+
+          '
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Kết quả tìm kiếm, có thể rỗng nếu không tìm thấy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                    - true
+                  data:
+                    type: object
+                    required:
+                    - query
+                    - results
+                    properties:
+                      query:
+                        type: string
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SearchResult'
+                      message:
+                        type: string
+                        example: Không tìm thấy thông tin phù hợp.
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+              example:
+                success: true
+                data:
+                  query: Ai là ông nội của Nguyễn Minh?
+                  results:
+                  - sourceType: PERSON
+                    sourceId: 4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
+                    content: Nguyễn Văn An là ông nội của Nguyễn Minh.
+                    score: 0.89
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                familyAccessDenied:
+                  summary: Không có quyền truy cập dữ liệu gia đình
+                  value:
+                    success: false
+                    error:
+                      code: PERM_001
+                      message: Bạn không có quyền truy cập dữ liệu này.
+                      details: []
+                accountUnverified:
+                  summary: Tài khoản chưa được xác minh
+                  value:
+                    success: false
+                    error:
+                      code: PERM_002
+                      message: Tài khoản chưa được xác minh để sử dụng AI.
+                      details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/AIUnavailable'
+  /ai/chat:
+    post:
+      tags:
+      - AI Assistant
+      summary: Hỏi đáp gia phả bằng RAG
+      operationId: chatWithFamilyAssistant
+      x-roles:
+      - MEMBER
+      - BRANCH_ADMIN
+      - SYSTEM_ADMIN
+      description: 'Server truy xuất top-k sau khi lọc family_id và quyền xem; nếu context không đủ thì trả "Không
+        tìm thấy thông tin." và không gọi LLM.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - question
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                sessionId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                familyId:
+                  type: string
+                  format: uuid
+                  description: Phải đối chiếu với quyền trong security context.
+            example:
+              question: Ai là ông nội của Nguyễn Minh?
+              sessionId: null
+      responses:
+        '200':
+          description: Câu trả lời từ context hoặc thông báo không tìm thấy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                    - true
+                  data:
+                    type: object
+                    required:
+                    - answer
+                    - sources
+                    properties:
+                      sessionId:
+                        type: string
+                        format: uuid
+                        nullable: true
+                      messageId:
+                        type: string
+                        format: uuid
+                      answer:
+                        type: string
+                      sources:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SourceReference'
+                      latencyMs:
+                        type: integer
+                        minimum: 0
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+              example:
+                success: true
+                data:
+                  sessionId: b5a8c70a-9fd1-4d3e-87a2-4eab65ab0010
+                  messageId: f2d0c2d7-1c0e-42d5-b49d-9b42edaa0012
+                  answer: Nguyễn Văn An là ông nội của Nguyễn Minh.
+                  sources:
+                  - sourceType: PERSON
+                    sourceId: 4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
+                  latencyMs: 8500
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                familyAccessDenied:
+                  summary: Không có quyền truy cập dữ liệu gia đình
+                  value:
+                    success: false
+                    error:
+                      code: PERM_001
+                      message: Bạn không có quyền truy cập dữ liệu này.
+                      details: []
+                accountUnverified:
+                  summary: Tài khoản chưa được xác minh
+                  value:
+                    success: false
+                    error:
+                      code: PERM_002
+                      message: Tài khoản chưa được xác minh để sử dụng AI.
+                      details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/AIUnavailable'
+  /ai/relationship-explanations:
+    post:
+      tags:
+      - AI Assistant
+      summary: Giải thích quan hệ giữa hai thành viên
+      operationId: explainRelationship
+      x-roles:
+      - MEMBER
+      - BRANCH_ADMIN
+      - SYSTEM_ADMIN
+      description: 'Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không
+        tự suy luận quan hệ.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - personAId
+              - personBId
+              properties:
+                personAId:
+                  type: string
+                  format: uuid
+                personBId:
+                  type: string
+                  format: uuid
+            example:
+              personAId: 4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
+              personBId: 7b1f1d2c-31d8-4b7d-8b61-3c4a2a9e0013
+      responses:
+        '200':
+          description: Kết quả thuật toán được diễn đạt lại
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                    - true
+                  data:
+                    type: object
+                    required:
+                    - explanation
+                    - found
+                    properties:
+                      found:
+                        type: boolean
+                      explanation:
+                        type: string
+                      path:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+              example:
+                success: true
+                data:
+                  found: true
+                  explanation: Theo dữ liệu gia phả, A là cháu của B qua đường quan hệ đã xác định.
+                  path: []
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                familyAccessDenied:
+                  summary: Không có quyền truy cập dữ liệu gia đình
+                  value:
+                    success: false
+                    error:
+                      code: PERM_001
+                      message: Bạn không có quyền truy cập dữ liệu này.
+                      details: []
+                accountUnverified:
+                  summary: Tài khoản chưa được xác minh
+                  value:
+                    success: false
+                    error:
+                      code: PERM_002
+                      message: Tài khoản chưa được xác minh để sử dụng AI.
+                      details: []
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/AIUnavailable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /ai/summaries:
+    post:
+      tags:
+      - AI Assistant
+      summary: Tóm tắt bài đăng, câu chuyện hoặc tài liệu
+      operationId: summarizeSource
+      x-roles:
+      - MEMBER
+      - BRANCH_ADMIN
+      - SYSTEM_ADMIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - sourceType
+              - sourceId
+              properties:
+                sourceType:
+                  type: string
+                  enum:
+                  - POST
+                  - STORY
+                  - DOCUMENT
+                sourceId:
+                  type: string
+                  format: uuid
+                maxLength:
+                  type: integer
+                  minimum: 50
+                  maximum: 2000
+                  default: 500
+            example:
+              sourceType: STORY
+              sourceId: e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014
+              maxLength: 500
+      responses:
+        '200':
+          description: Tóm tắt nguồn mà người dùng được phép xem
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                    - true
+                  data:
+                    type: object
+                    required:
+                    - summary
+                    - sourceType
+                    - sourceId
+                    - cached
+                    properties:
+                      summary:
+                        type: string
+                      sourceType:
+                        type: string
+                      sourceId:
+                        type: string
+                        format: uuid
+                      cached:
+                        type: boolean
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+              example:
+                success: true
+                data:
+                  summary: Câu chuyện kể lại lịch sử của gia đình qua ba thế hệ.
+                  sourceType: STORY
+                  sourceId: e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014
+                  cached: false
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                familyAccessDenied:
+                  summary: Không có quyền truy cập dữ liệu gia đình
+                  value:
+                    success: false
+                    error:
+                      code: PERM_001
+                      message: Bạn không có quyền truy cập dữ liệu này.
+                      details: []
+                accountUnverified:
+                  summary: Tài khoản chưa được xác minh
+                  value:
+                    success: false
+                    error:
+                      code: PERM_002
+                      message: Tài khoản chưa được xác minh để sử dụng AI.
+                      details: []
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/AIUnavailable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /ai/recommendations:
+    get:
+      tags:
+      - AI Assistant
+      summary: Gợi ý thành viên hoặc tài nguyên liên quan
+      operationId: getRecommendations
+      x-roles:
+      - MEMBER
+      - BRANCH_ADMIN
+      - SYSTEM_ADMIN
+      parameters:
+      - in: query
+        name: contextType
+        required: false
+        schema:
+          type: string
+          enum:
+          - PERSON
+          - POST
+          - STORY
+          - DOCUMENT
+          - EVENT
+      - in: query
+        name: contextId
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+      responses:
+        '200':
+          description: Danh sách gợi ý trong phạm vi quyền xem
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    enum:
+                    - true
+                  data:
+                    type: object
+                    required:
+                    - recommendations
+                    properties:
+                      recommendations:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                          - sourceType
+                          - sourceId
+                          properties:
+                            sourceType:
+                              type: string
+                            sourceId:
+                              type: string
+                              format: uuid
+                            title:
+                              type: string
+                            reason:
+                              type: string
+                  meta:
+                    $ref: '#/components/schemas/ResponseMeta'
+              example:
+                success: true
+                data:
+                  recommendations:
+                  - sourceType: PERSON
+                    sourceId: 4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
+                    title: Nguyễn Văn An
+                    reason: Có liên quan đến hồ sơ gia phả đang xem.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                familyAccessDenied:
+                  summary: Không có quyền truy cập dữ liệu gia đình
+                  value:
+                    success: false
+                    error:
+                      code: PERM_001
+                      message: Bạn không có quyền truy cập dữ liệu này.
+                      details: []
+                accountUnverified:
+                  summary: Tài khoản chưa được xác minh
+                  value:
+                    success: false
+                    error:
+                      code: PERM_002
+                      message: Tài khoản chưa được xác minh để sử dụng AI.
+                      details: []
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/AIUnavailable'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    SourceReference:
+      type: object
+      required:
+      - sourceType
+      - sourceId
+      properties:
+        sourceType:
+          type: string
+          enum:
+          - PERSON
+          - POST
+          - STORY
+          - DOCUMENT
+          - EVENT
+        sourceId:
+          type: string
+          format: uuid
+    SearchResult:
+      type: object
+      required:
+      - sourceType
+      - sourceId
+      - content
+      - score
+      properties:
+        sourceType:
+          type: string
+          enum:
+          - PERSON
+          - POST
+          - STORY
+          - DOCUMENT
+          - EVENT
+        sourceId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+    ResponseMeta:
+      type: object
+      description: Thông tin bổ sung cho response; chỉ có khi endpoint cần metadata.
+      additionalProperties: true
+    ErrorResponse:
+      type: object
+      required:
+      - success
+      - error
+      properties:
+        success:
+          type: boolean
+          enum:
+          - false
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      required:
+      - code
+      - message
+      - details
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+  responses:
+    ValidationError:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VALID_001
+              message: Dữ liệu đầu vào không hợp lệ.
+              details: []
+    Unauthorized:
+      description: Thiếu token, token hết hạn hoặc không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AUTH_002
+              message: Token hết hạn hoặc không hợp lệ.
+              details: []
+    FeatureDisabled:
+      description: Tính năng AI đang bị quản trị tắt qua cấu hình (ai.search.enabled, ai.chat.enabled, ai.summary.enabled)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AI_002
+              message: Tính năng AI đang tạm tắt.
+              details: []
+    NotFound:
+      description: Không tìm thấy nguồn hoặc thành viên được yêu cầu
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND_001
+              message: Không tìm thấy nguồn dữ liệu được yêu cầu.
+              details: []
+    RateLimited:
+      description: Vượt giới hạn số câu hỏi
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RATE_001
+              message: Bạn đã vượt giới hạn sử dụng AI. Vui lòng thử lại sau.
+              details: []
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Số giây nên chờ trước khi thử lại
+    AIUnavailable:
+      description: LLM, embedding hoặc dịch vụ phụ thuộc không khả dụng/timeout
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AI_001
+              message: Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau.
+              details: []
