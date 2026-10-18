@@ -1271,22 +1271,12 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description GEN_012 người dưới 16 tuổi không được gán tài khoản */
+            /** @description GEN_012 người dưới 16 tuổi không được gán tài khoản; GEN_014 hồ sơ không thuộc gia đình của tài khoản cần gắn (BR-GEN-19) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "success": false,
-                     *       "error": {
-                     *         "code": "GEN_012",
-                     *         "message": "Người dưới 16 tuổi không có tài khoản đăng nhập riêng",
-                     *         "details": []
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
@@ -1403,22 +1393,12 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description GEN_012 người dưới 16 tuổi không được gán tài khoản */
+            /** @description GEN_012 người dưới 16 tuổi không được gán tài khoản; GEN_014 hồ sơ không thuộc gia đình của tài khoản cần gắn (BR-GEN-19) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "success": false,
-                     *       "error": {
-                     *         "code": "GEN_012",
-                     *         "message": "Người dưới 16 tuổi không có tài khoản đăng nhập riêng",
-                     *         "details": []
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
