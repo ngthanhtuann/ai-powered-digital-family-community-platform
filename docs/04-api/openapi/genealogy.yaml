@@ -1,6 +1,6 @@
 # Người viết: TV2 (Nguyễn Minh Trí). Task SCRUM-18. Theo quy ước ../conventions.md (SCRUM-21)
 # Response thành công: { success: true, data, meta? }   Lỗi: { success: false, error: { code, message, details } }
-# Mã lỗi riêng GEN_001..GEN_013 (HTTP 409) giải thích ở docs/01-srs/use-cases/genealogy.md mục 7.2, theo quy tắc mã lỗi riêng ở conventions.md mục 3.2
+# Mã lỗi riêng GEN_001..GEN_014 (HTTP 409) giải thích ở docs/01-srs/use-cases/genealogy.md mục 7.2, theo quy tắc mã lỗi riêng ở conventions.md mục 3.2
 openapi: 3.0.3
 info:
   title: FamilyConnect - Gia phả
@@ -310,11 +310,13 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: GEN_012 người dưới 16 tuổi không được gán tài khoản
+          description: GEN_012 người dưới 16 tuổi không được gán tài khoản; GEN_014 hồ sơ không thuộc gia đình của tài khoản cần gắn (BR-GEN-19)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-              example: { success: false, error: { code: GEN_012, message: Người dưới 16 tuổi không có tài khoản đăng nhập riêng, details: [] } }
+              examples:
+                under16: { value: { success: false, error: { code: GEN_012, message: Người dưới 16 tuổi không có tài khoản đăng nhập riêng, details: [] } } }
+                otherFamily: { value: { success: false, error: { code: GEN_014, message: Hồ sơ không thuộc gia đình của tài khoản cần gắn, details: [] } } }
 
   /persons/{personId}:
     parameters:
@@ -363,11 +365,13 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: GEN_012 người dưới 16 tuổi không được gán tài khoản
+          description: GEN_012 người dưới 16 tuổi không được gán tài khoản; GEN_014 hồ sơ không thuộc gia đình của tài khoản cần gắn (BR-GEN-19)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-              example: { success: false, error: { code: GEN_012, message: Người dưới 16 tuổi không có tài khoản đăng nhập riêng, details: [] } }
+              examples:
+                under16: { value: { success: false, error: { code: GEN_012, message: Người dưới 16 tuổi không có tài khoản đăng nhập riêng, details: [] } } }
+                otherFamily: { value: { success: false, error: { code: GEN_014, message: Hồ sơ không thuộc gia đình của tài khoản cần gắn, details: [] } } }
     delete:
       operationId: deletePerson
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
@@ -388,7 +392,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
-              example: { success: false, error: { code: GEN_004, message: Thành viên còn quan hệ, hãy gỡ quan hệ trước, details: [] } }
+              example: { success: false, error: { code: GEN_004, message: 'Thành viên còn quan hệ, hãy gỡ quan hệ trước', details: [] } }
 
   /persons/{personId}/parents:
     parameters:
@@ -660,7 +664,7 @@ components:
         success: { type: boolean, example: false }
         error:
           type: object
-          required: [code, message]
+          required: [code, message, details]
           properties:
             code: { type: string, example: GEN_005 }
             message: { type: string }
@@ -668,6 +672,7 @@ components:
               type: array
               items:
                 type: object
+                required: [field, message]
                 properties:
                   field: { type: string }
                   message: { type: string }
@@ -675,7 +680,7 @@ components:
       type: object
       properties:
         success: { type: boolean, example: true }
-        data: { nullable: true, example: null }
+        data: { type: object, nullable: true, example: null }
     Meta:
       type: object
       properties:

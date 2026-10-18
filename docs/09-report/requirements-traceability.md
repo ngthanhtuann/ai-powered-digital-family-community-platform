@@ -7,7 +7,7 @@
 | User registration and authentication | FR-AUTH-01 | SCRUM-35, 36 | | |
 | Role-Based Access Control | FR-AUTH-02 | SCRUM-43 | | |
 | User profile management | FR-AUTH-03 | SCRUM-43 | | |
-| Family member verification | FR-AUTH-04 | SCRUM-57 | | |
+| Family member verification | FR-AUTH-04 | SCRUM-35, 57 | | |
 | Family / Branch / Member management | FR-GEN-01..03 | SCRUM-37 | | |
 | Parent-child, Marriage management | FR-GEN-04, 05 | SCRUM-44 | | |
 | Interactive genealogy tree | FR-GEN-06 | SCRUM-45, 52 | | |
@@ -38,3 +38,7 @@
 | High Availability | NFR-10 | SCRUM-96 | | |
 | Docker Deployment | NFR-09 | SCRUM-68, 77 | | |
 | Responsive Web, RESTful API, JWT, Modular architecture | NFR-01, 03, 04, 05 | SCRUM-40, 21, 35, 23 | | |
+| Interactive Graph Visualization | NFR-06 | SCRUM-52, 56 | | |
+| PostgreSQL Database | NFR-07 | SCRUM-28 | | |
+| AI Service Integration | NFR-08 | SCRUM-23, 55 | | |
+| Audit Logging | NFR-11 | SCRUM-57 | | |

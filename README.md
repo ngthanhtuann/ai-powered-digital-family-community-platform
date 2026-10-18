@@ -127,4 +127,8 @@
 
 *(Đề xuất bổ sung nếu có / Additional proposals, if any)*
 
-* Chưa có nội dung. / Not provided yet.
+Nhóm bổ sung ba yêu cầu phi chức năng (chi tiết ở `docs/01-srs/srs.md`, NFR-12 đến NFR-14) / The team adds three non-functional requirements (details in `docs/01-srs/srs.md`, NFR-12 to NFR-14):
+
+* **Hiệu năng / Performance (NFR-12):** API cây gia phả dưới 1 giây với 5.000 người; tìm kiếm ngữ nghĩa dưới 2 giây. / Genealogy tree API under 1 second with 5,000 people; semantic search under 2 seconds.
+* **Quyền riêng tư dữ liệu / Data privacy (NFR-13):** chỉ thành viên đã xác minh mới xem dữ liệu gia đình; quy tắc cho trẻ em và người đã mất; không gửi dữ liệu nhạy cảm cho LLM (`docs/01-srs/privacy.md`). / Only verified members can view family data; rules for children and deceased persons; no sensitive data is sent to the LLM.
+* **Độ tin cậy của AI / AI reliability (NFR-14):** AI chỉ trả lời từ dữ liệu gia đình; không có thông tin thì trả lời "không tìm thấy"; tỷ lệ trả lời đúng từ 80% trên bộ câu hỏi kiểm tra. / The AI answers only from family data, replies "not found" when there is no information, and reaches at least 80% correct answers on the test question set.

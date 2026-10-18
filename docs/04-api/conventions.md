@@ -186,6 +186,7 @@ Tiền tố module đã thống nhất:
 | Dashboard      | `DSH_`  |
 | Administration | `ADM_`  |
 | Auth           | `AUTH_` |
+| AI             | `AI_`   |
 
 Mã lỗi riêng dùng cho các trường hợp vi phạm quy tắc nghiệp vụ và trả về HTTP `409 Conflict`, trừ khi tài liệu đã thống nhất quy định cụ thể khác.
 
@@ -280,6 +281,7 @@ Authorization: Bearer <access_token>
 * Dữ liệu gia đình chỉ được truy cập bởi người dùng thuộc phạm vi gia đình được phép.
 * Không trả dữ liệu riêng tư của gia đình khác khi người dùng không có quyền.
 * Trả `403 PERM_002` khi thành viên chưa được xác minh; trả `403 PERM_001` khi không đủ quyền, bao gồm truy cập dữ liệu gia đình khác.
+* `SYSTEM_ADMIN` không thuộc gia đình nào (`use-cases/auth.md` BR-AUTH-08). Các API danh sách, tạo mới và thống kê lấy gia đình từ người đăng nhập có tham số `familyId` (chốt 18/10/2026): bắt buộc khi người gọi là `SYSTEM_ADMIN`, thiếu thì `400 VALID_001`; vai trò khác không cần truyền, nếu truyền khác gia đình của mình thì `403 PERM_001`. API theo id (ví dụ `/posts/{id}`) lấy gia đình từ chính bản ghi nên không cần tham số này.
 
 ## 7. Bảo mật
 

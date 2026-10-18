@@ -105,7 +105,7 @@ Ma trận phân quyền chi tiết: xem **Phụ lục A**.
 
 > Bảng dưới liệt kê **đầy đủ 46 chức năng ở mục c) của đề tài**, nhóm theo 9 nhóm như đề tài. Mọi chức năng đề tài nêu đều là **Must** (giảng viên yêu cầu). Cột "Sprint" là sprint dự kiến hoàn thành; cột "Task Jira" là task thực hiện.
 > **Mức độ thực hiện:** mặc định là **đầy đủ**. Các mục giảm mức độ được ghi rõ ở mục 7.2.
-> **Lưu ý về đề tài:** ba mục trong đề tài bị thiếu chữ (ở nhóm Genealogy: "management"; nhóm Directory: "directory"; nhóm Dashboard: "demographics"). Nhóm hiểu theo ngữ cảnh như ghi trong bảng. **Cần giảng viên xác nhận.**
+> **Lưu ý về đề tài:** ba mục trong đề tài bị thiếu chữ (ở nhóm Genealogy: "management"; nhóm Directory: "directory"; nhóm Dashboard: "demographics"). Nhóm hiểu theo ngữ cảnh như ghi trong bảng. **Cần giảng viên xác nhận.** Bản đề tài trong `README.md` ở thư mục gốc là bản nhóm chép lại, ba chỗ thiếu chữ đã được điền theo cách hiểu của nhóm ("Person management", "Member directory", "Member demographics").
 
 | Mã | Yêu cầu | Gốc trong đề tài | Ưu tiên | Sprint | Task Jira |
 |---|---|---|---|---|---|
@@ -180,7 +180,7 @@ Ma trận phân quyền chi tiết: xem **Phụ lục A**.
 | Heritage, Directory, Dashboard | [use-cases/heritage-directory-dashboard.md](use-cases/heritage-directory-dashboard.md) | TV4 Huy Quốc | HER, DIR, DSH |
 | AI | [use-cases/ai.md](use-cases/ai.md) | TV5 Lê Nhựt | AI |
 
-> Use case diagram tổng và sơ đồ quy trình nghiệp vụ: xem `02-design/business-process.md` (SCRUM-83).
+> Sơ đồ use case vẽ theo từng module, đặt trong mỗi file ở `use-cases/`. Sơ đồ quy trình nghiệp vụ: xem `02-design/business-process.md` (SCRUM-83).
 
 ---
 

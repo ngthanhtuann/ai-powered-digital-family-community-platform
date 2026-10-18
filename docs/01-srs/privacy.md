@@ -49,9 +49,13 @@ Có 4 vai trò: `GUEST` (khách), `MEMBER` (thành viên), `BRANCH_ADMIN` (trư�
 3. Mọi truy vấn dữ liệu **lọc theo `family_id`** của người đang đăng nhập; mỗi API kiểm tra quyền để chống đổi ID trên đường dẫn (IDOR). Mỗi API mới có một test: gia đình A gọi dữ liệu gia đình B phải bị từ chối.
 
 ## 6. Dữ liệu gửi cho AI (LLM bên ngoài)
-**Được gửi:** họ tên, quan hệ, năm sinh, nghề nghiệp mức chung của người **cùng gia đình** với người hỏi; nội dung bài đăng, câu chuyện, tài liệu trong phạm vi gia đình.
+**Được gửi:** họ tên, quan hệ, năm sinh, nghề nghiệp mức chung, tỉnh/thành nơi ở (chỉ người từ 16 tuổi, không gửi địa chỉ chi tiết; chốt 18/10/2026) của người **cùng gia đình** với người hỏi; nội dung bài đăng, câu chuyện, tài liệu trong phạm vi gia đình.
 
 **Không bao giờ gửi:** mật khẩu, token, email, số điện thoại, địa chỉ chi tiết, địa chỉ IP, thông tin trẻ em (ngoài họ tên và quan hệ), dữ liệu của gia đình khác.
+
+**Gói miễn phí của nhà cung cấp LLM:** ở gói miễn phí Gemini API, nội dung gửi đi được Google dùng để cải thiện sản phẩm (trang giá Google, tra ngày 09/10/2026; `adr-ai-spike.md` mục 3.4). Vì vậy khi phát triển và thử nghiệm chỉ dùng **dữ liệu giả**; trước khi chạy với dữ liệu gia đình thật phải chuyển sang gói trả phí (không dùng dữ liệu để cải thiện sản phẩm) hoặc được cả nhóm chấp nhận rủi ro bằng văn bản.
+
+**Phạm vi chi:** nội dung có `branch_id` (BR-COM-03) chỉ đưa vào ngữ cảnh khi người hỏi thuộc chi đó hoặc một chi con của nó (Trưởng chi quản lý cả gia đình và Quản trị hệ thống thấy tất cả); chi tiết ở `ai.md` BR-AI-13.
 
 **Việc cần làm cho module AI (Lê Nhựt):**
 - [ ] Mỗi đoạn trong `ai_embedding_chunk` có `family_id`; lọc theo `family_id` và quyền xem **trước khi** ghép prompt.

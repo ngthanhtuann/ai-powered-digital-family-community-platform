@@ -47,7 +47,7 @@ paths:
         content:
           application/json:
             schema: {$ref: '#/components/schemas/RegisterRequest'}
-            example: {email: an.nguyen@example.com, password: Matkhau123, fullName: Nguyễn Văn An, phone: 0901234567, dateOfBirth: '1990-05-12'}
+            example: {email: an.nguyen@example.com, password: Matkhau123, fullName: Nguyễn Văn An, phone: '0901234567', dateOfBirth: '1990-05-12'}
       responses:
         '201':
           description: Đã tạo tài khoản
@@ -60,7 +60,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -110,7 +110,7 @@ paths:
                     id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                     email: an.nguyen@example.com
                     fullName: Nguyễn Văn An
-                    phone: 0901234567
+                    phone: '0901234567'
                     dateOfBirth: '1990-05-12'
                     roles: [MEMBER]
                     status: ACTIVE
@@ -218,7 +218,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -238,7 +238,7 @@ paths:
         content:
           application/json:
             schema: {$ref: '#/components/schemas/UpdateProfileRequest'}
-            example: {fullName: Nguyễn Văn An B, phone: 0907654321}
+            example: {fullName: Nguyễn Văn An B, phone: '0907654321'}
       responses:
         '200':
           description: Hồ sơ sau khi cập nhật
@@ -251,7 +251,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An B
-                  phone: 0907654321
+                  phone: '0907654321'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -456,7 +456,7 @@ paths:
                 - id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -491,7 +491,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -530,7 +530,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: LOCKED
@@ -583,7 +583,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER, SYSTEM_ADMIN]
                   status: ACTIVE
@@ -635,7 +635,7 @@ paths:
                   id: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b
                   email: an.nguyen@example.com
                   fullName: Nguyễn Văn An
-                  phone: 0901234567
+                  phone: '0901234567'
                   dateOfBirth: '1990-05-12'
                   roles: [MEMBER]
                   status: ACTIVE
@@ -1044,9 +1044,10 @@ components:
       properties:
         status: {$ref: '#/components/schemas/MembershipStatus'}
         role:
+          type: string
+          nullable: true
           allOf:
           - {$ref: '#/components/schemas/MemberRole'}
-          nullable: true
         familyId: {type: string, format: uuid, nullable: true}
         familyName: {type: string, nullable: true}
         branchId: {type: string, format: uuid, description: 'Với `BRANCH_ADMIN`: chi quản lý (null là quản lý cả gia đình). Với `MEMBER`: chi người xin chọn, chỉ để thông tin.', nullable: true}

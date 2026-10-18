@@ -80,9 +80,9 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | Mô tả ngắn | Thêm, sửa, xóa mềm hồ sơ thành viên (`person`). |
 | Tiền điều kiện | Gia đình đã tồn tại; người dùng có quyền. |
 | Luồng chính (thêm thành viên) | 1. Chọn "Thêm thành viên".<br>2. Nhập họ tên, giới tính (bắt buộc); ngày sinh đầy đủ (bắt buộc với người còn sống), nơi sinh, tỉnh/thành và địa chỉ hiện tại, chi họ, ghi chú (tùy chọn); đánh dấu đã mất kèm ngày mất, nơi an táng nếu có.<br>3. Hệ thống kiểm tra hợp lệ (BR-GEN-04, 08, 16, 17).<br>4. Hệ thống tạo `person` thuộc gia đình hiện tại.<br>5. Ghi audit log, trả về hồ sơ; module `ai` được báo để cập nhật embedding (mục 9). |
-| Luồng thay thế / ngoại lệ | 3a. Ngày mất trước ngày sinh: lỗi `VALID_001`.<br>3b. Người còn sống thiếu ngày sinh: lỗi `VALID_001`.<br>3c. Chi họ không thuộc gia đình: lỗi `VALID_001`.<br>3d. Họ tên và ngày sinh trùng người đã có: cảnh báo, cho phép xác nhận tiếp tục.<br>3e. Gán tài khoản cho người dưới 16 tuổi: lỗi `GEN_012`.<br>**Sửa:** cập nhật các trường cho phép. Nếu chuyển sang "đã mất", hôn nhân `MARRIED` của người đó tự chuyển `WIDOWED` (BR-GEN-08).<br>**Xóa:** xóa mềm. Nếu còn quan hệ cha-mẹ-con hoặc hôn nhân, từ chối và yêu cầu gỡ quan hệ trước (lỗi `GEN_004`). |
+| Luồng thay thế / ngoại lệ | 3a. Ngày mất trước ngày sinh: lỗi `VALID_001`.<br>3b. Người còn sống thiếu ngày sinh: lỗi `VALID_001`.<br>3c. Chi họ không thuộc gia đình: lỗi `VALID_001`.<br>3d. Họ tên và ngày sinh trùng người đã có: cảnh báo, cho phép xác nhận tiếp tục.<br>3e. Gán tài khoản cho người dưới 16 tuổi: lỗi `GEN_012`.<br>3f. Gán tài khoản cho hồ sơ mà `family_id` khác gia đình của tài khoản đó (bản ghi `APPROVED` trong `member_verification`, kiểm tra qua `MembershipQuery`): lỗi `GEN_014` (BR-GEN-19).<br>**Sửa:** cập nhật các trường cho phép. Nếu chuyển sang "đã mất", hôn nhân `MARRIED` của người đó tự chuyển `WIDOWED` (BR-GEN-08).<br>**Xóa:** xóa mềm. Nếu còn quan hệ cha-mẹ-con hoặc hôn nhân, từ chối và yêu cầu gỡ quan hệ trước (lỗi `GEN_004`). |
 | Hậu điều kiện | Hồ sơ được tạo, cập nhật hoặc ẩn; có audit log. |
-| Quy tắc nghiệp vụ | BR-GEN-01, 04, 08, 09, 10, 11, 14, 16, 17, 18 |
+| Quy tắc nghiệp vụ | BR-GEN-01, 04, 08, 09, 10, 11, 14, 16, 17, 18, 19 |
 
 ### UC-GEN-04: Quản lý quan hệ cha-mẹ-con
 | Mục | Nội dung |
@@ -140,7 +140,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | Mô tả ngắn | Hỏi "A là gì của B" và nhận tên quan hệ tiếng Việt kèm đường đi. |
 | Tiền điều kiện | Hai người A và B cùng thuộc một gia đình mà người dùng được xem. |
 | Luồng chính | 1. Người dùng chọn A và B, hỏi "A là gì của B?".<br>2. Hệ thống tìm tổ tiên chung gần nhất (LCA) qua bảng `parent_child`, đếm số bước từ A và từ B lên tổ tiên chung.<br>3. Hệ thống tra bảng ánh xạ (bước A, bước B, bên nội/ngoại, hơn/kém tuổi) để ra tên gọi tiếng Việt.<br>4. Trả về tên quan hệ, đường đi (danh sách người), tổ tiên chung. |
-| Luồng thay thế / ngoại lệ | 2a. A và B là cùng một người: trả "Cùng một người".<br>2b. Không có tổ tiên chung: trả 200 với `supported: false`, `relation: null` (hoặc xét quan hệ qua hôn nhân: "vợ/chồng", "con dâu", "con rể" nếu có).<br>3a. Quan hệ họ hàng xa chưa có trong bảng ánh xạ: trả "Chưa hỗ trợ", kèm số bước (SRS mục 7.2).<br>3b. Thiếu ngày sinh nên không xác định hơn/kém tuổi: dùng cách gọi chung (anh/chị/em thành "anh chị em").<br>2c. Không tìm thấy A hoặc B: lỗi `NOT_FOUND_001`. |
+| Luồng thay thế / ngoại lệ | 2a. A và B là cùng một người: trả "Cùng một người".<br>2b. Không có tổ tiên chung: trả 200 với `supported: false`, `relation: null` (hoặc xét quan hệ qua hôn nhân theo `algorithm-relationship.md` mục 2.4: vợ/chồng, vợ cũ/chồng cũ, bác, thím, mợ, dượng; con dâu, con rể và các trường hợp khác trả `supported: false`).<br>3a. Quan hệ họ hàng xa chưa có trong bảng ánh xạ: trả "Chưa hỗ trợ", kèm số bước (SRS mục 7.2).<br>3b. Thiếu ngày sinh nên không xác định hơn/kém tuổi: dùng cách gọi chung (anh/chị/em thành "anh chị em").<br>2c. Không tìm thấy A hoặc B: lỗi `NOT_FOUND_001`. |
 | Hậu điều kiện | Không thay đổi dữ liệu. Thuật toán chi tiết: `docs/02-design/algorithm-relationship.md` (SCRUM-19). |
 | Quy tắc nghiệp vụ | BR-GEN-10, BR-GEN-13 (con nuôi, con kế), BR-GEN-14 |
 
@@ -168,6 +168,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | BR-GEN-16 | **Trẻ em dưới 16 tuổi không có tài khoản đăng nhập riêng**: `person.user_id` phải là NULL; hồ sơ do cha mẹ hoặc trưởng chi quản lý. Kiểm tra ở tầng service (tuổi thay đổi theo thời gian nên DB không biểu diễn gọn). |
 | BR-GEN-17 | Người **còn sống** phải có ngày sinh đầy đủ (`birth_date`) để hệ thống tính tuổi áp dụng BR-GEN-10. Người đã mất (tổ tiên) có thể chỉ biết năm sinh: lưu vào `birth_year`. |
 | BR-GEN-18 | **Dữ liệu cho AI** (`privacy.md`, mục "Dữ liệu gửi cho AI"): người dưới 16 tuổi chỉ đưa họ tên và quan hệ vào ngữ cảnh; không gửi ngày sinh đầy đủ, địa chỉ chi tiết. Khi thành viên hoặc quan hệ thay đổi, module `ai` cập nhật embedding qua interface Java (mục 9). |
+| BR-GEN-19 | **Một nguồn sự thật về gia đình của tài khoản** (BR-AUTH-11, BR-AUTH-14; chốt 16/10/2026, X15 trong `erd.md`): `member_verification` của module auth quyết định tài khoản thuộc gia đình nào. Chỉ gắn `person.user_id` khi `person.family_id` bằng `family_id` của bản ghi `APPROVED` của tài khoản đó; module Gia phả kiểm tra qua `MembershipQuery` ở cả UC-GEN-03 (sửa hồ sơ, gán tài khoản) và `GenealogyPort.linkAccount`, sai thì trả `GEN_014`. Khi quản trị chuyển người dùng sang gia đình khác, module auth gọi `GenealogyPort.unlinkAccount(userId)` trong cùng giao dịch để đặt `person.user_id = NULL` ở hồ sơ đang gắn tài khoản đó; hồ sơ vẫn giữ nguyên trong gia đình cũ. |
 
 ---
 
@@ -369,6 +370,7 @@ Mã chung dùng nguyên: `VALID_001` (400), `NOT_FOUND_001` (404), `PERM_001` (4
 | GEN_011 | Người đã mất, không thêm hôn nhân mới | BR-GEN-08 |
 | GEN_012 | Người dưới 16 tuổi không được gán tài khoản | BR-GEN-16 |
 | GEN_013 | Người dùng đã thuộc một gia đình | BR-GEN-15 |
+| GEN_014 | Hồ sơ không thuộc gia đình của tài khoản cần gắn | BR-GEN-19 |
 
 Ngày mất trước ngày sinh, người còn sống thiếu ngày sinh, chi họ không thuộc gia đình: dùng `VALID_001` kèm `details`. "Không có quan hệ họ hàng" không phải lỗi: API trả 200 với `supported: false`.
 
@@ -394,18 +396,18 @@ Ngày mất trước ngày sinh, người còn sống thiếu ngày sinh, chi h�
 | Với module | Cách làm | Quy ước |
 |---|---|---|
 | `auth`, `admin` (SCRUM-26, 35, 57) | Biết người dùng thuộc gia đình nào, đã xác minh chưa, vai trò gì qua Java interface `MembershipQuery` của module auth (`getMembership`, `requireVerified`, `requireFamilyAccess`, `findVerifiedUserIds`; `auth.md` mục 6.3), không đọc trực tiếp bảng `member_verification`; module Gia phả không tạo bảng thành viên riêng. | Chỉ lưu `user_id`, `created_by`, `updated_by` (UUID, không FK), không dùng quan hệ entity xuyên module |
-| `auth`, `admin` (SCRUM-26, 37) | Module Gia phả cài đặt `GenealogyPort` cho module auth gọi: `findFamilyName(familyId)`, `findBranchName(familyId, branchId)`, `isBranchWithin(familyId, branchId, ancestorBranchId)`, `linkAccount(familyId, personId, userId)`. | Tên và chữ ký theo `auth.md` mục 6.3; `linkAccount` ném lỗi `GEN_xxx` nếu không hợp lệ |
+| `auth`, `admin` (SCRUM-26, 37) | Module Gia phả cài đặt `GenealogyPort` cho module auth gọi: `findFamilyName(familyId)`, `findBranchName(familyId, branchId)`, `isBranchWithin(familyId, branchId, ancestorBranchId)`, `linkAccount(familyId, personId, userId)`, `unlinkAccount(userId)`. | Tên và chữ ký theo `auth.md` mục 6.3. `linkAccount` kiểm tra BR-GEN-16, BR-GEN-19 và ném `GEN_012`, `GEN_014` nếu không hợp lệ; `unlinkAccount` đặt `person.user_id = NULL` ở hồ sơ đang gắn tài khoản (gọi khi quản trị chuyển gia đình, BR-AUTH-14) |
 | Audit log (SCRUM-57) | Ghi log qua interface chung `AuditLogger.log` (package `common`, `auth.md` mục 6.3) khi tạo, sửa, xóa. | BR-GEN-11 |
-| `ai` (SCRUM-55, 63) | Cung cấp dữ liệu thành viên, quan hệ cho embedding qua **interface Java** của module `genealogy` (tên chốt khi làm SCRUM-37, ví dụ `GenealogyGateway`); báo `ai` cập nhật embedding khi dữ liệu đổi. | Quyết định 3 trong `architecture.md`; BR-GEN-18 |
-| `directory` | Tìm danh bạ theo tỉnh/thành dùng `person.current_province` và theo thế hệ (mục 6.8) qua interface Java. | Không join trực tiếp bảng `person`, `parent_child` |
-| `dashboard` | Thống kê số thành viên, giới tính, thế hệ (mục 6.8) qua interface Java. | Không join trực tiếp |
+| `ai` (SCRUM-55, 63) | Khi thành viên hoặc quan hệ đổi, gọi `AiGateway.upsertSource` / `removeSource` (`ai.md` mục 6.1) để `ai` cập nhật embedding; module `ai` gọi interface `GenealogyQuery` của module `genealogy` để lấy kết quả truy vấn quan hệ (UC-AI-03). | Quyết định 3 trong `architecture.md`; BR-GEN-18 |
+| `directory` | Tìm danh bạ theo tỉnh/thành dùng `person.current_province` và theo thế hệ (mục 6.8) qua interface Java `GenealogyQuery`. | Không join trực tiếp bảng `person`, `parent_child` |
+| `dashboard` | Thống kê số thành viên, giới tính, thế hệ (mục 6.8) qua interface Java `GenealogyQuery` (`getTotalMembers`, `getDemographics`, `heritage-directory-dashboard.md` mục 5). | Không join trực tiếp |
 | `community` (SCRUM-20) | Ảnh đại diện thành viên lưu ở bảng `media` (`owner_type = 'PERSON'`); Gia phả chỉ giữ `avatar_media_id` (UUID, không FK), không tạo bảng ảnh riêng; service kiểm tra tệp tồn tại và cùng `family_id` qua interface của `community`. | `conventions.md` mục 7.3; ảnh và tệp đính kèm dùng `media` của `community` |
 
 ---
 
 ## 10. Màn hình liên quan
 
-- Wireframe module Gia phả (quản lý thành viên và cây tương tác): task SCRUM-29, Sprint 2. Link Figma và ảnh sẽ dán tại `docs/05-ui/figma-links.md` khi có.
+- Wireframe module Gia phả (quản lý thành viên và cây tương tác): task SCRUM-29, page `03 Gia phả` của file Figma chung (link ở `docs/05-ui/figma-links.md`).
 - Màn hình dự kiến: danh sách và hồ sơ thành viên, form thêm thành viên, cây gia phả (React Flow), hộp thoại thêm cha/mẹ, vợ/chồng, màn hình tra quan hệ.
 - Ghi chú cho wireframe SCRUM-29: màn hình thông tin gia đình hiển thị mã gia đình (`familyId`) để trưởng chi chia sẻ cho người xin tham gia (UC-AUTH-06), vì module auth không dùng mã mời.
 
@@ -416,5 +418,5 @@ Ngày mất trước ngày sinh, người còn sống thiếu ngày sinh, chi h�
 3. Con nuôi, con kế có được tính trong thuật toán quan hệ họ hàng không? **Đã chốt 9/10/2026:** có, kèm nhãn "(nuôi)" hoặc "(kế)", khớp `algorithm-relationship.md`. (BR-GEN-13)
 4. FR-GEN-07 "Relationship visualization" là gì? **Đã chốt 9/10/2026:** là tô sáng đường quan hệ giữa hai người (UC-GEN-07); việc vẽ cây thuộc FR-GEN-06 (UC-GEN-06). Giữ hai use case riêng.
 5. Ngưỡng trẻ em: **đã chốt 9/10/2026** là dưới 16 tuổi, theo `privacy.md` mục 4. (BR-GEN-10, 16)
-6. Các mã `GEN_001` đến `GEN_013` ở mục 7.2 là mã riêng của module, theo quy tắc `<MODULE>_<số>` (HTTP 409) ở `conventions.md` mục 3.1; không cần thêm vào bảng mã chung.
+6. Các mã `GEN_001` đến `GEN_014` ở mục 7.2 là mã riêng của module, theo quy tắc `<MODULE>_<số>` (HTTP 409) ở `conventions.md` mục 3.1; không cần thêm vào bảng mã chung.
 7. Cách tính thế hệ ở mục 6.8 (người vào gia đình bằng hôn nhân lấy đời của vợ/chồng): **đã chốt 9/10/2026**; `directory` và `dashboard` dùng đúng cách tính này.
