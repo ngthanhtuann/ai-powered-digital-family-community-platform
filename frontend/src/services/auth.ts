@@ -1,0 +1,56 @@
+// Gọi API module Auth (docs/04-api/openapi/auth.yaml). Kiểu sinh từ OpenAPI, không viết tay.
+import { api } from '@/lib/api';
+import { tokenStorage } from '@/lib/token-storage';
+import type { components } from './generated/auth';
+
+type Schemas = components['schemas'];
+export type LoginRequest = Schemas['LoginRequest'];
+export type LoginData = Schemas['LoginData'];
+export type RegisterRequest = Schemas['RegisterRequest'];
+export type User = Schemas['User'];
+export type Membership = Schemas['Membership'];
+
+/** POST /auth/login: thành công thì lưu cặp token. */
+export async function login(body: LoginRequest): Promise<LoginData> {
+  const data = await api.post<LoginData>('/auth/login', body);
+  tokenStorage.set(data.accessToken, data.refreshToken);
+  return data;
+}
+
+/** POST /users: tạo tài khoản, không tự đăng nhập (UC-AUTH-01). */
+export function register(body: RegisterRequest): Promise<User> {
+  return api.post<User>('/users', body);
+}
+
+/** DELETE /auth/sessions/current rồi xóa token đã lưu và về màn Đăng nhập (UC-AUTH-03). */
+export async function logout(): Promise<void> {
+  try {
+    await api.delete('/auth/sessions/current');
+  } catch {
+    // Token đã hết hạn hoặc mất mạng: vẫn xóa token ở máy để đăng xuất.
+  } finally {
+    tokenStorage.clear();
+    window.location.assign('/login');
+  }
+}
+
+/** GET /users/me/membership. */
+export function getMyMembership(): Promise<Membership> {
+  return api.get<Membership>('/users/me/membership');
+}
+
+/**
+ * Chọn màn hình sau đăng nhập (Figma "Đăng nhập — trạng thái", auth.md UC-AUTH-02 bước 6):
+ * SYSTEM_ADMIN và APPROVED vào ứng dụng; PENDING vào màn chờ duyệt; còn lại vào màn xin tham gia.
+ * `next` là trang người dùng định mở trước khi bị chuyển về /login.
+ */
+export function routeAfterLogin(data: LoginData, next: string | null): string {
+  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  if (data.user.roles.includes('SYSTEM_ADMIN') || data.membership.status === 'APPROVED') {
+    return safeNext;
+  }
+  if (data.membership.status === 'PENDING') {
+    return '/pending-approval';
+  }
+  return '/join-family';
+}
