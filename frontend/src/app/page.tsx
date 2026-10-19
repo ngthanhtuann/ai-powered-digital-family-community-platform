@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { LogoutButton } from '@/components/auth/LogoutButton';
 import { checkHealth } from '@/lib/api';
 
 export default function HomePage() {
@@ -19,6 +20,7 @@ export default function HomePage() {
         )}
         {data && <span className="text-success">{data.status}</span>}
       </p>
+      <LogoutButton />
     </main>
   );
 }

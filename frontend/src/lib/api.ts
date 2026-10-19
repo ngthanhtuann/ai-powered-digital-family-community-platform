@@ -21,6 +21,8 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public details: ApiErrorDetail[] = [],
+    /** Số giây phải chờ khi bị 429 RATE_001 (header Retry-After). */
+    public retryAfter?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -75,11 +77,13 @@ function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
   const body = error.response?.data;
   if (body && body.success === false && body.error) {
     const { code, message, details } = body.error;
+    const retryAfter = Number(error.response!.headers['retry-after']);
     return new ApiError(
       code,
       message,
       error.response!.status,
       Array.isArray(details) ? details : [],
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     );
   }
   if (!error.response) {
@@ -110,6 +114,11 @@ client.interceptors.response.use(
         }
         tokenStorage.clear();
         if (typeof window !== 'undefined') window.location.assign('/login');
+        break;
+      case 'AUTH_003': // tài khoản bị khóa -> xóa token, về đăng nhập và báo bị khóa
+        if (original?.url === '/auth/login') break; // trang đăng nhập tự hiện lỗi
+        tokenStorage.clear();
+        if (typeof window !== 'undefined') window.location.assign('/login?reason=locked');
         break;
       case 'PERM_002': // chưa xác minh -> màn hình chờ duyệt
         if (typeof window !== 'undefined') window.location.assign('/pending-approval');
