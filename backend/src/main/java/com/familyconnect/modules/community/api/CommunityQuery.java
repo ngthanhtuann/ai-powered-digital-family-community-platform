@@ -11,4 +11,10 @@ public interface CommunityQuery {
 
     record HeritageMedia(UUID id, UUID familyId, String ownerType, String contentUrl) {
     }
+
+    /** Ảnh đại diện (owner_type = PERSON); rỗng nếu không tồn tại hoặc không phải ảnh của hồ sơ thành viên. */
+    Optional<PersonMedia> getPersonMedia(UUID mediaId);
+
+    record PersonMedia(UUID id, UUID personId) {
+    }
 }

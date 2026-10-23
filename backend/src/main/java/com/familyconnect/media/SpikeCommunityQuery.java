@@ -25,4 +25,11 @@ public class SpikeCommunityQuery implements CommunityQuery {
                 .map(media -> new HeritageMedia(media.id(), media.ownerId(), media.ownerType(),
                         "/api/v1/media/" + media.id() + "/content"));
     }
+
+    @Override
+    public Optional<PersonMedia> getPersonMedia(UUID mediaId) {
+        return mediaUploadService.findById(mediaId)
+                .filter(media -> "PERSON".equals(media.ownerType()))
+                .map(media -> new PersonMedia(media.id(), media.ownerId()));
+    }
 }

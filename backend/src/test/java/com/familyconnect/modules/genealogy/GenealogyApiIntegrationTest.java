@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -337,5 +339,64 @@ class GenealogyApiIntegrationTest {
         UUID single = id(call(post(url), token, person("Độc thân", LocalDate.of(1990, 1, 1))));
         call(delete("/api/v1/persons/" + single), token, null).andExpect(status().isOk());
         call(get("/api/v1/persons/" + single), token, null).andExpect(status().isNotFound());
+    }
+
+    // ---- Ảnh đại diện và giữ liên kết tài khoản (genealogy.yaml PersonInput, UC-GEN-03 luồng 3g, 3h) ----
+
+    private UUID uploadAvatar(String token, String ownerType, UUID ownerId) throws Exception {
+        byte[] png = new byte[64];
+        byte[] signature = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+        System.arraycopy(signature, 0, png, 0, signature.length);
+        String body = mvc.perform(multipart("/api/v1/media")
+                        .file(new MockMultipartFile("file", "avatar.png", "image/png", png))
+                        .param("ownerType", ownerType).param("ownerId", ownerId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return UUID.fromString(json.readTree(body).get("data").get("id").asText());
+    }
+
+    @Test
+    void avatarMustBeUploadedForThatSamePerson() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String url = "/api/v1/families/" + familyId + "/persons";
+        UUID first = id(call(post(url), token, person("Người một", LocalDate.of(1980, 1, 1))));
+        UUID second = id(call(post(url), token, person("Người hai", LocalDate.of(1982, 1, 1))));
+        UUID firstAvatar = uploadAvatar(token, "PERSON", first);
+
+        Map<String, Object> withAvatar = person("Người ba", LocalDate.of(1984, 1, 1));
+        withAvatar.put("avatarMediaId", firstAvatar.toString());
+        call(post(url), token, withAvatar).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.details[0].field").value("avatarMediaId"));
+
+        Map<String, Object> borrow = person("Người hai", LocalDate.of(1982, 1, 1));
+        borrow.put("avatarMediaId", firstAvatar.toString());
+        call(put("/api/v1/persons/" + second), token, borrow).andExpect(status().isBadRequest());
+        borrow.put("avatarMediaId", uploadAvatar(token, "HERITAGE", familyId).toString());
+        call(put("/api/v1/persons/" + second), token, borrow).andExpect(status().isBadRequest());
+
+        Map<String, Object> own = person("Người một", LocalDate.of(1980, 1, 1));
+        own.put("avatarMediaId", firstAvatar.toString());
+        call(put("/api/v1/persons/" + first), token, own).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avatarMediaId").value(firstAvatar.toString()));
+    }
+
+    @Test
+    void updateWithoutUserIdKeepsLinkedAccount() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String memberEmail = newUser();
+        member(memberEmail, familyId, null, "MEMBER");
+        Map<String, Object> linked = person("Có tài khoản", LocalDate.of(1990, 2, 2));
+        linked.put("userId", userId(memberEmail).toString());
+        UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), token, linked));
+
+        call(put("/api/v1/persons/" + personId), token, person("Đổi tên", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"));
+
+        UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
+        org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));
     }
 }

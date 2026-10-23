@@ -134,7 +134,7 @@ export interface paths {
         get: operations["getPerson"];
         /**
          * Sửa thành viên (UC-GEN-03)
-         * @description Đánh dấu đã mất thì hôn nhân MARRIED của người đó tự chuyển WIDOWED (BR-GEN-08).
+         * @description Thay toàn bộ trường của hồ sơ: gửi lại đủ các trường đọc được từ GET (người có quyền sửa luôn nhận đủ dữ liệu), trừ userId (xem PersonInput). Đánh dấu đã mất thì hôn nhân MARRIED của người đó tự chuyển WIDOWED (BR-GEN-08).
          */
         put: operations["updatePerson"];
         post?: never;
@@ -381,12 +381,12 @@ export interface components {
             burialPlace?: string | null;
             /**
              * Format: uuid
-             * @description Id ảnh trong media của module community; tải ảnh qua endpoint có kiểm tra quyền
+             * @description Id ảnh trong media của module community, tải bằng POST /media với ownerType=PERSON và ownerId là id của chính hồ sơ này. Vì vậy khi tạo hồ sơ phải để null, gán ảnh bằng PUT sau khi tải. Ảnh của hồ sơ khác hoặc không tồn tại: 400 VALID_001.
              */
             avatarMediaId?: string | null;
             /**
              * Format: uuid
-             * @description Phải null nếu dưới 16 tuổi
+             * @description Gắn tài khoản cho hồ sơ; phải null nếu dưới 16 tuổi. Response không trả trường này, nên ở PUT giá trị null hoặc không gửi nghĩa là giữ nguyên liên kết hiện có; gỡ liên kết do module auth thực hiện qua GenealogyPort.unlinkAccount (BR-GEN-19).
              */
             userId?: string | null;
             /** @description Không ghi nguyên nhân tử vong chi tiết */

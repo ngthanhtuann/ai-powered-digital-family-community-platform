@@ -20,4 +20,9 @@ public final class StubCommunityQuery implements CommunityQuery {
     public Optional<HeritageMedia> getHeritageMedia(UUID mediaId) {
         return Optional.ofNullable(media.get(mediaId));
     }
+
+    @Override
+    public Optional<PersonMedia> getPersonMedia(UUID mediaId) {
+        return Optional.empty();
+    }
 }
