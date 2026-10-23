@@ -1,6 +1,6 @@
 package com.familyconnect.modules.heritage;
 
-import com.familyconnect.modules.heritage.api.GenealogyQuery;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 
 import java.util.HashSet;
 import java.util.Optional;

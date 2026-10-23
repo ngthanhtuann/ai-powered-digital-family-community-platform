@@ -6,12 +6,11 @@ import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
-import com.familyconnect.modules.auth.api.UserQuery;
+import com.familyconnect.modules.auth.api.UserDirectory;
+import com.familyconnect.modules.ai.api.AiGateway;
+import com.familyconnect.modules.ai.api.AiGateway.SourceType;
 import com.familyconnect.modules.heritage.StubCommunityQuery;
 import com.familyconnect.modules.heritage.StubGenealogyQuery;
-import com.familyconnect.modules.heritage.api.CommunityQuery;
-import com.familyconnect.modules.heritage.api.GenealogyQuery;
-import com.familyconnect.modules.heritage.api.AiGateway;
 import com.familyconnect.modules.heritage.entity.FamilyStory;
 import com.familyconnect.modules.heritage.entity.HeritageDocument;
 import com.familyconnect.modules.heritage.repository.FamilyStoryRepository;
@@ -23,7 +22,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,6 +30,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,10 +53,8 @@ class HeritageServiceTest {
     @Mock private HeritageDocumentRepository documentRepository;
     @Mock private FamilyStoryRepository storyRepository;
     @Mock private MembershipQuery membershipQuery;
-    @Mock private UserQuery userQuery;
+    @Mock private UserDirectory userDirectory;
     @Mock private AiGateway aiGateway;
-    @Mock private ObjectProvider<GenealogyQuery> genealogyProvider;
-    @Mock private ObjectProvider<CommunityQuery> communityProvider;
 
     private StubCommunityQuery communityQuery;
     private StubGenealogyQuery genealogyQuery;
@@ -67,10 +64,8 @@ class HeritageServiceTest {
     void setUp() {
         communityQuery = new StubCommunityQuery();
         genealogyQuery = new StubGenealogyQuery();
-        lenient().when(genealogyProvider.getIfAvailable()).thenReturn(genealogyQuery);
-        lenient().when(communityProvider.getIfAvailable()).thenReturn(communityQuery);
         service = new HeritageService(documentRepository, storyRepository, membershipQuery,
-                communityProvider, genealogyProvider, userQuery, aiGateway,
+                communityQuery, genealogyQuery, userDirectory, aiGateway,
                 Clock.fixed(Instant.parse("2026-10-23T10:00:00Z"), ZoneOffset.UTC));
         authenticate(USER_ID);
     }
@@ -89,7 +84,7 @@ class HeritageServiceTest {
                 .thenReturn(membership(EffectiveRole.MEMBER, USER_ID));
 
         assertThat(service.getDocument(DOCUMENT_ID)).isNotNull();
-        verify(aiGateway, never()).refreshEmbedding(any(), any(), any());
+        verifyNoInteractions(aiGateway);
         assertThatThrownBy(() -> service.createDocument(FAMILY_ID,
                 new com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument(
                         "Document", null, null, MEDIA_ID)))
@@ -117,11 +112,11 @@ class HeritageServiceTest {
         setId(story, STORY_ID);
         when(storyRepository.findByIdAndDeletedAtIsNull(STORY_ID)).thenReturn(Optional.of(story));
         when(membershipQuery.getMembership(USER_ID)).thenReturn(membership(EffectiveRole.MEMBER, USER_ID));
-        when(userQuery.findFullName(USER_ID)).thenReturn(Optional.of("Author"));
+        when(userDirectory.getFullNames(any())).thenReturn(Map.of(USER_ID, "Author"));
 
         var updated = service.updateStory(STORY_ID, new ObjectMapper().readTree("{\"title\":\"Updated\"}"));
         assertThat(updated.title()).isEqualTo("Updated");
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.STORY, STORY_ID, FAMILY_ID);
+        verify(aiGateway).upsertSource(eq(SourceType.STORY), eq(STORY_ID), eq(FAMILY_ID), isNull(), anyString());
 
         authenticate(OTHER_USER_ID);
         when(membershipQuery.getMembership(OTHER_USER_ID))
@@ -155,7 +150,7 @@ class HeritageServiceTest {
         service.updateDocument(DOCUMENT_ID, new ObjectMapper().readTree("{\"title\":\"Updated\"}"));
 
         verify(document).update(eq("Updated"), isNull(), eq(false), isNull(), eq(false), eq(USER_ID));
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.DOCUMENT, DOCUMENT_ID, FAMILY_ID);
+        verify(aiGateway).upsertSource(eq(SourceType.DOCUMENT), eq(DOCUMENT_ID), eq(FAMILY_ID), isNull(), anyString());
     }
 
     @Test
@@ -179,7 +174,8 @@ class HeritageServiceTest {
         assertThat(saved.getValue().getFamilyId()).isEqualTo(FAMILY_ID);
         assertThat(saved.getValue().getMediaId()).isEqualTo(MEDIA_ID);
         assertThat(saved.getValue().getCreatedBy()).isEqualTo(USER_ID);
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.DOCUMENT, DOCUMENT_ID, FAMILY_ID);
+        verify(aiGateway).upsertSource(SourceType.DOCUMENT, DOCUMENT_ID, FAMILY_ID, null,
+                "Document\ngia-pha\nDescription");
     }
 
     @Test
@@ -187,7 +183,7 @@ class HeritageServiceTest {
         UUID personId = UUID.fromString("70000000-0000-0000-0000-000000000007");
         genealogyQuery.add(personId, FAMILY_ID);
         when(membershipQuery.getMembership(USER_ID)).thenReturn(membership(EffectiveRole.MEMBER, USER_ID));
-        when(userQuery.findFullName(USER_ID)).thenReturn(Optional.of("Author"));
+        when(userDirectory.getFullNames(any())).thenReturn(Map.of(USER_ID, "Author"));
         when(storyRepository.save(any(FamilyStory.class))).thenAnswer(invocation -> {
             FamilyStory saved = invocation.getArgument(0);
             setId(saved, STORY_ID);
@@ -199,7 +195,7 @@ class HeritageServiceTest {
                         "Story", "Content", personId));
 
         assertThat(result.relatedPersonId()).isEqualTo(personId);
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.STORY, STORY_ID, FAMILY_ID);
+        verify(aiGateway).upsertSource(SourceType.STORY, STORY_ID, FAMILY_ID, null, "Story\nContent");
 
         UUID unrelatedPersonId = UUID.fromString("80000000-0000-0000-0000-000000000008");
         genealogyQuery.add(unrelatedPersonId, UUID.randomUUID());
@@ -220,7 +216,7 @@ class HeritageServiceTest {
         service.deleteDocument(DOCUMENT_ID);
 
         verify(document).delete(any(), eq(USER_ID));
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.DOCUMENT, DOCUMENT_ID, FAMILY_ID);
+        verify(aiGateway).removeSource(SourceType.DOCUMENT, DOCUMENT_ID);
         verify(documentRepository).findByIdAndDeletedAtIsNull(DOCUMENT_ID);
         verifyNoMoreInteractions(documentRepository);
     }
@@ -237,7 +233,22 @@ class HeritageServiceTest {
         service.deleteStory(STORY_ID);
 
         verify(story).delete(any(), eq(USER_ID));
-        verify(aiGateway).refreshEmbedding(AiGateway.ContentType.STORY, STORY_ID, FAMILY_ID);
+        verify(aiGateway).removeSource(SourceType.STORY, STORY_ID);
+    }
+
+    @Test
+    void storyListKeepsStoriesWhoseAuthorAccountWasDeleted() throws Exception {
+        FamilyStory story = new FamilyStory(FAMILY_ID, "Title", "Content", null, OTHER_USER_ID);
+        setId(story, STORY_ID);
+        when(membershipQuery.getMembership(USER_ID)).thenReturn(membership(EffectiveRole.MEMBER, USER_ID));
+        when(storyRepository.findAllByFamilyIdAndDeletedAtIsNull(eq(FAMILY_ID), any()))
+                .thenReturn(new PageImpl<>(List.of(story)));
+        when(userDirectory.getFullNames(any())).thenReturn(Map.of());
+
+        var result = service.listStories(null, 0, 20, false);
+
+        assertThat(result.data()).singleElement()
+                .satisfies(item -> assertThat(item.authorName()).isEqualTo(HeritageService.DELETED_AUTHOR_NAME));
     }
 
     private static MembershipView membership(EffectiveRole role, UUID userId) {

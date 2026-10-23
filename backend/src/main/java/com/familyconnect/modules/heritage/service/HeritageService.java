@@ -8,10 +8,10 @@ import com.familyconnect.common.security.CurrentUser;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
-import com.familyconnect.modules.auth.api.UserQuery;
-import com.familyconnect.modules.heritage.api.CommunityQuery;
-import com.familyconnect.modules.heritage.api.GenealogyQuery;
-import com.familyconnect.modules.heritage.api.AiGateway;
+import com.familyconnect.modules.auth.api.UserDirectory;
+import com.familyconnect.modules.ai.api.AiGateway;
+import com.familyconnect.modules.community.api.CommunityQuery;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateStory;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.DocumentData;
@@ -21,40 +21,49 @@ import com.familyconnect.modules.heritage.entity.FamilyStory;
 import com.familyconnect.modules.heritage.entity.HeritageDocument;
 import com.familyconnect.modules.heritage.repository.FamilyStoryRepository;
 import com.familyconnect.modules.heritage.repository.HeritageDocumentRepository;
-import org.springframework.beans.factory.ObjectProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
 public class HeritageService {
 
+    private static final Logger log = LoggerFactory.getLogger(HeritageService.class);
+    static final String DELETED_AUTHOR_NAME = "Thành viên đã rời hệ thống";
+
     private final HeritageDocumentRepository documentRepository;
     private final FamilyStoryRepository storyRepository;
     private final MembershipQuery membershipQuery;
-    private final ObjectProvider<CommunityQuery> communityQuery;
-    private final ObjectProvider<GenealogyQuery> genealogyQuery;
-    private final UserQuery userQuery;
+    private final CommunityQuery communityQuery;
+    private final GenealogyQuery genealogyQuery;
+    private final UserDirectory userDirectory;
     private final AiGateway aiGateway;
     private final Clock clock;
 
     public HeritageService(HeritageDocumentRepository documentRepository, FamilyStoryRepository storyRepository,
-                           MembershipQuery membershipQuery, ObjectProvider<CommunityQuery> communityQuery,
-                           ObjectProvider<GenealogyQuery> genealogyQuery, UserQuery userQuery,
+                           MembershipQuery membershipQuery, CommunityQuery communityQuery,
+                           GenealogyQuery genealogyQuery, UserDirectory userDirectory,
                            AiGateway aiGateway, Clock clock) {
         this.documentRepository = documentRepository;
         this.storyRepository = storyRepository;
         this.membershipQuery = membershipQuery;
         this.communityQuery = communityQuery;
         this.genealogyQuery = genealogyQuery;
-        this.userQuery = userQuery;
+        this.userDirectory = userDirectory;
         this.aiGateway = aiGateway;
         this.clock = clock;
     }
@@ -85,11 +94,7 @@ public class HeritageService {
     public DocumentData createDocument(UUID requestedFamilyId, CreateDocument request) {
         UUID familyId = resolveFamily(requestedFamilyId);
         requireAdmin(familyId);
-        CommunityQuery community = communityQuery.getIfAvailable();
-        if (community == null) {
-            throw new IllegalStateException("CommunityQuery adapter is not configured");
-        }
-        CommunityQuery.HeritageMedia media = community.findHeritageMedia(request.mediaId())
+        CommunityQuery.HeritageMedia media = communityQuery.getHeritageMedia(request.mediaId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         if (!"HERITAGE".equals(media.ownerType())) {
             throw new ApiException(ErrorCode.PERM_001);
@@ -102,7 +107,7 @@ public class HeritageService {
         HeritageDocument document = documentRepository.save(new HeritageDocument(
                 familyId, request.title().trim(), request.description(), request.category(),
                 request.mediaId(), actorId));
-        aiGateway.refreshEmbedding(AiGateway.ContentType.DOCUMENT, document.getId(), familyId);
+        indexDocument(document);
         return toDocumentData(document);
     }
 
@@ -125,7 +130,7 @@ public class HeritageService {
         }
         document.update(title == null ? null : title.trim(), description, patch.has("description"),
                 category, patch.has("category"), CurrentUser.require().id());
-        aiGateway.refreshEmbedding(AiGateway.ContentType.DOCUMENT, document.getId(), document.getFamilyId());
+        indexDocument(document);
         return toDocumentData(document);
     }
 
@@ -134,7 +139,7 @@ public class HeritageService {
         HeritageDocument document = findDocument(id);
         requireAdmin(document.getFamilyId());
         document.delete(OffsetDateTime.now(clock), CurrentUser.require().id());
-        aiGateway.refreshEmbedding(AiGateway.ContentType.DOCUMENT, document.getId(), document.getFamilyId());
+        afterCommit(() -> aiGateway.removeSource(AiGateway.SourceType.DOCUMENT, document.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -142,7 +147,9 @@ public class HeritageService {
         UUID familyId = resolveFamily(requestedFamilyId);
         Page<FamilyStory> results = storyRepository.findAllByFamilyIdAndDeletedAtIsNull(
                 familyId, pageRequest(page, size, ascending));
-        return ListResponse.of(results.getContent().stream().map(this::toStoryData).toList(),
+        Map<UUID, String> authorNames = userDirectory.getFullNames(
+                results.getContent().stream().map(FamilyStory::getCreatedBy).collect(Collectors.toSet()));
+        return ListResponse.of(results.getContent().stream().map(story -> toStoryData(story, authorNames)).toList(),
                 page, size, results.getTotalElements());
     }
 
@@ -161,7 +168,7 @@ public class HeritageService {
         UUID actorId = CurrentUser.require().id();
         FamilyStory story = storyRepository.save(new FamilyStory(
                 familyId, request.title().trim(), request.content().trim(), request.relatedPersonId(), actorId));
-        aiGateway.refreshEmbedding(AiGateway.ContentType.STORY, story.getId(), familyId);
+        indexStory(story);
         return toStoryData(story);
     }
 
@@ -189,7 +196,7 @@ public class HeritageService {
         }
         story.update(title == null ? null : title.trim(), content == null ? null : content.trim(),
                 relatedPersonId, updateRelatedPerson, CurrentUser.require().id());
-        aiGateway.refreshEmbedding(AiGateway.ContentType.STORY, story.getId(), story.getFamilyId());
+        indexStory(story);
         return toStoryData(story);
     }
 
@@ -198,7 +205,7 @@ public class HeritageService {
         FamilyStory story = findStory(id);
         requireCanManageStory(story);
         story.delete(OffsetDateTime.now(clock), CurrentUser.require().id());
-        aiGateway.refreshEmbedding(AiGateway.ContentType.STORY, story.getId(), story.getFamilyId());
+        afterCommit(() -> aiGateway.removeSource(AiGateway.SourceType.STORY, story.getId()));
     }
 
     private UUID resolveFamily(UUID requestedFamilyId) {
@@ -249,11 +256,7 @@ public class HeritageService {
         if (personId == null) {
             return;
         }
-        GenealogyQuery query = genealogyQuery.getIfAvailable();
-        if (query == null) {
-            throw new IllegalStateException("GenealogyQuery adapter is not configured");
-        }
-        UUID personFamilyId = query.findPersonFamilyId(personId)
+        UUID personFamilyId = genealogyQuery.findPersonFamilyId(personId)
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         if (!familyId.equals(personFamilyId)) {
             throw new ApiException(ErrorCode.PERM_001);
@@ -278,10 +281,58 @@ public class HeritageService {
     }
 
     private StoryData toStoryData(FamilyStory story) {
-        String authorName = userQuery.findFullName(story.getCreatedBy())
-                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
+        return toStoryData(story, userDirectory.getFullNames(Set.of(story.getCreatedBy())));
+    }
+
+    /** Tài khoản tác giả đã xóa thì vẫn hiện câu chuyện với tên thay thế, không làm hỏng cả danh sách. */
+    private StoryData toStoryData(FamilyStory story, Map<UUID, String> authorNames) {
+        String authorName = authorNames.getOrDefault(story.getCreatedBy(), DELETED_AUTHOR_NAME);
         return new StoryData(story.getId(), story.getTitle(), story.getContent(), authorName,
                 story.getCreatedBy(), story.getRelatedPersonId(), story.getCreatedAt(), story.getUpdatedAt());
+    }
+
+    /** Tài liệu PDF scan không đọc được nội dung nên chỉ lập chỉ mục tiêu đề, danh mục, mô tả (ai.md, BR-AI-07). */
+    private void indexDocument(HeritageDocument document) {
+        String content = joinLines(document.getTitle(), document.getCategory(), document.getDescription());
+        afterCommit(() -> aiGateway.upsertSource(AiGateway.SourceType.DOCUMENT, document.getId(),
+                document.getFamilyId(), null, content));
+    }
+
+    private void indexStory(FamilyStory story) {
+        String content = joinLines(story.getTitle(), story.getContent());
+        afterCommit(() -> aiGateway.upsertSource(AiGateway.SourceType.STORY, story.getId(),
+                story.getFamilyId(), null, content));
+    }
+
+    /** ai.md mục 6.1: gọi AI sau khi giao dịch commit, lỗi AI không làm hỏng thao tác của Heritage. */
+    private static void afterCommit(Runnable action) {
+        Runnable safeAction = () -> {
+            try {
+                action.run();
+            } catch (RuntimeException ex) {
+                log.warn("Không cập nhật được chỉ mục AI cho Heritage", ex);
+            }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            safeAction.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                safeAction.run();
+            }
+        });
+    }
+
+    private static String joinLines(String... parts) {
+        StringBuilder text = new StringBuilder();
+        for (String part : parts) {
+            if (part != null && !part.isBlank()) {
+                text.append(text.isEmpty() ? "" : "\n").append(part.trim());
+            }
+        }
+        return text.toString();
     }
 
     private static PageRequest pageRequest(int page, int size, boolean ascending) {

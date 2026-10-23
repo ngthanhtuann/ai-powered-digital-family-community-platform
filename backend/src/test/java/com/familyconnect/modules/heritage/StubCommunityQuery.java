@@ -1,6 +1,6 @@
 package com.familyconnect.modules.heritage;
 
-import com.familyconnect.modules.heritage.api.CommunityQuery;
+import com.familyconnect.modules.community.api.CommunityQuery;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ public final class StubCommunityQuery implements CommunityQuery {
     }
 
     @Override
-    public Optional<HeritageMedia> findHeritageMedia(UUID mediaId) {
+    public Optional<HeritageMedia> getHeritageMedia(UUID mediaId) {
         return Optional.ofNullable(media.get(mediaId));
     }
 }

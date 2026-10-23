@@ -1,8 +1,7 @@
-package com.familyconnect.modules.heritage.service;
+package com.familyconnect.modules.genealogy.service;
 
-import com.familyconnect.modules.heritage.api.GenealogyQuery;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -10,13 +9,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Bản tạm đến khi SCRUM-37 làm bảng person: đọc ánh xạ personId=familyId từ HERITAGE_GENEALOGY_PEOPLE.
+ * Không cấu hình thì mọi người liên quan đều không tồn tại (404).
+ */
 @Component
-@Profile("development")
-public class DevelopmentGenealogyQueryStub implements GenealogyQuery {
+public class ConfiguredGenealogyQuery implements GenealogyQuery {
 
     private final Map<UUID, UUID> people;
 
-    public DevelopmentGenealogyQueryStub(
+    public ConfiguredGenealogyQuery(
             @Value("${app.heritage.genealogy.people:}") String personFamilyMappings) {
         this.people = parseMappings(personFamilyMappings);
     }

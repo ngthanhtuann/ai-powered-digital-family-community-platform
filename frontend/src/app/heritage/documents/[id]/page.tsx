@@ -8,7 +8,7 @@ import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAc
 import { HeritageHeader, HeritagePage } from '@/components/heritage/HeritageHeader';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { API_BASE_URL, ApiError } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { heritageApi } from '@/services/heritage';
 
 export default function HeritageDocumentDetailsPage() {
@@ -33,6 +33,23 @@ export default function HeritageDocumentDetailsPage() {
     onError: (reason: unknown) => setError(reason instanceof ApiError
       ? `${reason.code}: ${reason.message}`
       : reason instanceof Error ? reason.message : 'Không thể cập nhật tài liệu.'),
+  });
+  // Thẻ <a href> không gửi được token (lưu ở localStorage), nên tải tệp qua API rồi mở bằng blob URL.
+  const openFile = useMutation({
+    mutationFn: (contentUrl: string) => heritageApi.file(contentUrl),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      if (!window.open(url, '_blank')) {
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = document.data?.title ?? 'tai-lieu';
+        link.click();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    onError: (reason: unknown) => setError(reason instanceof ApiError
+      ? `${reason.code}: ${reason.message}`
+      : 'Không mở được tệp đính kèm.'),
   });
   const remove = useMutation({
     mutationFn: () => heritageApi.deleteDocument(id),
@@ -85,9 +102,14 @@ export default function HeritageDocumentDetailsPage() {
                   {item.category || 'Chưa phân loại'} · {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                 </p>
                 {item.description && <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>}
-                <a className="mt-6 inline-flex text-label text-info underline" href={`${API_BASE_URL}${item.contentUrl}`} target="_blank" rel="noreferrer">
-                  Mở tệp đính kèm
-                </a>
+                <button
+                  type="button"
+                  className="mt-6 inline-flex text-label text-info underline disabled:text-text-secondary"
+                  disabled={openFile.isPending}
+                  onClick={() => openFile.mutate(item.contentUrl)}
+                >
+                  {openFile.isPending ? 'Đang mở tệp...' : 'Mở tệp đính kèm'}
+                </button>
                 {access.isAdmin && (
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-4">
                     <button type="button" className="text-label text-info underline" onClick={() => {

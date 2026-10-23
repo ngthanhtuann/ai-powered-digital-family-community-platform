@@ -1,6 +1,4 @@
 spring:
-  profiles:
-    default: development
   application:
     name: familyconnect-backend
 
@@ -36,7 +34,7 @@ server:
 app:
   heritage:
     genealogy:
-      # Development-only lookup: personUUID=familyUUID;personUUID=familyUUID. Empty until configured.
+      # Tạm đến SCRUM-37: personUUID=familyUUID;personUUID=familyUUID. Để trống thì không tra được người liên quan.
       people: ${HERITAGE_GENEALOGY_PEOPLE:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}

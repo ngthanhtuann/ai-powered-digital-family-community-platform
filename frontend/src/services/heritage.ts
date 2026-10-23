@@ -34,6 +34,8 @@ export const heritageApi = {
   updateStory: (id: string, body: UpdateStory) =>
     api.patch<FamilyStory>(`/heritage/stories/${id}`, body),
   deleteStory: (id: string) => api.delete(`/heritage/stories/${id}`),
+  /** contentUrl dạng /api/v1/media/{id}/content; client đã có tiền tố /api/v1. */
+  file: (contentUrl: string) => api.download(contentUrl.replace(/^\/api\/v1/, '')),
   upload: (file: File, familyId: string) => {
     const body = new FormData();
     body.set('file', file);

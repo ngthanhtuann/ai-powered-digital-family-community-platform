@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { HeritageHeader, HeritagePage } from '@/components/heritage/HeritageHeader';
+import { TextField } from '@/components/ui/TextField';
 import { heritageApi } from '@/services/heritage';
 import { ApiError } from '@/lib/api';
 
@@ -51,15 +52,14 @@ export default function HeritagePageIndex() {
         <AccessState loading={access.membership.isLoading || access.profile.isLoading} error={accessError} />
       </div>
       {access.isSystemAdmin && access.isReady && (
-        <label className="mt-5 block max-w-xl text-label">
-          Family ID (SYSTEM_ADMIN)
-          <input
+        <div className="mt-5 max-w-xl">
+          <TextField
+            label="Family ID (SYSTEM_ADMIN)"
             value={adminFamily}
             onChange={(event) => setAdminFamily(event.target.value)}
-            className="mt-1 h-11 w-full rounded-control border border-border-strong bg-surface px-3 text-body"
             placeholder="UUID gia đình"
           />
-        </label>
+        </div>
       )}
       {dataError && (
         <p role="alert" className="mt-5 rounded-card border border-error bg-error-soft p-4 text-body text-error">
@@ -67,22 +67,22 @@ export default function HeritagePageIndex() {
         </p>
       )}
 
+      {access.isReady && (!access.isSystemAdmin || Boolean(familyId)) && (<>
       <section className="mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-section-title">Tài liệu lịch sử</h2>
             <p className="mt-1 text-caption text-text-secondary">Gia phả, sắc phong, di chúc và tư liệu của gia đình.</p>
           </div>
-          <label className="text-label">
-            Lọc danh mục
-            <input
+          <div className="sm:w-64">
+            <TextField
+              label="Lọc danh mục"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              className="ml-2 h-10 rounded-control border border-border-strong bg-surface px-3 text-body"
               placeholder="Ví dụ: gia-pha"
               maxLength={50}
             />
-          </label>
+          </div>
         </div>
         {documents.isLoading ? (
           <p className="mt-4 text-body text-text-secondary">Đang tải tài liệu...</p>
@@ -139,6 +139,7 @@ export default function HeritagePageIndex() {
           </p>
         )}
       </section>
+      </>)}
     </HeritagePage>
   );
 }
