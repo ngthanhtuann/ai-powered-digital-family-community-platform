@@ -48,5 +48,5 @@ springdoc:
     path: /swagger-ui.html
 
 gemini:
-  api-key: ${GEMINI_API_KEY:AQ.Ab8RN6LhqAig1T79YHAtuvXazhraAqNB0OGzQRyqGJeeaNv05w}
+  api-key: ${GEMINI_API_KEY:}
   embedding-model: gemini-embedding-001
