@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Đăng ký, đổi mật khẩu, trạng thái tham gia gia đình (auth.yaml: registerUser, changePassword, getMyMembership).
- * Xem và sửa hồ sơ (GET, PATCH /users/me) làm ở SCRUM-43.
+ * Đăng ký, đổi mật khẩu, xem hồ sơ, trạng thái tham gia gia đình
+ * (auth.yaml: registerUser, changePassword, getMyProfile, getMyMembership). Sửa hồ sơ (PATCH /users/me) làm ở SCRUM-43.
  */
 @RestController
 @RequestMapping("/api/v1/users")
@@ -45,6 +45,12 @@ public class UserAccountController {
     public ApiResponse<Void> changePassword(@Valid @RequestBody AuthRequests.ChangePassword request) {
         authService.changePassword(CurrentUser.require().id(), request);
         return ApiResponse.empty();
+    }
+
+    @GetMapping("/me")
+    @Operation(operationId = "getMyProfile", summary = "Xem hồ sơ của tôi (UC-AUTH-05)")
+    public ApiResponse<UserData> myProfile() {
+        return ApiResponse.ok(authService.myProfile(CurrentUser.require().id()));
     }
 
     @GetMapping("/me/membership")

@@ -3,7 +3,6 @@ package com.familyconnect.modules.auth.service;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
-import com.familyconnect.modules.auth.api.UserQuery;
 import com.familyconnect.modules.auth.dto.AuthRequests;
 import com.familyconnect.modules.auth.dto.AuthResponses.LoginData;
 import com.familyconnect.modules.auth.dto.AuthResponses.MembershipData;
@@ -29,12 +28,11 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /** Đăng ký, đăng nhập, làm mới token, đăng xuất, đổi mật khẩu (UC-AUTH-01 đến 04). */
 @Service
-public class AuthService implements UserQuery {
+public class AuthService {
 
     static final int MIN_AGE = 16;
     /** Ngày sinh tính theo giờ Việt Nam để "đủ 16 tuổi" khớp với lịch người dùng. */
@@ -68,12 +66,6 @@ public class AuthService implements UserQuery {
         this.auditLogger = auditLogger;
         this.clock = clock;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<String> findFullName(UUID userId) {
-        return userRepository.findActiveById(userId).map(User::getFullName);
     }
 
     /** UC-AUTH-01. Không tự đăng nhập; client gọi tiếp /auth/login. */
@@ -172,6 +164,14 @@ public class AuthService implements UserQuery {
         userRepository.save(user);
         refreshTokenRepository.revokeAllForUser(userId, tokenIssuer.now());
         auditLogger.log("PASSWORD_CHANGED", "USER", userId, null, Map.of());
+    }
+
+    /** GET /users/me (UC-AUTH-05): hồ sơ của chính mình, kể cả khi chưa xác minh gia đình. */
+    @Transactional(readOnly = true)
+    public UserData myProfile(UUID userId) {
+        User user = userRepository.findActiveById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_002));
+        return UserData.of(user, userRoleRepository.findRoleCodes(userId));
     }
 
     /** GET /users/me/membership. */
