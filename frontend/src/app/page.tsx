@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { LogoutButton } from '@/components/auth/LogoutButton';
+import Link from 'next/link';
+import { Card } from '@/components/ui/Card';
 import { checkHealth } from '@/lib/api';
 
 export default function HomePage() {
@@ -11,16 +12,24 @@ export default function HomePage() {
   });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-3 px-6">
-      <h1 className="text-page-title">Hello FamilyConnect</h1>
-      <p className="text-body text-text-secondary">
-        Backend: {isLoading && 'đang kiểm tra...'}
-        {isError && (
-          <span className="text-error">không kết nối được ({(error as Error).message})</span>
-        )}
-        {data && <span className="text-success">{data.status}</span>}
-      </p>
-      <LogoutButton />
-    </main>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card title="Chào mừng đến FamilyConnect" description="Kết nối các thế hệ trong gia đình.">
+        <p className="text-body text-text-secondary">
+          Trạng thái máy chủ: {isLoading && <span>đang kiểm tra...</span>}
+          {isError && (
+            <span className="text-error">không kết nối được ({(error as Error).message})</span>
+          )}
+          {data && <span className="font-semibold text-success">{data.status}</span>}
+        </p>
+      </Card>
+      <Card
+        title="Thư viện thành phần"
+        description="Xem hướng dẫn và ví dụ các component dùng chung."
+      >
+        <Link href="/ui-kit" className="text-label text-info underline">
+          Mở trang hướng dẫn UI kit
+        </Link>
+      </Card>
+    </div>
   );
 }

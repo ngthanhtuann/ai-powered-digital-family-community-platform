@@ -6,7 +6,7 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
-export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
+export const Input = forwardRef<HTMLInputElement, TextFieldProps>(function Input(
   { label, error, id, className = '', ...inputProps },
   ref,
 ) {
@@ -43,3 +43,5 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
     </div>
   );
 });
+
+export const TextField = Input;

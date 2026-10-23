@@ -1,20 +1,25 @@
-import Image from 'next/image';
+type ToastVariant = 'success' | 'error' | 'info' | 'warning';
 
-// Thông báo theo Figma component `Toast` (State Default = thành công, Error).
-type ToastVariant = 'success' | 'error';
-
-const STYLES: Record<ToastVariant, { box: string; text: string; icon: string; close: string }> = {
+const STYLES: Record<ToastVariant, { box: string; text: string; icon: string }> = {
   success: {
     box: 'border-border bg-success-soft',
     text: 'text-text-primary',
-    icon: '/icons/circle-check.svg',
-    close: '/icons/x.svg',
+    icon: '✓',
   },
   error: {
     box: 'border-error bg-error-soft',
     text: 'text-error',
-    icon: '/icons/circle-alert.svg',
-    close: '/icons/x-error.svg',
+    icon: '!',
+  },
+  info: {
+    box: 'border-info bg-info-soft',
+    text: 'text-info',
+    icon: 'i',
+  },
+  warning: {
+    box: 'border-warning bg-warning-soft',
+    text: 'text-warning',
+    icon: '!',
   },
 };
 
@@ -30,9 +35,14 @@ export function Toast({ variant, title, message, onClose }: ToastProps) {
   return (
     <div
       role={variant === 'error' ? 'alert' : 'status'}
-      className={`flex w-full items-start gap-3 rounded-card border p-4 ${style.box}`}
+      className={`flex w-full items-start gap-3 rounded-card border p-4 shadow-card ${style.box}`}
     >
-      <Image src={style.icon} alt="" width={22} height={22} unoptimized className="shrink-0" />
+      <span
+        aria-hidden="true"
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-label ${style.text}`}
+      >
+        {style.icon}
+      </span>
       <div className={`flex min-w-0 flex-1 flex-col gap-1 text-[14px] ${style.text}`}>
         <p className="font-medium leading-5">{title}</p>
         <p className="leading-[22px]">{message}</p>
@@ -42,9 +52,9 @@ export function Toast({ variant, title, message, onClose }: ToastProps) {
           type="button"
           onClick={onClose}
           aria-label="Đóng thông báo"
-          className="shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
+          className="shrink-0 rounded-control px-2 py-1 text-label underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
         >
-          <Image src={style.close} alt="" width={18} height={18} unoptimized />
+          Đóng
         </button>
       )}
     </div>
