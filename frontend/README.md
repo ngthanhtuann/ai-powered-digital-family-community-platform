@@ -14,7 +14,8 @@ npm install
 npm run dev                     # http://localhost:3000
 ```
 
-Trang chủ hiển thị "Hello FamilyConnect" và trạng thái `/actuator/health` của backend.
+Trang chủ hiển thị trạng thái `/actuator/health` của backend. Layout chung được định nghĩa ở
+`src/components/layout/AppShell.tsx`; UI kit và ví dụ component dùng chung ở `/ui-kit`.
 Nếu lỗi CORS, thêm `http://localhost:3000` vào danh sách origin của backend (biến môi trường).
 
 ## Lệnh
@@ -40,7 +41,7 @@ Backend đọc danh sách origin CORS từ `CORS_ALLOWED_ORIGINS` trong file `.e
 ## Cấu trúc
 
 - `src/app/` — route, layout, providers.
-- `src/components/` — UI component dùng lại.
+- `src/components/` — UI component dùng lại; `components/ui/` chứa Button, Input, Table, Modal, Card và Toast.
 - `src/lib/api.ts` — axios client theo `docs/04-api/conventions.md`:
   - đọc `success/data/meta`; lỗi `error.code/message/details` (`details` luôn là mảng);
   - DELETE trả 200 `{success:true, data:null}`;

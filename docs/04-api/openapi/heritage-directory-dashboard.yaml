@@ -936,12 +936,13 @@ components:
         relatedPersonId: { type: string, format: uuid, nullable: true }
     FamilyStoryData:
       type: object
-      required: [id, title, content, authorName, createdAt, updatedAt]
+      required: [id, title, content, authorName, authorId, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
         content: { type: string }
         authorName: { type: string, description: "Tên người đăng (created_by), tra qua interface." }
+        authorId: { type: string, format: uuid, description: "ID người đăng, để giao diện xác định quyền sửa/xóa." }
         relatedPersonId: { type: string, format: uuid, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -1330,6 +1331,7 @@ components:
             title: "Ngày giỗ tổ năm 2026"
             content: "Hôm nay toàn họ tụ tập đông đủ..."
             authorName: "Huy Quốc"
+            authorId: "123e4567-e89b-12d3-a456-426614174001"
             relatedPersonId: "123e4567-e89b-12d3-a456-426614174000"
             createdAt: "2026-10-09T16:00:00Z"
             updatedAt: "2026-10-09T16:00:00Z"
@@ -1337,6 +1339,7 @@ components:
             title: "Ký ức làng xưa"
             content: "Nội dung hồi ức..."
             authorName: "Nguyễn Văn Bình"
+            authorId: "123e4567-e89b-12d3-a456-426614174002"
             relatedPersonId: null
             createdAt: "2026-10-08T10:00:00Z"
             updatedAt: "2026-10-08T10:00:00Z"
@@ -1349,6 +1352,7 @@ components:
           title: "Ngày giỗ tổ năm 2026"
           content: "Hôm nay toàn họ tụ tập đông đủ..."
           authorName: "Huy Quốc"
+          authorId: "123e4567-e89b-12d3-a456-426614174001"
           relatedPersonId: "123e4567-e89b-12d3-a456-426614174000"
           createdAt: "2026-10-09T16:00:00Z"
           updatedAt: "2026-10-09T16:00:00Z"
@@ -1360,6 +1364,7 @@ components:
           title: "Ngày giỗ tổ năm 2026 (Chỉnh sửa)"
           content: "Hôm nay toàn họ tụ tập đông đủ..."
           authorName: "Huy Quốc"
+          authorId: "123e4567-e89b-12d3-a456-426614174001"
           relatedPersonId: "123e4567-e89b-12d3-a456-426614174000"
           createdAt: "2026-10-09T16:00:00Z"
           updatedAt: "2026-10-09T17:00:00Z"
