@@ -1,3 +1,5 @@
+import { LogoutButton } from '@/components/auth/LogoutButton';
+
 // PERM_002: thành viên chưa được xác minh sẽ được chuyển đến màn hình này.
 export default function PendingApprovalPage() {
   return (
@@ -7,6 +9,7 @@ export default function PendingApprovalPage() {
         Quản trị viên của gia đình chưa xác minh tài khoản của bạn. Bạn sẽ dùng được chức năng này
         sau khi được duyệt.
       </p>
+      <LogoutButton />
     </main>
   );
 }
