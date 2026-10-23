@@ -12,7 +12,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   primary:
     'border-secondary bg-secondary text-text-primary hover:border-gold-hover hover:bg-gold-hover',
   secondary: 'border-border-strong bg-surface text-text-primary hover:bg-surface-muted',
-  danger: 'border-error bg-error text-white hover:bg-[#A61F1F]',
+  danger: 'border-error bg-error text-white hover:opacity-90',
 };
 
 export function Button({

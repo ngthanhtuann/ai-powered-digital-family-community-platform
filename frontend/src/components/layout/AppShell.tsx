@@ -30,7 +30,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/Button';
 import { getMyMembership, getMyProfile, logout } from '@/services/auth';
 import { tokenStorage } from '@/lib/token-storage';
 import {
@@ -93,12 +92,12 @@ function MenuEntry({
         ? 'text-cream-on-dark hover:bg-gold-hover hover:text-text-primary'
         : 'cursor-not-allowed text-cream-on-dark/60',
   ].join(' ');
-  const icon = Icon ? <Icon aria-hidden="true" size={18} strokeWidth={1.75} /> : null;
+  const icon = Icon ? <Icon aria-hidden="true" size={20} strokeWidth={1.5} /> : null;
   const content = (
     <>
       {icon}
       <span className="min-w-0 flex-1">{item.label}</span>
-      {!item.href && <span className="text-caption">Sắp ra mắt</span>}
+      {!item.href && <span className="sr-only">(sắp ra mắt)</span>}
     </>
   );
 
@@ -112,7 +111,7 @@ function MenuEntry({
       {content}
     </Link>
   ) : (
-    <span aria-disabled="true" className={className}>
+    <span aria-disabled="true" title="Sắp ra mắt" className={className}>
       {content}
     </span>
   );
@@ -167,17 +166,17 @@ function Navigation({
         <p className="mb-3 truncate px-3 text-caption text-cream-on-dark/80">
           {familyName || 'Chưa chọn gia đình'}
         </p>
-        <Button
-          variant="secondary"
-          className="justify-start bg-transparent text-cream-on-dark hover:bg-gold-hover hover:text-text-primary"
+        <button
+          type="button"
+          className="flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-body text-cream-on-dark transition-colors hover:bg-gold-hover hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
           onClick={() => {
             onNavigate?.();
             void logout();
           }}
         >
-          <LogOut aria-hidden="true" size={18} />
+          <LogOut aria-hidden="true" size={20} strokeWidth={1.5} />
           Đăng xuất
-        </Button>
+        </button>
       </div>
     </nav>
   );
@@ -261,7 +260,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href="#mobile-navigation"
             className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control px-3 text-label text-cream-on-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
           >
-            <Menu aria-hidden="true" size={18} />
+            <Menu aria-hidden="true" size={20} strokeWidth={1.5} />
             Menu
           </a>
         </div>

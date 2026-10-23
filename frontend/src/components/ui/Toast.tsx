@@ -1,25 +1,27 @@
+import { CircleAlert, CircleCheck, Info, TriangleAlert, X, type LucideIcon } from 'lucide-react';
+
 type ToastVariant = 'success' | 'error' | 'info' | 'warning';
 
-const STYLES: Record<ToastVariant, { box: string; text: string; icon: string }> = {
+const STYLES: Record<ToastVariant, { box: string; text: string; icon: LucideIcon }> = {
   success: {
     box: 'border-border bg-success-soft',
     text: 'text-text-primary',
-    icon: '✓',
+    icon: CircleCheck,
   },
   error: {
     box: 'border-error bg-error-soft',
     text: 'text-error',
-    icon: '!',
+    icon: CircleAlert,
   },
   info: {
     box: 'border-info bg-info-soft',
     text: 'text-info',
-    icon: 'i',
+    icon: Info,
   },
   warning: {
     box: 'border-warning bg-warning-soft',
     text: 'text-warning',
-    icon: '!',
+    icon: TriangleAlert,
   },
 };
 
@@ -32,17 +34,13 @@ interface ToastProps {
 
 export function Toast({ variant, title, message, onClose }: ToastProps) {
   const style = STYLES[variant];
+  const Icon = style.icon;
   return (
     <div
       role={variant === 'error' ? 'alert' : 'status'}
       className={`flex w-full items-start gap-3 rounded-card border p-4 shadow-card ${style.box}`}
     >
-      <span
-        aria-hidden="true"
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-label ${style.text}`}
-      >
-        {style.icon}
-      </span>
+      <Icon aria-hidden="true" size={20} strokeWidth={1.5} className={`mt-0.5 shrink-0 ${style.text}`} />
       <div className={`flex min-w-0 flex-1 flex-col gap-1 text-[14px] ${style.text}`}>
         <p className="font-medium leading-5">{title}</p>
         <p className="leading-[22px]">{message}</p>
@@ -52,9 +50,9 @@ export function Toast({ variant, title, message, onClose }: ToastProps) {
           type="button"
           onClick={onClose}
           aria-label="Đóng thông báo"
-          className="shrink-0 rounded-control px-2 py-1 text-label underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
+          className={`shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info ${style.text}`}
         >
-          Đóng
+          <X aria-hidden="true" size={20} strokeWidth={1.5} />
         </button>
       )}
     </div>
