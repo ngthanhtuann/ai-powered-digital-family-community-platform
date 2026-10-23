@@ -54,7 +54,7 @@ class MediaUploadServiceTest {
     @Test
     void controllerMapsOversizeAndUnsupportedFileErrorsToContractCodes() throws IOException {
         MediaUploadService service = new MediaUploadService(storage);
-        MediaController controller = new MediaController(service);
+        MediaController controller = new MediaController(service, org.mockito.Mockito.mock(MediaAccess.class));
         UUID familyId = UUID.randomUUID();
 
         var tooLarge = controller.upload(
