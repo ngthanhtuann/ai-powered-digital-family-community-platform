@@ -5,12 +5,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-// import java.util.regex.Pattern;
 
 @Service
 public class TextChunkingService {
 
-    // private static final int MIN_WORDS = 300;
     private static final int MAX_WORDS = 500;
 
     public List<String> split(String content) {
