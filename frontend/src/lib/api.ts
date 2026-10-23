@@ -108,8 +108,17 @@ client.interceptors.response.use(
             const token = (await refreshAccessToken()).accessToken;
             original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
             return client.request(original);
-          } catch {
-            // refresh thất bại: rơi xuống đăng xuất
+          } catch (refreshError) {
+            // Tài khoản bị khóa lúc làm mới token (403 AUTH_003): báo bị khóa thay vì về đăng nhập trống.
+            if (axios.isAxiosError(refreshError)) {
+              const refreshApiError = toApiError(refreshError as AxiosError<ApiErrorBody>);
+              if (refreshApiError.code === 'AUTH_003') {
+                tokenStorage.clear();
+                if (typeof window !== 'undefined') window.location.assign('/login?reason=locked');
+                return Promise.reject(refreshApiError);
+              }
+            }
+            // refresh thất bại vì lý do khác: rơi xuống đăng xuất
           }
         }
         tokenStorage.clear();
