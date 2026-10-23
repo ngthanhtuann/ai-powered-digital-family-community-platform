@@ -33,11 +33,19 @@ public class MediaUploadService {
             configuredPath = "uploads";
         }
 
-        storagePath = Paths.get(configuredPath)
+        storagePath = initializeStoragePath(Paths.get(configuredPath));
+    }
+
+    MediaUploadService(Path storagePath) throws IOException {
+        this.storagePath = initializeStoragePath(storagePath);
+    }
+
+    private static Path initializeStoragePath(Path configuredPath) throws IOException {
+        Path storagePath = configuredPath
                 .toAbsolutePath()
                 .normalize();
-
         Files.createDirectories(storagePath);
+        return storagePath;
     }
 
     public StoredMedia save(

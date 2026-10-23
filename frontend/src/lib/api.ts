@@ -97,6 +97,11 @@ type RetriableConfig = AxiosRequestConfig & { _retried?: boolean };
 client.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<ApiErrorBody>) => {
+    // Request tải tệp (responseType blob) nhận lỗi dạng Blob: đọc lại JSON để xử lý như mọi lỗi khác.
+    const blobBody: unknown = error.response?.data;
+    if (error.response && blobBody instanceof Blob && blobBody.type.includes('json')) {
+      error.response.data = JSON.parse(await blobBody.text()) as ApiErrorBody;
+    }
     const apiError = toApiError(error);
     const original = error.config as RetriableConfig | undefined;
 
@@ -164,6 +169,11 @@ export const api = {
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
+  upload: <T>(url: string, data: FormData) =>
+    request<T>({ method: 'POST', url, data, headers: { 'Content-Type': 'multipart/form-data' } }),
+  /** Tải tệp có kiểm tra quyền: gửi kèm token như mọi request, trả Blob. */
+  download: (url: string) =>
+    client.request<Blob>({ method: 'GET', url, responseType: 'blob' }).then((res) => res.data),
 };
 
 /** Gọi thử /actuator/health (nằm ngoài /api/v1, không bọc envelope). */
