@@ -2,6 +2,8 @@ package com.familyconnect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.familyconnect.modules.heritage.api.GenealogyQuery;
+import com.familyconnect.modules.heritage.service.DevelopmentGenealogyQueryStub;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,8 +22,12 @@ class FamilyConnectApplicationTests {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private GenealogyQuery genealogyQuery;
+
     @Test
     void contextLoads() {
+        assertThat(genealogyQuery).isInstanceOf(DevelopmentGenealogyQueryStub.class);
     }
 
     @Test

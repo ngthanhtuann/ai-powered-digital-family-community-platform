@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    default: development
   application:
     name: familyconnect-backend
 
@@ -32,6 +34,10 @@ server:
   port: 8080
 
 app:
+  heritage:
+    genealogy:
+      # Development-only lookup: personUUID=familyUUID;personUUID=familyUUID. Empty until configured.
+      people: ${HERITAGE_GENEALOGY_PEOPLE:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
   jwt:

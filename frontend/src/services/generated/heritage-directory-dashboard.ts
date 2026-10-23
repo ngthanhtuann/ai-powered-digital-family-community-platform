@@ -504,6 +504,8 @@ export interface components {
             content: string;
             /** @description Tên người đăng (created_by), tra qua interface. */
             authorName: string;
+            /** @description ID của người đăng, dùng để xác định quyền sửa/xóa phía giao diện. */
+            authorId: string;
             /** Format: uuid */
             relatedPersonId?: string | null;
             /** Format: date-time */

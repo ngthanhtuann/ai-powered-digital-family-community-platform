@@ -164,6 +164,8 @@ export const api = {
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
+  upload: <T>(url: string, data: FormData) =>
+    request<T>({ method: 'POST', url, data, headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 /** Gọi thử /actuator/health (nằm ngoài /api/v1, không bọc envelope). */
