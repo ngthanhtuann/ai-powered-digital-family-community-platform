@@ -135,6 +135,19 @@ class AuthApiIntegrationTest {
     }
 
     @Test
+    void emailWithSurroundingSpacesIsTrimmedOnRegisterAndLogin() throws Exception {
+        String email = uniqueEmail();
+        postJson("/api/v1/users", Map.of(
+                "email", "  " + email.toUpperCase() + " ", "password", PASSWORD, "fullName", "Nguyễn Văn An",
+                "dateOfBirth", "1990-05-12"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value(email));
+        postJson("/api/v1/auth/login", Map.of("email", " " + email + "  ", "password", PASSWORD))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.email").value(email));
+    }
+
+    @Test
     void loginWrongPasswordReturnsAuth001() throws Exception {
         String email = uniqueEmail();
         register(email);

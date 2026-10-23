@@ -15,6 +15,10 @@ public final class AuthRequests {
     private AuthRequests() {
     }
 
+    private static String trim(String value) {
+        return value == null ? null : value.trim();
+    }
+
     /** POST /users (RegisterRequest). Tuổi tối thiểu 16 kiểm ở service (BR-AUTH-03). */
     public record Register(
             @NotBlank(message = "Email không được để trống")
@@ -37,6 +41,10 @@ public final class AuthRequests {
             @Past(message = "Ngày sinh phải trước hôm nay")
             LocalDate dateOfBirth
     ) {
+        /** BR-AUTH-01: cắt khoảng trắng trước khi kiểm tra định dạng, để " a@b.vn " không bị báo sai. */
+        public Register {
+            email = trim(email);
+        }
     }
 
     /** POST /auth/login (LoginRequest). */
@@ -48,6 +56,10 @@ public final class AuthRequests {
             @NotBlank(message = "Mật khẩu không được để trống")
             String password
     ) {
+        /** BR-AUTH-01: như Register. */
+        public Login {
+            email = trim(email);
+        }
     }
 
     /** POST /auth/refresh (RefreshRequest). */
