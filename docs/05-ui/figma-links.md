@@ -23,12 +23,12 @@ Màu và chữ dùng biến (collection `Color`, `Size`) và style có sẵn tro
 
 | Module | Người vẽ | Task Jira | Link Figma | Trạng thái |
 |---|---|---|---|---|
-| Design system | TV5 Lê Nhựt | SCRUM-25 | [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) | Chờ review |
-| Gia phả (danh sách, cây, chi tiết, tra quan hệ) | TV2 Trí | SCRUM-29 | [03 Gia phả](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-217) | |
-| Community và Events | TV3 PiLo257 | SCRUM-30 | [04 Community và Events](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=152-103) | Chờ review |
-| Heritage, Directory, Dashboard | TV4 Huy Quốc | SCRUM-32 | [05 Heritage, Directory, Dashboard](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-221) | |
-| Mobile | TV5 Lê Nhựt | SCRUM-84 | [06 Mobile](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-223) | Chờ review |
-| Auth, Admin | TV1 Tuấn | SCRUM-26 | [02 Auth và Admin](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-215) | |
+| Design system | TV5 Lê Nhựt | SCRUM-25 | [01 Design system](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-112) | Xong (Done trên Jira) |
+| Gia phả (danh sách, cây, chi tiết, tra quan hệ) | TV2 Trí | SCRUM-29 | [03 Gia phả](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-217) | Xong (Done trên Jira) |
+| Community và Events | TV3 PiLo257 | SCRUM-30 | [04 Community và Events](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=152-103) | Xong (Done trên Jira) |
+| Heritage, Directory, Dashboard | TV4 Huy Quốc | SCRUM-32 | [05 Heritage, Directory, Dashboard](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-221) | Xong (Done trên Jira) |
+| Mobile | TV5 Lê Nhựt | SCRUM-84 | [06 Mobile](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-223) | Xong (Done trên Jira) |
+| Auth, Admin | TV1 Tuấn | SCRUM-26 | [02 Auth và Admin](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-215) | Xong (Done trên Jira) |
 
 Trang bìa: [00 Cover](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=4-57). Nháp: [99 Nháp](https://www.figma.com/design/LDT41oUdTnmwaUugJlvrLK/Java?node-id=3-4).
 
