@@ -1,5 +1,5 @@
 // Gọi API module Auth (docs/04-api/openapi/auth.yaml). Kiểu sinh từ OpenAPI, không viết tay.
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { tokenStorage } from '@/lib/token-storage';
 import type { components } from './generated/auth';
 
@@ -26,12 +26,13 @@ export function register(body: RegisterRequest): Promise<User> {
 export async function logout(): Promise<void> {
   try {
     await api.delete('/auth/sessions/current');
-  } catch {
-    // Token đã hết hạn hoặc mất mạng: vẫn xóa token ở máy để đăng xuất.
-  } finally {
-    tokenStorage.clear();
-    window.location.assign('/login');
+  } catch (error) {
+    // Tài khoản bị khóa: lib/api.ts đã xóa token và chuyển tới /login?reason=locked, không đè lên.
+    if (error instanceof ApiError && error.code === 'AUTH_003') return;
+    // Lỗi khác (token hết hạn, mất mạng): vẫn xóa token ở máy để đăng xuất.
   }
+  tokenStorage.clear();
+  window.location.assign('/login');
 }
 
 /** GET /users/me/membership. */
