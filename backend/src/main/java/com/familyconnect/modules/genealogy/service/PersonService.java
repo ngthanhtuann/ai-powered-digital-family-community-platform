@@ -6,6 +6,7 @@ import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
+import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyResponses.ListResponse;
 import com.familyconnect.modules.genealogy.dto.GenealogyResponses.PersonData;
@@ -47,11 +48,13 @@ public class PersonService {
     private final MembershipQuery membershipQuery;
     private final AuditLogger auditLogger;
     private final AiGateway aiGateway;
+    private final CommunityQuery communityQuery;
     private final Clock clock;
 
     public PersonService(PersonRepository personRepository, FamilyRepository familyRepository,
                          BranchRepository branchRepository, GenealogyAccess access, MembershipQuery membershipQuery,
-                         AuditLogger auditLogger, AiGateway aiGateway, Clock clock) {
+                         AuditLogger auditLogger, AiGateway aiGateway, CommunityQuery communityQuery,
+                         Clock clock) {
         this.personRepository = personRepository;
         this.familyRepository = familyRepository;
         this.branchRepository = branchRepository;
@@ -59,6 +62,7 @@ public class PersonService {
         this.membershipQuery = membershipQuery;
         this.auditLogger = auditLogger;
         this.aiGateway = aiGateway;
+        this.communityQuery = communityQuery;
         this.clock = clock;
     }
 
@@ -160,6 +164,16 @@ public class PersonService {
                 && branchRepository.findByIdAndFamilyIdAndDeletedAtIsNull(input.branchId(), familyId).isEmpty()) {
             throw ApiException.invalidField("branchId", "Chi họ không thuộc gia đình này");
         }
+        if (input.avatarMediaId() != null) {
+            // Ảnh phải được tải lên cho chính hồ sơ này (ownerType PERSON, ownerId = id hồ sơ), nên luôn cùng gia đình.
+            boolean ownAvatar = personId != null && communityQuery.getPersonMedia(input.avatarMediaId())
+                    .filter(media -> media.personId().equals(personId)).isPresent();
+            if (!ownAvatar) {
+                throw ApiException.invalidField("avatarMediaId", personId == null
+                        ? "Tạo hồ sơ trước, sau đó tải ảnh đại diện cho hồ sơ và gán bằng PUT"
+                        : "Ảnh không tồn tại hoặc không phải ảnh của hồ sơ này");
+            }
+        }
         if (input.userId() != null) {
             if (isChild(input.deceased(), input.birthDate(), today)) {
                 throw new ApiException(ErrorCode.GEN_012);
@@ -176,7 +190,7 @@ public class PersonService {
         }
     }
 
-    /** PUT thay toàn bộ trường; birth_year chỉ lưu khi không có ngày sinh đầy đủ (BR-GEN-17). */
+    /** PUT thay toàn bộ trường trừ userId; birth_year chỉ lưu khi không có ngày sinh đầy đủ (BR-GEN-17). */
     private static void apply(Person person, PersonInput input) {
         person.setFullName(input.fullName().trim());
         person.setGender(input.gender().name());
@@ -191,7 +205,10 @@ public class PersonService {
         person.setDeathDate(input.deathDate());
         person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
         person.setAvatarMediaId(input.avatarMediaId());
-        person.setUserId(input.userId());
+        // Response không trả userId nên client không gửi lại được: để trống thì giữ liên kết (BR-GEN-19).
+        if (input.userId() != null) {
+            person.setUserId(input.userId());
+        }
         person.setNote(FamilyService.blankToNull(input.note()));
     }
 

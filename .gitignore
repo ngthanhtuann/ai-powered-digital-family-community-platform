@@ -17,6 +17,8 @@ dist/
 *.pem
 *.key
 backups/
+# Tệp người dùng tải lên khi chạy backend không đặt MEDIA_STORAGE_PATH (mặc định ./uploads)
+uploads/
 
 # Hệ điều hành
 .DS_Store
