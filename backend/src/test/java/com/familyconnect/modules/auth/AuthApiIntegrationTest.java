@@ -2,6 +2,7 @@ package com.familyconnect.modules.auth;
 
 import com.familyconnect.common.security.JwtProperties;
 import com.familyconnect.common.security.JwtService;
+import com.familyconnect.modules.auth.api.UserDirectory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -53,6 +55,9 @@ class AuthApiIntegrationTest {
 
     @Autowired
     private JwtProperties jwtProperties;
+
+    @Autowired
+    private UserDirectory userDirectory;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -202,6 +207,41 @@ class AuthApiIntegrationTest {
         mvc.perform(get("/api/v1/users/me/membership").header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("NONE"));
+    }
+
+    @Test
+    void getMyProfileReturnsOwnUserWithoutPassword() throws Exception {
+        String email = uniqueEmail();
+        register(email);
+        String accessToken = login(email).get("accessToken").asText();
+
+        mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value(email))
+                .andExpect(jsonPath("$.data.fullName").value("Nguyễn Văn An"))
+                .andExpect(jsonPath("$.data.roles[0]").value("MEMBER"))
+                .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
+        mvc.perform(get("/api/v1/users/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_002"));
+    }
+
+    @Test
+    void userDirectoryReturnsNamesOfActiveUsersOnly() throws Exception {
+        String activeEmail = uniqueEmail();
+        String deletedEmail = uniqueEmail();
+        register(activeEmail);
+        register(deletedEmail);
+        entityManager.flush();
+        UUID activeId = jdbc.queryForObject("select id from users where email = ?", UUID.class, activeEmail);
+        UUID deletedId = jdbc.queryForObject("select id from users where email = ?", UUID.class, deletedEmail);
+        jdbc.update("update users set deleted_at = now() where id = ?", deletedId);
+        entityManager.clear();
+
+        Map<UUID, String> names = userDirectory.getFullNames(List.of(activeId, deletedId, UUID.randomUUID()));
+
+        assertThat(names).containsOnlyKeys(activeId);
+        assertThat(names.get(activeId)).isEqualTo("Nguyễn Văn An");
     }
 
     @Test

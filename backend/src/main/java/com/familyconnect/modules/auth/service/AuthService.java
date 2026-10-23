@@ -166,6 +166,14 @@ public class AuthService {
         auditLogger.log("PASSWORD_CHANGED", "USER", userId, null, Map.of());
     }
 
+    /** GET /users/me (UC-AUTH-05): hồ sơ của chính mình, kể cả khi chưa xác minh gia đình. */
+    @Transactional(readOnly = true)
+    public UserData myProfile(UUID userId) {
+        User user = userRepository.findActiveById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_002));
+        return UserData.of(user, userRoleRepository.findRoleCodes(userId));
+    }
+
     /** GET /users/me/membership. */
     @Transactional(readOnly = true)
     public MembershipData myMembership(UUID userId) {

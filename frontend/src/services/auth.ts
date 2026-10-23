@@ -40,6 +40,11 @@ export function getMyMembership(): Promise<Membership> {
   return api.get<Membership>('/users/me/membership');
 }
 
+/** GET /users/me. */
+export function getMyProfile(): Promise<User> {
+  return api.get<User>('/users/me');
+}
+
 /**
  * Chọn màn hình sau đăng nhập (Figma "Đăng nhập — trạng thái", auth.md UC-AUTH-02 bước 6):
  * SYSTEM_ADMIN và APPROVED vào ứng dụng; PENDING vào màn chờ duyệt; còn lại vào màn xin tham gia.
