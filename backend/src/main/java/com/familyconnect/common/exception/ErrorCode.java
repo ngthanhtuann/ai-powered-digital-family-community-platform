@@ -21,7 +21,10 @@ public enum ErrorCode {
     FILE_001(HttpStatus.PAYLOAD_TOO_LARGE, "Tệp vượt quá dung lượng cho phép"),
     FILE_002(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Định dạng tệp không được hỗ trợ"),
     RATE_001(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
-    SERVER_001(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống, vui lòng thử lại sau");
+    SERVER_001(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống, vui lòng thử lại sau"),
+    // Mã riêng của module Gia phả (genealogy.md mục 7.2, HTTP 409).
+    GEN_012(HttpStatus.CONFLICT, "Người dưới 16 tuổi không có tài khoản đăng nhập riêng"),
+    GEN_014(HttpStatus.CONFLICT, "Hồ sơ không thuộc gia đình của tài khoản cần gắn");
 
     private final HttpStatus status;
     private final String defaultMessage;
