@@ -1,6 +1,8 @@
 package com.familyconnect.modules.genealogy.repository;
 
 import com.familyconnect.modules.genealogy.entity.Branch;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +13,12 @@ import java.util.UUID;
 public interface BranchRepository extends JpaRepository<Branch, UUID> {
 
     Optional<Branch> findByIdAndFamilyIdAndDeletedAtIsNull(UUID id, UUID familyId);
+
+    Optional<Branch> findByIdAndDeletedAtIsNull(UUID id);
+
+    Page<Branch> findAllByFamilyIdAndDeletedAtIsNull(UUID familyId, Pageable pageable);
+
+    long countByParentBranchIdAndDeletedAtIsNull(UUID parentBranchId);
 
     /** Đi ngược chuỗi chi cha từ branchId; giới hạn độ sâu để dữ liệu lỗi có vòng lặp không treo truy vấn. */
     @Query(value = """

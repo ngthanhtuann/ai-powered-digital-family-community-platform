@@ -23,7 +23,12 @@ public enum ErrorCode {
     RATE_001(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
     SERVER_001(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống, vui lòng thử lại sau"),
     // Mã riêng của module Gia phả (genealogy.md mục 7.2, HTTP 409).
+    GEN_001(HttpStatus.CONFLICT, "Gia đình còn thành viên, không xóa được"),
+    GEN_002(HttpStatus.CONFLICT, "Chi còn thành viên hoặc chi con, không xóa được"),
+    GEN_003(HttpStatus.CONFLICT, "Chi cha tạo vòng lặp"),
+    GEN_004(HttpStatus.CONFLICT, "Thành viên còn quan hệ cha-mẹ-con hoặc hôn nhân, không xóa được"),
     GEN_012(HttpStatus.CONFLICT, "Người dưới 16 tuổi không có tài khoản đăng nhập riêng"),
+    GEN_013(HttpStatus.CONFLICT, "Bạn đã thuộc một gia đình"),
     GEN_014(HttpStatus.CONFLICT, "Hồ sơ không thuộc gia đình của tài khoản cần gắn");
 
     private final HttpStatus status;
