@@ -28,6 +28,11 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-familyconnect}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
       MEDIA_STORAGE_PATH: /var/lib/familyconnect/media
+      # Bắt buộc (SCRUM-35): đặt trong .env; thiếu thì backend dừng ngay khi khởi động và báo lỗi.
+      JWT_SECRET: ${JWT_SECRET:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
     ports:
       - "8080:8080"
     volumes:

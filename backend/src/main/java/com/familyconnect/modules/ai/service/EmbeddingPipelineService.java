@@ -15,7 +15,7 @@ public class EmbeddingPipelineService {
     private final String model;
 
     public EmbeddingPipelineService(
-            @Value("${gemini.api-key:}") String apiKey,
+            // @Value() String apiKey,
             @Value("${gemini.embedding-model:gemini-embedding-001}") String model) {
 
         this.apiKey = apiKey;

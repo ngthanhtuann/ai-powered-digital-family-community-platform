@@ -21,6 +21,8 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public details: ApiErrorDetail[] = [],
+    /** Số giây phải chờ khi bị 429 RATE_001 (header Retry-After). */
+    public retryAfter?: number,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -75,11 +77,13 @@ function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
   const body = error.response?.data;
   if (body && body.success === false && body.error) {
     const { code, message, details } = body.error;
+    const retryAfter = Number(error.response!.headers['retry-after']);
     return new ApiError(
       code,
       message,
       error.response!.status,
       Array.isArray(details) ? details : [],
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     );
   }
   if (!error.response) {
@@ -93,6 +97,11 @@ type RetriableConfig = AxiosRequestConfig & { _retried?: boolean };
 client.interceptors.response.use(
   (res) => res,
   async (error: AxiosError<ApiErrorBody>) => {
+    // Request tải tệp (responseType blob) nhận lỗi dạng Blob: đọc lại JSON để xử lý như mọi lỗi khác.
+    const blobBody: unknown = error.response?.data;
+    if (error.response && blobBody instanceof Blob && blobBody.type.includes('json')) {
+      error.response.data = JSON.parse(await blobBody.text()) as ApiErrorBody;
+    }
     const apiError = toApiError(error);
     const original = error.config as RetriableConfig | undefined;
 
@@ -104,12 +113,26 @@ client.interceptors.response.use(
             const token = (await refreshAccessToken()).accessToken;
             original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
             return client.request(original);
-          } catch {
-            // refresh thất bại: rơi xuống đăng xuất
+          } catch (refreshError) {
+            // Tài khoản bị khóa lúc làm mới token (403 AUTH_003): báo bị khóa thay vì về đăng nhập trống.
+            if (axios.isAxiosError(refreshError)) {
+              const refreshApiError = toApiError(refreshError as AxiosError<ApiErrorBody>);
+              if (refreshApiError.code === 'AUTH_003') {
+                tokenStorage.clear();
+                if (typeof window !== 'undefined') window.location.assign('/login?reason=locked');
+                return Promise.reject(refreshApiError);
+              }
+            }
+            // refresh thất bại vì lý do khác: rơi xuống đăng xuất
           }
         }
         tokenStorage.clear();
         if (typeof window !== 'undefined') window.location.assign('/login');
+        break;
+      case 'AUTH_003': // tài khoản bị khóa -> xóa token, về đăng nhập và báo bị khóa
+        if (original?.url === '/auth/login') break; // trang đăng nhập tự hiện lỗi
+        tokenStorage.clear();
+        if (typeof window !== 'undefined') window.location.assign('/login?reason=locked');
         break;
       case 'PERM_002': // chưa xác minh -> màn hình chờ duyệt
         if (typeof window !== 'undefined') window.location.assign('/pending-approval');
@@ -146,6 +169,11 @@ export const api = {
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
+  upload: <T>(url: string, data: FormData) =>
+    request<T>({ method: 'POST', url, data, headers: { 'Content-Type': 'multipart/form-data' } }),
+  /** Tải tệp có kiểm tra quyền: gửi kèm token như mọi request, trả Blob. */
+  download: (url: string) =>
+    client.request<Blob>({ method: 'GET', url, responseType: 'blob' }).then((res) => res.data),
 };
 
 /** Gọi thử /actuator/health (nằm ngoài /api/v1, không bọc envelope). */
