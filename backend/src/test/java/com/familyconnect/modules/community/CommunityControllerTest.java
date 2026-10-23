@@ -1,12 +1,12 @@
 package com.familyconnect.modules.community;
 
 import com.familyconnect.modules.community.controller.CommunityController;
-import com.familyconnect.modules.community.controller.CommunityExceptionHandler;
-import com.familyconnect.modules.community.service.CommunityFailure;
+import com.familyconnect.common.exception.ApiException;
+import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.common.exception.GlobalExceptionHandler;
 import com.familyconnect.modules.community.service.CommunityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -24,7 +24,7 @@ class CommunityControllerTest {
     @BeforeEach void setUp() {
         service = mock(CommunityService.class);
         mvc = MockMvcBuilders.standaloneSetup(new CommunityController(service))
-            .setControllerAdvice(new CommunityExceptionHandler()).build();
+            .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 
     @Test void deletePostUsesHttp200WithNullData() throws Exception {
@@ -38,7 +38,7 @@ class CommunityControllerTest {
 
     @Test void invalidPageReturnsStandardValidationEnvelope() throws Exception {
         when(service.posts(isNull(),isNull(),isNull(),eq(-1),eq(20),eq("createdAt,desc")))
-            .thenThrow(CommunityFailure.invalid("page","page phải bắt đầu từ 0"));
+            .thenThrow(ApiException.invalidField("page","page phải bắt đầu từ 0"));
         mvc.perform(get("/api/v1/posts").param("page","-1"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.success").value(false))
@@ -55,8 +55,7 @@ class CommunityControllerTest {
 
     @Test void forbiddenPostIs403() throws Exception {
         UUID id = UUID.randomUUID();
-        when(service.post(id)).thenThrow(
-            new CommunityFailure(HttpStatus.FORBIDDEN,"PERM_001","Không đủ quyền truy cập"));
+        when(service.post(id)).thenThrow(new ApiException(ErrorCode.PERM_001));
         mvc.perform(get("/api/v1/posts/{id}",id))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.error.code").value("PERM_001"));

@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +68,11 @@ public class JdbcCommunityStore implements CommunityStore {
                           "WHERE id=:id AND deleted_at IS NULL AND hidden_at IS NULL",
             p("id",id), POST_MAPPER).stream().findFirst();
     }
+    @Override public List<UUID> postBranchIds(UUID family) {
+        return jdbc.queryForList("SELECT DISTINCT branch_id FROM post WHERE family_id=:family " +
+                                 "AND branch_id IS NOT NULL AND deleted_at IS NULL AND hidden_at IS NULL",
+            p("family",family), UUID.class);
+    }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
                                        UUID branch, PostType type, int page, int size, String order) {
         var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),
@@ -96,18 +102,34 @@ public class JdbcCommunityStore implements CommunityStore {
         jdbc.update("UPDATE post SET deleted_at=now(),updated_at=now() WHERE id=:id AND deleted_at IS NULL",
             p("id",id));
     }
-    @Override public long commentCount(UUID postId) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM comment WHERE post_id=:post AND " +
-                                   "deleted_at IS NULL AND hidden_at IS NULL",
-            p("post",postId), Long.class);
-    }
-    @Override public Map<ReactionType,Long> reactionCounts(UUID postId) {
-        var counts = new EnumMap<ReactionType,Long>(ReactionType.class);
-        for (var type: ReactionType.values()) counts.put(type,0L);
-        jdbc.query("SELECT type,COUNT(*) AS total FROM reaction WHERE post_id=:post " +
-                   "AND deleted_at IS NULL GROUP BY type", p("post",postId),
-            rs -> { counts.put(ReactionType.valueOf(rs.getString("type")), rs.getLong("total")); });
+    @Override public Map<UUID,Long> commentCounts(List<UUID> postIds) {
+        var counts = new HashMap<UUID,Long>();
+        if (postIds.isEmpty()) return counts;
+        jdbc.query("SELECT post_id,COUNT(*) AS total FROM comment WHERE post_id IN (:posts) " +
+                   "AND deleted_at IS NULL AND hidden_at IS NULL GROUP BY post_id", p("posts",postIds),
+            rs -> { counts.put(uuid(rs,"post_id"), rs.getLong("total")); });
         return counts;
+    }
+    @Override public Map<UUID,Map<ReactionType,Long>> reactionCounts(List<UUID> postIds) {
+        var result = new HashMap<UUID,Map<ReactionType,Long>>();
+        for (var id: postIds) {
+            var counts = new EnumMap<ReactionType,Long>(ReactionType.class);
+            for (var type: ReactionType.values()) counts.put(type,0L);
+            result.put(id,counts);
+        }
+        if (postIds.isEmpty()) return result;
+        jdbc.query("SELECT post_id,type,COUNT(*) AS total FROM reaction WHERE post_id IN (:posts) " +
+                   "AND deleted_at IS NULL GROUP BY post_id,type", p("posts",postIds),
+            rs -> { result.get(uuid(rs,"post_id")).put(ReactionType.valueOf(rs.getString("type")), rs.getLong("total")); });
+        return result;
+    }
+    @Override public Map<UUID,ReactionType> myReactions(List<UUID> postIds, UUID userId) {
+        var mine = new HashMap<UUID,ReactionType>();
+        if (postIds.isEmpty()) return mine;
+        jdbc.query("SELECT post_id,type FROM reaction WHERE post_id IN (:posts) AND created_by=:user " +
+                   "AND deleted_at IS NULL", p("posts",postIds,"user",userId),
+            rs -> { mine.put(uuid(rs,"post_id"), ReactionType.valueOf(rs.getString("type"))); });
+        return mine;
     }
     @Override public Optional<Reaction> myReaction(UUID postId, UUID userId) {
         return jdbc.query("SELECT " + REACTION_COLUMNS + " FROM reaction WHERE post_id=:post " +

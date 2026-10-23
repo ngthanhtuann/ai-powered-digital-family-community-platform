@@ -1,5 +1,5 @@
--- [3-04] Community posts, comments and reactions. V2 media is present in the
--- supplied build output; confirm Flyway numbering with the team before merge.
+-- SCRUM-38 [3-04]: bài đăng, bình luận, reaction theo erd.dbml (post, comment, reaction).
+-- Đánh số sau V5 (genealogy, SCRUM-37); khóa ngoại chỉ trong module community.
 CREATE TABLE post (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL,

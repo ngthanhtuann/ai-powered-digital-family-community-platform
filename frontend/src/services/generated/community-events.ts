@@ -503,6 +503,13 @@ export interface components {
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
             createdBy?: string;
+            /**
+             * @description Họ tên người đăng (created_by), tra qua UserDirectory của module auth; tài khoản đã xóa hiện "Thành viên đã rời hệ thống".
+             * @example Nguyễn Văn An
+             */
+            authorName: string;
+            /** @description Người đang xem được xóa bài này (người tạo, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-05). */
+            canDelete: boolean;
             /** @example 0 */
             commentCount: number;
             reactionCounts: {
@@ -549,6 +556,13 @@ export interface components {
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
             createdBy: string;
+            /**
+             * @description Họ tên người đăng (created_by), tra qua UserDirectory của module auth; tài khoản đã xóa hiện "Thành viên đã rời hệ thống".
+             * @example Nguyễn Văn An
+             */
+            authorName: string;
+            /** @description Người đang xem được xóa bình luận này (người viết, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-06). */
+            canDelete: boolean;
         };
         Reaction: {
             /**
@@ -1384,6 +1398,8 @@ export interface operations {
                      *           "content": "Thông báo họp mặt gia đình cuối tuần",
                      *           "type": "POST",
                      *           "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *           "authorName": "Nguyễn Văn An",
+                     *           "canDelete": true,
                      *           "commentCount": 0,
                      *           "reactionCounts": {
                      *             "LIKE": 0,
@@ -1450,6 +1466,8 @@ export interface operations {
                      *         "content": "Thông báo họp mặt gia đình cuối tuần",
                      *         "type": "POST",
                      *         "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "authorName": "Nguyễn Văn An",
+                     *         "canDelete": true,
                      *         "commentCount": 0,
                      *         "reactionCounts": {
                      *           "LIKE": 0,
@@ -1500,6 +1518,8 @@ export interface operations {
                      *         "content": "Thông báo họp mặt gia đình cuối tuần",
                      *         "type": "POST",
                      *         "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "authorName": "Nguyễn Văn An",
+                     *         "canDelete": true,
                      *         "commentCount": 0,
                      *         "reactionCounts": {
                      *           "LIKE": 0,
@@ -1592,6 +1612,8 @@ export interface operations {
                      *         "content": "Thông báo họp mặt gia đình cuối tuần",
                      *         "type": "POST",
                      *         "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "authorName": "Nguyễn Văn An",
+                     *         "canDelete": true,
                      *         "commentCount": 0,
                      *         "reactionCounts": {
                      *           "LIKE": 0,
@@ -1644,7 +1666,9 @@ export interface operations {
                      *           "updatedAt": "2026-10-09T10:00:00+07:00",
                      *           "postId": "550e8400-e29b-41d4-a716-446655440000",
                      *           "content": "Mình sẽ tham gia.",
-                     *           "createdBy": "550e8400-e29b-41d4-a716-446655440000"
+                     *           "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *           "authorName": "Nguyễn Văn An",
+                     *           "canDelete": true
                      *         }
                      *       ],
                      *       "meta": {
@@ -1699,7 +1723,9 @@ export interface operations {
                      *         "updatedAt": "2026-10-09T10:00:00+07:00",
                      *         "postId": "550e8400-e29b-41d4-a716-446655440000",
                      *         "content": "Mình sẽ tham gia.",
-                     *         "createdBy": "550e8400-e29b-41d4-a716-446655440000"
+                     *         "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "authorName": "Nguyễn Văn An",
+                     *         "canDelete": true
                      *       }
                      *     }
                      */
@@ -1781,7 +1807,9 @@ export interface operations {
                      *         "updatedAt": "2026-10-09T10:00:00+07:00",
                      *         "postId": "550e8400-e29b-41d4-a716-446655440000",
                      *         "content": "Mình sẽ tham gia.",
-                     *         "createdBy": "550e8400-e29b-41d4-a716-446655440000"
+                     *         "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+                     *         "authorName": "Nguyễn Văn An",
+                     *         "canDelete": true
                      *       }
                      *     }
                      */

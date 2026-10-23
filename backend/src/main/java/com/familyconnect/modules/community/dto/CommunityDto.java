@@ -47,22 +47,18 @@ public final class CommunityDto {
 
     public record PostView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                            UUID familyId, UUID branchId, String content, PostType type,
-                           UUID createdBy, long commentCount, Map<ReactionType, Long> reactionCounts,
+                           UUID createdBy, String authorName, boolean canDelete,
+                           long commentCount, Map<ReactionType, Long> reactionCounts,
                            ReactionType myReaction) {}
     public record CommentView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                              UUID postId, String content, UUID createdBy) {}
+                              UUID postId, String content, UUID createdBy, String authorName,
+                              boolean canDelete) {}
     public record ReactionView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                                UUID postId, ReactionType type, UUID createdBy) {}
     public record Meta(int page, int size, long total) {}
-    public record Success<T>(boolean success, T data) {
-        public static <T> Success<T> of(T data) { return new Success<>(true, data); }
-    }
     public record PageSuccess<T>(boolean success, List<T> data, Meta meta) {
         public static <T> PageSuccess<T> of(List<T> data, int page, int size, long total) {
             return new PageSuccess<>(true, data, new Meta(page, size, total));
         }
     }
-    public record ErrorDetail(String field, String message) {}
-    public record ErrorInfo(String code, String message, List<ErrorDetail> details) {}
-    public record ErrorResponse(boolean success, ErrorInfo error) {}
 }

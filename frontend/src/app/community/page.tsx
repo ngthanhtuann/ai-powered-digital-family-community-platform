@@ -5,6 +5,8 @@ import {
   useInfiniteQuery, useMutation, useQuery, useQueryClient,
   type InfiniteData, type QueryKey,
 } from '@tanstack/react-query';
+import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
@@ -19,12 +21,13 @@ const reactions: { type: ReactionType; label: string }[] = [
 
 const dateText = (value: string) => new Date(value).toLocaleString('vi-VN');
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Có lỗi xảy ra.';
-const inputClass = 'w-full rounded-lg border border-border bg-surface px-3 py-2 text-text-primary';
-const buttonClass = 'rounded-lg bg-primary px-4 py-2 font-medium text-cream-on-dark disabled:opacity-50';
+// Cùng kiểu ô nhập với TextField và StoryForm (design-system.md mục 4).
+const inputClass = 'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body '
+  + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
+// Nút dạng chữ vẫn đủ vùng chạm 44px.
+const linkButtonClass = 'min-h-11 px-1 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-60';
 
-function Comments({ postId, userId, canModerate }: {
-  postId: string; userId?: string; canModerate: boolean;
-}) {
+function Comments({ postId, userId }: { postId: string; userId?: string }) {
   const client = useQueryClient();
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
@@ -62,38 +65,40 @@ function Comments({ postId, userId, canModerate }: {
         {comments.map((comment: Comment) => (
           <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
             <p className="text-xs text-text-secondary">
-              Người đăng: {comment.createdBy} · {dateText(comment.createdAt)}
+              {comment.authorName} · {dateText(comment.createdAt)}
             </p>
             {editing === comment.id ? (
               <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
                 <textarea className={inputClass} maxLength={1000} required value={editContent}
                   onChange={(event) => setEditContent(event.target.value)} />
                 <div className="flex gap-2">
-                  <button className={buttonClass} disabled={update.isPending || !editContent.trim()}>Lưu</button>
-                  <button type="button" onClick={() => setEditing(null)}>Hủy</button>
+                  <Button type="submit" fullWidth={false} loading={update.isPending} disabled={!editContent.trim()}>Lưu</Button>
+                  <Button variant="secondary" fullWidth={false} onClick={() => setEditing(null)}>Hủy</Button>
                 </div>
               </form>
             ) : (
               <p className="mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
             )}
-            {(comment.createdBy === userId || canModerate) && editing !== comment.id && (
+            {(comment.createdBy === userId || comment.canDelete) && editing !== comment.id && (
               <div className="mt-2 flex gap-3 text-sm text-text-secondary">
                 {comment.createdBy === userId && (
-                  <button type="button" onClick={() => {
+                  <button type="button" className={linkButtonClass} onClick={() => {
                     setEditing(comment.id); setEditContent(comment.content);
                   }}>Sửa</button>
                 )}
-                <button type="button" disabled={remove.isPending}
-                  onClick={() => { if (window.confirm('Xóa bình luận này?')) remove.mutate(comment.id); }}>
-                  Xóa
-                </button>
+                {comment.canDelete && (
+                  <button type="button" className={linkButtonClass + ' text-error'} disabled={remove.isPending}
+                    onClick={() => { if (window.confirm('Xóa bình luận này?')) remove.mutate(comment.id); }}>
+                    Xóa
+                  </button>
+                )}
               </div>
             )}
           </li>
         ))}
       </ul>
       {query.hasNextPage && (
-        <button className="mt-3 underline" type="button" disabled={query.isFetchingNextPage}
+        <button className={'mt-3 ' + linkButtonClass} type="button" disabled={query.isFetchingNextPage}
           onClick={() => query.fetchNextPage()}>
           {query.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm bình luận'}
         </button>
@@ -106,7 +111,7 @@ function Comments({ postId, userId, canModerate }: {
           placeholder="Nhập bình luận..." />
         <div className="flex items-center justify-between">
           <span className="text-xs text-text-secondary">{draft.length}/1000</span>
-          <button className={buttonClass} disabled={add.isPending || !draft.trim()}>Gửi bình luận</button>
+          <Button type="submit" fullWidth={false} loading={add.isPending} disabled={!draft.trim()}>Gửi bình luận</Button>
         </div>
         {(add.isError || update.isError || remove.isError) && (
           <p role="alert" className="text-error">
@@ -118,8 +123,8 @@ function Comments({ postId, userId, canModerate }: {
   );
 }
 
-function PostCard({ post, userId, canModerate, onReaction }: {
-  post: Post; userId?: string; canModerate: boolean;
+function PostCard({ post, userId, onReaction }: {
+  post: Post; userId?: string;
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
   const client = useQueryClient();
@@ -142,18 +147,21 @@ function PostCard({ post, userId, canModerate, onReaction }: {
             {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
           </span>
           <p className="mt-2 text-xs text-text-secondary">
-            Người đăng: {post.createdBy} · {dateText(post.createdAt)}
+            {post.authorName} · {dateText(post.createdAt)}
           </p>
         </div>
-        {(post.createdBy === userId || canModerate) && (
-          <div className="flex gap-3 text-sm">
+        {(post.createdBy === userId || post.canDelete) && (
+          <div className="flex gap-2">
             {post.createdBy === userId && !editing && (
-              <button type="button" onClick={() => { setContent(post.content); setEditing(true); }}>Sửa</button>
+              <Button variant="secondary" fullWidth={false}
+                onClick={() => { setContent(post.content); setEditing(true); }}>Sửa</Button>
             )}
-            <button type="button" disabled={remove.isPending}
-              onClick={() => { if (window.confirm('Xóa bài viết này?')) remove.mutate(); }}>
-              Xóa
-            </button>
+            {post.canDelete && (
+              <Button variant="danger" fullWidth={false} loading={remove.isPending}
+                onClick={() => { if (window.confirm('Xóa bài viết này?')) remove.mutate(); }}>
+                Xóa
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -162,8 +170,8 @@ function PostCard({ post, userId, canModerate, onReaction }: {
           <textarea className={inputClass} maxLength={5000} required value={content}
             onChange={(event) => setContent(event.target.value)} />
           <div className="flex gap-2">
-            <button className={buttonClass} disabled={update.isPending || !content.trim()}>Lưu bài</button>
-            <button type="button" onClick={() => setEditing(false)}>Hủy</button>
+            <Button type="submit" fullWidth={false} loading={update.isPending} disabled={!content.trim()}>Lưu bài</Button>
+            <Button variant="secondary" fullWidth={false} onClick={() => setEditing(false)}>Hủy</Button>
           </div>
         </form>
       ) : (
@@ -172,20 +180,20 @@ function PostCard({ post, userId, canModerate, onReaction }: {
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
           <button key={type} type="button" aria-pressed={post.myReaction === type}
-            className={'rounded-full border px-3 py-1 text-sm ' +
+            className={'min-h-11 rounded-full border px-3 text-sm ' +
               (post.myReaction === type ? 'border-primary bg-surface-muted font-semibold' : 'border-border')}
             onClick={() => onReaction(post, post.myReaction === type ? null : type)}>
             {label} {post.reactionCounts[type]}
           </button>
         ))}
       </div>
-      <button type="button" className="mt-4 text-sm font-medium underline"
+      <button type="button" className={'mt-2 ' + linkButtonClass}
         onClick={() => setShowComments((value) => !value)}>
         {showComments ? 'Ẩn bình luận' : 'Bình luận'} ({post.commentCount})
       </button>
       {(update.isError || remove.isError) &&
         <p className="mt-2 text-error" role="alert">{errorText(update.error || remove.error)}</p>}
-      {showComments && <Comments postId={post.id} userId={userId} canModerate={canModerate} />}
+      {showComments && <Comments postId={post.id} userId={userId} />}
     </article>
   );
 }
@@ -264,8 +272,7 @@ export default function CommunityPage() {
         <p className="rounded-lg bg-surface p-4">Bạn cần được xác minh thành viên trước khi xem bảng tin.</p>}
       {systemAdmin && (
         <div className="rounded-lg border border-border bg-surface p-4">
-          <label htmlFor="family-id" className="mb-2 block font-medium">Mã gia đình cần quản lý</label>
-          <input id="family-id" className={inputClass} value={adminFamily}
+          <TextField id="family-id" label="Mã gia đình cần quản lý" value={adminFamily}
             onChange={(event) => setAdminFamily(event.target.value)} placeholder="UUID gia đình" />
         </div>
       )}
@@ -284,7 +291,7 @@ export default function CommunityPage() {
             onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
             <h2 className="font-semibold">Tạo bài đăng</h2>
             <label htmlFor="post-kind" className="block text-sm">Loại bài</label>
-            <select id="post-kind" className={inputClass} value={postType}
+            <select id="post-kind" className={inputClass + ' h-[42px] py-0'} value={postType}
               onChange={(event) => setPostType(event.target.value as 'POST' | 'NEWS')}>
               <option value="POST">Bài đăng thường</option>
               {canNews && <option value="NEWS">Tin tức gia đình</option>}
@@ -295,9 +302,9 @@ export default function CommunityPage() {
               onChange={(event) => setDraft(event.target.value)} />
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary">{draft.length}/5000 ký tự</span>
-              <button className={buttonClass} disabled={create.isPending || !draft.trim()}>
+              <Button type="submit" fullWidth={false} loading={create.isPending} disabled={!draft.trim()}>
                 {create.isPending ? 'Đang đăng...' : 'Đăng bài'}
-              </button>
+              </Button>
             </div>
             {create.isError && <p role="alert" className="text-error">{errorText(create.error)}</p>}
           </form>
@@ -308,16 +315,14 @@ export default function CommunityPage() {
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id}
-                canModerate={canNews}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&
               <p role="alert" className="text-error">Không thể cập nhật reaction: {errorText(optimisticReaction.error)}</p>}
             {feed.hasNextPage && (
-              <button type="button" className={buttonClass} disabled={feed.isFetchingNextPage}
-                onClick={() => feed.fetchNextPage()}>
+              <Button variant="secondary" loading={feed.isFetchingNextPage} onClick={() => feed.fetchNextPage()}>
                 {feed.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm'}
-              </button>
+              </Button>
             )}
           </section>
         </>
