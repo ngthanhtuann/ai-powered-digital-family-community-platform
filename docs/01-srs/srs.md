@@ -90,7 +90,7 @@ Ma trận phân quyền chi tiết: xem **Phụ lục A**.
 | Cơ sở dữ liệu | PostgreSQL (kèm pgvector cho tìm kiếm ngữ nghĩa) | Đề tài mục d |
 | Xác thực | JWT | Đề tài mục d |
 | Giao tiếp | RESTful API | Đề tài mục b, d |
-| AI | Lớp AI Service tích hợp LLM (nhóm chọn Spring AI) | Đề tài mục b, d |
+| AI | Lớp AI Service tích hợp LLM (nhóm chọn Google Gemini, gọi qua REST API từ Spring Boot; `adr-ai-spike.md`) | Đề tài mục b, d |
 | Triển khai | Docker (Docker Compose) | Đề tài mục d |
 
 ### 2.6 Giả định và phụ thuộc

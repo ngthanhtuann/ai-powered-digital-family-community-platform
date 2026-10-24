@@ -188,7 +188,7 @@ Dấu `*` phải nằm ở nhánh của task, không phải `develop`.
 
 Chỉ sửa **file của module mình** để không đụng người khác.
 
-**Ví dụ A (tài liệu).** Trí mở `docs/01-srs/use-cases/genealogy.md` và điền: danh sách use case, đặc tả `UC-GEN-01` đến `UC-GEN-09`, bảng DB, danh sách API. Sau mỗi phần xong thì commit:
+**Ví dụ A (tài liệu).** Trí mở `docs/01-srs/use-cases/genealogy.md` và điền: danh sách use case, đặc tả `UC-GEN-01` đến `UC-GEN-08`, bảng DB, danh sách API. Sau mỗi phần xong thì commit:
 
 ```bash
 git add docs/01-srs/use-cases/genealogy.md

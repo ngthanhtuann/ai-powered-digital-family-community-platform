@@ -23,7 +23,7 @@ flowchart TD
     Z -- "Không" --> N["Trả 'Không tìm thấy thông tin.'"]
     Z -- "Có" --> P["Lọc dữ liệu nhạy cảm lần cuối"]
     P --> Q["Ghép system prompt + context + question"]
-    Q --> R["Gemini LLM qua Spring AI"]
+    Q --> R["Gemini LLM qua REST API (RestClient)"]
     R --> S["Kiểm tra câu trả lời và nguồn"]
     S --> T["Lưu lịch sử nếu được phép; trả lời + nguồn"]
 ```
@@ -40,7 +40,7 @@ flowchart TD
 - Không đưa mật khẩu, số điện thoại, thông tin trẻ em hoặc trường dữ liệu bị cấm trong `privacy.md` mục 6 vào chunk gửi cho nhà cung cấp LLM. Cần kiểm tra chính sách riêng tư trước khi tạo embedding bên ngoài, không chỉ trước khi gọi chat LLM.
 
 ### 3.2. Model và số chiều
-- Nhà cung cấp: Google Gemini, tích hợp qua Spring AI.
+- Nhà cung cấp: Google Gemini, gọi REST API bằng `RestClient` của Spring (`adr-ai-spike.md` mục 4, quyết định 3).
 - Model embedding đã dùng trong spike: `gemini-embedding-001`.
 - Quyết định schema: `outputDimensionality = 768`, kiểu cột pgvector `vector(768)`, chỉ mục HNSW.
 - Lý do: ADR ghi nhận chỉ mục HNSW/IVFFlat của `vector` có giới hạn 2000 chiều; 768 nằm trong giới hạn và giảm dung lượng so với 3072 chiều.

@@ -53,7 +53,7 @@ graph TD
 
 ## 2. Quyết định thiết kế lớp AI Service
 ### 2.1. Quyết định kiến trúc
-Lớp AI Service được quyết định tích hợp trực tiếp bên trong kiến trúc nguyên khối (Modular Monolith) của Spring Boot hiện tại, sử dụng thư viện Spring AI.
+Lớp AI Service được quyết định tích hợp trực tiếp bên trong kiến trúc nguyên khối (Modular Monolith) của Spring Boot hiện tại, gọi REST API của Gemini bằng `RestClient` của Spring, không dùng thư viện Spring AI (`adr-ai-spike.md` mục 4, quyết định 3).
 * **Phân định định tuyến:** Tất cả các API liên quan đến trí tuệ nhân tạo được nhóm thống nhất dưới tiền tố đường dẫn `/api/v1/ai/**`.
 * **Phân lập mã nguồn:** Toàn bộ logic AI được đóng gói thành một package độc lập hoàn toàn (gồm `controller`, `service`/`AiGateway`, `repository`, `dto`, `entity`).
 * **Giao tiếp:** Khi còn là một khối, các module khác gọi AI qua interface Java `AiGateway`. REST chỉ dùng khi tách thành service riêng (xem mục 2.4).
@@ -61,7 +61,7 @@ Lớp AI Service được quyết định tích hợp trực tiếp bên trong k
 ### 2.2. Lý do lựa chọn (Ưu điểm trong giai đoạn đầu)
 * **Tối ưu hóa nguồn lực và triển khai:** Việc duy trì một máy chủ backend nguyên khối giúp đơn giản hóa quy trình CI/CD, tiết kiệm chi phí hạ tầng (không phải thuê nhiều server) và giảm thiểu độ phức tạp trong việc quản lý, giám sát hệ thống mạng nội bộ.
 * **Độ trễ thấp (Low Latency) cho luồng RAG:** Đặt AI Service cùng môi trường với Core API cho phép nó truy xuất trực tiếp xuống cơ sở dữ liệu PostgreSQL. Việc trích xuất dữ liệu gia phả làm ngữ cảnh (context) diễn ra tức thời, loại bỏ hoàn toàn độ trễ mạng so với việc gọi chéo giữa các microservices riêng biệt.
-* **Tận dụng hệ sinh thái Spring:** Spring AI cung cấp các interface chuẩn hóa, giúp thao tác dễ dàng với LLM bên ngoài và cơ sở dữ liệu vector (pgvector).
+* **Tận dụng hệ sinh thái Spring:** dùng `RestClient` và `JdbcTemplate` sẵn có của Spring Boot để gọi LLM bên ngoài và đọc ghi cơ sở dữ liệu vector (pgvector), không thêm thư viện. Module khác chỉ thấy interface `AiGateway`, nên có thể đổi cách tích hợp (ví dụ Spring AI) sau này mà không sửa module khác.
 
 ### 2.3. Rủi ro tiềm ẩn
 * **Cạnh tranh tài nguyên (Resource Contention):** Các tác vụ xử lý của AI (như embedding, tìm kiếm vector, mapping dữ liệu RAG) ngốn rất nhiều CPU và RAM. Nếu lượng truy cập AI tăng đột biến, nó có thể chiếm dụng tài nguyên của hệ thống, làm chậm hoặc gây gián đoạn (timeout) các API nghiệp vụ cốt lõi khác.
