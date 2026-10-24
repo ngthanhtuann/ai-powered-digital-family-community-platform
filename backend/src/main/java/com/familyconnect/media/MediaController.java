@@ -16,9 +16,11 @@ import java.util.UUID;
 public class MediaController {
 
     private final MediaUploadService uploadService;
+    private final MediaAccess mediaAccess;
 
-    public MediaController(MediaUploadService uploadService) {
+    public MediaController(MediaUploadService uploadService, MediaAccess mediaAccess) {
         this.uploadService = uploadService;
+        this.mediaAccess = mediaAccess;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -28,6 +30,8 @@ public class MediaController {
             @RequestParam("ownerId") UUID ownerId,
             @RequestParam(value = "caption", required = false) String caption
     ) {
+        // Chỉ thành viên đã xác minh của gia đình sở hữu được tải tệp lên; lỗi trả qua GlobalExceptionHandler.
+        mediaAccess.requireAccess(ownerType, ownerId);
         try {
             MediaUploadService.StoredMedia media =
                     uploadService.save(
@@ -95,6 +99,7 @@ public class MediaController {
                     "Không tìm thấy tài nguyên"
             );
         }
+        mediaAccess.requireAccess(media.ownerType(), media.ownerId());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(

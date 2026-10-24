@@ -39,9 +39,34 @@ Thông tin phân trang được trả về trong trường `meta` theo quy ướ
 
 ## 2. Use Case Diagram
 
-![Community và Events Use Case Diagram](../../images/community-events-usecase.drawio.png)
+```mermaid
+flowchart LR
+    MEMBER(["MEMBER<br>(đã xác minh)"])
+    BA(["BRANCH_ADMIN"])
+    SA(["SYSTEM_ADMIN"])
+    SYS(["Hệ thống"])
+    subgraph CE["Community và Events"]
+        C1(["UC-COM-01 Tạo, sửa, xóa bài đăng"])
+        C2(["UC-COM-02 Bình luận"])
+        C3(["UC-COM-03 Thả reaction"])
+        C4(["UC-COM-04 Chia sẻ tin tức gia đình"])
+        C5(["UC-COM-05 Tải và chia sẻ ảnh"])
+        C6(["UC-COM-06 Đăng thông báo"])
+        E1(["UC-EVT-01 Tạo sự kiện"])
+        E2(["UC-EVT-02 RSVP"])
+        E3(["UC-EVT-03 Xem, quản lý người tham dự"])
+        E4(["UC-EVT-04 Thư viện ảnh sự kiện"])
+        E5(["UC-EVT-05 Nhắc nhở sự kiện"])
+    end
+    MEMBER --- C1 & C2 & C3 & C5 & E1 & E2 & E3 & E4
+    BA --- C4 & C6 & E3
+    SA --- C4 & C6 & E3
+    SYS --- E5
+    BA -. "kế thừa quyền" .-> MEMBER
+    SA -. "kế thừa quyền" .-> BA
+```
 
-File nguồn có thể chỉnh sửa: [`community-events-usecase.drawio`](../../images/community-events-usecase.drawio).
+Sơ đồ vẽ bằng Mermaid (GitHub tự hiển thị, theo `docs/README.md`), thay cho ảnh draw.io `community-events-usecase` chưa được đưa vào repo.
 
 Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYSTEM_ADMIN` và `Hệ thống`; các quyền sở hữu sự kiện là điều kiện sở hữu tài nguyên, không phải một role riêng.
 
@@ -476,7 +501,8 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 ### Liên kết module
 
 - Package backend: `com.familyconnect.modules.community` và `com.familyconnect.modules.events`.
-- `events` và `heritage` sử dụng ảnh thông qua Java interface của module `community`; không tạo bảng ảnh riêng. `genealogy` lưu ảnh đại diện qua `person.avatar_media_id` (UUID, không FK) trỏ vào `media` (`owner_type = PERSON`).
+- Bài đăng và bình luận trả `authorName` (họ tên người đăng) tra theo lô qua interface `UserDirectory` của module auth, không đọc bảng `users`; tài khoản đã xóa hiện "Thành viên đã rời hệ thống". Trường `canDelete` cho biết người đang xem có được xóa theo BR-COM-05, BR-COM-06 để giao diện chỉ hiện nút khi được phép.
+- `events` và `heritage` sử dụng ảnh thông qua Java interface của module `community`; không tạo bảng ảnh riêng. Interface `CommunityQuery`: `getHeritageMedia(mediaId)` cho heritage, `getPersonMedia(mediaId)` cho genealogy (trả id ảnh và id hồ sơ sở hữu, chỉ với `owner_type = PERSON`). `genealogy` lưu ảnh đại diện qua `person.avatar_media_id` (UUID, không FK) trỏ vào `media` (`owner_type = PERSON`).
 - Khi bài đăng hoặc sự kiện được tạo, sửa hay xóa, module tương ứng gọi `AiGateway` để thông báo module `ai` cập nhật embedding; không gọi REST nội bộ.
 - Ảnh không được công khai bằng URL lưu trữ trực tiếp; endpoint nội dung phải kiểm tra quyền truy cập trước khi trả file.
 - Module `community` cài đặt `ContentModerationPort` (`findReports`, `hideContent`, `dismissReport`; `auth.md` mục 6.3) để module admin đọc và xử lý báo cáo, không join trực tiếp bảng `content_report`; khi trưởng chi hoặc quản trị gỡ nội dung của người khác, gọi `AuditLogger.log` với action `CONTENT_DELETED` (BR-COM-12).

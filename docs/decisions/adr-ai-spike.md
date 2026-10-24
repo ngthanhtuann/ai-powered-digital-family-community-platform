@@ -68,7 +68,10 @@ Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_cont
    - Dùng kiểu `halfvec(3072)` (chỉ mục tối đa 4000 chiều).
    - **Quyết định cho thiết kế (đã chốt 9/10/2026):** dùng `outputDimensionality = 768`, cột `vector(768)` với chỉ mục HNSW. Lý do: nằm trong giới hạn 2000 chiều của chỉ mục, nhẹ nhất về lưu trữ và tốc độ, đủ cho dữ liệu gia phả cỡ vài trăm đến vài nghìn đoạn. SCRUM-34 ghi vào `ai-rag.md`; nếu bảng đánh giá 10 câu tiếng Việt ở Sprint 2 không đạt thì thử lại với 1536.
 2. **Tên bảng.** Bảng vector đặt là `ai_embedding_chunk` (tiền tố `ai_` theo `architecture.md` mục 7), không dùng `embedding_chunk`.
-3. **Phiên bản Spring Boot (chốt 18/10/2026).** Spring AI 2.0.x (bản dùng trong spike) chỉ chạy trên Spring Boot 4 (https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now, tra ngày 18/10/2026), trong khi `backend/pom.xml` đang là Spring Boot 3.3.5. Quyết định: nâng Spring Boot lên 4.x để dùng Spring AI 2.0.x như spike đã đo. Việc nâng `pom.xml` (kèm springdoc bản tương thích) làm ở một task code đầu Sprint 3, có chạy test; không gộp vào task tài liệu. Dự án chạy PostgreSQL bằng image `pgvector/pgvector:pg16` (`docker-compose.yml`, `ci.yml`), khác bản `pg18` dùng khi spike.
+3. **Phiên bản Spring Boot (chốt 18/10/2026, sửa 24/10/2026).** Spring AI 2.0.x (bản dùng trong spike) chỉ chạy trên Spring Boot 4 (https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now, tra ngày 18/10/2026), trong khi `backend/pom.xml` đang là Spring Boot 3.3.5. Bản chốt 18/10 định nâng Spring Boot lên 4.x ở đầu Sprint 3; hết Sprint 3 việc này chưa làm.
+   - **Quyết định mới (24/10/2026):** giữ Spring Boot 3.3.5 đến hết MVP và không dùng thư viện Spring AI. Module `ai` gọi REST API của Gemini bằng `RestClient` có sẵn trong Spring (đã làm ở SCRUM-41: `EmbeddingPipelineService`, khóa gửi trong header `x-goog-api-key`).
+   - **Lý do:** nâng lên 4.x kéo theo đổi Spring Security, springdoc và Hibernate cho mọi module đã chạy ổn ở Sprint 3, rủi ro cao mà không thêm tính năng; lớp AI chỉ cần vài lời gọi REST (embedding, sinh câu trả lời). Số đo của spike vẫn dùng được vì cùng model và cùng API Gemini.
+   - **Hệ quả:** module khác chỉ gọi interface `AiGateway` (`ai.md` mục 6.1), nên sau MVP có thể chuyển sang Spring AI hoặc nhà cung cấp khác bằng cách thay phần cài đặt trong module `ai`, không sửa module khác. Dự án chạy PostgreSQL bằng image `pgvector/pgvector:pg16` (`docker-compose.yml`, `ci.yml`), khác bản `pg18` dùng khi spike.
 
 ## 5. Rủi ro
 
@@ -78,12 +81,12 @@ Gói miễn phí đã gặp lỗi HTTP 429 do vượt hạn mức `generate_cont
 | Dữ liệu gia đình gửi ra dịch vụ bên ngoài; theo trang giá của Google, nội dung gửi qua gói miễn phí được dùng để cải thiện sản phẩm | Cao | Chỉ gửi ngữ cảnh đã lọc theo `family_id` và quyền xem; không gửi mật khẩu, số điện thoại, thông tin trẻ dưới 16 tuổi (`privacy.md`); dùng dữ liệu giả khi thử; chuyển sang gói trả phí (không dùng dữ liệu để huấn luyện) trước khi chạy với dữ liệu thật |
 | LLM bịa thông tin ngoài ngữ cảnh | Trung bình | Prompt chỉ cho trả lời theo ngữ cảnh; ngưỡng điểm tối thiểu; kèm nguồn trong câu trả lời |
 | Độ trễ: tìm kiếm khoảng 0,6 giây, nhưng gọi LLM đo được 5 đến 42 giây (trung bình 21,6 giây, 3 lần đo) | Cao | Giao diện chạy bất đồng bộ, có chỉ báo đang tải; đặt thời gian chờ tối đa cho lời gọi LLM (đề xuất 30 giây, cấu hình được), quá thời gian trả 503 `AI_001`; đo lại khi có gói trả phí |
-| Phụ thuộc một nhà cung cấp | Thấp | Gọi qua interface của Spring AI để đổi nhà cung cấp bằng cấu hình |
+| Phụ thuộc một nhà cung cấp | Thấp | Lời gọi Gemini nằm gọn trong module `ai`, sau interface `AiGateway`; đổi nhà cung cấp chỉ thay phần cài đặt trong module này (mục 4, quyết định 3) |
 | Giá LLM tăng gấp đôi từ 01/01/2027 | Trung bình | Tính chi phí theo giá mới trong báo cáo cuối kỳ; cân nhắc giới hạn số câu hỏi |
 
 ## 6. Quyết định
 
-**Quyết định sơ bộ chọn Gemini, xác nhận sau khi hoàn tất đo ở Sprint 2.** Google Gemini dự kiến là nhà cung cấp LLM và embedding cho giai đoạn đồ án, tích hợp qua Spring AI.
+**Quyết định sơ bộ chọn Gemini, xác nhận sau khi hoàn tất đo ở Sprint 2.** Google Gemini dự kiến là nhà cung cấp LLM và embedding cho giai đoạn đồ án, gọi qua REST API bằng `RestClient` (mục 4, quyết định 3; trước 24/10/2026 dự kiến dùng Spring AI).
 
 Lý do: đã tích hợp và đo thành công với tiếng Việt; tìm kiếm ngữ nghĩa nhanh (khoảng 0,6 giây); có gói miễn phí phù hợp giai đoạn phát triển. Độ trễ gọi LLM ở gói miễn phí còn cao và dao động (5 đến 42 giây), nên chưa coi là đạt; cần đo lại và áp dụng thời gian chờ ở mục 5.
 
