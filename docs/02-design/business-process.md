@@ -3,9 +3,9 @@
 > **Người viết:** TV3 (PiLo257) | **Reviewer:** TV1 (Tuấn Nguyễn Thanh) | **Task Jira:** SCRUM-83 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)  
 > **Trạng thái:** Đã merge vào `develop` (Sprint 2)
 
-Các sơ đồ sử dụng thống nhất bốn làn: **Thành viên**, **Trưởng chi (BRANCH_ADMIN)**, **Hệ thống** và **AI Service**. Theo `srs.md` mục 2, **AI Service** là hệ thống LLM bên ngoài mà lớp AI gọi tới; các bước kiểm tra, tìm ngữ cảnh và lưu dữ liệu nằm ở làn **Hệ thống**.
+Các sơ đồ là Activity Diagram theo UML, chia làn (swimlane) theo người thực hiện; mỗi sơ đồ chỉ có các làn tham gia vào quy trình đó: **Người dùng / Thành viên**, **Trưởng chi / Quản trị hệ thống**, **Hệ thống**, và ở quy trình 4 thêm **Dịch vụ Gemini** (hệ thống LLM bên ngoài mà module AI gọi tới, theo `srs.md` mục 2). Các bước kiểm tra, tìm ngữ cảnh và lưu dữ liệu nằm ở làn **Hệ thống**.
 
-Cách đọc: ô vàng hình thoi là điểm rẽ nhánh; ô đỏ là lỗi trả về và kết thúc nhánh đó; ô cam là cảnh báo, người dùng xác nhận thì đi tiếp; ô viền nét đứt là trạng thái chờ. File gốc để sửa: `docs/images/business-process-<số>.drawio` (mở bằng draw.io), sửa xong xuất lại file `.drawio.png` cùng tên.
+Cách đọc: chấm đen là điểm bắt đầu; chấm đen có vòng tròn bao ngoài là điểm kết thúc; hình chữ nhật bo góc là hành động; hình thoi có chữ là điểm rẽ nhánh, điều kiện của từng nhánh ghi trong `[ ]`; hình thoi nhỏ không chữ là điểm gộp nhánh. Nhánh lỗi kết thúc ngay sau hành động trả lỗi. Sơ đồ chỉ dùng đen trắng. File gốc để sửa: `docs/images/business-process-<số>.drawio` (mở bằng draw.io), sửa xong xuất lại file `.drawio.png` cùng tên.
 
 ## 1. Đăng ký, xác minh thành viên và tham gia gia đình
 

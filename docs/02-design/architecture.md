@@ -7,50 +7,6 @@
 
 ![Sơ đồ thành phần](../images/architecture-component.drawio.png)
 
-```mermaid
-graph TD
-    %% Tầng Frontend
-    subgraph ClientLayer ["Frontend Layer"]
-        Web["Next.js Web<br>(Cổng quản lý)"]
-        Mobile["Mobile App<br>(React Native / Expo)"]
-    end
-
-    %% Tầng Backend
-    subgraph BackendSystem ["Spring Boot API Backend"]
-        Common["common<br>(JWT filter, audit log, ErrorResponse)"]
-        
-        subgraph Modules ["Business Modules"]
-            direction TB
-            Auth["auth"]
-            UserAdmin["user, admin"]
-            Genealogy["genealogy"]
-            Dashboard["dashboard"]
-            CommEvents["community, events"]
-            HeritageDir["heritage, directory"]
-        end
-
-        AiLayer["ai (AI Service)<br>/api/v1/ai/**"]
-    end
-
-    %% Database và LLM bên ngoài
-    DB[("PostgreSQL + pgvector<br>(schema public, bảng ai_*)")]
-    LLM["LLM API bên ngoài<br>(Internet, HTTPS)"]
-
-    %% Luồng kết nối
-    ClientLayer -->|"RESTful API"| BackendSystem
-    BackendSystem -->|"JPA, tìm kiếm vector"| DB
-    AiLayer -->|"Prompt / response"| LLM
-
-    %% Phối màu trực quan
-    classDef backend fill:#d4edda,stroke:#28a745,stroke-width:1px,color:black;
-    classDef aiclass fill:#e2d9f3,stroke:#6f42c1,stroke-width:1px,color:black;
-    classDef dbclass fill:#e6cda3,stroke:#8b5a2b,stroke-width:1px,color:black;
-
-    class Common,Auth,UserAdmin,Genealogy,CommEvents,HeritageDir,Dashboard backend;
-    class AiLayer aiclass;
-    class DB dbclass;
-```
-
 ## 2. Quyết định thiết kế lớp AI Service
 ### 2.1. Quyết định kiến trúc
 Lớp AI Service được quyết định tích hợp trực tiếp bên trong kiến trúc nguyên khối (Modular Monolith) của Spring Boot hiện tại, gọi REST API của Gemini bằng `RestClient` của Spring, không dùng thư viện Spring AI (`adr-ai-spike.md` mục 4, quyết định 3).
@@ -76,151 +32,14 @@ Nhờ tuân thủ nguyên lý thiết kế module hóa từ đầu, quá trình 
 ## 3. Sơ đồ triển khai Docker
 ![Sơ đồ triển khai](../images/architecture-deployment.drawio.png)
 
-```mermaid
-graph TD
-    Mobile["Mobile App<br/>React Native / Expo"]
-    Web["Trình duyệt<br/>Next.js Web"]
-    LLM["LLM API bên ngoài<br/>(Internet, HTTPS)"]
-
-    subgraph DockerHost ["Docker Environment (máy chủ triển khai)"]
-        Nginx["Container: Nginx<br/>Cổng 80 / 443"]
-        subgraph Net ["Docker network: familyconnect-net"]
-            NextJS["Container: Next.js Web<br/>cổng nội bộ 3000"]
-            Spring1["Container: Spring Boot API #1<br/>cổng nội bộ 8080"]
-            Spring2["Container: Spring Boot API #2<br/>cổng nội bộ 8080"]
-            DB["Container: PostgreSQL + pgvector<br/>cổng 5432, không mở ra ngoài"]
-        end
-        Pgdata[("Volume: pgdata")]
-        Uploads[("Volume: uploads<br/>ảnh, tệp tải lên")]
-    end
-
-    Mobile -->|"HTTPS"| Nginx
-    Web -->|"HTTPS"| Nginx
-    Nginx -->|"/"| NextJS
-    Nginx -->|"/api/v1/*"| Spring1
-    Nginx -->|"/api/v1/*"| Spring2
-    Spring1 --> DB
-    Spring2 --> DB
-    Spring1 --> Uploads
-    Spring2 --> Uploads
-    Spring1 -->|"HTTPS"| LLM
-    Spring2 -->|"HTTPS"| LLM
-    DB --- Pgdata
-```
-
 > Ghi chú: Hiện chạy 1 bản backend; đích triển khai ở Sprint 7 (SCRUM-96) là 2 bản.
 
 ## 4. Sơ đồ trình tự
 ### 4.1 Đăng nhập JWT
 ![Sơ đồ đăng nhập](../images/architecture-sequence-login.drawio.png)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as Người dùng
-    participant App as Web / Mobile
-    participant Nginx
-    participant AuthC as AuthController
-    participant AuthS as AuthService
-    participant Repo as UserRepository
-    participant DB as PostgreSQL
-    participant Audit as AuditLogger
-
-    User->>App: Nhập email và mật khẩu
-    App->>Nginx: POST /api/v1/auth/login
-    Nginx->>AuthC: chuyển tiếp tới backend
-    AuthC->>AuthS: login(LoginRequest)
-    AuthS->>Repo: findByEmail
-    Repo->>DB: SELECT user
-    DB-->>Repo: user và password hash
-    Repo-->>AuthS: User
-
-    AuthS->>AuthS: BCrypt so khớp mật khẩu
-    AuthS->>AuthS: kiểm tra trạng thái tài khoản
-
-    alt sai thông tin
-        Note over AuthS: Gộp chung lỗi sai email<br/>hoặc mật khẩu để bảo mật
-        AuthS->>Audit: ghi LOGIN_FAILED
-        AuthS-->>AuthC: 401 ErrorResponse (AUTH_001)
-        AuthC-->>App: 401 ErrorResponse (AUTH_001)
-    else tài khoản bị khóa
-        AuthS->>Audit: ghi LOGIN_BLOCKED
-        AuthS-->>AuthC: 403 ErrorResponse (AUTH_003)
-        AuthC-->>App: 403 ErrorResponse (AUTH_003)
-    else hợp lệ
-        AuthS->>AuthS: tạo access token và refresh token
-        AuthS->>Audit: ghi LOGIN_SUCCESS
-        AuthS-->>AuthC: TokenResponse
-        AuthC-->>App: 200 TokenResponse
-
-        App->>App: lưu token
-        Note over App: Web: localStorage<br/>Mobile: expo-secure-store
-
-        rect rgb(255, 255, 204)
-        Note over App: Các request sau gửi<br/>header Authorization Bearer
-        end
-    end
-```
-
 ### 4.2 Hỏi chatbot AI
 ![Sơ đồ chatbot](../images/architecture-sequence-chat.drawio.png)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant U as Người dùng
-    participant FE as Web / Mobile
-    participant NG as Nginx
-    participant JW as JwtAuthFilter
-    participant AC as AiController
-    participant GW as AiGateway
-    participant DB as PostgreSQL pgvector
-    participant LL as LLM API
-    participant AU as AuditLogger
-
-    U->>FE: Nhập câu hỏi
-    FE->>NG: POST /api/v1/ai/chat kèm Bearer token
-    NG->>JW: chuyển tiếp
-    JW->>JW: kiểm tra chữ ký, hạn dùng,<br/>vai trò
-    
-    alt token sai hoặc hết hạn
-        JW-->>FE: 401 ErrorResponse (AUTH_002)
-    else token hợp lệ
-        JW->>AC: request kèm Authentication
-        AC->>GW: ask(ChatRequest, userId)
-        
-        alt tài khoản chưa xác minh
-            GW->>AU: ghi AI_UNAUTHORIZED
-            GW-->>AC: 403 ErrorResponse (PERM_002)
-            AC-->>FE: 403 ErrorResponse (PERM_002)
-        else vượt giới hạn câu hỏi
-            GW->>AU: ghi AI_RATE_LIMITED
-            GW-->>AC: 429 ErrorResponse (RATE_001)
-            AC-->>FE: 429 ErrorResponse (RATE_001)
-        else hợp lệ
-            GW->>LL: tạo embedding<br/>cho câu hỏi
-            LL-->>GW: vector
-            GW->>DB: tìm top-k gần nhất, lọc theo family_id và quyền xem
-            DB-->>GW: các đoạn ngữ cảnh
-            GW->>GW: lọc trường được phép gửi (privacy.md, phần Dữ liệu gửi cho AI)
-            GW->>LL: prompt gồm chỉ dẫn hệ thống, ngữ cảnh, câu hỏi
-            
-            alt LLM lỗi hoặc quá hạn
-                LL-->>GW: timeout / API error
-                GW->>AU: ghi LLM_API_ERROR
-                GW-->>AC: fallback: trả về thông báo<br/>lỗi dịch vụ LLM
-                AC-->>FE: 503 ErrorResponse (AI_001)
-            else LLM thành công
-                LL-->>GW: câu trả lời tự nhiên
-                GW->>DB: lưu ai_chat_message
-                GW->>AU: ghi AI_QUERY, không lưu prompt thô
-                GW-->>AC: ChatResponse gồm answer và citations
-                AC-->>FE: 200 ChatResponse
-            end
-        end
-    end
-    FE-->>U: Hiển thị câu trả lời
-```
 
 ## 5. Cấu trúc mã nguồn
 
