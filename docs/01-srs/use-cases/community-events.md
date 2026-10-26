@@ -39,34 +39,9 @@ Thông tin phân trang được trả về trong trường `meta` theo quy ướ
 
 ## 2. Use Case Diagram
 
-```mermaid
-flowchart LR
-    MEMBER(["MEMBER<br>(đã xác minh)"])
-    BA(["BRANCH_ADMIN"])
-    SA(["SYSTEM_ADMIN"])
-    SYS(["Hệ thống"])
-    subgraph CE["Community và Events"]
-        C1(["UC-COM-01 Tạo, sửa, xóa bài đăng"])
-        C2(["UC-COM-02 Bình luận"])
-        C3(["UC-COM-03 Thả reaction"])
-        C4(["UC-COM-04 Chia sẻ tin tức gia đình"])
-        C5(["UC-COM-05 Tải và chia sẻ ảnh"])
-        C6(["UC-COM-06 Đăng thông báo"])
-        E1(["UC-EVT-01 Tạo sự kiện"])
-        E2(["UC-EVT-02 RSVP"])
-        E3(["UC-EVT-03 Xem, quản lý người tham dự"])
-        E4(["UC-EVT-04 Thư viện ảnh sự kiện"])
-        E5(["UC-EVT-05 Nhắc nhở sự kiện"])
-    end
-    MEMBER --- C1 & C2 & C3 & C5 & E1 & E2 & E3 & E4
-    BA --- C4 & C6 & E3
-    SA --- C4 & C6 & E3
-    SYS --- E5
-    BA -. "kế thừa quyền" .-> MEMBER
-    SA -. "kế thừa quyền" .-> BA
-```
+![Use Case Diagram module Community và Events](../../images/community-events-usecase.drawio.png)
 
-Sơ đồ vẽ bằng Mermaid (GitHub tự hiển thị, theo `docs/README.md`), thay cho ảnh draw.io `community-events-usecase` chưa được đưa vào repo.
+*Ký hiệu theo UML: tác nhân ở ngoài khung hệ thống; đường liền là quan hệ tác nhân với use case; mũi tên tam giác rỗng là kế thừa giữa các tác nhân. Module có 11 use case nên tách hai khung Community và Events (mỗi khung dưới 10 use case). Trưởng chi kế thừa Thành viên đã xác minh, Quản trị hệ thống kế thừa Trưởng chi, nên không vẽ lại các đường đã được kế thừa (ví dụ UC-EVT-03). File ảnh xuất từ draw.io, kèm dữ liệu sơ đồ để mở lại bằng draw.io.*
 
 Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYSTEM_ADMIN` và `Hệ thống`; các quyền sở hữu sự kiện là điều kiện sở hữu tài nguyên, không phải một role riêng.
 

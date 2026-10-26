@@ -1,9 +1,9 @@
 # ERD tổng hợp và quy ước đặt tên CSDL
 
 > **Người viết:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03)
-> **Phiên bản:** v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
+> **Phiên bản:** v0.6 (26/10/2026): chỉ vẽ lại sơ đồ (một sơ đồ tổng quan, một ERD tổng hợp rút gọn và 5 ERD theo module, ký hiệu chân chim, đen trắng, đủ cột theo `data-dictionary.md`); không đổi bảng, cột, khóa hay ràng buộc. Bản trước: v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
 > **Nguồn:** `genealogy.md` (TV2), `community-events.md` (TV3), `heritage-directory-dashboard.md` (TV4), `auth.md` (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` (TV5, đã merge PR #35), quy ước ở `architecture.md` mục 7 và cập nhật của TV1 ngày 09/10/2026. Tất cả đối chiếu trên nhánh `develop` ngày 18/10/2026.
-> **Sản phẩm kèm theo:** ảnh `../images/erd.png` và `../images/erd.svg`; file nguồn `erd.dbml` (dán vào dbdiagram.io) và `erd.dot` (Graphviz) cùng thư mục với file này; `data-dictionary.md` (từ điển dữ liệu 30 bảng). Mỗi lần sửa thì ghi đè các file này và tăng số phiên bản ở dòng trên, không tạo file ảnh mới.
+> **Sản phẩm kèm theo:** ảnh tổng quan `../images/erd.png` và `../images/erd.svg`; ERD tổng hợp rút gọn `../images/erd-full.drawio.png` và `../images/erd-full.svg`; 5 ảnh ERD theo module `../images/erd-<module>.drawio.png` (xuất từ draw.io, kèm dữ liệu sơ đồ để mở lại sửa); file nguồn `erd.dbml` (dán vào dbdiagram.io) cùng thư mục với file này; `erd.dot` (Graphviz) là nguồn của ảnh v0.5, không còn dùng để sinh ảnh; `data-dictionary.md` (từ điển dữ liệu 30 bảng). Mỗi lần sửa thì ghi đè các file này và tăng số phiên bản ở dòng trên, không tạo file ảnh mới.
 ---
 
 ## 1. Quy ước bắt buộc
@@ -99,9 +99,41 @@
 
 ## 5. Sơ đồ
 
-![ERD tổng hợp](../images/erd.png)
+Cách đọc chung: mỗi bảng ghi đủ cột theo `data-dictionary.md` với cột khóa (`PK`, `FK`), tên cột, kiểu (thêm `NULL` nếu được để trống) và bảng được tham chiếu. Đường nối chỉ vẽ khóa ngoại trong cùng module (mục 3), ký hiệu chân chim: hai gạch là đúng một, vòng tròn và một gạch là không hoặc một, vòng tròn và chân chim là không hoặc nhiều. Tham chiếu sang module khác ghi `→ bảng (logic)` trong bảng và không vẽ đường (mục 4); cột trỏ theo loại (`owner_type`, `target_type`, `source_type`) ghi `→ theo ..._type (logic)`.
 
-Ảnh khá dài; xem bản `../images/erd.svg` để phóng to không vỡ. Nét liền là khóa ngoại cùng module, nét đứt xanh là tham chiếu logic, nét đứt xám là `family_id`/`branch_id`, nét chấm đỏ là `media.owner_id`.
+### 5.1 Tổng quan 6 module
+
+![ERD tổng quan](../images/erd.png)
+
+Bản `../images/erd.svg` để phóng to không vỡ.
+
+### 5.2 ERD tổng hợp (30 bảng, rút gọn)
+
+![ERD tổng hợp](../images/erd-full.drawio.png)
+
+Một hình để nhìn bao quát cả hệ thống: mỗi bảng chỉ hiện khóa chính, khóa ngoại và cột tham chiếu nghiệp vụ (đủ cột xem 5.3 đến 5.7). Nét liền chân chim là khóa ngoại trong cùng module; nét đứt có mũi tên là tham chiếu logic sang module khác, gộp theo module. Không vẽ liên kết tới `users` (có ở hầu hết bảng qua `created_by`, `updated_by`, `user_id`) và các cột trỏ theo loại (`owner_type`, `target_type`, `source_type`); danh sách đủ ở mục 4. Bản `../images/erd-full.svg` để phóng to không vỡ.
+
+### 5.3 Auth và quản trị
+
+![ERD Auth và quản trị](../images/erd-auth.drawio.png)
+
+### 5.4 Gia phả
+
+![ERD Gia phả](../images/erd-genealogy.drawio.png)
+
+### 5.5 Cộng đồng và sự kiện
+
+![ERD Community và Events](../images/erd-community-events.drawio.png)
+
+### 5.6 Di sản và danh bạ
+
+![ERD Heritage và Directory](../images/erd-heritage-directory.drawio.png)
+
+### 5.7 AI
+
+![ERD AI](../images/erd-ai.drawio.png)
+
+Đối chiếu ngày 26/10/2026 tại commit `4403ce0`: 16 bảng đã có migration (V1 đến V6: `users`, `role`, `user_role`, `refresh_token`, `member_verification`, `heritage_document`, `family_story`, `ai_embedding_chunk`, `family`, `branch`, `person`, `parent_child`, `marriage`, `post`, `comment`, `reaction`) khớp tên cột, kiểu, NULL và khóa với `data-dictionary.md`; 14 bảng còn lại chưa có migration.
 
 ## 6. Kết quả kiểm tra xung đột (lần 3, cập nhật v0.5)
 

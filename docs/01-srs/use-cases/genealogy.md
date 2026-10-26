@@ -40,7 +40,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 
 ![Use Case Diagram module Gia phả](../../images/genealogy-usecase.drawio.png)
 
-*Trưởng chi kế thừa quyền của Thành viên; Quản trị hệ thống kế thừa quyền của Trưởng chi. UC-GEN-07 là `«extend»` của UC-GEN-06 và `«include»` UC-GEN-08 (UC-GEN-07 gọi UC-GEN-08 để lấy đường đi). Thành viên nối tới UC-GEN-01 vì người dùng chưa thuộc gia đình nào được tạo gia đình mới. File ảnh (xuất từ draw.io, kèm dữ liệu sơ đồ): `docs/images/genealogy-usecase.drawio.png`.*
+*Trưởng chi kế thừa quyền của Thành viên; Quản trị hệ thống kế thừa quyền của Trưởng chi. UC-GEN-07 là `«extend»` của UC-GEN-06 và `«include»` UC-GEN-08 (UC-GEN-07 gọi UC-GEN-08 để lấy đường đi). Thành viên chưa xác minh nối tới UC-GEN-01 vì người dùng chưa thuộc gia đình nào được tạo gia đình mới; Quản trị hệ thống nối tới UC-GEN-01 vì chỉ vai trò này được xóa gia đình. Khách không xem được dữ liệu gia phả nên không vẽ. File ảnh (xuất từ draw.io, kèm dữ liệu sơ đồ): `docs/images/genealogy-usecase.drawio.png`.*
 
 ---
 
