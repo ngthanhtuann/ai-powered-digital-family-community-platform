@@ -72,10 +72,7 @@ public class AuthService {
     @Transactional
     public UserData register(AuthRequests.Register request) {
         String email = normalizeEmail(request.email());
-        LocalDate today = LocalDate.now(clock.withZone(APP_ZONE));
-        if (request.dateOfBirth().plusYears(MIN_AGE).isAfter(today)) {
-            throw ApiException.invalidField("dateOfBirth", "Bạn phải đủ " + MIN_AGE + " tuổi để đăng ký");
-        }
+        requireMinAge(request.dateOfBirth());
         if (userRepository.existsActiveByEmail(email)) {
             throw new ApiException(ErrorCode.AUTH_004);
         }
@@ -174,10 +171,38 @@ public class AuthService {
         return UserData.of(user, userRoleRepository.findRoleCodes(userId));
     }
 
+    /** PATCH /users/me (UC-AUTH-05): chỉ sửa hồ sơ của chính mình; email không đổi được. */
+    @Transactional
+    public UserData updateProfile(UUID userId, AuthRequests.UpdateProfile request) {
+        if (request.nothingSent()) {
+            throw new ApiException(ErrorCode.VALID_001, "Cần gửi ít nhất một trường để cập nhật");
+        }
+        User user = userRepository.findActiveById(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.AUTH_002));
+        if (request.dateOfBirth() != null) {
+            requireMinAge(request.dateOfBirth());
+        }
+        user.updateProfile(
+                request.fullName() != null ? request.fullName().trim() : user.getFullName(),
+                request.phoneSent() ? blankToNull(request.phone()) : user.getPhone(),
+                request.dateOfBirth() != null ? request.dateOfBirth() : user.getDateOfBirth());
+        user = userRepository.saveAndFlush(user);
+        auditLogger.log("PROFILE_UPDATED", "USER", userId, null, Map.of());
+        return UserData.of(user, userRoleRepository.findRoleCodes(userId));
+    }
+
     /** GET /users/me/membership. */
     @Transactional(readOnly = true)
     public MembershipData myMembership(UUID userId) {
         return membershipService.describe(userId, userRoleRepository.findRoleCodes(userId));
+    }
+
+    /** BR-AUTH-03: đủ 16 tuổi khi đăng ký và khi sửa ngày sinh. */
+    private void requireMinAge(LocalDate dateOfBirth) {
+        LocalDate today = LocalDate.now(clock.withZone(APP_ZONE));
+        if (dateOfBirth.plusYears(MIN_AGE).isAfter(today)) {
+            throw ApiException.invalidField("dateOfBirth", "Bạn phải đủ " + MIN_AGE + " tuổi");
+        }
     }
 
     /** BR-AUTH-01: cắt khoảng trắng và đổi chữ thường. */

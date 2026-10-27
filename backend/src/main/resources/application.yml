@@ -63,6 +63,8 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    # Hiện x-roles (vai trò được gọi) dưới từng endpoint, xem EndpointRoles (SCRUM-43).
+    show-extensions: true
 
 # Gemini Embedding cho chỉ mục AI (adr-ai-spike.md, ai-rag.md). Khóa đặt trong .env, không đưa vào Git;
 # để trống thì backend vẫn chạy, chỉ bỏ qua bước lập chỉ mục.
