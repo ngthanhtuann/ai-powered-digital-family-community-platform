@@ -27,7 +27,7 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 
 ![Use Case Diagram module Auth, RBAC, Profile, Admin](../../images/auth-usecase.drawio.png)
 
-*Ký hiệu theo UML: tác nhân ở ngoài khung hệ thống; đường liền không mũi tên là quan hệ giữa tác nhân và use case; mũi tên tam giác rỗng là kế thừa giữa các tác nhân; mũi tên nét đứt `«include»` đi từ use case gọi sang use case được gọi. Thành viên chưa xác minh và Trưởng chi kế thừa Người dùng đã đăng nhập; Quản trị hệ thống kế thừa Trưởng chi (nên có cả quyền duyệt yêu cầu tham gia, UC-AUTH-07). Các use case duyệt và quản trị `«include»` UC-AUTH-13 (kiểm tra quyền theo vai trò); các use case còn lại chỉ cần đăng nhập nên không vẽ include. Thành viên đã xác minh không có use case riêng trong module nên không vẽ. File nguồn (mở bằng draw.io): `docs/images/auth-usecase.drawio`.*
+*Ký hiệu theo UML: tác nhân ở ngoài khung hệ thống; đường liền không mũi tên là quan hệ giữa tác nhân và use case; mũi tên tam giác rỗng là kế thừa giữa các tác nhân; mũi tên nét đứt `«include»` đi từ use case gọi sang use case được gọi. Thành viên chưa xác minh và Trưởng chi kế thừa Người dùng đã đăng nhập; Quản trị hệ thống kế thừa Trưởng chi (nên có cả quyền duyệt yêu cầu tham gia, UC-AUTH-07). Các use case duyệt và quản trị `«include»` UC-AUTH-13 (kiểm tra quyền theo vai trò); các use case còn lại chỉ cần đăng nhập nên không vẽ include. Thành viên đã xác minh không có use case riêng trong module nên không vẽ. Module có 13 use case nên tách hai khung (tài khoản và hồ sơ; duyệt thành viên và quản trị), mỗi khung dưới 10 use case. File nguồn (mở bằng draw.io): `docs/images/auth-usecase.drawio`.*
 
 ---
 

@@ -19,6 +19,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `02-design/algorithm-relationship.md` | Thuật toán quan hệ họ hàng | TV2 Trí | TV1 | SCRUM-19 |
 | `02-design/ai-rag.md` | Thiết kế AI/RAG | TV5 Lê Nhựt | TV3 | SCRUM-34 |
 | `02-design/business-process.md` | Mô hình hóa quy trình nghiệp vụ | TV3 PiLo257 | TV1 | SCRUM-83 |
+| `02-design/class-diagram.md` | Sơ đồ lớp (Class Diagram) theo từng module | TV1 Tuấn | chưa phân công | chưa có |
 | `02-design/mobile.md` | Thiết kế Mobile (React Native + Expo) | TV5 Lê Nhựt | TV3 | SCRUM-84 |
 | `03-database/erd.md`, `data-dictionary.md` | ERD tổng và từ điển dữ liệu | TV2 Trí | TV5 | SCRUM-28 |
 | `04-api/conventions.md` | Quy ước API chung | TV3 PiLo257 | TV1 | SCRUM-21 |
