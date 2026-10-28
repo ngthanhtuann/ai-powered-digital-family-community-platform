@@ -364,7 +364,7 @@ export interface components {
              */
             relationship: string | null;
             /** @example 1990 */
-            birthYear: number;
+            birthYear: number | null;
             /** @description Thế hệ từ genealogy (đời 1 là tổ tiên gốc). Null với trẻ dưới 16 tuổi. */
             generation?: number | null;
             /** @description Null nếu chưa có hồ sơ hoặc là trẻ dưới 16 tuổi. */
