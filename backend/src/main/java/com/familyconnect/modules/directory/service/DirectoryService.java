@@ -70,7 +70,7 @@ public class DirectoryService {
         String normalizedJob = blankToNull(job);
         String normalizedLocation = blankToNull(location);
         Set<UUID> matchingPeople = normalizedJob == null ? null
-                : professionRepository.findPersonIdsByJobTitle(normalizedJob).stream().collect(Collectors.toSet());
+                : professionRepository.findPersonIdsByJobTitle(familyId, normalizedJob).stream().collect(Collectors.toSet());
         boolean excludeChildren = membership.role() == EffectiveRole.MEMBER
                 && (normalizedJob != null || normalizedLocation != null);
         LocalDate today = LocalDate.now(clock);
@@ -173,8 +173,11 @@ public class DirectoryService {
         }
         DirectoryPerson ownPerson = genealogyQuery.findDirectoryPersonByUserId(actorId)
                 .orElseThrow(() -> new ApiException(ErrorCode.PERM_001));
+        // UC-DIR-02: chính chủ, hoặc cha mẹ sửa cho con dưới 16 tuổi
+        boolean parentOfChild = isChild(person, LocalDate.now(clock))
+                && genealogyQuery.isParentOf(ownPerson.id(), person.id());
         if (ownPerson.familyId().equals(person.familyId())
-                && (ownPerson.id().equals(person.id()) || genealogyQuery.isParentOf(ownPerson.id(), person.id()))) {
+                && (ownPerson.id().equals(person.id()) || parentOfChild)) {
             return actorId;
         }
         throw new ApiException(ErrorCode.PERM_001);

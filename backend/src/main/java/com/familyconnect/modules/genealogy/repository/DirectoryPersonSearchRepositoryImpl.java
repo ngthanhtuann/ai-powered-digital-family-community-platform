@@ -35,10 +35,24 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                     AND parent.family_id = :familyId AND parent.deleted_at IS NULL
                 WHERE ancestry.depth < 100
             ),
-            generations AS (
+            blood AS (
                 SELECT person_id, MAX(depth) + 1 AS generation
                 FROM ancestors
                 GROUP BY person_id
+            ),
+            -- genealogy.md mục 6.8: người không có cha mẹ trong gia đình nhưng có vợ/chồng thì lấy đời của vợ/chồng
+            generations AS (
+                SELECT p.id AS person_id,
+                       COALESCE(blood.generation,
+                                (SELECT MAX(spouse.generation)
+                                 FROM marriage m
+                                 JOIN blood spouse ON spouse.person_id =
+                                      CASE WHEN m.person1_id = p.id THEN m.person2_id ELSE m.person1_id END
+                                 WHERE m.deleted_at IS NULL AND (m.person1_id = p.id OR m.person2_id = p.id)),
+                                1) AS generation
+                FROM person p
+                LEFT JOIN blood ON blood.person_id = p.id
+                WHERE p.family_id = :familyId AND p.deleted_at IS NULL
             )
             """;
 
@@ -56,8 +70,10 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         String where = """
                 person.family_id = :familyId
                 AND person.deleted_at IS NULL
-                AND (:location IS NULL OR lower(person.current_province) LIKE lower(concat('%', :location, '%')))
-                AND (:generation IS NULL OR COALESCE(generations.generation, 1) = :generation)
+                AND (CAST(:location AS text) IS NULL
+                    OR lower(person.current_province) LIKE lower(concat('%', CAST(:location AS text), '%')))
+                AND (CAST(:generation AS integer) IS NULL
+                    OR COALESCE(generations.generation, 1) = CAST(:generation AS integer))
                 AND (:excludeChildren = FALSE OR person.is_deceased = TRUE
                     OR (person.birth_date IS NOT NULL AND person.birth_date + INTERVAL '16 years' <= :asOfDate)
                     OR (person.birth_date IS NULL AND person.birth_year <= :adultBirthYear))

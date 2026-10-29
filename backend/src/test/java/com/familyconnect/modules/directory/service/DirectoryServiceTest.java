@@ -141,6 +141,20 @@ class DirectoryServiceTest {
     }
 
     @Test
+    void parentCannotEditAdultChildProfile() {
+        DirectoryPerson adultChild = person(CHILD_ID, null, LocalDate.of(2000, 1, 1), false);
+        DirectoryPerson parent = person(PERSON_ID, ACTOR_ID, LocalDate.of(1975, 1, 1), false);
+        when(genealogyQuery.findDirectoryPerson(CHILD_ID)).thenReturn(Optional.of(adultChild));
+        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(parent));
+
+        ApiException error = assertThrows(ApiException.class, () -> service.updateEducationProfile(
+                CHILD_ID, new EducationProfileRequest("Đại học", null, null)));
+
+        assertEquals(ErrorCode.PERM_001, error.code());
+        verify(educationRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void branchAdminCanEditMembersInManagedBranch() {
         when(membershipQuery.getMembership(ACTOR_ID)).thenReturn(
                 new MembershipView(ACTOR_ID, FAMILY_ID, BRANCH_ID, EffectiveRole.BRANCH_ADMIN, true));

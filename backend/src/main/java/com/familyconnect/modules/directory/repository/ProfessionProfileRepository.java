@@ -18,7 +18,8 @@ public interface ProfessionProfileRepository extends JpaRepository<ProfessionPro
 
     @Query("""
             select p.personId from ProfessionProfile p
-            where p.deletedAt is null and lower(p.jobTitle) like lower(concat('%', :job, '%'))
+            where p.familyId = :familyId and p.deletedAt is null
+              and lower(p.jobTitle) like lower(concat('%', :job, '%'))
             """)
-    List<UUID> findPersonIdsByJobTitle(@Param("job") String job);
+    List<UUID> findPersonIdsByJobTitle(@Param("familyId") UUID familyId, @Param("job") String job);
 }

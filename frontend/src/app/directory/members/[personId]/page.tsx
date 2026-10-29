@@ -2,8 +2,11 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
@@ -121,6 +124,44 @@ export default function DirectoryMemberPage() {
   );
 }
 
+const professionSchema = z.object({
+  jobTitle: z.string().trim().min(1, 'Chức danh không được để trống').max(150, 'Tối đa 150 ký tự'),
+  company: z.string().trim().max(200, 'Tối đa 200 ký tự'),
+  workLocation: z.string().trim().max(200, 'Tối đa 200 ký tự'),
+});
+type ProfessionValues = z.infer<typeof professionSchema>;
+
+const maxGraduationYear = () => new Date().getFullYear() + 10;
+const educationSchema = z.object({
+  school: z.string().trim().min(1, 'Trường học không được để trống').max(200, 'Tối đa 200 ký tự'),
+  degree: z.string().trim().max(100, 'Tối đa 100 ký tự'),
+  graduationYear: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || /^\d{4}$/.test(value), 'Năm gồm 4 chữ số')
+    .refine(
+      (value) => value === '' || (Number(value) >= 1900 && Number(value) <= maxGraduationYear()),
+      'Năm tốt nghiệp từ 1900 đến năm hiện tại + 10',
+    ),
+});
+type EducationValues = z.infer<typeof educationSchema>;
+
+function professionDefaults(profile: ProfessionProfile | null): ProfessionValues {
+  return {
+    jobTitle: profile?.jobTitle ?? '',
+    company: profile?.company ?? '',
+    workLocation: profile?.workLocation ?? '',
+  };
+}
+
+function educationDefaults(profile: EducationProfile | null): EducationValues {
+  return {
+    school: profile?.school ?? '',
+    degree: profile?.degree ?? '',
+    graduationYear: profile?.graduationYear == null ? '' : String(profile.graduationYear),
+  };
+}
+
 function ProfessionPanel({
   personId,
   profile,
@@ -131,20 +172,24 @@ function ProfessionPanel({
   loading: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [jobTitle, setJobTitle] = useState(profile?.jobTitle ?? '');
-  const [company, setCompany] = useState(profile?.company ?? '');
-  const [workLocation, setWorkLocation] = useState(profile?.workLocation ?? '');
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProfessionValues>({
+    resolver: zodResolver(professionSchema),
+    defaultValues: professionDefaults(profile),
+  });
   useEffect(() => {
-    setJobTitle(profile?.jobTitle ?? '');
-    setCompany(profile?.company ?? '');
-    setWorkLocation(profile?.workLocation ?? '');
-  }, [profile]);
+    reset(professionDefaults(profile));
+  }, [profile, reset]);
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (values: ProfessionValues) =>
       directoryApi.saveProfessionProfile(personId, {
-        jobTitle: jobTitle.trim(),
-        company: company.trim() || null,
-        workLocation: workLocation.trim() || null,
+        jobTitle: values.jobTitle,
+        company: values.company || null,
+        workLocation: values.workLocation || null,
       }),
     onSuccess: async (saved) => {
       queryClient.setQueryData(['directory-profession-profile', personId], saved);
@@ -152,15 +197,11 @@ function ProfessionPanel({
     },
   });
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    mutation.mutate();
-  }
-
   if (loading) return <p className="mt-6 text-body text-text-secondary">Đang tải hồ sơ...</p>;
   return (
     <form
-      onSubmit={submit}
+      onSubmit={handleSubmit((values) => mutation.mutate(values))}
+      noValidate
       className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5"
     >
       <p className="text-body text-text-secondary">
@@ -170,20 +211,20 @@ function ProfessionPanel({
         label="Chức danh / nghề nghiệp"
         required
         maxLength={150}
-        value={jobTitle}
-        onChange={(event) => setJobTitle(event.target.value)}
+        error={errors.jobTitle?.message}
+        {...register('jobTitle')}
       />
       <TextField
         label="Nơi làm việc"
         maxLength={200}
-        value={company}
-        onChange={(event) => setCompany(event.target.value)}
+        error={errors.company?.message}
+        {...register('company')}
       />
       <TextField
         label="Địa điểm làm việc"
         maxLength={200}
-        value={workLocation}
-        onChange={(event) => setWorkLocation(event.target.value)}
+        error={errors.workLocation?.message}
+        {...register('workLocation')}
       />
       {mutation.error instanceof Error && (
         <p role="alert" className="text-body text-error">
@@ -212,22 +253,24 @@ function EducationPanel({
   loading: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [school, setSchool] = useState(profile?.school ?? '');
-  const [degree, setDegree] = useState(profile?.degree ?? '');
-  const [graduationYear, setGraduationYear] = useState(
-    profile?.graduationYear == null ? '' : String(profile.graduationYear),
-  );
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<EducationValues>({
+    resolver: zodResolver(educationSchema),
+    defaultValues: educationDefaults(profile),
+  });
   useEffect(() => {
-    setSchool(profile?.school ?? '');
-    setDegree(profile?.degree ?? '');
-    setGraduationYear(profile?.graduationYear == null ? '' : String(profile.graduationYear));
-  }, [profile]);
+    reset(educationDefaults(profile));
+  }, [profile, reset]);
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (values: EducationValues) =>
       directoryApi.saveEducationProfile(personId, {
-        school: school.trim(),
-        degree: degree.trim() || null,
-        graduationYear: graduationYear ? Number(graduationYear) : null,
+        school: values.school,
+        degree: values.degree || null,
+        graduationYear: values.graduationYear ? Number(values.graduationYear) : null,
       }),
     onSuccess: async (saved) => {
       queryClient.setQueryData(['directory-education-profile', personId], saved);
@@ -235,15 +278,11 @@ function EducationPanel({
     },
   });
 
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    mutation.mutate();
-  }
-
   if (loading) return <p className="mt-6 text-body text-text-secondary">Đang tải hồ sơ...</p>;
   return (
     <form
-      onSubmit={submit}
+      onSubmit={handleSubmit((values) => mutation.mutate(values))}
+      noValidate
       className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5"
     >
       <p className="text-body text-text-secondary">
@@ -253,22 +292,21 @@ function EducationPanel({
         label="Trường học"
         required
         maxLength={200}
-        value={school}
-        onChange={(event) => setSchool(event.target.value)}
+        error={errors.school?.message}
+        {...register('school')}
       />
       <TextField
         label="Bậc học / bằng cấp"
         maxLength={100}
-        value={degree}
-        onChange={(event) => setDegree(event.target.value)}
+        error={errors.degree?.message}
+        {...register('degree')}
       />
       <TextField
         label="Năm tốt nghiệp (không bắt buộc)"
-        type="number"
-        min={1900}
-        max={new Date().getFullYear() + 10}
-        value={graduationYear}
-        onChange={(event) => setGraduationYear(event.target.value)}
+        inputMode="numeric"
+        maxLength={4}
+        error={errors.graduationYear?.message}
+        {...register('graduationYear')}
       />
       {mutation.error instanceof Error && (
         <p role="alert" className="text-body text-error">
