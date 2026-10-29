@@ -74,7 +74,13 @@ public class EndpointRoles {
             Map.entry("POST /heritage/stories", SIGNED_IN),
             Map.entry("GET /heritage/stories/{}", SIGNED_IN),
             Map.entry("PATCH /heritage/stories/{}", SIGNED_IN),
-            Map.entry("DELETE /heritage/stories/{}", SIGNED_IN));
+            Map.entry("DELETE /heritage/stories/{}", SIGNED_IN),
+            // Danh bạ (heritage-directory-dashboard.yaml). Quyền sửa hồ sơ kiểm ở service (UC-DIR-02).
+            Map.entry("GET /directory/members", SIGNED_IN),
+            Map.entry("GET /directory/members/{}/profession-profile", SIGNED_IN),
+            Map.entry("PUT /directory/members/{}/profession-profile", SIGNED_IN),
+            Map.entry("GET /directory/members/{}/education-profile", SIGNED_IN),
+            Map.entry("PUT /directory/members/{}/education-profile", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {
