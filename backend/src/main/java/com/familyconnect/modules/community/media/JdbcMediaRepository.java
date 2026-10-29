@@ -66,6 +66,29 @@ public class JdbcMediaRepository implements MediaRepository {
     }
 
     @Override
+    public java.util.Map<UUID, Long> countByOwners(String ownerType, java.util.List<UUID> ownerIds) {
+        var counts = new java.util.HashMap<UUID, Long>();
+        if (ownerIds.isEmpty()) return counts;
+        jdbc.query("SELECT owner_id, COUNT(*) AS total FROM media WHERE owner_type=:type AND owner_id IN (:owners) " +
+                "AND deleted_at IS NULL GROUP BY owner_id", p("type", ownerType, "owners", ownerIds),
+            rs -> { counts.put(uuid(rs, "owner_id"), rs.getLong("total")); });
+        return counts;
+    }
+
+    @Override
+    public java.util.Map<UUID, java.util.List<Media>> latestByOwners(String ownerType, java.util.List<UUID> ownerIds,
+                                                                     int perOwner) {
+        var result = new java.util.HashMap<UUID, java.util.List<Media>>();
+        if (ownerIds.isEmpty()) return result;
+        jdbc.query("SELECT " + COLUMNS + " FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY owner_id " +
+                "ORDER BY created_at DESC, id DESC) AS rn FROM media WHERE owner_type=:type AND owner_id IN (:owners) " +
+                "AND deleted_at IS NULL) ranked WHERE rn <= :limit ORDER BY owner_id, created_at DESC, id DESC",
+            p("type", ownerType, "owners", ownerIds, "limit", perOwner), MAPPER)
+            .forEach(media -> result.computeIfAbsent(media.ownerId(), ignored -> new java.util.ArrayList<>()).add(media));
+        return result;
+    }
+
+    @Override
     public boolean softDelete(UUID id, UUID actorId) {
         return jdbc.update("UPDATE media SET deleted_at=now(), updated_at=now(), updated_by=:user " +
             "WHERE id=:id AND deleted_at IS NULL", p("id", id, "user", actorId)) == 1;

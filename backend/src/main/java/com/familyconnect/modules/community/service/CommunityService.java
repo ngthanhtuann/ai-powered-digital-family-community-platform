@@ -3,6 +3,8 @@ package com.familyconnect.modules.community.service;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.community.dto.CommunityDto.*;
+import com.familyconnect.modules.community.media.MediaRepository;
+import com.familyconnect.modules.community.media.MediaService;
 import com.familyconnect.modules.community.repository.CommunityStore;
 import com.familyconnect.modules.community.repository.CommunityStore.*;
 import com.familyconnect.modules.community.service.CommunityPlatformPort.Actor;
@@ -22,9 +24,14 @@ public class CommunityService {
     private final CommunityStore store;
     private final CommunityPlatformPort platform;
 
-    public CommunityService(CommunityStore store, CommunityPlatformPort platform) {
+    /** Số ảnh xem trước của mỗi bài trên bảng tin; xem đủ qua GET /posts/{id}/media. */
+    static final int MEDIA_PREVIEW = 4;
+    private final MediaRepository mediaRepository;
+
+    public CommunityService(CommunityStore store, CommunityPlatformPort platform, MediaRepository mediaRepository) {
         this.store = store;
         this.platform = platform;
+        this.mediaRepository = mediaRepository;
     }
 
     private Actor actor() {
@@ -65,11 +72,15 @@ public class CommunityService {
         Map<UUID,Map<ReactionType,Long>> reactions = store.reactionCounts(ids);
         Map<UUID,ReactionType> mine = store.myReactions(ids,user.userId());
         Map<UUID,String> names = platform.authorNames(posts.stream().map(Post::createdBy).collect(Collectors.toSet()));
+        Map<UUID,Long> mediaCounts = mediaRepository.countByOwners("POST", ids);
+        Map<UUID,List<MediaRepository.Media>> previews = mediaRepository.latestByOwners("POST", ids, MEDIA_PREVIEW);
         Map<UUID,Boolean> moderatable = new HashMap<>();
         return posts.stream().map(post -> new PostView(post.id(),post.createdAt(),post.updatedAt(),
             post.familyId(),post.branchId(),post.content(),post.type(),post.createdBy(),
             names.get(post.createdBy()),canDelete(user,post,post.createdBy(),moderatable),
-            comments.getOrDefault(post.id(),0L),reactions.get(post.id()),mine.get(post.id()))).toList();
+            comments.getOrDefault(post.id(),0L),reactions.get(post.id()),mine.get(post.id()),
+            mediaCounts.getOrDefault(post.id(),0L),
+            previews.getOrDefault(post.id(),List.of()).stream().map(MediaService.MediaView::of).toList())).toList();
     }
     private PostView asView(Post post, Actor user) {
         return views(List.of(post),user).get(0);

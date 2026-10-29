@@ -179,7 +179,7 @@ function PostCard({ post, userId, onReaction }: {
       ) : (
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
-      <ProtectedPostImages postId={post.id} />
+      <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
           <button key={type} type="button" aria-pressed={post.myReaction === type}

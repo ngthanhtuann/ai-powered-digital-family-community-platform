@@ -786,7 +786,9 @@ paths:
       operationId: deleteMedia
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
-        theo người dùng đăng nhập.
+        theo người dùng đăng nhập. Người tải lên được xóa; ảnh bài đăng còn cho người kiểm duyệt (BR-COM-05);
+        HERITAGE thêm BRANCH_ADMIN, SYSTEM_ADMIN; PERSON thêm người quản lý hồ sơ. Tệp đang được tài liệu lịch sử
+        hoặc ảnh đại diện dùng trả 409 CONFLICT_001 (BR-COM-10).
       security:
       - bearerAuth: []
       responses:
@@ -807,6 +809,18 @@ paths:
           $ref: '#/components/responses/PermissionError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: Tệp đang được tài liệu lịch sử hoặc ảnh đại diện dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: CONFLICT_001
+                  message: Xung đột dữ liệu
+                  details: []
       parameters:
       - name: id
         in: path
@@ -1939,6 +1953,16 @@ components:
           - SAD
           - null
           description: Reaction hiện tại của người đăng nhập; null nếu chưa thả
+        mediaCount:
+          type: integer
+          minimum: 0
+          description: Số ảnh đang hoạt động của bài.
+        media:
+          type: array
+          maxItems: 4
+          description: Tối đa 4 ảnh mới nhất để hiện trên bảng tin (không cần gọi thêm request); xem đủ qua GET /posts/{id}/media.
+          items:
+            $ref: '#/components/schemas/Media'
       additionalProperties: false
       required:
       - id

@@ -16,4 +16,6 @@ public interface HeritageDocumentRepository extends JpaRepository<HeritageDocume
             UUID familyId, String category, Pageable pageable);
 
     Optional<HeritageDocument> findByIdAndDeletedAtIsNull(UUID id);
+
+    boolean existsByMediaIdAndDeletedAtIsNull(UUID mediaId);
 }
