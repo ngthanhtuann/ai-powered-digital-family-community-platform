@@ -298,7 +298,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 |---|---|---|---|
 | id | UUID | PK | Mã tệp |
 | owner_type | VARCHAR(20) | NOT NULL, CHECK | `POST`, `EVENT`, `HERITAGE` hoặc `PERSON` (ảnh đại diện hồ sơ của `genealogy`, được `person.avatar_media_id` tham chiếu) |
-| owner_id | UUID | NOT NULL | ID tài nguyên sở hữu; kiểm tra ở service |
+| owner_id | UUID | NOT NULL | ID tài nguyên sở hữu; kiểm tra ở service. `POST`: id bài đăng; `EVENT`: id sự kiện; `PERSON`: id hồ sơ thành viên; `HERITAGE`: `family_id` (tệp được tải trước khi tạo tài liệu, `heritage_document.media_id` trỏ ngược lại) |
 | family_id | UUID | NOT NULL | Gia đình dùng để lọc quyền truy cập |
 | file_size | BIGINT | NOT NULL | Kích thước tệp theo byte |
 | file_name | VARCHAR(255) | NOT NULL | Tên tệp gốc đã làm sạch, chỉ để hiển thị |

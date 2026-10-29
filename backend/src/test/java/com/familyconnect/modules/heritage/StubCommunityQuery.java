@@ -17,12 +17,6 @@ public final class StubCommunityQuery implements CommunityQuery {
     }
 
     @Override
-    public Optional<MediaInfo> getMedia(UUID mediaId) {
-        return getHeritageMedia(mediaId).map(m -> new MediaInfo(m.id(), m.ownerType(), m.familyId(),
-                m.familyId(), m.contentUrl()));
-    }
-
-    @Override
     public Optional<HeritageMedia> getHeritageMedia(UUID mediaId) {
         return Optional.ofNullable(media.get(mediaId));
     }

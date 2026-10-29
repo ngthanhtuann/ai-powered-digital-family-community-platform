@@ -65,6 +65,22 @@ class MediaServiceTest {
         assertFalse(result.toString().contains("internal-only.png"));
     }
 
+    @Test void failedMetadataInsertDeletesStoredFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws IOException {
+        when(platform.requireAuthenticatedActor()).thenReturn(member());
+        when(posts.findPost(postId)).thenReturn(Optional.of(post(user)));
+        var input = new MockMultipartFile("file", "photo.png", "image/png", new byte[] {1});
+        var stored = new MediaStorage.StoredFile("orphan.png", "photo.png", "image/png", 1);
+        java.nio.file.Path file = java.nio.file.Files.writeString(dir.resolve("orphan.png"), "x");
+        when(storage.store(input, false)).thenReturn(stored);
+        when(storage.resolve("orphan.png")).thenReturn(file);
+        when(repository.insert(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
+            .thenThrow(new IllegalStateException("DB lỗi"));
+
+        assertThrows(IllegalStateException.class, () -> service().uploadPost(postId, input));
+        assertFalse(java.nio.file.Files.exists(file), "Tệp phải bị xóa khi không ghi được metadata");
+    }
+
     @Test void memberCannotUploadToSomeoneElsesPost() {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         when(posts.findPost(postId)).thenReturn(Optional.of(post(UUID.randomUUID())));

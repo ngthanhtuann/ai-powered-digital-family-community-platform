@@ -102,9 +102,15 @@ public class MediaService implements CommunityQuery {
     private MediaView save(MultipartFile file, String type, UUID ownerId, UUID family,
                            String caption, UUID userId) throws IOException {
         MediaStorage.StoredFile stored = storage.store(file, "HERITAGE".equals(type));
-        MediaRepository.Media media = repository.insert(UUID.randomUUID(), type, ownerId, family,
-            stored.size(), stored.fileName(), stored.storageKey(), caption, stored.mimeType(), userId);
-        return MediaView.of(media);
+        try {
+            MediaRepository.Media media = repository.insert(UUID.randomUUID(), type, ownerId, family,
+                stored.size(), stored.fileName(), stored.storageKey(), caption, stored.mimeType(), userId);
+            return MediaView.of(media);
+        } catch (RuntimeException e) {
+            // Ghi metadata lỗi thì xóa tệp vừa lưu để không để lại tệp không ai quản lý.
+            Files.deleteIfExists(storage.resolve(stored.storageKey()));
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -172,13 +178,6 @@ public class MediaService implements CommunityQuery {
         if (!repository.softDelete(id, current.userId())) throw new ApiException(ErrorCode.NOT_FOUND_001);
         platform.logContentDeleted("MEDIA", id, media.familyId(), own);
         // Theo ADR: soft delete giữ lại tệp vật lý.
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public java.util.Optional<MediaInfo> getMedia(UUID id) {
-        return repository.find(id).map(m -> new MediaInfo(m.id(), m.ownerType(), m.ownerId(),
-            m.familyId(), MediaView.of(m).contentUrl()));
     }
 
     @Override
