@@ -71,7 +71,7 @@
     {"parent":"duc","child":"may","role":"FATHER"},{"parent":"bich","child":"may","role":"MOTHER"},
     {"parent":"khai","child":"long","role":"FATHER"},{"parent":"ngan","child":"long","role":"MOTHER"},
     {"parent":"x","child":"a1","role":"FATHER"},{"parent":"x","child":"a2","role":"FATHER"},
-    {"parent":"a1","child":"b1","role":"FATHER"},{"parent":"a2","child":"b2","role":"FATHER"},
+    {"parent":"a1","child":"b1","role":"FATHER"},{"parent":"a2","child":"b2","role":"MOTHER"},
     {"parent":"b1","child":"c","role":"FATHER"},{"parent":"b2","child":"c","role":"MOTHER"}
   ],
   "marriages": [
