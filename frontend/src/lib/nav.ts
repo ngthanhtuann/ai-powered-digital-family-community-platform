@@ -36,7 +36,7 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Cộng đồng',
     items: [
       { label: 'Bảng tin', href: '/community', icon: 'message-square', roles: ALL_ROLES },
-      { label: 'Sự kiện & Giỗ chạp', icon: 'calendar-days', roles: ALL_ROLES },
+      { label: 'Sự kiện & Giỗ chạp', href: '/events', icon: 'calendar-days', roles: ALL_ROLES },
       { label: 'Danh bạ', href: '/directory', icon: 'contact-round', roles: ALL_ROLES },
     ],
   },

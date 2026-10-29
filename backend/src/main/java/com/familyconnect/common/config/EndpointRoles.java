@@ -50,6 +50,16 @@ public class EndpointRoles {
             Map.entry("GET /persons/{}", SIGNED_IN),
             Map.entry("PUT /persons/{}", ADMINS),
             Map.entry("DELETE /persons/{}", ADMINS),
+            // Sự kiện (BR-EVT-01..03, community-events.yaml).
+            Map.entry("GET /events", SIGNED_IN),
+            Map.entry("POST /events", SIGNED_IN),
+            Map.entry("GET /events/{}", SIGNED_IN),
+            Map.entry("PATCH /events/{}", SIGNED_IN),
+            Map.entry("DELETE /events/{}", SIGNED_IN),
+            Map.entry("PUT /events/{}/rsvp", SIGNED_IN),
+            Map.entry("GET /events/{}/participants", SIGNED_IN),
+            Map.entry("POST /events/{}/participants", SIGNED_IN),
+            Map.entry("DELETE /participants/{}", SIGNED_IN),
             // Cộng đồng, tệp (community-events.yaml). Đăng NEWS chỉ trưởng chi: kiểm ở service.
             Map.entry("GET /posts", SIGNED_IN),
             Map.entry("POST /posts", SIGNED_IN),

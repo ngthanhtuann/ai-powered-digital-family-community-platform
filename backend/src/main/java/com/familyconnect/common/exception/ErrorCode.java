@@ -22,6 +22,7 @@ public enum ErrorCode {
     FILE_002(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Định dạng tệp không được hỗ trợ"),
     RATE_001(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau"),
     SERVER_001(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống, vui lòng thử lại sau"),
+    EVT_001(HttpStatus.CONFLICT, "Sự kiện đã bắt đầu; không thể RSVP"),
     // Mã riêng của module Gia phả (genealogy.md mục 7.2, HTTP 409).
     GEN_001(HttpStatus.CONFLICT, "Gia đình còn thành viên, không xóa được"),
     GEN_002(HttpStatus.CONFLICT, "Chi còn thành viên hoặc chi con, không xóa được"),
