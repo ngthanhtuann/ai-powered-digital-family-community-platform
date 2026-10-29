@@ -7,6 +7,8 @@ import {
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { ImagePicker } from '@/components/community/ImagePicker';
+import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
@@ -177,6 +179,7 @@ function PostCard({ post, userId, onReaction }: {
       ) : (
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
+      <ProtectedPostImages postId={post.id} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
           <button key={type} type="button" aria-pressed={post.myReaction === type}
@@ -203,6 +206,10 @@ export default function CommunityPage() {
   const [tab, setTab] = useState<'ALL' | 'NEWS'>('ALL');
   const [postType, setPostType] = useState<'POST' | 'NEWS'>('POST');
   const [draft, setDraft] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>();
+  const [pendingPostId, setPendingPostId] = useState<string | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [adminFamily, setAdminFamily] = useState('');
   const membership = useQuery({ queryKey: ['me-membership'], queryFn: communityApi.membership });
   const me = useQuery({ queryKey: ['me-user'], queryFn: communityApi.user });
@@ -222,8 +229,31 @@ export default function CommunityPage() {
       (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
   });
   const create = useMutation({
-    mutationFn: () => communityApi.createPost(draft, postType, familyId),
-    onSuccess: async () => { setDraft(''); await client.invalidateQueries({ queryKey: ['community-posts'] }); },
+    mutationFn: async () => {
+      // Mỗi request /posts/{id}/media nhận 1 file, theo OpenAPI. Nhiều ảnh tải lần lượt.
+      let postId = pendingPostId;
+      if (!postId) {
+        postId = (await communityApi.createPost(draft, postType, familyId)).id;
+        setPendingPostId(postId);
+      }
+      for (let i = uploadedCount; i < selectedImages.length; i++) {
+        await communityApi.uploadPostMedia(postId, selectedImages[i], (percent) =>
+          setUploadProgress(Math.round((i + percent / 100) / selectedImages.length * 100)));
+        setUploadedCount(i + 1);
+      }
+      return postId;
+    },
+    onSuccess: async (postId) => {
+      setDraft('');
+      setSelectedImages([]);
+      setUploadProgress(undefined);
+      setPendingPostId(null);
+      setUploadedCount(0);
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['community-posts'] }),
+        client.invalidateQueries({ queryKey: ['post-media', postId] }),
+      ]);
+    },
   });
   const optimisticReaction = useMutation({
     mutationFn: ({ post, next }: { post: Post; next: ReactionType | null }) =>
@@ -299,14 +329,29 @@ export default function CommunityPage() {
             <label htmlFor="post-content" className="block text-sm">Nội dung</label>
             <textarea id="post-content" className={inputClass} rows={4} maxLength={5000} required
               placeholder="Chia sẻ cùng gia đình..." value={draft}
+              disabled={Boolean(pendingPostId) || create.isPending}
               onChange={(event) => setDraft(event.target.value)} />
+            <ImagePicker files={selectedImages} onChange={setSelectedImages}
+              disabled={Boolean(pendingPostId) || create.isPending}
+              progress={create.isPending && selectedImages.length > 0 ? uploadProgress : undefined} />
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary">{draft.length}/5000 ký tự</span>
-              <Button type="submit" fullWidth={false} loading={create.isPending} disabled={!draft.trim()}>
-                {create.isPending ? 'Đang đăng...' : 'Đăng bài'}
+              <Button type="submit" fullWidth={false} loading={create.isPending}
+                disabled={!draft.trim() && !pendingPostId}>
+                {create.isPending ? 'Đang đăng...' : pendingPostId ? 'Tải tiếp ảnh' : 'Đăng bài'}
               </Button>
             </div>
             {create.isError && <p role="alert" className="text-error">{errorText(create.error)}</p>}
+            {pendingPostId && create.isError && (
+              <div className="space-y-2 text-sm">
+                <p>Bài đã được tạo. Có thể tải tiếp từ ảnh chưa hoàn thành hoặc bỏ qua các ảnh còn lại.</p>
+                <button type="button" className="underline" onClick={() => {
+                  setDraft(''); setSelectedImages([]); setPendingPostId(null);
+                  setUploadedCount(0); setUploadProgress(undefined); create.reset();
+                  client.invalidateQueries({ queryKey: ['community-posts'] });
+                }}>Bỏ qua ảnh còn lại</button>
+              </div>
+            )}
           </form>
           <section className="space-y-4" aria-label="Danh sách bài đăng">
             {feed.isPending && <p>Đang tải bảng tin...</p>}
