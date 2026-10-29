@@ -21,5 +21,11 @@ public interface MediaRepository {
 
     Page list(String ownerType, UUID ownerId, int page, int size, String order);
 
+    /** Số media đang hoạt động theo từng chủ sở hữu, một truy vấn cho cả trang. */
+    java.util.Map<UUID, Long> countByOwners(String ownerType, List<UUID> ownerIds);
+
+    /** Tối đa {@code perOwner} media mới nhất của từng chủ sở hữu, một truy vấn cho cả trang. */
+    java.util.Map<UUID, List<Media>> latestByOwners(String ownerType, List<UUID> ownerIds, int perOwner);
+
     boolean softDelete(UUID id, UUID actorId);
 }

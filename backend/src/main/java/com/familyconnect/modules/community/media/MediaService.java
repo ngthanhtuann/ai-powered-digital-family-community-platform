@@ -35,7 +35,7 @@ public class MediaService implements CommunityQuery {
     public record MediaView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                             String ownerType, UUID ownerId, UUID familyId, String fileName,
                             String contentType, long fileSize, String contentUrl, String caption) {
-        static MediaView of(MediaRepository.Media media) {
+        public static MediaView of(MediaRepository.Media media) {
             return new MediaView(media.id(), media.createdAt(), media.updatedAt(), media.ownerType(),
                 media.ownerId(), media.familyId(), media.fileName(), media.fileType(), media.fileSize(),
                 "/api/v1/media/" + media.id() + "/content", media.caption());
@@ -170,10 +170,16 @@ public class MediaService implements CommunityQuery {
             .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         requireRead(current, media);
         boolean own = media.createdBy().equals(current.userId());
-        if (!own) {
-            if (!"POST".equals(media.ownerType())) throw new ApiException(ErrorCode.PERM_001);
-            Post post = readablePost(current, media.ownerId());
-            platform.requireCanModerate(current, post.familyId(), post.branchId());
+        switch (media.ownerType()) {
+            case "POST" -> {
+                if (!own) {
+                    Post post = readablePost(current, media.ownerId());
+                    platform.requireCanModerate(current, post.familyId(), post.branchId());
+                }
+            }
+            case "HERITAGE", "PERSON" ->
+                policy(media.ownerType()).requireDelete(media.id(), media.ownerId(), media.familyId(), own);
+            default -> throw new ApiException(ErrorCode.NOT_FOUND_001);
         }
         if (!repository.softDelete(id, current.userId())) throw new ApiException(ErrorCode.NOT_FOUND_001);
         platform.logContentDeleted("MEDIA", id, media.familyId(), own);

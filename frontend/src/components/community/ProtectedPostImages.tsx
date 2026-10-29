@@ -31,24 +31,29 @@ function ProtectedImage({ media }: { media: Media }) {
   return <img src={src} alt={media.caption || media.fileName} className="w-full rounded-lg object-cover" />;
 }
 
-export function ProtectedPostImages({ postId }: { postId: string }) {
+/** Ảnh xem trước đi kèm bài trong danh sách; chỉ gọi /posts/{id}/media khi người dùng muốn xem thêm. */
+export function ProtectedPostImages({ postId, preview, total }: { postId: string; preview: Media[]; total: number }) {
+  const [expanded, setExpanded] = useState(false);
   const query = useInfiniteQuery({
     queryKey: ['post-media', postId],
     initialPageParam: 0,
+    enabled: expanded,
     queryFn: ({ pageParam }) => communityApi.postMedia(postId, pageParam),
     getNextPageParam: (last) =>
       (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
   });
-  const images = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const images = expanded && query.data ? query.data.pages.flatMap((page) => page.items) : preview;
+  const hasMore = expanded ? query.hasNextPage : total > preview.length;
+  if (images.length === 0 && !hasMore) return null;
   return (
     <section className="mt-3 space-y-2" aria-label="Ảnh của bài đăng">
       {query.isError && <p role="alert" className="text-sm text-error">Không lấy được danh sách ảnh.</p>}
-      {images.length > 0 && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {images.map((media) => <ProtectedImage key={media.id} media={media} />)}
-      </div>}
-      {query.hasNextPage && <button type="button" className="text-sm underline"
-        disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
-        {query.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm ảnh'}
+      </div>
+      {hasMore && <button type="button" className="min-h-11 text-sm underline"
+        disabled={query.isFetching} onClick={() => expanded ? query.fetchNextPage() : setExpanded(true)}>
+        {query.isFetching ? 'Đang tải...' : `Xem thêm ảnh (${total} ảnh)`}
       </button>}
     </section>
   );

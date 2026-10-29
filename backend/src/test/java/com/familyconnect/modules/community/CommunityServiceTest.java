@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
 class CommunityServiceTest {
     @Mock CommunityStore store;
     @Mock CommunityPlatformPort platform;
+    @Mock com.familyconnect.modules.community.media.MediaRepository mediaRepository;
     CommunityService service;
     UUID familyA = UUID.randomUUID();
     UUID familyB = UUID.randomUUID();
@@ -41,7 +42,7 @@ class CommunityServiceTest {
         return new Post(postId, familyA, branchId, "Nội dung", PostType.POST, authorId, now, now);
     }
 
-    @BeforeEach void setUp() { service = new CommunityService(store,platform); }
+    @BeforeEach void setUp() { service = new CommunityService(store,platform,mediaRepository); }
 
     @Test void memberCannotPublishFamilyNews() {
         when(platform.requireAuthenticatedActor()).thenReturn(member());

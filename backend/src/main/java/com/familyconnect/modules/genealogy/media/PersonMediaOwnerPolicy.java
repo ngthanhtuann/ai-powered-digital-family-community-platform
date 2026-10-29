@@ -43,4 +43,12 @@ public class PersonMediaOwnerPolicy implements MediaOwnerPolicy {
         person(ownerId, familyId);
         access.requireRead(familyId);
     }
+
+    /** Người tải lên hoặc người quản lý hồ sơ; ảnh đang là ảnh đại diện thì phải đổi ảnh trước. */
+    @Override public void requireDelete(UUID mediaId, UUID ownerId, UUID familyId, boolean uploader) {
+        Person person = person(ownerId, familyId);
+        var viewer = access.requireRead(familyId);
+        if (!uploader) access.requireManage(viewer, familyId, person.getBranchId());
+        if (mediaId.equals(person.getAvatarMediaId())) throw new ApiException(ErrorCode.CONFLICT_001);
+    }
 }

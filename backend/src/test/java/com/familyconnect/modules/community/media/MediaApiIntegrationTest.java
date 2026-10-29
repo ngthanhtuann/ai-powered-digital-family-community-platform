@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -194,5 +195,59 @@ class MediaApiIntegrationTest {
         call(get("/api/v1/media/" + image + "/content"), owner, null)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND_001"));
+    }
+
+    @Test
+    void postListCarriesMediaPreviewWithoutStorageKey() throws Exception {
+        Object[] a = familyWithPost();
+        String token = (String) a[0];
+        String postMedia = "/api/v1/posts/" + a[2] + "/media";
+        for (int i = 0; i < 5; i++) {
+            upload(multipart(postMedia), token, "anh" + i + ".jpg", JPG).andExpect(status().isCreated());
+        }
+
+        call(get("/api/v1/posts"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(a[2].toString()))
+                .andExpect(jsonPath("$.data[0].mediaCount").value(5))
+                .andExpect(jsonPath("$.data[0].media.length()").value(4))
+                .andExpect(jsonPath("$.data[0].media[0].contentUrl").exists())
+                .andExpect(content().string(not(containsString("storage"))));
+    }
+
+    @Test
+    void heritageMediaDeleteFollowsOwnerModuleRules() throws Exception {
+        Object[] a = familyWithPost();
+        String admin = (String) a[0];
+        String plainMember = member((UUID) a[1]);
+        String uploaderMember = member((UUID) a[1]);
+        UUID byMember = id(uploadHeritage(uploaderMember, a[1], "cua-thanh-vien.pdf", PDF).andExpect(status().isCreated()));
+        UUID unused = id(uploadHeritage(admin, a[1], "chua-dung.pdf", PDF).andExpect(status().isCreated()));
+        UUID inUse = id(uploadHeritage(admin, a[1], "dang-dung.pdf", PDF).andExpect(status().isCreated()));
+        call(post("/api/v1/heritage/documents"), admin, Map.of("title", "Gia phả", "mediaId", inUse.toString()))
+                .andExpect(status().isCreated());
+
+        call(delete("/api/v1/media/" + unused), plainMember, null)
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PERM_001"));
+        call(delete("/api/v1/media/" + byMember), admin, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+        call(delete("/api/v1/media/" + inUse), admin, null)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("CONFLICT_001"));
+        call(get("/api/v1/media/" + inUse + "/content"), admin, null).andExpect(status().isOk());
+    }
+
+    @Test
+    void avatarInUseCannotBeDeleted() throws Exception {
+        Object[] a = familyWithPost();
+        String admin = (String) a[0];
+        UUID person = id(call(post("/api/v1/families/" + a[1] + "/persons"), admin,
+                Map.of("fullName", "Người có ảnh", "gender", "MALE", "birthDate", "1980-01-01")).andExpect(status().isCreated()));
+        UUID avatar = id(call(multipart("/api/v1/media").file(new MockMultipartFile("file", "a.jpg", "image/jpeg", JPG))
+                .param("ownerType", "PERSON").param("ownerId", person.toString()), admin, null).andExpect(status().isCreated()));
+        call(put("/api/v1/persons/" + person), admin, Map.of("fullName", "Người có ảnh", "gender", "MALE",
+                "birthDate", "1980-01-01", "avatarMediaId", avatar.toString())).andExpect(status().isOk());
+
+        call(delete("/api/v1/media/" + avatar), admin, null)
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("CONFLICT_001"));
     }
 }
