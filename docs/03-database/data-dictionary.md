@@ -487,14 +487,16 @@ Người sở hữu: **TV4 Huy Quốc**
 
 **Mục đích:** Hồ sơ nghề nghiệp (1 dòng mỗi người, từ 16 tuổi).  **Người sở hữu:** TV4 Huy Quốc.  **Trạng thái:** Đầy đủ.
 
+`family_id`, `person_id`, `created_by` và `updated_by` là UUID có chỉ mục, không tạo khóa ngoại sang module Gia phả hoặc Auth. Chỉ mục UNIQUE trên `person_id` chỉ áp dụng khi `deleted_at IS NULL`.
+
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL | Gia đình → `family` (tham chiếu logic) |
 | person_id | UUID | NOT NULL | Thành viên → `person` (tham chiếu logic) |
 | job_title | VARCHAR(150) | NOT NULL | Chức danh |
-| company | VARCHAR(255) |  |  |
-| work_location | VARCHAR(255) |  |  |
+| company | VARCHAR(200) |  |  |
+| work_location | VARCHAR(200) |  |  |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
@@ -507,12 +509,14 @@ Người sở hữu: **TV4 Huy Quốc**
 
 **Mục đích:** Hồ sơ học vấn (1 dòng mỗi người).  **Người sở hữu:** TV4 Huy Quốc.  **Trạng thái:** Đầy đủ.
 
+`family_id`, `person_id`, `created_by` và `updated_by` là UUID có chỉ mục, không tạo khóa ngoại sang module Gia phả hoặc Auth. Chỉ mục UNIQUE trên `person_id` chỉ áp dụng khi `deleted_at IS NULL`.
+
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL | Gia đình → `family` (tham chiếu logic) |
 | person_id | UUID | NOT NULL | Thành viên → `person` (tham chiếu logic) |
-| school | VARCHAR(255) | NOT NULL | Trường |
+| school | VARCHAR(200) | NOT NULL | Trường |
 | degree | VARCHAR(100) |  | Bằng cấp |
 | graduation_year | INT | CHECK (graduation_year >= 1900) | Năm tốt nghiệp |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |

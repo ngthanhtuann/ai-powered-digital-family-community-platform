@@ -12,11 +12,19 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PersonRepository extends JpaRepository<Person, UUID> {
+public interface PersonRepository extends JpaRepository<Person, UUID>, DirectoryPersonSearchRepository {
 
     Optional<Person> findByIdAndDeletedAtIsNull(UUID id);
 
     Optional<Person> findByUserIdAndDeletedAtIsNull(UUID userId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM parent_child
+                WHERE parent_id = :parentId AND child_id = :childId AND deleted_at IS NULL
+            )
+            """, nativeQuery = true)
+    boolean isActiveParentOf(@Param("parentId") UUID parentId, @Param("childId") UUID childId);
 
     /** Tìm theo họ tên (không phân biệt hoa thường) và lọc chi; tham số null thì bỏ qua điều kiện đó. */
     @Query("""
