@@ -79,4 +79,54 @@ public final class AuthRequests {
             String newPassword
     ) {
     }
+
+    /**
+     * PATCH /users/me (UpdateProfileRequest). Trường không gửi là không đổi. Riêng phone cho phép null (xóa số),
+     * nên dùng setter để phân biệt "không gửi" với "gửi null". Ít nhất một trường và tuổi 16 kiểm ở service.
+     */
+    public static final class UpdateProfile {
+        @Pattern(regexp = "(?s).*\\S.*", message = "Họ tên không được để trống")
+        @Size(max = 150, message = "Họ tên tối đa 150 ký tự")
+        private String fullName;
+
+        @Pattern(regexp = "^(\\+84|0)[0-9]{9,10}$", message = "Số điện thoại không đúng định dạng")
+        private String phone;
+        private boolean phoneSent;
+
+        @Past(message = "Ngày sinh phải trước hôm nay")
+        private LocalDate dateOfBirth;
+
+        public void setFullName(String fullName) {
+            this.fullName = fullName;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+            this.phoneSent = true;
+        }
+
+        public void setDateOfBirth(LocalDate dateOfBirth) {
+            this.dateOfBirth = dateOfBirth;
+        }
+
+        public String fullName() {
+            return fullName;
+        }
+
+        public String phone() {
+            return phone;
+        }
+
+        public boolean phoneSent() {
+            return phoneSent;
+        }
+
+        public LocalDate dateOfBirth() {
+            return dateOfBirth;
+        }
+
+        public boolean nothingSent() {
+            return fullName == null && !phoneSent && dateOfBirth == null;
+        }
+    }
 }
