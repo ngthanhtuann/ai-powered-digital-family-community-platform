@@ -67,13 +67,15 @@ class DirectoryServiceTest {
     private MembershipQuery membershipQuery;
     @Mock
     private AuditLogger auditLogger;
+    @Mock
+    private com.familyconnect.modules.genealogy.api.PersonSearchIndex personSearchIndex;
 
     private DirectoryService service;
 
     @BeforeEach
     void setUp() {
         service = new DirectoryService(professionRepository, educationRepository, genealogyQuery,
-                membershipQuery, auditLogger, CLOCK);
+                membershipQuery, auditLogger, personSearchIndex, CLOCK);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthenticatedUser(ACTOR_ID, List.of("MEMBER")), null, List.of()));
         lenient().when(membershipQuery.getMembership(ACTOR_ID)).thenReturn(
@@ -105,6 +107,7 @@ class DirectoryServiceTest {
         assertEquals("Đà Nẵng", saved.getValue().getWorkLocation());
         verify(auditLogger).log(eq("PROFESSION_PROFILE_CREATED"), eq("PROFESSION_PROFILE"),
                 any(), eq(FAMILY_ID), anyMap());
+        verify(personSearchIndex).refresh(PERSON_ID);
     }
 
     @Test

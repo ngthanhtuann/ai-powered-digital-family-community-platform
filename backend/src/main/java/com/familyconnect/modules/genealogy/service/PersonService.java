@@ -4,6 +4,8 @@ import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.ai.api.AiGateway;
+import com.familyconnect.modules.directory.api.DirectoryQuery;
+import com.familyconnect.modules.genealogy.api.PersonSearchIndex;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.community.api.CommunityQuery;
@@ -34,7 +36,7 @@ import java.util.UUID;
 
 /** UC-GEN-03: thành viên (BR-GEN-01, 04, 08, 09, 10, 11, 14, 16, 17, 18, 19). */
 @Service
-public class PersonService {
+public class PersonService implements PersonSearchIndex {
 
     private static final Logger log = LoggerFactory.getLogger(PersonService.class);
     private static final Set<String> SORT_FIELDS = Set.of("fullName", "birthDate", "createdAt", "updatedAt");
@@ -49,12 +51,13 @@ public class PersonService {
     private final AuditLogger auditLogger;
     private final AiGateway aiGateway;
     private final CommunityQuery communityQuery;
+    private final DirectoryQuery directoryQuery;
     private final Clock clock;
 
     public PersonService(PersonRepository personRepository, FamilyRepository familyRepository,
                          BranchRepository branchRepository, GenealogyAccess access, MembershipQuery membershipQuery,
                          AuditLogger auditLogger, AiGateway aiGateway, CommunityQuery communityQuery,
-                         Clock clock) {
+                         DirectoryQuery directoryQuery, Clock clock) {
         this.personRepository = personRepository;
         this.familyRepository = familyRepository;
         this.branchRepository = branchRepository;
@@ -63,6 +66,7 @@ public class PersonService {
         this.auditLogger = auditLogger;
         this.aiGateway = aiGateway;
         this.communityQuery = communityQuery;
+        this.directoryQuery = directoryQuery;
         this.clock = clock;
     }
 
@@ -249,6 +253,8 @@ public class PersonService {
             if (p.getCurrentProvince() != null) {
                 parts.add("Tỉnh/thành: " + p.getCurrentProvince());
             }
+            // Nghề nghiệp mức chung (BR-AI-07, BR-AI-14), nguồn là hồ sơ nghề nghiệp của Directory (FR-DIR-02).
+            directoryQuery.findJobTitle(p.getId()).ifPresent(job -> parts.add("Nghề nghiệp: " + job));
             if (p.isDeceased()) {
                 parts.add(p.getDeathDate() == null ? "Đã mất" : "Đã mất năm " + p.getDeathDate().getYear());
             }
@@ -256,8 +262,14 @@ public class PersonService {
         String content = String.join(". ", parts) + ".";
         UUID id = p.getId();
         UUID familyId = p.getFamilyId();
-        UUID branchId = p.getBranchId();
-        afterCommit(() -> aiGateway.upsertSource(AiGateway.SourceType.PERSON, id, familyId, branchId, content));
+        // Hồ sơ thành viên cả gia đình được xem (UC-GEN-03), nên chunk PERSON là phạm vi toàn gia đình (BR-AI-13).
+        afterCommit(() -> aiGateway.upsertSource(AiGateway.SourceType.PERSON, id, familyId, null, content));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void refresh(UUID personId) {
+        personRepository.findByIdAndDeletedAtIsNull(personId).ifPresent(this::indexAfterCommit);
     }
 
     private static void afterCommit(Runnable action) {

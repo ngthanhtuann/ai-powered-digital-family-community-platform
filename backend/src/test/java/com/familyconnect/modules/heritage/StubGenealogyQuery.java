@@ -20,6 +20,11 @@ public final class StubGenealogyQuery implements GenealogyQuery {
     }
 
     @Override
+    public List<UUID> findMinorPersonIds(UUID familyId, LocalDate asOfDate) {
+        return List.of();
+    }
+
+    @Override
     public Optional<UUID> findPersonFamilyId(UUID personId) {
         return people.stream()
                 .filter(person -> person.personId().equals(personId))

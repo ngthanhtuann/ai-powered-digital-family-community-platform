@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -46,6 +47,11 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     @Override
     public boolean isParentOf(UUID parentPersonId, UUID childPersonId) {
         return personRepository.isActiveParentOf(parentPersonId, childPersonId);
+    }
+
+    @Override
+    public List<UUID> findMinorPersonIds(UUID familyId, LocalDate asOfDate) {
+        return personRepository.findMinorIds(familyId, asOfDate);
     }
 
     @Override

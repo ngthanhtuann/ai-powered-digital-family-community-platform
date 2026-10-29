@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +18,14 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
     Optional<Person> findByIdAndDeletedAtIsNull(UUID id);
 
     Optional<Person> findByUserIdAndDeletedAtIsNull(UUID userId);
+
+    /** Cùng quy tắc isChild của PersonService: người còn sống luôn có birth_date (BR-GEN-17). */
+    @Query(value = """
+            SELECT id FROM person
+            WHERE family_id = :familyId AND deleted_at IS NULL AND NOT is_deceased
+              AND birth_date IS NOT NULL AND birth_date + INTERVAL '16 years' > :asOfDate
+            """, nativeQuery = true)
+    List<UUID> findMinorIds(@Param("familyId") UUID familyId, @Param("asOfDate") LocalDate asOfDate);
 
     @Query(value = """
             SELECT EXISTS (

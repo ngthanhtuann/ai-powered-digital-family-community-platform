@@ -82,11 +82,13 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 - Có kết quả nhưng không chứa dữ kiện trả lời câu hỏi: prompt yêu cầu trả đúng câu trên; kiểm thử kết quả trước khi coi tính năng đạt.
 - Không dùng ngưỡng tương đồng làm bằng chứng duy nhất rằng câu trả lời đúng. Điểm cao không bảo đảm nội dung có đủ dữ kiện; cần đánh giá trên bộ câu hỏi và đáp án kỳ vọng.
 - Ngưỡng `0.88` là giá trị thử nghiệm ban đầu từ spike, chưa phải ngưỡng tối ưu. Cần lưu lại truy vấn, top score, kết quả mong đợi và quyết định đúng/sai trên bộ test.
+- Semantic search dùng ngưỡng cosine tối thiểu `0.88`, gom nhiều chunk về một nguồn theo điểm cao nhất, phân trang `page` bắt đầu từ 0 và `size` tối đa 100. Bộ 15 truy vấn giả và bảng đo ở `docs/decisions/semantic-search-evaluation.md` cần chạy lại khi có dữ liệu đã index và khóa Gemini.
 - Không trả nội dung hoặc score của chunk người dùng không có quyền xem.
 
 ### 5.2. Rate limit, cache và timeout
 - Rate limit theo tài khoản/người dùng và khoảng thời gian cấu hình. Khi vượt giới hạn, trả HTTP 429 `RATE_001`.
 - Rate limit chat: 20 câu/giờ/người dùng (`conventions.md` mục 7.1, khóa cấu hình `ai.chat.limit_per_hour`).
+- Rate limit tìm kiếm: 30 lượt/giờ/người dùng (`ai.search.limit_per_hour`), cửa sổ trượt; `Retry-After` là số giây tới khi lượt cũ nhất hết hạn. Bộ đếm nằm trong bộ nhớ từng bản backend (giống giới hạn đăng nhập), nên với 2 bản theo NFR-10 hạn mức thực tế tối đa khoảng 60 lượt/giờ. Đây là hạn chế đã biết, ghi trong báo cáo; muốn chính xác thì dùng bộ đếm chung trong PostgreSQL.
 - Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn. Thời gian chờ tối đa cho một lời gọi LLM đề xuất 30 giây, cấu hình được (spike đo 5 đến 42 giây).
 - Lỗi đầu vào không hợp lệ: HTTP 400, mã `VALID_001` theo `conventions.md`.
 - Quản trị tắt tính năng (`ai.search.enabled`, `ai.chat.enabled`, `ai.summary.enabled`): HTTP 409, mã `AI_002`.
