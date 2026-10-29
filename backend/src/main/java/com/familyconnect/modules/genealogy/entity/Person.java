@@ -46,6 +46,9 @@ public class Person {
     @Column(name = "current_province", length = 100)
     private String currentProvince;
 
+    @Column(length = 120)
+    private String occupation;
+
     @Column(name = "current_address", length = 255)
     private String currentAddress;
 
@@ -105,6 +108,8 @@ public class Person {
     public void setBirthplace(String birthplace) { this.birthplace = birthplace; }
     public String getCurrentProvince() { return currentProvince; }
     public void setCurrentProvince(String currentProvince) { this.currentProvince = currentProvince; }
+    public String getOccupation() { return occupation; }
+    public void setOccupation(String occupation) { this.occupation = occupation; }
     public String getCurrentAddress() { return currentAddress; }
     public void setCurrentAddress(String currentAddress) { this.currentAddress = currentAddress; }
     public boolean isDeceased() { return deceased; }

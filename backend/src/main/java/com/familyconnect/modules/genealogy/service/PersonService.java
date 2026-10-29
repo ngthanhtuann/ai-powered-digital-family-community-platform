@@ -199,6 +199,7 @@ public class PersonService {
                 ? input.birthYear().shortValue() : null);
         person.setBirthplace(FamilyService.blankToNull(input.birthplace()));
         person.setCurrentProvince(FamilyService.blankToNull(input.currentProvince()));
+        person.setOccupation(FamilyService.blankToNull(input.occupation()));
         person.setCurrentAddress(FamilyService.blankToNull(input.currentAddress()));
         person.setBranchId(input.branchId());
         person.setDeceased(input.deceased());
@@ -218,10 +219,10 @@ public class PersonService {
         boolean full = viewer.seesFullData(p.getFamilyId()) || viewer.userId().equals(p.getUserId());
         if (!full && isChild(p.isDeceased(), p.getBirthDate(), LocalDate.now(clock))) {
             return new PersonData(p.getId(), p.getFamilyId(), null, p.getFullName(), p.getGender(), birthYear,
-                    null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt());
+                    null, null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt());
         }
         return new PersonData(p.getId(), p.getFamilyId(), p.getBranchId(), p.getFullName(), p.getGender(), birthYear,
-                full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(),
+                full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(), p.getOccupation(),
                 full ? p.getCurrentAddress() : null, p.isDeceased(), p.getDeathDate(), p.getBurialPlace(),
                 p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt());
     }
@@ -248,6 +249,9 @@ public class PersonService {
             }
             if (p.getCurrentProvince() != null) {
                 parts.add("Tỉnh/thành: " + p.getCurrentProvince());
+            }
+            if (p.getOccupation() != null) {
+                parts.add("Nghề nghiệp: " + p.getOccupation());
             }
             if (p.isDeceased()) {
                 parts.add(p.getDeathDate() == null ? "Đã mất" : "Đã mất năm " + p.getDeathDate().getYear());

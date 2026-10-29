@@ -757,6 +757,7 @@ components:
         birthYear: { type: integer, nullable: true, description: Chỉ dùng khi người đã mất chỉ biết năm sinh }
         birthplace: { type: string, nullable: true }
         currentProvince: { type: string, nullable: true }
+        occupation: { type: string, maxLength: 120, nullable: true }
         currentAddress: { type: string, nullable: true }
         branchId: { type: string, format: uuid, nullable: true }
         isDeceased: { type: boolean, default: false }
@@ -778,6 +779,7 @@ components:
         birthDate: { type: string, format: date, nullable: true }
         birthplace: { type: string, nullable: true }
         currentProvince: { type: string, nullable: true }
+        occupation: { type: string, nullable: true }
         currentAddress: { type: string, nullable: true }
         isDeceased: { type: boolean }
         deathDate: { type: string, format: date, nullable: true }

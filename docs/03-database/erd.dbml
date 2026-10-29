@@ -38,6 +38,7 @@ Table person {
   birth_year smallint [note: 'Chỉ cho người đã mất không rõ ngày sinh']
   birthplace varchar(255)
   current_province varchar(100) [note: 'Tỉnh/thành nơi ở hiện tại (lọc FR-DIR-04, thống kê dashboard)']
+  occupation varchar(120) [note: 'Nghề nghiệp phục vụ tìm kiếm; không index với người dưới 16 tuổi']
   current_address varchar(255) [note: 'Địa chỉ nơi ở hiện tại']
   is_deceased boolean [not null]
   death_date date [note: 'CHECK (death_date >= birth_date)']

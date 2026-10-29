@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useInfiniteQuery, useMutation, useQuery, useQueryClient,
   type InfiniteData, type QueryKey,
@@ -140,7 +140,7 @@ function PostCard({ post, userId, onReaction }: {
     onSuccess: () => client.invalidateQueries({ queryKey: ['community-posts'] }),
   });
   return (
-    <article className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <article id={`post-${post.id}`} className="rounded-xl border border-border bg-surface p-5 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
@@ -199,6 +199,7 @@ function PostCard({ post, userId, onReaction }: {
 }
 
 export default function CommunityPage() {
+  const [targetPostId, setTargetPostId] = useState<string | null>(null);
   const client = useQueryClient();
   const [tab, setTab] = useState<'ALL' | 'NEWS'>('ALL');
   const [postType, setPostType] = useState<'POST' | 'NEWS'>('POST');
@@ -256,7 +257,15 @@ export default function CommunityPage() {
     onSettled: () => client.invalidateQueries({ queryKey: ['community-posts'] }),
   });
 
-  const posts = feed.data?.pages.flatMap((page) => page.items) ?? [];
+  const posts = useMemo(() => feed.data?.pages.flatMap((page) => page.items) ?? [], [feed.data]);
+  useEffect(() => {
+    setTargetPostId(new URLSearchParams(window.location.search).get('item'));
+  }, []);
+  useEffect(() => {
+    if (targetPostId && posts.some((post) => post.id === targetPostId)) {
+      document.getElementById(`post-${targetPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [targetPostId, posts]);
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <header>

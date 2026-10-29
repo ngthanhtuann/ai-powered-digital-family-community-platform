@@ -31,6 +31,7 @@ import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getMyMembership, getMyProfile, logout } from '@/services/auth';
+import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
 import { tokenStorage } from '@/lib/token-storage';
 import {
   FAMILY_NAV_ITEM,
@@ -275,6 +276,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   : 'Không gian kết nối gia đình')}
             </p>
           </div>
+          {role !== 'UNVERIFIED' && (
+            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 lg:px-8">
+              <SemanticSearchBox systemAdmin={role === 'SYSTEM_ADMIN'} />
+            </div>
+          )}
           <div className="text-right">
             {profile.data && <p className="text-label">{profile.data.fullName}</p>}
             {profile.isLoading && (

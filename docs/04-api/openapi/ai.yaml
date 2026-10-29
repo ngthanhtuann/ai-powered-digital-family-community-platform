@@ -20,6 +20,7 @@ paths:
       - AI Search
       summary: Tìm kiếm ngữ nghĩa
       operationId: semanticSearch
+      description: 'Tìm trong gia đình được phép xem, lọc quyền ngay trong truy vấn. Kết quả có cosine similarity tối thiểu 0.88; dưới ngưỡng trả danh sách rỗng. Mỗi nguồn chỉ xuất hiện một lần với chunk điểm cao nhất.'
       x-roles:
       - MEMBER
       - BRANCH_ADMIN
@@ -34,13 +35,20 @@ paths:
           maxLength: 500
         example: Ai là ông nội của Nguyễn Minh?
       - in: query
-        name: limit
+        name: page
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - in: query
+        name: size
         required: false
         schema:
           type: integer
           minimum: 1
-          maximum: 10
-          default: 5
+          maximum: 100
+          default: 10
       - in: query
         name: familyId
         required: false
@@ -78,6 +86,12 @@ paths:
                         type: array
                         items:
                           $ref: '#/components/schemas/SearchResult'
+                      page:
+                        type: integer
+                      size:
+                        type: integer
+                      total:
+                        type: integer
                       message:
                         type: string
                         example: Không tìm thấy thông tin phù hợp.
@@ -621,8 +635,10 @@ components:
       required:
       - sourceType
       - sourceId
-      - content
+      - title
+      - snippet
       - score
+      - path
       properties:
         sourceType:
           type: string
@@ -635,7 +651,11 @@ components:
         sourceId:
           type: string
           format: uuid
-        content:
+        title:
+          type: string
+        snippet:
+          type: string
+        path:
           type: string
         score:
           type: number

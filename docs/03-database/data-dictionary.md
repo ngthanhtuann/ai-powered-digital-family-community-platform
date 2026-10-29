@@ -191,6 +191,7 @@ Người sở hữu: **TV2 Trí**
 | birth_year | SMALLINT | NULL | Chỉ cho người đã mất không rõ ngày sinh |
 | birthplace | VARCHAR(255) |  |  |
 | current_province | VARCHAR(100) |  | Tỉnh/thành nơi ở hiện tại (lọc FR-DIR-04, thống kê dashboard) |
+| occupation | VARCHAR(120) | NULL | Nghề nghiệp phục vụ tìm kiếm; không đưa vào chỉ mục với người dưới 16 tuổi |
 | current_address | VARCHAR(255) |  | Địa chỉ nơi ở hiện tại |
 | is_deceased | BOOLEAN | NOT NULL DEFAULT FALSE |  |
 | death_date | DATE | NULL, CHECK (death_date >= birth_date) |  |
