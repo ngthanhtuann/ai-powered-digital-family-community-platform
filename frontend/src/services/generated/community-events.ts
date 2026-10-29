@@ -1173,7 +1173,10 @@ export interface components {
             file: string;
             /** @enum {string} */
             ownerType: "HERITAGE" | "PERSON";
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description PERSON là id hồ sơ thành viên; HERITAGE là familyId (tệp được tải trước khi tạo tài liệu).
+             */
             ownerId: string;
             caption?: string;
         };

@@ -2954,6 +2954,7 @@ components:
         ownerId:
           type: string
           format: uuid
+          description: PERSON là id hồ sơ thành viên; HERITAGE là familyId (tệp được tải trước khi tạo tài liệu).
         caption:
           type: string
           maxLength: 255

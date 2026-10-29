@@ -92,6 +92,14 @@ public class User {
         this.updatedBy = this.id;
     }
 
+    /** UC-AUTH-05: service đã kiểm tra hợp lệ; truyền giá trị hiện tại cho trường không đổi. */
+    public void updateProfile(String fullName, String phone, LocalDate dateOfBirth) {
+        this.fullName = fullName;
+        this.phone = phone;
+        this.dateOfBirth = dateOfBirth;
+        this.updatedBy = this.id;
+    }
+
     public void recordLogin(OffsetDateTime at) {
         this.lastLoginAt = at;
     }

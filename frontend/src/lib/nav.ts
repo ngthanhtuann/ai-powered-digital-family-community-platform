@@ -37,7 +37,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Bảng tin', href: '/community', icon: 'message-square', roles: ALL_ROLES },
       { label: 'Sự kiện & Giỗ chạp', icon: 'calendar-days', roles: ALL_ROLES },
-      { label: 'Danh bạ', icon: 'contact-round', roles: ALL_ROLES },
+      { label: 'Danh bạ', href: '/directory', icon: 'contact-round', roles: ALL_ROLES },
     ],
   },
   {
@@ -70,8 +70,8 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Tài khoản',
     items: [
-      { label: 'Hồ sơ cá nhân', icon: 'user-round' },
-      { label: 'Đổi mật khẩu', icon: 'lock-keyhole' },
+      { label: 'Hồ sơ cá nhân', href: '/profile', icon: 'user-round' },
+      { label: 'Đổi mật khẩu', href: '/profile#doi-mat-khau', icon: 'lock-keyhole' },
     ],
   },
 ];

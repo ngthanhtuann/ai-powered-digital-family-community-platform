@@ -241,8 +241,8 @@ CREATE TABLE profession_profile (
     family_id UUID NOT NULL,                   -- tham chiếu family của module genealogy, kiểm tra ở service
     person_id UUID NOT NULL,                   -- tham chiếu person của module genealogy, kiểm tra ở service
     job_title VARCHAR(150) NOT NULL,
-    company VARCHAR(255),
-    work_location VARCHAR(255),
+    company VARCHAR(200),
+    work_location VARCHAR(200),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL,
@@ -259,7 +259,7 @@ CREATE TABLE education_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL,                   -- tham chiếu family của module genealogy, kiểm tra ở service
     person_id UUID NOT NULL,                   -- tham chiếu person của module genealogy, kiểm tra ở service
-    school VARCHAR(255) NOT NULL,
+    school VARCHAR(200) NOT NULL,
     degree VARCHAR(100),
     graduation_year INT CHECK (graduation_year >= 1900),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -169,8 +169,13 @@ export const api = {
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
-  upload: <T>(url: string, data: FormData) =>
-    request<T>({ method: 'POST', url, data, headers: { 'Content-Type': 'multipart/form-data' } }),
+  upload: <T>(url: string, data: FormData, onProgress?: (percentage: number) => void) =>
+    request<T>({
+      method: 'POST', url, data, headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event) => {
+        if (event.total && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+      },
+    }),
   /** Tải tệp có kiểm tra quyền: gửi kèm token như mọi request, trả Blob. */
   download: (url: string) =>
     client.request<Blob>({ method: 'GET', url, responseType: 'blob' }).then((res) => res.data),
