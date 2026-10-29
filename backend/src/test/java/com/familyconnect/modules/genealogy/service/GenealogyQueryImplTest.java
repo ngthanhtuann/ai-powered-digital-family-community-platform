@@ -1,6 +1,7 @@
 package com.familyconnect.modules.genealogy.service;
 
 import com.familyconnect.modules.genealogy.entity.Person;
+import com.familyconnect.modules.genealogy.repository.BranchRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,14 @@ class GenealogyQueryImplTest {
     @Mock
     private PersonRepository personRepository;
 
+    @Mock
+    private BranchRepository branchRepository;
+
     private GenealogyQueryImpl genealogyQuery;
 
     @BeforeEach
     void setUp() {
-        genealogyQuery = new GenealogyQueryImpl(personRepository);
+        genealogyQuery = new GenealogyQueryImpl(personRepository, branchRepository);
     }
 
     @Test

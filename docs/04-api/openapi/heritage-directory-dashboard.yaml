@@ -807,7 +807,7 @@ components:
             (ví dụ "con", "cháu nội", "anh họ (bên nội)", "chú"). Trẻ dưới 16 tuổi vẫn hiện quan hệ.
             Null khi người xem chưa gắn với hồ sơ thành viên hoặc quan hệ chưa hỗ trợ (`supported = false`).
           example: "cháu nội"
-        birthYear: { type: integer, example: 1990 }
+        birthYear: { type: integer, nullable: true, example: 1990 }
         generation:
           type: integer
           nullable: true

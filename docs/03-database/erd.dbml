@@ -269,8 +269,8 @@ Table profession_profile {
   family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
   person_id uuid [not null, note: 'Thành viên; tham chiếu logic -> person, không có FK']
   job_title varchar(150) [not null, note: 'Chức danh']
-  company varchar(255)
-  work_location varchar(255)
+  company varchar(200)
+  work_location varchar(200)
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
   updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
   created_at timestamptz [not null, note: 'Thời gian tạo']
@@ -283,7 +283,7 @@ Table education_profile {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Gia đình; tham chiếu logic -> family, không có FK']
   person_id uuid [not null, note: 'Thành viên; tham chiếu logic -> person, không có FK']
-  school varchar(255) [not null, note: 'Trường']
+  school varchar(200) [not null, note: 'Trường']
   degree varchar(100) [note: 'Bằng cấp']
   graduation_year int [note: 'Năm tốt nghiệp']
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
