@@ -1,0 +1,5 @@
+# Expo tạo khi chạy; ios/ và android/ sinh lại từ app.json (Continuous Native Generation).
+.expo/
+dist/
+ios/
+android/
