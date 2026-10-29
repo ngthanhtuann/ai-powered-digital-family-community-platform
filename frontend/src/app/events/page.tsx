@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { eventsApi, type Event, type EventRequest, type RsvpStatus } from '@/services/events/events';
@@ -19,6 +22,50 @@ const iso = (value: string) => value ? new Date(value).toISOString() : undefined
 const statusNames: Record<RsvpStatus, string> = {
   GOING: 'Tham dự', NOT_GOING: 'Không tham dự', MAYBE: 'Có thể',
 };
+
+// Cùng giới hạn với CreateEvent ở backend; backend vẫn kiểm tra lại.
+const eventSchema = z.object({
+  title: z.string().trim().min(1, 'Tên sự kiện không được để trống').max(255, 'Tối đa 255 ký tự'),
+  start: z.string().min(1, 'Chọn thời gian bắt đầu'),
+  end: z.string(),
+  location: z.string().trim().max(255, 'Tối đa 255 ký tự'),
+  description: z.string().max(5000, 'Tối đa 5000 ký tự'),
+}).refine((value) => !value.end || new Date(value.end) > new Date(value.start), {
+  path: ['end'], message: 'Kết thúc phải sau thời điểm bắt đầu',
+});
+type EventValues = z.infer<typeof eventSchema>;
+const emptyEvent: EventValues = { title: '', start: '', end: '', location: '', description: '' };
+
+function EventFields({ idPrefix, register, errors }: {
+  idPrefix: string; register: UseFormRegister<EventValues>; errors: FieldErrors<EventValues>;
+}) {
+  const errorId = (name: keyof EventValues) => `${idPrefix}-${name}-error`;
+  const a11y = (name: keyof EventValues) => ({
+    'aria-invalid': Boolean(errors[name]),
+    'aria-describedby': errors[name] ? errorId(name) : undefined,
+  });
+  const message = (name: keyof EventValues) => errors[name]?.message &&
+    <p id={errorId(name)} role="alert" className="text-sm text-error">{errors[name]?.message}</p>;
+  return <>
+    <label htmlFor={`${idPrefix}-title`} className="block text-sm">Tên sự kiện</label>
+    <input id={`${idPrefix}-title`} className={inputClass} maxLength={255} placeholder="Tên sự kiện"
+      {...a11y('title')} {...register('title')} />
+    {message('title')}
+    <label htmlFor={`${idPrefix}-start`} className="block text-sm">Thời gian bắt đầu</label>
+    <input id={`${idPrefix}-start`} className={inputClass} type="datetime-local" {...a11y('start')} {...register('start')} />
+    {message('start')}
+    <label htmlFor={`${idPrefix}-end`} className="block text-sm">Thời gian kết thúc (không bắt buộc)</label>
+    <input id={`${idPrefix}-end`} className={inputClass} type="datetime-local" {...a11y('end')} {...register('end')} />
+    {message('end')}
+    <label htmlFor={`${idPrefix}-location`} className="block text-sm">Địa điểm</label>
+    <input id={`${idPrefix}-location`} className={inputClass} maxLength={255} {...a11y('location')} {...register('location')} />
+    {message('location')}
+    <label htmlFor={`${idPrefix}-description`} className="block text-sm">Mô tả</label>
+    <textarea id={`${idPrefix}-description`} className={inputClass} rows={3} maxLength={5000}
+      {...a11y('description')} {...register('description')} />
+    {message('description')}
+  </>;
+}
 
 function Participants({ eventId }: { eventId: string }) {
   const [filter, setFilter] = useState<RsvpStatus | ''>('');
@@ -58,11 +105,13 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
   const cache = useQueryClient();
   const [showParticipants, setShowParticipants] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(event.title);
-  const [description, setDescription] = useState(event.description ?? '');
-  const [start, setStart] = useState(localDateTime(event.startAt));
-  const [end, setEnd] = useState(event.endAt ? localDateTime(event.endAt) : '');
-  const [location, setLocation] = useState(event.location ?? '');
+  const editForm = useForm<EventValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      title: event.title, description: event.description ?? '', start: localDateTime(event.startAt),
+      end: event.endAt ? localDateTime(event.endAt) : '', location: event.location ?? '',
+    },
+  });
   const canManage = event.createdBy === userId || admin;
   const started = new Date(event.startAt).getTime() <= Date.now();
   const refresh = async () => {
@@ -75,9 +124,9 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
     mutationFn: (status: RsvpStatus) => eventsApi.rsvp(event.id,status), onSuccess: refresh,
   });
   const update = useMutation({
-    mutationFn: () => eventsApi.update(event.id, {
-      title, description, startAt: iso(start)!, endAt: iso(end) ?? null,
-      location,
+    mutationFn: (values: EventValues) => eventsApi.update(event.id, {
+      title: values.title, description: values.description, startAt: iso(values.start)!,
+      endAt: iso(values.end) ?? null, location: values.location,
     }),
     onSuccess: async () => { setEditing(false); await refresh(); },
   });
@@ -101,19 +150,10 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
         </div>}
       </div>
       {event.description && <p className="whitespace-pre-wrap break-words">{event.description}</p>}
-      {editing && <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); update.mutate(); }}>
-        <label className="block text-sm">Tên sự kiện</label>
-        <input className={inputClass} maxLength={255} required value={title} onChange={(e) => setTitle(e.target.value)} />
-        <label className="block text-sm">Bắt đầu</label>
-        <input className={inputClass} type="datetime-local" required value={start}
-          onChange={(e) => setStart(e.target.value)} />
-        <label className="block text-sm">Kết thúc (không bắt buộc)</label>
-        <input className={inputClass} type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
-        <label className="block text-sm">Địa điểm</label>
-        <input className={inputClass} maxLength={255} value={location} onChange={(e) => setLocation(e.target.value)} />
-        <label className="block text-sm">Mô tả</label>
-        <textarea className={inputClass} maxLength={5000} value={description}
-          onChange={(e) => setDescription(e.target.value)} />
+      {editing && <form className="space-y-2" noValidate
+        onSubmit={editForm.handleSubmit((values) => update.mutate(values))}>
+        <EventFields idPrefix={'edit-' + event.id} register={editForm.register}
+          errors={editForm.formState.errors} />
         <div className="flex gap-2">
           <Button type="submit" fullWidth={false} loading={update.isPending}>Lưu</Button>
           <Button variant="secondary" fullWidth={false} onClick={() => setEditing(false)}>Đóng</Button>
@@ -146,11 +186,7 @@ export default function EventsPage() {
   const [tab, setTab] = useState<'UPCOMING' | 'PAST'>('UPCOMING');
   const [cutoff, setCutoff] = useState(() => new Date().toISOString());
   const [adminFamily, setAdminFamily] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
-  const [location, setLocation] = useState('');
+  const createForm = useForm<EventValues>({ resolver: zodResolver(eventSchema), defaultValues: emptyEvent });
   const membership = useQuery({ queryKey: ['me-membership'], queryFn: eventsApi.membership });
   const me = useQuery({ queryKey: ['me-user'], queryFn: eventsApi.me });
   const systemAdmin = me.data?.roles.includes('SYSTEM_ADMIN') ?? false;
@@ -168,17 +204,17 @@ export default function EventsPage() {
       (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
   });
   const create = useMutation({
-    mutationFn: () => {
+    mutationFn: (values: EventValues) => {
       const body: EventRequest = {
-        title, startAt: iso(start)!,
-        ...(description ? { description } : {}),
-        ...(end ? { endAt: iso(end) } : {}),
-        ...(location ? { location } : {}),
+        title: values.title, startAt: iso(values.start)!,
+        ...(values.description ? { description: values.description } : {}),
+        ...(values.end ? { endAt: iso(values.end) } : {}),
+        ...(values.location ? { location: values.location } : {}),
       };
       return eventsApi.create(body,familyId);
     },
     onSuccess: async () => {
-      setTitle(''); setDescription(''); setStart(''); setEnd(''); setLocation('');
+      createForm.reset(emptyEvent);
       setCutoff(new Date().toISOString());
       await cache.invalidateQueries({ queryKey: ['events'] });
     },
@@ -201,25 +237,11 @@ export default function EventsPage() {
           onChange={(e) => setAdminFamily(e.target.value)} placeholder="UUID gia đình" />
       </div>}
       {ready && <>
-        <form className="space-y-3 rounded-xl border border-border bg-surface p-5"
-          onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+        <form className="space-y-3 rounded-xl border border-border bg-surface p-5" noValidate
+          onSubmit={createForm.handleSubmit((values) => create.mutate(values))}>
           <h2 className="font-semibold">Tạo sự kiện</h2>
-          <label htmlFor="event-title" className="block text-sm">Tên sự kiện</label>
-          <input id="event-title" className={inputClass} maxLength={255} required value={title}
-            onChange={(e) => setTitle(e.target.value)} placeholder="Tên sự kiện" />
-          <label htmlFor="event-start" className="block text-sm">Thời gian bắt đầu</label>
-          <input id="event-start" className={inputClass} type="datetime-local" required value={start}
-            onChange={(e) => setStart(e.target.value)} />
-          <label htmlFor="event-end" className="block text-sm">Thời gian kết thúc (không bắt buộc)</label>
-          <input id="event-end" className={inputClass} type="datetime-local" value={end}
-            onChange={(e) => setEnd(e.target.value)} />
-          <label htmlFor="event-location" className="block text-sm">Địa điểm</label>
-          <input id="event-location" className={inputClass} maxLength={255} value={location}
-            onChange={(e) => setLocation(e.target.value)} />
-          <label htmlFor="event-description" className="block text-sm">Mô tả</label>
-          <textarea id="event-description" className={inputClass} rows={3} maxLength={5000}
-            value={description} onChange={(e) => setDescription(e.target.value)} />
-          <Button type="submit" fullWidth={false} loading={create.isPending} disabled={!title.trim() || !start}>
+          <EventFields idPrefix="event" register={createForm.register} errors={createForm.formState.errors} />
+          <Button type="submit" fullWidth={false} loading={create.isPending}>
             Tạo sự kiện
           </Button>
           {create.isError && <p role="alert" className="text-error">{errorText(create.error)}</p>}

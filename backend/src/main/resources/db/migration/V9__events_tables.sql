@@ -1,5 +1,5 @@
 -- [4-05] Events theo docs/03-database/erd.dbml và BR-EVT-01..03.
--- V7 đã dành cho media [4-04]; tránh trùng phiên bản Flyway giữa hai PR.
+-- V7 là Directory (SCRUM-48), V8 là media (SCRUM-46).
 CREATE TABLE event (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL,
