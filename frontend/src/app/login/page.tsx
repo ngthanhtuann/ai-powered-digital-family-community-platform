@@ -37,12 +37,14 @@ function LoginForm() {
     defaultValues: { email: '', password: '' },
   });
 
-  // Thông báo khi vừa đăng ký xong hoặc bị đẩy ra vì tài khoản bị khóa.
+  // Thông báo khi vừa đăng ký xong, vừa đổi mật khẩu hoặc bị đẩy ra vì tài khoản bị khóa.
   useEffect(() => {
     if (searchParams.get('registered') === '1') {
       setAlert({ variant: 'success', title: 'Đã tạo tài khoản', message: 'Mời bạn đăng nhập.' });
     } else if (searchParams.get('reason') === 'locked') {
       setAlert({ variant: 'error', title: 'AUTH_003', message: 'Tài khoản đã bị khóa' });
+    } else if (searchParams.get('reason') === 'password-changed') {
+      setAlert({ variant: 'success', title: 'Đã đổi mật khẩu', message: 'Mời bạn đăng nhập lại.' });
     }
   }, [searchParams]);
 

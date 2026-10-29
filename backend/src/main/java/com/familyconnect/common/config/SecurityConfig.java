@@ -30,7 +30,8 @@ import java.util.List;
 /**
  * Bảo mật stateless bằng JWT (SCRUM-35, auth.md mục 4.2, 4.3).
  * Công khai: đăng ký, đăng nhập, làm mới token, health, Swagger. Còn lại cần access token.
- * Kiểm tra vai trò từng endpoint (x-roles) và phạm vi gia đình làm ở SCRUM-43.
+ * Vai trò và phạm vi gia đình kiểm ở service qua MembershipQuery (BRANCH_ADMIN gắn theo gia đình, không có
+ * trong JWT nên không dùng hasRole); RbacMatrixIntegrationTest phủ ma trận x-roles (SCRUM-43).
  */
 @Configuration
 @EnableWebSecurity
