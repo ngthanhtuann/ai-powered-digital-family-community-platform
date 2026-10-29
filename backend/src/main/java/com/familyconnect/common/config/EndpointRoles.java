@@ -64,6 +64,9 @@ public class EndpointRoles {
             Map.entry("DELETE /posts/{}/reactions", SIGNED_IN),
             Map.entry("POST /media", SIGNED_IN),
             Map.entry("GET /media/{}/content", SIGNED_IN),
+            Map.entry("DELETE /media/{}", SIGNED_IN),
+            Map.entry("GET /posts/{}/media", SIGNED_IN),
+            Map.entry("POST /posts/{}/media", SIGNED_IN),
             // Di sản (heritage-directory-dashboard.yaml)
             Map.entry("GET /heritage/documents", SIGNED_IN),
             Map.entry("POST /heritage/documents", ADMINS),

@@ -7,6 +7,7 @@ export type Comment = Community['schemas']['Comment'];
 export type Reaction = Community['schemas']['Reaction'];
 export type PostType = Community['schemas']['PostCreateRequest']['type'];
 export type ReactionType = Community['schemas']['ReactionRequest']['type'];
+export type Media = Community['schemas']['Media'];
 export type Membership = Auth['schemas']['Membership'];
 export type User = Auth['schemas']['User'];
 
@@ -49,4 +50,11 @@ export const communityApi = {
       type,
     } satisfies Community['schemas']['ReactionRequest']),
   removeReaction: (postId: string) => api.delete('/posts/' + postId + '/reactions'),
+  postMedia: (postId: string, page: number) =>
+    api.list<Media>('/posts/' + postId + '/media', { page, size: 20, sort: 'createdAt,desc' }),
+  uploadPostMedia: (postId: string, file: File, onProgress?: (percent: number) => void) => {
+    const form = new FormData();
+    form.set('file', file);
+    return api.upload<Media>('/posts/' + postId + '/media', form, onProgress);
+  },
 };
