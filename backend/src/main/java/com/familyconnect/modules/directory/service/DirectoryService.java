@@ -19,6 +19,7 @@ import com.familyconnect.modules.directory.entity.ProfessionProfile;
 import com.familyconnect.modules.directory.repository.EducationProfileRepository;
 import com.familyconnect.modules.directory.repository.ProfessionProfileRepository;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
+import com.familyconnect.modules.genealogy.api.PersonSearchIndex;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import org.springframework.stereotype.Service;
@@ -43,17 +44,19 @@ public class DirectoryService {
     private final GenealogyQuery genealogyQuery;
     private final MembershipQuery membershipQuery;
     private final AuditLogger auditLogger;
+    private final PersonSearchIndex personSearchIndex;
     private final Clock clock;
 
     public DirectoryService(ProfessionProfileRepository professionRepository,
                             EducationProfileRepository educationRepository,
                             GenealogyQuery genealogyQuery, MembershipQuery membershipQuery,
-                            AuditLogger auditLogger, Clock clock) {
+                            AuditLogger auditLogger, PersonSearchIndex personSearchIndex, Clock clock) {
         this.professionRepository = professionRepository;
         this.educationRepository = educationRepository;
         this.genealogyQuery = genealogyQuery;
         this.membershipQuery = membershipQuery;
         this.auditLogger = auditLogger;
+        this.personSearchIndex = personSearchIndex;
         this.clock = clock;
     }
 
@@ -120,6 +123,8 @@ public class DirectoryService {
         ProfessionProfile saved = professionRepository.saveAndFlush(profile);
         auditLogger.log(created ? "PROFESSION_PROFILE_CREATED" : "PROFESSION_PROFILE_UPDATED",
                 "PROFESSION_PROFILE", saved.getId(), person.familyId(), Map.of());
+        // Nghề nghiệp nằm trong chunk PERSON do Gia phả dựng; báo Gia phả lập chỉ mục lại (UC-AI-01).
+        personSearchIndex.refresh(personId);
         return new UpsertResult<>(toData(saved), created);
     }
 

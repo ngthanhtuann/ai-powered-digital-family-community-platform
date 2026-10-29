@@ -371,7 +371,6 @@ export interface components {
             birthYear?: number | null;
             birthplace?: string | null;
             currentProvince?: string | null;
-            occupation?: string | null;
             currentAddress?: string | null;
             /** Format: uuid */
             branchId?: string | null;
@@ -409,7 +408,6 @@ export interface components {
             birthDate?: string | null;
             birthplace?: string | null;
             currentProvince?: string | null;
-            occupation?: string | null;
             currentAddress?: string | null;
             isDeceased?: boolean;
             /** Format: date */

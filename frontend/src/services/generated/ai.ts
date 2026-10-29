@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Tìm kiếm ngữ nghĩa */
+        /**
+         * Tìm kiếm ngữ nghĩa
+         * @description Tìm trong gia đình được phép xem, lọc quyền ngay trong truy vấn. Kết quả có cosine similarity tối thiểu 0.88; dưới ngưỡng trả danh sách rỗng. Mỗi nguồn chỉ xuất hiện một lần với chunk điểm cao nhất.
+         */
         get: operations["semanticSearch"];
         put?: never;
         post?: never;

@@ -21,7 +21,7 @@ public final class GenealogyResponses {
 
     /** Trường bị ẩn theo vai trò và tuổi trả null (BR-GEN-10). Không trả userId. */
     public record PersonData(UUID id, UUID familyId, UUID branchId, String fullName, String gender,
-                             Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince, String occupation,
+                             Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince,
                              String currentAddress, boolean isDeceased, LocalDate deathDate, String burialPlace,
                              UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }

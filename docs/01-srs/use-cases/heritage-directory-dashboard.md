@@ -158,7 +158,7 @@ API xóa trả `200` với `{ "success": true, "data": null }`, không dùng `20
 *   **Genealogy:** Cung cấp nhân khẩu học qua `GenealogyQuery.getDemographics()`.
 *   **Community:** Cung cấp hình ảnh qua `CommunityQuery.getHeritageMedia()`. Báo module này khi tải lên ảnh/tệp.
 *   **Events:** Cung cấp sự kiện qua `EventQuery.getUpcomingEvents()`.
-*   **Directory:** Cung cấp thống kê nghề nghiệp, nơi ở và hồ sơ nghề nghiệp cho dashboard qua `DirectoryQuery`.
+*   **Directory:** Cung cấp thống kê nghề nghiệp, nơi ở và hồ sơ nghề nghiệp cho dashboard qua `DirectoryQuery`. `DirectoryQuery.findJobTitle(personId)` trả chức danh để module Gia phả đưa vào chỉ mục AI của hồ sơ; sau khi lưu hồ sơ nghề nghiệp, Directory gọi `PersonSearchIndex.refresh(personId)` (SCRUM-49).
 *   **AI:** Báo cập nhật embedding qua `AiGateway`.
 
 ### 3.3 Bảng mã lỗi riêng (Module Errors)

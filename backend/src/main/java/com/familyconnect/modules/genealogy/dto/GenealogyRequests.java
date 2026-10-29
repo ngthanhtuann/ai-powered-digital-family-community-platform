@@ -37,7 +37,6 @@ public final class GenealogyRequests {
             Integer birthYear,
             @Size(max = 255, message = "Nơi sinh tối đa 255 ký tự") String birthplace,
             @Size(max = 100, message = "Tỉnh/thành tối đa 100 ký tự") String currentProvince,
-            @Size(max = 120, message = "Nghề nghiệp tối đa 120 ký tự") String occupation,
             @Size(max = 255, message = "Địa chỉ tối đa 255 ký tự") String currentAddress,
             UUID branchId,
             Boolean isDeceased,

@@ -88,6 +88,7 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 ### 5.2. Rate limit, cache và timeout
 - Rate limit theo tài khoản/người dùng và khoảng thời gian cấu hình. Khi vượt giới hạn, trả HTTP 429 `RATE_001`.
 - Rate limit chat: 20 câu/giờ/người dùng (`conventions.md` mục 7.1, khóa cấu hình `ai.chat.limit_per_hour`).
+- Rate limit tìm kiếm: 30 lượt/giờ/người dùng (`ai.search.limit_per_hour`), cửa sổ trượt; `Retry-After` là số giây tới khi lượt cũ nhất hết hạn. Bộ đếm nằm trong bộ nhớ từng bản backend (giống giới hạn đăng nhập), nên với 2 bản theo NFR-10 hạn mức thực tế tối đa khoảng 60 lượt/giờ. Đây là hạn chế đã biết, ghi trong báo cáo; muốn chính xác thì dùng bộ đếm chung trong PostgreSQL.
 - Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn. Thời gian chờ tối đa cho một lời gọi LLM đề xuất 30 giây, cấu hình được (spike đo 5 đến 42 giây).
 - Lỗi đầu vào không hợp lệ: HTTP 400, mã `VALID_001` theo `conventions.md`.
 - Quản trị tắt tính năng (`ai.search.enabled`, `ai.chat.enabled`, `ai.summary.enabled`): HTTP 409, mã `AI_002`.

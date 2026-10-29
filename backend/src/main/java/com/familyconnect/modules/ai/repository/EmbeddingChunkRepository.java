@@ -5,9 +5,12 @@ import com.familyconnect.modules.ai.dto.SemanticSearchResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Đọc ghi bảng ai_embedding_chunk; chỉ module ai dùng (architecture.md quyết định 1). */
 @Repository
@@ -60,25 +63,37 @@ public class EmbeddingChunkRepository {
         return count == null ? 0 : count;
     }
 
-    /** Search only within the authorized family and branch subtree before ranking candidates. */
-    public List<SemanticSearchResult> search(UUID familyId, UUID branchId,
+    /** Các chi có nội dung trong chỉ mục của gia đình; service lọc lại theo quyền xem (BR-AI-13). */
+    public List<UUID> findBranchIds(UUID familyId) {
+        return jdbcTemplate.queryForList("""
+                SELECT DISTINCT branch_id FROM ai_embedding_chunk
+                WHERE family_id = ? AND branch_id IS NOT NULL AND deleted_at IS NULL
+                """, UUID.class, familyId);
+    }
+
+    /**
+     * Tìm trong family_id và các chi được xem trước khi xếp hạng (BR-AI-02, BR-AI-13).
+     * {@code allBranches} = true với SYSTEM_ADMIN và trưởng chi toàn gia đình; còn lại chỉ chunk toàn gia đình
+     * (branch_id NULL) hoặc thuộc {@code visibleBranches}.
+     */
+    public List<SemanticSearchResult> search(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
                                               float[] embedding, double minimumScore,
                                               List<UUID> excludedPersonIds, int page, int size) {
-        String vector = Arrays.toString(embedding);
-        String excludedIds = excludedPersonIds.stream().map(id -> "\"" + id + "\"")
-                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        List<Object> args = new ArrayList<>();
+        args.add(Arrays.toString(embedding));
+        args.add(familyId);
+        String branchFilter = branchFilter(allBranches, visibleBranches, args);
+        args.add(jsonIds(excludedPersonIds));
+        args.add(minimumScore);
+        args.add(size);
+        args.add(page * size);
         return jdbcTemplate.query("""
-                WITH RECURSIVE visible_branches(id) AS (
-                    SELECT id FROM branch WHERE id = ? AND family_id = ? AND deleted_at IS NULL
-                    UNION ALL
-                    SELECT child.id FROM branch child JOIN visible_branches parent ON child.parent_branch_id = parent.id
-                    WHERE child.family_id = ? AND child.deleted_at IS NULL
-                ), ranked AS (
+                WITH ranked AS (
                     SELECT c.source_type, c.source_id, c.content,
                            1 - (c.embedding <=> CAST(? AS vector)) AS score
                     FROM ai_embedding_chunk c
                     WHERE c.family_id = ? AND c.deleted_at IS NULL
-                      AND (c.branch_id IS NULL OR CAST(? AS uuid) IS NULL OR c.branch_id IN (SELECT id FROM visible_branches))
+                """ + branchFilter + """
                       AND NOT (c.source_type = 'PERSON' AND EXISTS (
                           SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
                           WHERE hidden.id::uuid = c.source_id
@@ -102,32 +117,41 @@ public class EmbeddingChunkRepository {
             String type = rs.getString("source_type");
             UUID id = rs.getObject("source_id", UUID.class);
             return new SemanticSearchResult(type, id, title, snippet, rs.getDouble("score"), path(type, id));
-        }, branchId, familyId, familyId, vector, familyId, branchId, excludedIds,
-                minimumScore, size, page * size);
+        }, args.toArray());
     }
 
-    public long countSearch(UUID familyId, UUID branchId, List<UUID> excludedPersonIds, float[] embedding, double minimumScore) {
-        String vector = Arrays.toString(embedding);
-        String excludedIds = excludedPersonIds.stream().map(id -> "\"" + id + "\"")
-                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    public long countSearch(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
+                            List<UUID> excludedPersonIds, float[] embedding, double minimumScore) {
+        List<Object> args = new ArrayList<>();
+        args.add(familyId);
+        String branchFilter = branchFilter(allBranches, visibleBranches, args);
+        args.add(jsonIds(excludedPersonIds));
+        args.add(Arrays.toString(embedding));
+        args.add(minimumScore);
         Long count = jdbcTemplate.queryForObject("""
-                WITH RECURSIVE visible_branches(id) AS (
-                    SELECT id FROM branch WHERE id = ? AND family_id = ? AND deleted_at IS NULL
-                    UNION ALL
-                    SELECT child.id FROM branch child JOIN visible_branches parent ON child.parent_branch_id = parent.id
-                    WHERE child.family_id = ? AND child.deleted_at IS NULL
-                )
                 SELECT COUNT(DISTINCT (c.source_type, c.source_id)) FROM ai_embedding_chunk c
                 WHERE c.family_id = ? AND c.deleted_at IS NULL
-                  AND (c.branch_id IS NULL OR CAST(? AS uuid) IS NULL OR c.branch_id IN (SELECT id FROM visible_branches))
+                """ + branchFilter + """
                   AND NOT (c.source_type = 'PERSON' AND EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
                       WHERE hidden.id::uuid = c.source_id
                   ))
                   AND 1 - (c.embedding <=> CAST(? AS vector)) >= ?
-                """, Long.class, branchId, familyId, familyId, familyId, branchId, excludedIds,
-                vector, minimumScore);
+                """, Long.class, args.toArray());
         return count == null ? 0 : count;
+    }
+
+    /** Điều kiện phạm vi chi; thêm tham số vào {@code args} theo đúng thứ tự dấu ?. */
+    private static String branchFilter(boolean allBranches, List<UUID> visibleBranches, List<Object> args) {
+        if (allBranches) return "";
+        if (visibleBranches.isEmpty()) return "  AND c.branch_id IS NULL\n";
+        args.addAll(visibleBranches);
+        return "  AND (c.branch_id IS NULL OR c.branch_id IN ("
+                + String.join(",", Collections.nCopies(visibleBranches.size(), "?")) + "))\n";
+    }
+
+    private static String jsonIds(List<UUID> ids) {
+        return ids.stream().map(id -> "\"" + id + "\"").collect(Collectors.joining(",", "[", "]"));
     }
 
     private static String path(String type, UUID id) {

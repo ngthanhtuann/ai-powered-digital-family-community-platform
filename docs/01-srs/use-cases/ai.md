@@ -252,6 +252,6 @@ Link Figma (file chung, xem `docs/05-ui/figma-links.md`):
 
 ## 8. Câu hỏi còn mở
 - [ ] Có cần API và màn xem lại danh sách phiên chat, tin nhắn cũ không? Bảng `ai_chat_session` đã có nhưng `ai.yaml` chưa có endpoint đọc lịch sử.
-- [ ] Giới hạn riêng cho tìm kiếm, tóm tắt, gợi ý (hiện chỉ chat có 20 câu/giờ). Đề xuất dùng chung bộ đếm với chat.
+- [ ] Giới hạn riêng cho tóm tắt, gợi ý (chat 20 câu/giờ; tìm kiếm 30 lượt/giờ đã chốt ở `conventions.md` mục 7.1, SCRUM-49). Đề xuất dùng chung bộ đếm với chat.
 - [x] Mã lỗi khi tắt tính năng: đã chốt 18/10/2026 giữ HTTP 409 `AI_002` (BR-AI-12); tiền tố `AI_` đã có trong `conventions.md` mục 3.1.
 - [ ] Thời gian chờ LLM 30 giây là đề xuất; chốt lại sau khi đo bằng gói trả phí.
