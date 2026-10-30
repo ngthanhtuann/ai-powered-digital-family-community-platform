@@ -44,5 +44,18 @@ public final class GenealogyResponses {
     public record MarriageData(UUID id, UUID person1Id, UUID person2Id, String status, LocalDate startDate,
                                LocalDate endDate, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }
+
+    /** genealogy.yaml TreeNode; gender, generation null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10). */
+    public record TreeNode(UUID id, String fullName, String gender, Integer birthYear, boolean isDeceased,
+                           boolean hasMoreChildren, Integer generation) {
+    }
+
+    /** genealogy.yaml TreeEdge: PARENT_CHILD (source là cha/mẹ, kèm kind) hoặc MARRIAGE (kèm status). */
+    public record TreeEdge(String id, UUID source, UUID target, String type, String kind, String status) {
+    }
+
+    public record TreeData(UUID rootId, List<TreeNode> nodes, List<TreeEdge> edges) {
+    }
 }
+
 
