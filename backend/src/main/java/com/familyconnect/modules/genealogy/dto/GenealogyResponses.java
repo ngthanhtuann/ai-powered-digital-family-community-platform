@@ -34,4 +34,15 @@ public final class GenealogyResponses {
             return new ListResponse<>(true, data, new PaginationMeta(page, size, total));
         }
     }
+
+    /** genealogy.yaml ParentChild. */
+    public record ParentChildData(UUID parentId, UUID childId, String parentRole, String kind,
+                                  OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    }
+
+    /** genealogy.yaml Marriage. */
+    public record MarriageData(UUID id, UUID person1Id, UUID person2Id, String status, LocalDate startDate,
+                               LocalDate endDate, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    }
 }
+
