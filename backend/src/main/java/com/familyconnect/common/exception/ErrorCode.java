@@ -30,6 +30,13 @@ public enum ErrorCode {
     GEN_002(HttpStatus.CONFLICT, "Chi còn thành viên hoặc chi con, không xóa được"),
     GEN_003(HttpStatus.CONFLICT, "Chi cha tạo vòng lặp"),
     GEN_004(HttpStatus.CONFLICT, "Thành viên còn quan hệ cha-mẹ-con hoặc hôn nhân, không xóa được"),
+    GEN_005(HttpStatus.CONFLICT, "Đã đủ cha và mẹ ruột"),
+    GEN_006(HttpStatus.CONFLICT, "Quan hệ này tạo vòng lặp tổ tiên"),
+    GEN_007(HttpStatus.CONFLICT, "Cha/mẹ phải sinh trước con"),
+    GEN_008(HttpStatus.CONFLICT, "Quan hệ đã tồn tại"),
+    GEN_009(HttpStatus.CONFLICT, "Một trong hai người đang có hôn nhân khác"),
+    GEN_010(HttpStatus.CONFLICT, "Không được kết hôn giữa người thân"),
+    GEN_011(HttpStatus.CONFLICT, "Người đã mất không thêm hôn nhân mới"),
     GEN_012(HttpStatus.CONFLICT, "Người dưới 16 tuổi không có tài khoản đăng nhập riêng"),
     GEN_013(HttpStatus.CONFLICT, "Bạn đã thuộc một gia đình"),
     GEN_014(HttpStatus.CONFLICT, "Hồ sơ không thuộc gia đình của tài khoản cần gắn");

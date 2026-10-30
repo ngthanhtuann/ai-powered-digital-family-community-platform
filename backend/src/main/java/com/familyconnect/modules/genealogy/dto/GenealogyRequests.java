@@ -15,6 +15,12 @@ public final class GenealogyRequests {
 
     public enum Gender { MALE, FEMALE, OTHER }
 
+    public enum ParentRole { FATHER, MOTHER }
+
+    public enum ParentKind { BIOLOGICAL, ADOPTED, STEP }
+
+    public enum MarriageStatus { MARRIED, DIVORCED, WIDOWED }
+
     public record FamilyInput(
             @NotBlank(message = "Tên gia đình không được để trống")
             @Size(max = 150, message = "Tên gia đình tối đa 150 ký tự") String name,
@@ -50,4 +56,26 @@ public final class GenealogyRequests {
             return Boolean.TRUE.equals(isDeceased);
         }
     }
+
+    /** POST /persons/{personId}/parents (genealogy.yaml ParentInput); kind mặc định BIOLOGICAL. */
+    public record ParentInput(
+            @NotNull(message = "Chưa chọn cha/mẹ") UUID parentId,
+            @NotNull(message = "Chưa chọn vai trò cha hoặc mẹ") ParentRole parentRole,
+            ParentKind kind) {
+    }
+
+    /** POST /marriages (MarriageInput). */
+    public record MarriageInput(
+            @NotNull(message = "Chưa chọn người thứ nhất") UUID person1Id,
+            @NotNull(message = "Chưa chọn người thứ hai") UUID person2Id,
+            LocalDate startDate) {
+    }
+
+    /** PUT /marriages/{marriageId} (MarriageUpdate). */
+    public record MarriageUpdate(
+            @NotNull(message = "Chưa chọn trạng thái hôn nhân") MarriageStatus status,
+            LocalDate startDate,
+            LocalDate endDate) {
+    }
 }
+

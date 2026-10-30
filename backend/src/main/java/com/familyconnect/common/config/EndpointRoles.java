@@ -50,6 +50,11 @@ public class EndpointRoles {
             Map.entry("GET /persons/{}", SIGNED_IN),
             Map.entry("PUT /persons/{}", ADMINS),
             Map.entry("DELETE /persons/{}", ADMINS),
+            Map.entry("POST /persons/{}/parents", ADMINS),
+            Map.entry("DELETE /persons/{}/parents/{}", ADMINS),
+            Map.entry("POST /marriages", ADMINS),
+            Map.entry("PUT /marriages/{}", ADMINS),
+            Map.entry("DELETE /marriages/{}", ADMINS),
             // Sự kiện (BR-EVT-01..03, community-events.yaml).
             Map.entry("GET /events", SIGNED_IN),
             Map.entry("POST /events", SIGNED_IN),
