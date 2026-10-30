@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Tìm kiếm ngữ nghĩa */
+        /**
+         * Tìm kiếm ngữ nghĩa
+         * @description Tìm trong gia đình được phép xem, lọc quyền ngay trong truy vấn. Kết quả có cosine similarity tối thiểu 0.88; dưới ngưỡng trả danh sách rỗng. Mỗi nguồn chỉ xuất hiện một lần với chunk điểm cao nhất.
+         */
         get: operations["semanticSearch"];
         put?: never;
         post?: never;
@@ -110,7 +113,9 @@ export interface components {
             sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
             /** Format: uuid */
             sourceId: string;
-            content: string;
+            title: string;
+            snippet: string;
+            path: string;
             score: number;
         };
         /** @description Thông tin bổ sung cho response; chỉ có khi endpoint cần metadata. */
@@ -261,7 +266,8 @@ export interface operations {
             query: {
                 /** @example Ai là ông nội của Nguyễn Minh? */
                 q: string;
-                limit?: number;
+                page?: number;
+                size?: number;
                 /** @description Gia đình cần xem. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: string;
             };
@@ -299,6 +305,9 @@ export interface operations {
                         data: {
                             query: string;
                             results: components["schemas"]["SearchResult"][];
+                            page?: number;
+                            size?: number;
+                            total?: number;
                             /** @example Không tìm thấy thông tin phù hợp. */
                             message?: string;
                         };

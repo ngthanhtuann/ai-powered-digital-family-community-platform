@@ -291,6 +291,7 @@ Authorization: Bearer <access_token>
 | -------------------------- | --------------------------- |
 | Đăng nhập                  | 5 lần/phút theo IP và email |
 | Chat AI                    | 20 câu/giờ/người dùng       |
+| Tìm kiếm AI (`GET /ai/search`) | 30 lượt/giờ/người dùng trên mỗi bản backend (`ai.search.limit_per_hour`) |
 | Kích thước JSON request    | Tối đa 1 MB                 |
 | Dung lượng tệp trong một request tải tệp | Tối đa 10 MB/request (mục 7.3) |
 

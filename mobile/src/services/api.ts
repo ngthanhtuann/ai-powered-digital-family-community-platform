@@ -1,5 +1,10 @@
 // Lớp gọi REST API cho mobile, cùng cách làm với frontend/src/lib/api.ts (mobile.md mục 4.3 đến 4.5).
-import axios, { AxiosError, isAxiosError, type AxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  create as createAxios,
+  isAxiosError,
+  type AxiosRequestConfig,
+} from 'axios';
 import type {
   ApiErrorBody,
   ApiErrorDetail,
@@ -41,7 +46,7 @@ export function setSessionHandlers(next: SessionHandlers | null) {
   handlers = next;
 }
 
-const client = axios.create({
+const client = createAxios({
   baseURL: `${API_BASE_URL}${API_PREFIX}`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,

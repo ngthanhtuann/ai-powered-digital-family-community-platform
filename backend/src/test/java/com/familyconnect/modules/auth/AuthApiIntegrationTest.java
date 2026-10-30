@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -327,5 +329,59 @@ class AuthApiIntegrationTest {
 
         postJson("/api/v1/auth/login", Map.of("email", email, "password", "Matkhaumoi456"))
                 .andExpect(status().isOk());
+    }
+
+    private ResultActions patchMe(String accessToken, String rawJson) throws Exception {
+        return mvc.perform(patch("/api/v1/users/me").header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON).content(rawJson));
+    }
+
+    @Test
+    void updateMyProfileChangesOnlySentFieldsAndKeepsEmail() throws Exception {
+        String email = uniqueEmail();
+        register(email);
+        String accessToken = login(email).get("accessToken").asText();
+
+        patchMe(accessToken, "{\"fullName\":\"  Nguyễn Văn An B \",\"email\":\"khac@example.com\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fullName").value("Nguyễn Văn An B"))
+                .andExpect(jsonPath("$.data.email").value(email))
+                .andExpect(jsonPath("$.data.phone").value("0901234567"))
+                .andExpect(jsonPath("$.data.dateOfBirth").value("1990-05-12"));
+
+        // Gửi phone = null là xóa số điện thoại.
+        patchMe(accessToken, "{\"phone\":null,\"dateOfBirth\":\"1991-01-01\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.phone").value(nullValue()))
+                .andExpect(jsonPath("$.data.dateOfBirth").value("1991-01-01"))
+                .andExpect(jsonPath("$.data.fullName").value("Nguyễn Văn An B"));
+
+        mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(jsonPath("$.data.fullName").value("Nguyễn Văn An B"))
+                .andExpect(jsonPath("$.data.phone").value(nullValue()));
+    }
+
+    @Test
+    void updateMyProfileInvalidDataReturnsValid001() throws Exception {
+        String email = uniqueEmail();
+        register(email);
+        String accessToken = login(email).get("accessToken").asText();
+        String under16 = LocalDate.now().minusYears(10).toString();
+
+        patchMe(accessToken, "{\"dateOfBirth\":\"" + under16 + "\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"))
+                .andExpect(jsonPath("$.error.details[0].field").value("dateOfBirth"));
+        patchMe(accessToken, "{\"fullName\":\"   \",\"phone\":\"123\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"))
+                .andExpect(jsonPath("$.error.details[*].field", hasItem("fullName")))
+                .andExpect(jsonPath("$.error.details[*].field", hasItem("phone")));
+        patchMe(accessToken, "{}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"));
+        mvc.perform(patch("/api/v1/users/me").contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"A\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_002"));
     }
 }

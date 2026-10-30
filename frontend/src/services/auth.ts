@@ -9,6 +9,8 @@ export type LoginData = Schemas['LoginData'];
 export type RegisterRequest = Schemas['RegisterRequest'];
 export type User = Schemas['User'];
 export type Membership = Schemas['Membership'];
+export type UpdateProfileRequest = Schemas['UpdateProfileRequest'];
+export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
 
 /** POST /auth/login: thành công thì lưu cặp token. */
 export async function login(body: LoginRequest): Promise<LoginData> {
@@ -43,6 +45,17 @@ export function getMyMembership(): Promise<Membership> {
 /** GET /users/me. */
 export function getMyProfile(): Promise<User> {
   return api.get<User>('/users/me');
+}
+
+/** PATCH /users/me: sửa họ tên, số điện thoại, ngày sinh (UC-AUTH-05). */
+export function updateMyProfile(body: UpdateProfileRequest): Promise<User> {
+  return api.patch<User>('/users/me', body);
+}
+
+/** PUT /users/me/password: server thu hồi mọi refresh token, nên gọi xong phải đăng nhập lại (UC-AUTH-04). */
+export async function changePassword(body: ChangePasswordRequest): Promise<void> {
+  await api.put('/users/me/password', body);
+  tokenStorage.clear();
 }
 
 /**

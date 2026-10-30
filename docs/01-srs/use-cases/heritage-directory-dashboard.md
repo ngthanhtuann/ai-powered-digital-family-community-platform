@@ -158,7 +158,7 @@ API xóa trả `200` với `{ "success": true, "data": null }`, không dùng `20
 *   **Genealogy:** Cung cấp nhân khẩu học qua `GenealogyQuery.getDemographics()`.
 *   **Community:** Cung cấp hình ảnh qua `CommunityQuery.getHeritageMedia()`. Báo module này khi tải lên ảnh/tệp.
 *   **Events:** Cung cấp sự kiện qua `EventQuery.getUpcomingEvents()`.
-*   **Directory:** Cung cấp thống kê nghề nghiệp, nơi ở và hồ sơ nghề nghiệp cho dashboard qua `DirectoryQuery`.
+*   **Directory:** Cung cấp thống kê nghề nghiệp, nơi ở và hồ sơ nghề nghiệp cho dashboard qua `DirectoryQuery`. `DirectoryQuery.findJobTitle(personId)` trả chức danh để module Gia phả đưa vào chỉ mục AI của hồ sơ; sau khi lưu hồ sơ nghề nghiệp, Directory gọi `PersonSearchIndex.refresh(personId)` (SCRUM-49).
 *   **AI:** Báo cập nhật embedding qua `AiGateway`.
 
 ### 3.3 Bảng mã lỗi riêng (Module Errors)
@@ -241,8 +241,8 @@ CREATE TABLE profession_profile (
     family_id UUID NOT NULL,                   -- tham chiếu family của module genealogy, kiểm tra ở service
     person_id UUID NOT NULL,                   -- tham chiếu person của module genealogy, kiểm tra ở service
     job_title VARCHAR(150) NOT NULL,
-    company VARCHAR(255),
-    work_location VARCHAR(255),
+    company VARCHAR(200),
+    work_location VARCHAR(200),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL,
@@ -259,7 +259,7 @@ CREATE TABLE education_profile (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL,                   -- tham chiếu family của module genealogy, kiểm tra ở service
     person_id UUID NOT NULL,                   -- tham chiếu person của module genealogy, kiểm tra ở service
-    school VARCHAR(255) NOT NULL,
+    school VARCHAR(200) NOT NULL,
     degree VARCHAR(100),
     graduation_year INT CHECK (graduation_year >= 1900),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

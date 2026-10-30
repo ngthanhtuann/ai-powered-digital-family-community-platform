@@ -204,7 +204,7 @@ export interface paths {
         post?: never;
         /**
          * Xóa media
-         * @description Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch theo người dùng đăng nhập.
+         * @description Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch theo người dùng đăng nhập. Người tải lên được xóa; ảnh bài đăng còn cho người kiểm duyệt (BR-COM-05); HERITAGE thêm BRANCH_ADMIN, SYSTEM_ADMIN; PERSON thêm người quản lý hồ sơ. Tệp đang được tài liệu lịch sử hoặc ảnh đại diện dùng trả 409 CONFLICT_001 (BR-COM-10).
          */
         delete: operations["deleteMedia"];
         options?: never;
@@ -527,6 +527,10 @@ export interface components {
              * @enum {string|null}
              */
             myReaction: "LIKE" | "LOVE" | "HAHA" | "SAD" | null;
+            /** @description Số ảnh đang hoạt động của bài. */
+            mediaCount?: number;
+            /** @description Tối đa 4 ảnh mới nhất để hiện trên bảng tin (không cần gọi thêm request); xem đủ qua GET /posts/{id}/media. */
+            media?: components["schemas"]["Media"][];
         };
         Comment: {
             /**
@@ -1173,7 +1177,10 @@ export interface components {
             file: string;
             /** @enum {string} */
             ownerType: "HERITAGE" | "PERSON";
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description PERSON là id hồ sơ thành viên; HERITAGE là familyId (tệp được tải trước khi tạo tài liệu).
+             */
             ownerId: string;
             caption?: string;
         };
@@ -2123,6 +2130,25 @@ export interface operations {
             401: components["responses"]["AuthError"];
             403: components["responses"]["PermissionError"];
             404: components["responses"]["NotFoundError"];
+            /** @description Tệp đang được tài liệu lịch sử hoặc ảnh đại diện dùng */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "error": {
+                     *         "code": "CONFLICT_001",
+                     *         "message": "Xung đột dữ liệu",
+                     *         "details": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     listAnnouncements: {

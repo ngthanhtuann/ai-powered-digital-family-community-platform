@@ -237,8 +237,10 @@ export interface paths {
         /**
          * Lấy cây gia phả dạng nodes/edges cho React Flow (UC-GEN-06)
          * @description rootId không bắt buộc, mặc định là hồ sơ gắn với tài khoản hiện tại, nếu không có thì người tổ.
-         *     depth là số đời tải mỗi lần (mặc định 3). Dùng lại để lazy-load nhánh bằng cách truyền rootId khác.
-         *     Quy tắc ẩn dữ liệu (BR-GEN-10) áp dụng cho từng node.
+         *     depth là số đời tải mỗi lần, tính cả người gốc (mặc định 3, ngoài 1 đến 10 trả 400 VALID_001).
+         *     Trả hậu duệ của người gốc kèm vợ/chồng của họ; node ở đời cuối còn con có hasMoreChildren = true,
+         *     lazy-load nhánh bằng cách gọi lại với rootId là node đó. rootId không thuộc gia đình trả 404.
+         *     Quy tắc ẩn dữ liệu (BR-GEN-10) áp dụng cho từng node: MEMBER thấy trẻ dưới 16 tuổi chỉ với tên, năm sinh.
          */
         get: operations["getFamilyTree"];
         put?: never;
@@ -510,6 +512,8 @@ export interface components {
             isDeceased?: boolean;
             /** @description Còn nhánh chưa tải, dùng cho mở nhánh lazy-load */
             hasMoreChildren?: boolean;
+            /** @description Thế hệ theo genealogy.md mục 6.8 (đời 1 là tổ). Null với trẻ dưới 16 tuổi khi người xem là MEMBER */
+            generation?: number | null;
         };
         TreeEdge: {
             id?: string;

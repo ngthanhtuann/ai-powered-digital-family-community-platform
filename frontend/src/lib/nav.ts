@@ -27,7 +27,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Gia phả',
     items: [
-      { label: 'Thành viên', icon: 'users', roles: ALL_ROLES },
+      { label: 'Thành viên', href: '/members', icon: 'users', roles: ALL_ROLES },
       { label: 'Cây gia phả', icon: 'network', roles: ALL_ROLES },
       { label: 'Tra cứu xưng hô', icon: 'search', roles: ALL_ROLES },
     ],
@@ -36,8 +36,8 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Cộng đồng',
     items: [
       { label: 'Bảng tin', href: '/community', icon: 'message-square', roles: ALL_ROLES },
-      { label: 'Sự kiện & Giỗ chạp', icon: 'calendar-days', roles: ALL_ROLES },
-      { label: 'Danh bạ', icon: 'contact-round', roles: ALL_ROLES },
+      { label: 'Sự kiện & Giỗ chạp', href: '/events', icon: 'calendar-days', roles: ALL_ROLES },
+      { label: 'Danh bạ', href: '/directory', icon: 'contact-round', roles: ALL_ROLES },
     ],
   },
   {
@@ -70,8 +70,8 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     heading: 'Tài khoản',
     items: [
-      { label: 'Hồ sơ cá nhân', icon: 'user-round' },
-      { label: 'Đổi mật khẩu', icon: 'lock-keyhole' },
+      { label: 'Hồ sơ cá nhân', href: '/profile', icon: 'user-round' },
+      { label: 'Đổi mật khẩu', href: '/profile#doi-mat-khau', icon: 'lock-keyhole' },
     ],
   },
 ];

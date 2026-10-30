@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Đăng ký, đổi mật khẩu, xem hồ sơ, trạng thái tham gia gia đình
- * (auth.yaml: registerUser, changePassword, getMyProfile, getMyMembership). Sửa hồ sơ (PATCH /users/me) làm ở SCRUM-43.
+ * (auth.yaml: registerUser, changePassword, getMyProfile, updateMyProfile, getMyMembership).
  */
 @RestController
 @RequestMapping("/api/v1/users")
@@ -51,6 +52,12 @@ public class UserAccountController {
     @Operation(operationId = "getMyProfile", summary = "Xem hồ sơ của tôi (UC-AUTH-05)")
     public ApiResponse<UserData> myProfile() {
         return ApiResponse.ok(authService.myProfile(CurrentUser.require().id()));
+    }
+
+    @PatchMapping("/me")
+    @Operation(operationId = "updateMyProfile", summary = "Cập nhật hồ sơ của tôi (UC-AUTH-05)")
+    public ApiResponse<UserData> updateMyProfile(@Valid @RequestBody AuthRequests.UpdateProfile request) {
+        return ApiResponse.ok(authService.updateProfile(CurrentUser.require().id(), request));
     }
 
     @GetMapping("/me/membership")
