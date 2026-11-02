@@ -53,6 +53,7 @@ export const NAV_SECTIONS: NavSection[] = [
     roles: ADMIN_ROLES,
     items: [
       { label: 'Duyệt yêu cầu tham gia', icon: 'user-check', roles: ADMIN_ROLES },
+      { label: 'Phân công trưởng chi', href: '/family-roles', icon: 'user-cog', roles: ADMIN_ROLES },
       { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
     ],
   },
@@ -60,8 +61,8 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Quản trị hệ thống',
     roles: ['SYSTEM_ADMIN'],
     items: [
-      { label: 'Quản lý người dùng', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
-      { label: 'Kiểm duyệt nội dung', icon: 'shield-check', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Quản lý người dùng', href: '/admin', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Kiểm duyệt nội dung', href: '/admin#kiem-duyet', icon: 'shield-check', roles: ['SYSTEM_ADMIN'] },
       { label: 'Nhật ký kiểm toán', icon: 'history', roles: ['SYSTEM_ADMIN'] },
       { label: 'Sao lưu và khôi phục', icon: 'database', roles: ['SYSTEM_ADMIN'] },
       { label: 'Cấu hình hệ thống', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },

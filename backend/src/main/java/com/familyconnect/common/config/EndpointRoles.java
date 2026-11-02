@@ -83,6 +83,18 @@ public class EndpointRoles {
             Map.entry("DELETE /media/{}", SIGNED_IN),
             Map.entry("GET /posts/{}/media", SIGNED_IN),
             Map.entry("POST /posts/{}/media", SIGNED_IN),
+            Map.entry("POST /content-reports", List.of("MEMBER", "BRANCH_ADMIN")),
+            // Quản trị (auth.yaml, UC-AUTH-08, 09): chỉ SYSTEM_ADMIN, kiểm ở AdminService.
+            Map.entry("GET /admin/users", SYSTEM_ADMIN),
+            Map.entry("GET /admin/users/{}", SYSTEM_ADMIN),
+            Map.entry("PATCH /admin/users/{}", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/users/{}/roles", SYSTEM_ADMIN),
+            Map.entry("GET /admin/content-reports", SYSTEM_ADMIN),
+            Map.entry("PATCH /admin/content-reports/{}", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/users/{}/membership", SYSTEM_ADMIN),
+            // Trưởng họ bổ nhiệm trưởng chi (UC-AUTH-14): chỉ BRANCH_ADMIN không gán chi, kiểm ở FamilyAccountService.
+            Map.entry("GET /families/{}/accounts", ADMINS),
+            Map.entry("PUT /families/{}/accounts/{}", ADMINS),
             // Di sản (heritage-directory-dashboard.yaml)
             Map.entry("GET /heritage/documents", SIGNED_IN),
             Map.entry("POST /heritage/documents", ADMINS),

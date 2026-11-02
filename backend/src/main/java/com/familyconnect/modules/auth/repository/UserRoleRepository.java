@@ -13,6 +13,8 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
     @Query("select ur.role.code from UserRole ur where ur.userId = :userId and ur.deletedAt is null order by ur.role.code")
     List<String> findRoleCodes(UUID userId);
 
+    List<UserRole> findByUserIdAndDeletedAtIsNull(UUID userId);
+
     @Query("select count(ur) > 0 from UserRole ur where ur.role.code = :code and ur.deletedAt is null")
     boolean existsByRoleCode(String code);
 }
