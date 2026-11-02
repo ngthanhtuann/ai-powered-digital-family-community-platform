@@ -163,7 +163,7 @@ export interface paths {
         put?: never;
         /**
          * Gửi yêu cầu tham gia gia đình (UC-AUTH-06)
-         * @description Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` và người đã thuộc gia đình nhận `403 PERM_001`. Gia đình hoặc chi không tồn tại trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).
+         * @description Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` nhận `403 PERM_001` (BR-AUTH-08). `code` là mã gia đình (yêu cầu vào cả dòng họ) hoặc mã chi (yêu cầu vào chi đó, gia đình lấy theo chi; BR-AUTH-09). Mã không khớp gia đình hay chi nào trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).
          */
         post: operations["createJoinRequest"];
         delete?: never;
@@ -191,7 +191,7 @@ export interface paths {
         head?: never;
         /**
          * Duyệt hoặc từ chối yêu cầu tham gia (UC-AUTH-07)
-         * @description Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.
+         * @description Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`) và `branchId` để đặt chi cho thành viên (chi phải thuộc gia đình, không thì `404`; trưởng chi chỉ đặt chi trong phạm vi mình, không thì `403 PERM_001`; bỏ trống thì giữ chi của yêu cầu). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.
          */
         patch: operations["reviewJoinRequest"];
         trace?: never;
@@ -748,14 +748,9 @@ export interface components {
         JoinRequestCreateRequest: {
             /**
              * Format: uuid
-             * @description Mã gia đình muốn tham gia. Trưởng chi cung cấp cho người thân (xem auth.md mục 8, câu 2).
+             * @description Mã gia đình hoặc mã chi do trưởng họ, trưởng chi hoặc người thân gửi (BR-AUTH-09, auth.md mục 8 câu 2).
              */
-            familyId: string;
-            /**
-             * Format: uuid
-             * @description Chi muốn tham gia; bỏ trống nếu không biết.
-             */
-            branchId?: string | null;
+            code: string;
             /** @description Lời nhắn giới thiệu bản thân cho trưởng chi. */
             message?: string | null;
         };
@@ -769,6 +764,11 @@ export interface components {
              * @description Chỉ dùng khi `APPROVED`: gắn tài khoản với hồ sơ thành viên (`person`) có sẵn của gia đình.
              */
             personId?: string | null;
+            /**
+             * Format: uuid
+             * @description Chỉ dùng khi `APPROVED`: chi của thành viên; bỏ trống thì giữ chi của yêu cầu.
+             */
+            branchId?: string | null;
         };
         ContentReportReviewRequest: {
             /**
@@ -1552,8 +1552,7 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "familyId": "3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01",
-                 *       "branchId": "7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44",
+                 *       "code": "7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44",
                  *       "message": "Con gái ông Nguyễn Văn Bình, chi trưởng."
                  *     }
                  */
