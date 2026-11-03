@@ -627,6 +627,7 @@ components:
           - STORY
           - DOCUMENT
           - EVENT
+          - PHOTO
         sourceId:
           type: string
           format: uuid
@@ -648,6 +649,7 @@ components:
           - STORY
           - DOCUMENT
           - EVENT
+          - PHOTO
         sourceId:
           type: string
           format: uuid

@@ -1102,6 +1102,8 @@ export interface operations {
             query?: {
                 /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: components["parameters"]["FamilyId"];
+                /** @description Trả riêng ảnh này nếu thuộc thư viện của gia đình; dùng để mở nguồn từ tìm kiếm AI. */
+                mediaId?: string;
                 /** @description Số trang, bắt đầu từ 0. */
                 page?: components["parameters"]["Page"];
                 /** @description Số phần tử mỗi trang. */

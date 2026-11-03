@@ -176,6 +176,7 @@ class HeritageServiceTest {
         assertThat(saved.getValue().getCreatedBy()).isEqualTo(USER_ID);
         verify(aiGateway).upsertSource(SourceType.DOCUMENT, DOCUMENT_ID, FAMILY_ID, null,
                 "Document\ngia-pha\nDescription");
+        verify(aiGateway).removeSource(SourceType.PHOTO, MEDIA_ID);
     }
 
     @Test
@@ -219,6 +220,23 @@ class HeritageServiceTest {
         verify(aiGateway).removeSource(SourceType.DOCUMENT, DOCUMENT_ID);
         verify(documentRepository).findByIdAndDeletedAtIsNull(DOCUMENT_ID);
         verifyNoMoreInteractions(documentRepository);
+    }
+
+    @Test
+    void deletingLastDocumentReferenceRestoresPhotoCaptionToAiIndex() {
+        HeritageDocument document = mock(HeritageDocument.class);
+        when(document.getId()).thenReturn(DOCUMENT_ID);
+        when(document.getFamilyId()).thenReturn(FAMILY_ID);
+        when(document.getMediaId()).thenReturn(MEDIA_ID);
+        when(documentRepository.findByIdAndDeletedAtIsNull(DOCUMENT_ID)).thenReturn(Optional.of(document));
+        when(documentRepository.existsByMediaIdAndDeletedAtIsNull(MEDIA_ID)).thenReturn(false);
+        when(membershipQuery.getMembership(USER_ID)).thenReturn(membership(EffectiveRole.BRANCH_ADMIN, USER_ID));
+        communityQuery.add(MEDIA_ID, FAMILY_ID, "HERITAGE");
+
+        service.deleteDocument(DOCUMENT_ID);
+
+        verify(aiGateway).upsertSource(SourceType.PHOTO, MEDIA_ID, FAMILY_ID, null, "");
+        verify(aiGateway).removeSource(SourceType.DOCUMENT, DOCUMENT_ID);
     }
 
     @Test

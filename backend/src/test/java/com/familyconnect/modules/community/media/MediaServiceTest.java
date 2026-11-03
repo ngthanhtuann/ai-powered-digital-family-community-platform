@@ -2,6 +2,7 @@ package com.familyconnect.modules.community.media;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.repository.CommunityStore;
 import com.familyconnect.modules.community.repository.CommunityStore.Post;
@@ -31,13 +32,14 @@ class MediaServiceTest {
     @Mock MediaStorage storage;
     @Mock CommunityStore posts;
     @Mock CommunityPlatformPort platform;
+    @Mock AiGateway aiGateway;
     @Mock MediaOwnerPolicy heritagePolicy;
 
     private final UUID family = UUID.randomUUID();
     private final UUID postId = UUID.randomUUID();
     private final UUID user = UUID.randomUUID();
 
-    private MediaService service() { return new MediaService(repository, storage, posts, platform, List.of()); }
+    private MediaService service() { return new MediaService(repository, storage, posts, platform, aiGateway, List.of()); }
     private Actor member() { return new Actor(user, family, null, Role.MEMBER, true); }
     private Post post(UUID author) {
         return new Post(postId, family, null, "Nội dung", PostType.POST, author,
@@ -63,6 +65,41 @@ class MediaServiceTest {
         assertEquals(mediaId, result.id());
         assertEquals("/api/v1/media/" + mediaId + "/content", result.contentUrl());
         assertFalse(result.toString().contains("internal-only.png"));
+    }
+
+    @Test void heritageImageUploadIndexesItsCaption() throws IOException {
+        when(platform.requireAuthenticatedActor()).thenReturn(member());
+        when(heritagePolicy.ownerType()).thenReturn("HERITAGE");
+        when(heritagePolicy.requireUploadFamily(family)).thenReturn(family);
+        var input = new MockMultipartFile("file", "family.png", "image/png", new byte[] {1});
+        var stored = new MediaStorage.StoredFile("internal.png", "family.png", "image/png", 1);
+        when(storage.store(input, true)).thenReturn(stored);
+        UUID mediaId = UUID.randomUUID();
+        var saved = new MediaRepository.Media(mediaId, "HERITAGE", family, family, 1,
+                "family.png", stored.storageKey(), "Family gathering", "image/png", user,
+                OffsetDateTime.now(), OffsetDateTime.now());
+        when(repository.insert(any(UUID.class), eq("HERITAGE"), eq(family), eq(family), eq(1L),
+                eq("family.png"), eq(stored.storageKey()), eq("Family gathering"), eq("image/png"), eq(user)))
+                .thenReturn(saved);
+
+        var service = new MediaService(repository, storage, posts, platform, aiGateway, List.of(heritagePolicy));
+        service.upload("HERITAGE", family, "Family gathering", input);
+
+        verify(aiGateway).upsertSource(AiGateway.SourceType.PHOTO, mediaId, family, null, "Family gathering");
+    }
+
+    @Test void heritagePhotoLookupPassesFamilyExclusionsAndMediaFilter() {
+        UUID mediaId = UUID.randomUUID();
+        List<UUID> excluded = List.of(UUID.randomUUID());
+        when(repository.listHeritagePhotos(family, mediaId, excluded, 0, 20,
+                "created_at DESC, id DESC")).thenReturn(new MediaRepository.Page(List.of(), 0));
+
+        var result = service().getHeritagePhotos(family, mediaId, excluded, 0, 20, false);
+
+        assertTrue(result.items().isEmpty());
+        assertEquals(0, result.total());
+        verify(repository).listHeritagePhotos(family, mediaId, excluded, 0, 20,
+                "created_at DESC, id DESC");
     }
 
     @Test void failedMetadataInsertDeletesStoredFile(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
@@ -118,7 +155,7 @@ class MediaServiceTest {
         when(repository.find(id)).thenReturn(Optional.of(metadata));
         doThrow(new ApiException(ErrorCode.PERM_001)).when(heritagePolicy).requireRead(family, family);
 
-        var service = new MediaService(repository, storage, posts, platform, List.of(heritagePolicy));
+        var service = new MediaService(repository, storage, posts, platform, aiGateway, List.of(heritagePolicy));
         ApiException error = assertThrows(ApiException.class, () -> service.content(id));
         assertEquals(ErrorCode.PERM_001, error.code());
         verifyNoInteractions(storage);

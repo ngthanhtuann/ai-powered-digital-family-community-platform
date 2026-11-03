@@ -160,6 +160,7 @@ public class EmbeddingChunkRepository {
             case "POST", "EVENT" -> "/community?item=" + id;
             case "STORY" -> "/heritage/stories/" + id;
             case "DOCUMENT" -> "/heritage/documents/" + id;
+            case "PHOTO" -> "/heritage/photos?mediaId=" + id;
             default -> "/";
         };
     }
