@@ -1,6 +1,9 @@
 package com.familyconnect.modules.community.api;
 
 import java.util.Optional;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /** Dữ liệu của module Community cho module khác đọc (heritage-directory-dashboard.md: CommunityQuery.getHeritageMedia). */
@@ -16,5 +19,11 @@ public interface CommunityQuery {
     Optional<PersonMedia> getPersonMedia(UUID mediaId);
 
     record PersonMedia(UUID id, UUID personId) {
+    }
+
+    List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                               OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
+
+    record WeeklyPostCount(LocalDate weekStart, long postCount) {
     }
 }

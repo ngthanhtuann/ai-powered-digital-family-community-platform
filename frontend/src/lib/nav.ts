@@ -53,7 +53,12 @@ export const NAV_SECTIONS: NavSection[] = [
     roles: ADMIN_ROLES,
     items: [
       { label: 'Duyệt yêu cầu tham gia', icon: 'user-check', roles: ADMIN_ROLES },
-      { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
+      {
+        label: 'Thống kê và báo cáo',
+        href: '/dashboard',
+        icon: 'chart-column',
+        roles: ADMIN_ROLES,
+      },
     ],
   },
   {

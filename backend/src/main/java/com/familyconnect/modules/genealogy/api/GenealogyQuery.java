@@ -20,6 +20,33 @@ public interface GenealogyQuery {
 
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);
 
+    boolean familyExists(UUID familyId);
+
+    DashboardDemographics getDashboardDemographics(UUID familyId, UUID branchId, LocalDate asOfDate);
+
+    record DashboardDemographics(long totalMembers, List<GenerationCount> generationStats,
+                                 List<AgeCount> ageStats,
+                                 long maleCount, long femaleCount, long otherCount,
+                                 List<LocationCount> locationStats, List<UUID> professionPersonIds,
+                                 List<UUID> branchIds) {
+        public DashboardDemographics {
+            generationStats = List.copyOf(generationStats);
+            ageStats = List.copyOf(ageStats);
+            locationStats = List.copyOf(locationStats);
+            professionPersonIds = List.copyOf(professionPersonIds);
+            branchIds = List.copyOf(branchIds);
+        }
+    }
+
+    record GenerationCount(int generation, long count) {
+    }
+
+    record AgeCount(String ageRange, long count) {
+    }
+
+    record LocationCount(String location, long count) {
+    }
+
     /** Thành viên còn sống dưới 16 tuổi tại {@code asOfDate} (privacy.md mục 4); AI loại khỏi kết quả của MEMBER. */
     List<UUID> findMinorPersonIds(UUID familyId, LocalDate asOfDate);
 

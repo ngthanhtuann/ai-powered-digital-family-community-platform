@@ -2,7 +2,9 @@ package com.familyconnect.modules.heritage;
 
 import com.familyconnect.modules.community.api.CommunityQuery;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,5 +26,11 @@ public final class StubCommunityQuery implements CommunityQuery {
     @Override
     public Optional<PersonMedia> getPersonMedia(UUID mediaId) {
         return Optional.empty();
+    }
+
+    @Override
+    public List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                     OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return List.of();
     }
 }

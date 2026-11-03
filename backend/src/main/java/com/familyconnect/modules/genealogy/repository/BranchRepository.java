@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,4 +35,17 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
             """, nativeQuery = true)
     boolean isWithin(@Param("familyId") UUID familyId, @Param("branchId") UUID branchId,
                      @Param("ancestorBranchId") UUID ancestorBranchId);
+
+    @Query(value = """
+            WITH RECURSIVE descendants AS (
+                SELECT id, 0 AS depth FROM branch
+                WHERE id=:branchId AND family_id=:familyId AND deleted_at IS NULL
+                UNION ALL
+                SELECT child.id, parent.depth + 1 FROM branch child
+                JOIN descendants parent ON child.parent_branch_id=parent.id
+                WHERE child.family_id=:familyId AND child.deleted_at IS NULL AND parent.depth < 100
+            )
+            SELECT id FROM descendants
+            """, nativeQuery = true)
+    List<UUID> findBranchAndDescendants(@Param("familyId") UUID familyId, @Param("branchId") UUID branchId);
 }

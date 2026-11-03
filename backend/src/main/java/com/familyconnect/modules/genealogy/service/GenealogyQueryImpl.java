@@ -1,10 +1,13 @@
 package com.familyconnect.modules.genealogy.service;
 
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemographics;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
+import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
 import com.familyconnect.modules.genealogy.entity.Person;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
+import com.familyconnect.modules.genealogy.repository.FamilyRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +24,16 @@ public class GenealogyQueryImpl implements GenealogyQuery {
 
     private final PersonRepository personRepository;
     private final BranchRepository branchRepository;
+    private final FamilyRepository familyRepository;
+    private final DashboardDemographicsRepository dashboardRepository;
 
-    public GenealogyQueryImpl(PersonRepository personRepository, BranchRepository branchRepository) {
+    public GenealogyQueryImpl(PersonRepository personRepository, BranchRepository branchRepository,
+                              FamilyRepository familyRepository,
+                              DashboardDemographicsRepository dashboardRepository) {
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
+        this.familyRepository = familyRepository;
+        this.dashboardRepository = dashboardRepository;
     }
 
     @Override
@@ -57,6 +66,16 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     @Override
     public boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId) {
         return branchRepository.isWithin(familyId, branchId, ancestorBranchId);
+    }
+
+    @Override
+    public boolean familyExists(UUID familyId) {
+        return familyRepository.findByIdAndDeletedAtIsNull(familyId).isPresent();
+    }
+
+    @Override
+    public DashboardDemographics getDashboardDemographics(UUID familyId, UUID branchId, LocalDate asOfDate) {
+        return dashboardRepository.get(familyId, branchId, asOfDate);
     }
 
     @Override
