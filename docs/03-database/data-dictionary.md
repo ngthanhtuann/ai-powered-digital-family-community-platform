@@ -540,7 +540,7 @@ Người sở hữu: **TV5 Lê Nhựt**
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL, INDEX | Phạm vi gia đình → `family` (tham chiếu logic) |
 | branch_id | UUID | NULL | Phạm vi chi của nguồn (`ai.md` BR-AI-13); NULL là toàn gia đình → `branch.id` (tham chiếu logic, không FK) |
-| source_type | VARCHAR(40) | NOT NULL, CHECK | `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT` |
+| source_type | VARCHAR(40) | NOT NULL, CHECK | `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`, `PHOTO` (ảnh di sản, `source_id` = `media.id`) |
 | source_id | UUID | NOT NULL, INDEX | ID nguồn của module sở hữu, không FK → `person` hoặc `post` hoặc `family_story` hoặc `heritage_document` (tham chiếu logic); với `EVENT` → `event.id` |
 | chunk_no | INTEGER | NOT NULL, CHECK (chunk_no >= 0) | Thứ tự chunk trong nguồn |
 | content | TEXT | NOT NULL | Nội dung đã lọc dữ liệu nhạy cảm |
