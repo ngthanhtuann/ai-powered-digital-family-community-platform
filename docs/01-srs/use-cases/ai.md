@@ -184,7 +184,7 @@ Index: `(family_id, user_id, updated_at DESC)` và `(user_id, deleted_at)`.
 | created_by | UUID | NULL | Người tạo |
 | updated_by | UUID | NULL | Người cập nhật |
 
-Index: `(session_id, created_at)`; FK nội bộ `session_id` có `ON DELETE RESTRICT` hoặc xóa mềm theo chính sách. Không lưu API key hoặc dữ liệu cấm vào metadata/log.
+Index: `(session_id, created_at)`; FK nội bộ `session_id` có `ON DELETE RESTRICT` hoặc xóa mềm theo chính sách. Không lưu API key hoặc dữ liệu cấm vào metadata/log. Thời hạn lưu: tin nhắn và phiên không hoạt động quá `ai.chat.retention_days` ngày (mặc định 30) bị xóa mềm bởi tác vụ chạy mỗi giờ; phiên đã xóa mềm không dùng tiếp được (403 `PERM_001`).
 
 ### 5.4. `ai_summary_cache`
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |

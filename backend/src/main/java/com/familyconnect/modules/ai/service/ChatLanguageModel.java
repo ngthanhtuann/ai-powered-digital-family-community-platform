@@ -24,6 +24,7 @@ public class ChatLanguageModel {
         this.client = RestClient.builder().requestFactory(factory)
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta").build();
     }
+    public String modelName() { return model; }
     public boolean isConfigured() { return apiKey != null && !apiKey.isBlank(); }
     public String answer(String prompt) {
         JsonNode response = client.post().uri("/models/{model}:generateContent", model)

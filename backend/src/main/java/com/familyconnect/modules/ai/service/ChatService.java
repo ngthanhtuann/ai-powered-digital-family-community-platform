@@ -15,6 +15,7 @@ import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Duration;
@@ -72,11 +73,12 @@ public class ChatService {
             membership.requireFamilyAccess(user.id(), familyId);
         }
         if (!enabled) throw new ApiException(ErrorCode.AI_002);
-        limiter.check(user.id());
-        Instant now = clock.instant(), expires = now.plus(Duration.ofDays(retentionDays));
         UUID sessionId = request.sessionId();
-        if (sessionId == null) sessionId = chats.createSession(user.id(), familyId, expires);
-        else if (!chats.ownsActiveSession(sessionId, user.id(), familyId, now)) throw new ApiException(ErrorCode.PERM_001);
+        // Kiểm phiên trước hạn mức: gửi phiên của người khác không làm mất lượt hỏi (ai.md UC-AI-02 1c).
+        if (sessionId != null && !chats.ownsActiveSession(sessionId, user.id(), familyId)) throw new ApiException(ErrorCode.PERM_001);
+        limiter.check(user.id());
+        Instant now = clock.instant();
+        if (sessionId == null) sessionId = chats.createSession(user.id(), familyId);
 
         UUID finalSessionId = sessionId;
         audit.log("AI_QUERY", "AI_CHAT_SESSION", sessionId, familyId, Map.of());
@@ -95,6 +97,7 @@ public class ChatService {
             List<ChatChunk> relevant = retrieved.stream().filter(c -> c.score() >= minimumScore).toList();
             List<SourceReference> sources = relevant.stream().map(c -> new SourceReference(c.sourceType(), c.sourceId())).distinct().toList();
             String answer;
+            String modelName = null;
             if (relevant.isEmpty()) answer = NOT_FOUND;
             else {
                 String cacheKey = user.id()+":"+familyId+":"+branches+":"+question+":"+relevant.hashCode();
@@ -104,15 +107,22 @@ public class ChatService {
                 } else {
                     if (!model.isConfigured()) throw new ApiException(ErrorCode.AI_001);
                     answer = model.answer(prompt(question, history, relevant));
+                    modelName = model.modelName();
                     cache.put(cacheKey, new CachedAnswer(answer, sources, now.plus(Duration.ofMinutes(2))));
                     cache.entrySet().removeIf(e -> !e.getValue().expiresAt().isAfter(now));
                 }
             }
-            UUID messageId = chats.saveExchange(sessionId, question, answer, sources, expires);
             long latency = Math.max(0, (System.nanoTime() - started) / 1_000_000);
+            UUID messageId = chats.saveExchange(sessionId, user.id(), question, answer, sources, modelName, latency);
             return new ChatResponse(finalSessionId, messageId, answer, sources, latency);
         } catch (ApiException ex) { throw ex; }
         catch (RuntimeException ex) { throw new ApiException(ErrorCode.AI_001); }
+    }
+
+    /** Hết {@code ai.chat.retention_days} ngày thì xóa mềm lịch sử (ai.md mục 5.3). */
+    @Scheduled(fixedDelay = 3_600_000)
+    public void purgeExpiredHistory() {
+        chats.softDeleteOlderThan(clock.instant().minus(Duration.ofDays(retentionDays)));
     }
 
     private String prompt(String question, List<ChatRepository.HistoryMessage> history, List<ChatChunk> chunks) {

@@ -50,9 +50,9 @@ class AiChatGroundingTest {
         when(chunks.searchChat(eq(familyId), eq(false), anyList(), any(), anyList(), anyInt()))
                 .thenReturn(List.of(new EmbeddingChunkRepository.ChatChunk("PERSON", UUID.randomUUID(),
                         "Hồ sơ giả: Nguyễn An sinh năm 1950.", 0.9)));
-        when(chats.createSession(eq(userId), eq(familyId), any())).thenAnswer(call -> UUID.randomUUID());
+        when(chats.createSession(eq(userId), eq(familyId))).thenAnswer(call -> UUID.randomUUID());
         when(chats.recentMessages(any(), anyInt())).thenReturn(List.of());
-        when(chats.saveExchange(any(), anyString(), anyString(), anyList(), any())).thenReturn(UUID.randomUUID());
+        when(chats.saveExchange(any(), any(), anyString(), anyString(), anyList(), any(), anyLong())).thenReturn(UUID.randomUUID());
         service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, audit,
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), 5, .55, 30, true);
     }
@@ -81,6 +81,17 @@ class AiChatGroundingTest {
         assertEquals(ErrorCode.PERM_002, assertThrows(ApiException.class, () -> service.chat(
                 new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Câu hỏi", null, null))).code());
         verifyNoInteractions(model);
+    }
+
+    @Test void foreignSessionIsRejectedBeforeRateLimit() {
+        AiChatRateLimiter limiter = mock(AiChatRateLimiter.class);
+        service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, mock(AuditLogger.class),
+                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), 5, .55, 30, true);
+        UUID foreign = UUID.randomUUID();
+        when(chats.ownsActiveSession(foreign, userId, familyId)).thenReturn(false);
+        assertEquals(ErrorCode.PERM_001, assertThrows(ApiException.class, () -> service.chat(
+                new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Câu hỏi", foreign, null))).code());
+        verifyNoInteractions(limiter);
     }
 
     @Test void rateLimitReturnsRate001() {
