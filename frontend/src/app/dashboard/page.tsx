@@ -20,10 +20,20 @@ import {
 import { Card } from '@/components/ui/Card';
 import { getMyMembership, getMyProfile } from '@/services/auth';
 import { dashboardApi, type DashboardBranch, type DashboardStatistics } from '@/services/dashboard';
+import tailwindConfig from '../../../tailwind.config';
 
-const chartColors = ['#7a4c24', '#c18b3c', '#56826a', '#6686a6', '#a76b68', '#8c7aa8'];
+// Recharts cần mã màu dạng chuỗi nên đọc thẳng token trong tailwind.config (design-system.md mục 6).
+const tokens = tailwindConfig.theme?.extend?.colors as Record<string, string>;
+const chartColors = [
+  tokens.primary,
+  tokens.secondary,
+  tokens.success,
+  tokens.info,
+  tokens.warning,
+  tokens['text-secondary'],
+];
 const selectClass =
-  'h-11 rounded-control border border-border-strong bg-surface px-3 text-body text-text-primary focus-visible:outline-2 focus-visible:outline-info';
+  'h-[42px] rounded-control border border-border-strong bg-surface px-3 text-body text-text-primary focus-visible:outline-2 focus-visible:outline-info';
 const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
   timeZone: 'Asia/Ho_Chi_Minh',
   day: '2-digit',
