@@ -120,8 +120,9 @@ public class EndpointRoles {
             Map.entry("PUT /directory/members/{}/education-profile", SIGNED_IN),
             // Dashboard (heritage-directory-dashboard.yaml): chỉ quản trị viên gia đình/chi.
             Map.entry("GET /dashboard/statistics", ADMINS),
-            // AI (ai.yaml). Phạm vi gia đình, chi và trẻ dưới 16 tuổi kiểm ở SemanticSearchService.
-            Map.entry("GET /ai/search", SIGNED_IN));
+            // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
+            Map.entry("GET /ai/search", SIGNED_IN),
+            Map.entry("POST /ai/chat", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {

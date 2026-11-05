@@ -71,6 +71,33 @@ public class EmbeddingChunkRepository {
                 """, UUID.class, familyId);
     }
 
+    /** Top-k ngữ cảnh cho chat, lọc theo gia đình/chi và hồ sơ trẻ em ngay trong SQL. */
+    public List<ChatChunk> searchChat(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
+                                      float[] embedding, List<UUID> excludedPersonIds, int limit) {
+        List<Object> args = new ArrayList<>();
+        args.add(Arrays.toString(embedding));
+        args.add(familyId);
+        String branchFilter = branchFilter(allBranches, visibleBranches, args);
+        args.add(jsonIds(excludedPersonIds));
+        args.add(Arrays.toString(embedding));
+        args.add(limit);
+        return jdbcTemplate.query("""
+                SELECT c.source_type, c.source_id, c.content, 1 - (c.embedding <=> CAST(? AS vector)) AS score
+                FROM ai_embedding_chunk c
+                WHERE c.family_id = ? AND c.deleted_at IS NULL
+                """ + branchFilter + """
+                  AND NOT (c.source_type = 'PERSON' AND EXISTS (
+                      SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
+                      WHERE hidden.id::uuid = c.source_id
+                  ))
+                ORDER BY c.embedding <=> CAST(? AS vector), c.source_type, c.source_id
+                LIMIT ?
+                """, (rs, rowNum) -> new ChatChunk(rs.getString("source_type"),
+                rs.getObject("source_id", UUID.class), rs.getString("content"), rs.getDouble("score")), args.toArray());
+    }
+
+    public record ChatChunk(String sourceType, UUID sourceId, String content, double score) { }
+
     /**
      * Tìm trong family_id và các chi được xem trước khi xếp hạng (BR-AI-02, BR-AI-13).
      * {@code allBranches} = true với SYSTEM_ADMIN và trưởng chi toàn gia đình; còn lại chỉ chunk toàn gia đình
