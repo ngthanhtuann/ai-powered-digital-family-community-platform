@@ -279,9 +279,10 @@ export interface paths {
          * @description Vai trò: BRANCH_ADMIN (trong phạm vi chi của mình, hoặc cả gia đình nếu không có chi), SYSTEM_ADMIN. MEMBER không xem dashboard (403 PERM_001, theo `srs.md`).
          *     `branchId` tùy chọn để trưởng chi xem theo chi; chi không thuộc phạm vi hoặc khác gia đình trả 403 PERM_001.
          *     Nguồn dữ liệu qua interface Java: số thành viên, giới tính, thế hệ (genealogy); bài đăng theo tuần (community); sự kiện sắp tới (events).
-         *     `professionStats` và `locationStats` loại hồ sơ của trẻ dưới 16 tuổi.
+         *     `professionStats` và `locationStats` loại hồ sơ của trẻ dưới 16 tuổi và người đã mất.
          *     `weeklyPosts` gồm 8 tuần gần nhất, tuần không có bài trả `postCount = 0`, tuần tính theo múi giờ Asia/Ho_Chi_Minh.
          *     `generationStats` và `genderStats` tính cả người đã mất.
+         *     Kết quả được cache 30 giây theo cặp familyId và branchId hiệu lực; BRANCH_ADMIN không gán chi xem toàn gia đình.
          */
         get: operations["getDashboardStats"];
         put?: never;
@@ -588,17 +589,23 @@ export interface components {
                 generation: number;
                 count: number;
             }[];
+            /** @description Thống kê tổng hợp theo tuổi; người đã mất dùng tuổi tại deathDate nếu có. */
+            ageStats: {
+                /** @enum {string} */
+                ageRange: "Dưới 16" | "16-29" | "30-44" | "45-59" | "60+";
+                count: number;
+            }[];
             genderStats: {
                 MALE: number;
                 FEMALE: number;
                 OTHER: number;
             };
-            /** @description Loại hồ sơ của trẻ dưới 16 tuổi. */
+            /** @description Loại hồ sơ của trẻ dưới 16 tuổi và người đã mất. */
             professionStats: {
                 jobTitle: string;
                 count: number;
             }[];
-            /** @description Theo person.current_province; loại trẻ dưới 16 tuổi. */
+            /** @description Theo person.current_province; loại trẻ dưới 16 tuổi và người đã mất. */
             locationStats: {
                 location: string;
                 count: number;
@@ -1102,6 +1109,8 @@ export interface operations {
             query?: {
                 /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: components["parameters"]["FamilyId"];
+                /** @description Trả riêng ảnh này nếu thuộc thư viện của gia đình; dùng để mở nguồn từ tìm kiếm AI. */
+                mediaId?: string;
                 /** @description Số trang, bắt đầu từ 0. */
                 page?: components["parameters"]["Page"];
                 /** @description Số phần tử mỗi trang. */

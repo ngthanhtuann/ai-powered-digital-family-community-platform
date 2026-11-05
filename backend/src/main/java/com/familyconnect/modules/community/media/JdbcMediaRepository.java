@@ -66,6 +66,30 @@ public class JdbcMediaRepository implements MediaRepository {
     }
 
     @Override
+    public Page listHeritagePhotos(UUID familyId, UUID mediaId, java.util.List<UUID> excludedMediaIds,
+                                   int page, int size, String order) {
+        var args = p("family", familyId, "limit", size, "offset", (long) page * size);
+        StringBuilder where = new StringBuilder("""
+                 FROM media
+                 WHERE owner_type='HERITAGE' AND owner_id=:family AND family_id=:family
+                   AND file_type IN ('image/jpeg', 'image/png', 'image/webp')
+                   AND deleted_at IS NULL
+                """);
+        if (mediaId != null) {
+            where.append(" AND id=:mediaId");
+            args.addValue("mediaId", mediaId);
+        }
+        if (!excludedMediaIds.isEmpty()) {
+            where.append(" AND id NOT IN (:excludedMediaIds)");
+            args.addValue("excludedMediaIds", excludedMediaIds);
+        }
+        Long total = jdbc.queryForObject("SELECT COUNT(*)" + where, args, Long.class);
+        var items = jdbc.query("SELECT " + COLUMNS + where + " ORDER BY " + order
+                + " LIMIT :limit OFFSET :offset", args, MAPPER);
+        return new Page(items, total == null ? 0 : total);
+    }
+
+    @Override
     public java.util.Map<UUID, Long> countByOwners(String ownerType, java.util.List<UUID> ownerIds) {
         var counts = new java.util.HashMap<UUID, Long>();
         if (ownerIds.isEmpty()) return counts;

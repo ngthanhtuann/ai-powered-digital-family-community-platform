@@ -25,6 +25,9 @@ public enum ErrorCode {
     AI_002(HttpStatus.CONFLICT, "Tính năng AI hiện đang tắt"),
     SERVER_001(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống, vui lòng thử lại sau"),
     EVT_001(HttpStatus.CONFLICT, "Sự kiện đã bắt đầu; không thể RSVP"),
+    // Mã riêng của module quản trị (auth.md mục 6.2).
+    ADM_001(HttpStatus.CONFLICT, "Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng"),
+    ADM_002(HttpStatus.CONFLICT, "Báo cáo đã được xử lý"),
     // Mã riêng của module Gia phả (genealogy.md mục 7.2, HTTP 409).
     GEN_001(HttpStatus.CONFLICT, "Gia đình còn thành viên, không xóa được"),
     GEN_002(HttpStatus.CONFLICT, "Chi còn thành viên hoặc chi con, không xóa được"),

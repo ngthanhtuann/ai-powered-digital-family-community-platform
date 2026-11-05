@@ -44,6 +44,20 @@ public final class CommunityDto {
     }
     public record CommentInput(@NotBlank @Size(max=1000) String content) {}
     public record ReactionInput(@NotNull ReactionType type) {}
+    /** Schema ContentReportRequest (BR-COM-12). */
+    public record ReportInput(
+        @NotNull com.familyconnect.modules.auth.api.ContentModerationPort.ContentType targetType,
+        @NotNull UUID targetId, @NotBlank @Size(max=255) String reason) {}
+    /** Schema ContentReport của community-events.yaml (không có trường riêng của hàng đợi quản trị). */
+    public record ReportView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
+                             com.familyconnect.modules.auth.api.ContentModerationPort.ContentType targetType,
+                             UUID targetId, UUID familyId, UUID reporterId, String reason, String contentSnippet,
+                             com.familyconnect.modules.auth.api.ContentModerationPort.ReportStatus status) {
+        public static ReportView of(com.familyconnect.modules.auth.api.ContentModerationPort.ContentReportView v) {
+            return new ReportView(v.id(), v.createdAt(), v.updatedAt(), v.targetType(), v.targetId(), v.familyId(),
+                v.reporterId(), v.reason(), v.contentSnippet(), v.status());
+        }
+    }
 
     public record PostView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                            UUID familyId, UUID branchId, String content, PostType type,

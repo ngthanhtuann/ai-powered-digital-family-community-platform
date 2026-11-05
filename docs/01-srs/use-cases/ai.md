@@ -130,7 +130,7 @@ Quy ước chung: schema `public`; khóa chính UUID; thời gian `TIMESTAMPTZ`;
 | id | UUID | PK, NOT NULL | ID chunk |
 | family_id | UUID | NOT NULL, INDEX | Phạm vi gia đình |
 | branch_id | UUID | NULL, INDEX | Phạm vi chi của nguồn (BR-AI-13); NULL là toàn gia đình; không FK liên module |
-| source_type | VARCHAR(40) | NOT NULL, CHECK source_type IN ('PERSON','POST','STORY','DOCUMENT','EVENT') | Loại nguồn; `EVENT` cho sự kiện (BR-EVT-06) |
+| source_type | VARCHAR(40) | NOT NULL, CHECK source_type IN ('PERSON','POST','STORY','DOCUMENT','EVENT','PHOTO') | Loại nguồn; `EVENT` cho sự kiện (BR-EVT-06); `PHOTO` cho ảnh di sản theo chú thích (UC-HER-03, `source_id` = `media.id`) |
 | source_id | UUID | NOT NULL, INDEX | ID nguồn từ module sở hữu; không FK liên module |
 | chunk_no | INTEGER | NOT NULL, CHECK (chunk_no >= 0) | Thứ tự chunk trong nguồn |
 | content | TEXT | NOT NULL | Nội dung đã lọc dữ liệu nhạy cảm |
@@ -228,7 +228,7 @@ Module `genealogy`, `community`, `events`, `heritage` gọi để đồng bộ c
 | `void upsertSource(SourceType type, UUID sourceId, UUID familyId, UUID branchId, String content)` | Tạo hoặc sửa nguồn | `content` do module nguồn dựng, đã lọc theo BR-AI-07 và BR-AI-14; `branchId` NULL là toàn gia đình |
 | `void removeSource(SourceType type, UUID sourceId)` | Xóa mềm, ẩn khi kiểm duyệt, hoặc nguồn đổi sang phạm vi không còn hiển thị | Module `ai` xóa mềm mọi chunk của nguồn |
 
-`SourceType`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`.
+`SourceType`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`, `PHOTO`.
 
 Module `ai` gọi ngược các interface sẵn có: truy vấn quan hệ của module genealogy (UC-GEN-08) cho UC-AI-03; interface đọc nội dung và kiểm tra quyền xem của module sở hữu cho UC-AI-04; `MembershipQuery` của module auth để lấy `family_id`, vai trò và chi của người gọi.
 

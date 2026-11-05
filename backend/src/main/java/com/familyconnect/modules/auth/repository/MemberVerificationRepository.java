@@ -2,7 +2,12 @@ package com.familyconnect.modules.auth.repository;
 
 import com.familyconnect.modules.auth.entity.MemberVerification;
 import com.familyconnect.modules.auth.entity.VerificationStatus;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Collection;
@@ -29,4 +34,39 @@ public interface MemberVerificationRepository extends JpaRepository<MemberVerifi
               and mv.deletedAt is null
             """)
     List<UUID> findApprovedUserIds(UUID familyId);
+
+    /** Khóa dòng khi duyệt, từ chối, hủy: hai người xử lý cùng lúc thì người sau thấy trạng thái mới (AUTH_006). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<MemberVerification> findByIdAndDeletedAtIsNull(UUID id);
+
+    /** Yêu cầu tham gia theo trạng thái (UC-AUTH-07); anyFamily = true khi SYSTEM_ADMIN không lọc gia đình. */
+    @Query("""
+            select mv from MemberVerification mv
+            where mv.deletedAt is null and mv.status = :status and (:anyFamily = true or mv.familyId = :familyId)
+            """)
+    List<MemberVerification> findRequests(VerificationStatus status, boolean anyFamily, UUID familyId,
+                                          Sort sort);
+
+    /** Trưởng họ đang có của gia đình, khóa dòng để hai người thu quyền nhau cùng lúc không làm mất hết (BR-AUTH-22). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select mv from MemberVerification mv
+            where mv.familyId = :familyId and mv.status = com.familyconnect.modules.auth.entity.VerificationStatus.APPROVED
+              and mv.role = com.familyconnect.modules.auth.entity.MemberRole.BRANCH_ADMIN and mv.branchId is null
+              and mv.deletedAt is null
+            """)
+    List<MemberVerification> lockFamilyHeads(UUID familyId);
+
+    /** Tài khoản đã xác minh của gia đình, theo họ tên (UC-AUTH-14). */
+    @Query(value = """
+            select mv from MemberVerification mv, User u
+            where u.id = mv.userId and u.deletedAt is null and mv.familyId = :familyId and mv.deletedAt is null
+              and mv.status = com.familyconnect.modules.auth.entity.VerificationStatus.APPROVED
+            order by u.fullName, u.id
+            """, countQuery = """
+            select count(mv) from MemberVerification mv, User u
+            where u.id = mv.userId and u.deletedAt is null and mv.familyId = :familyId and mv.deletedAt is null
+              and mv.status = com.familyconnect.modules.auth.entity.VerificationStatus.APPROVED
+            """)
+    Page<MemberVerification> findApprovedInFamily(UUID familyId, Pageable pageable);
 }

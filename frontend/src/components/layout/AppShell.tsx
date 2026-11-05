@@ -31,6 +31,7 @@ import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getMyMembership, getMyProfile, logout } from '@/services/auth';
+import { memberRoleLabel } from '@/services/admin';
 import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
 import { tokenStorage } from '@/lib/token-storage';
 import {
@@ -283,6 +284,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           <div className="text-right">
             {profile.data && <p className="text-label">{profile.data.fullName}</p>}
+            {role !== 'UNVERIFIED' && membership.data && (
+              <p className="text-caption text-text-secondary">
+                {role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống'
+                  : memberRoleLabel(membership.data.role, membership.data.branchId, membership.data.branchName)}
+              </p>
+            )}
             {profile.isLoading && (
               <p className="text-caption text-text-secondary">Đang tải tài khoản...</p>
             )}

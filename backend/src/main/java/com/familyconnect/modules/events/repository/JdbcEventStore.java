@@ -82,6 +82,20 @@ public class JdbcEventStore implements EventStore {
         return new Page<>(items,count == null ? 0 : count);
     }
 
+    @Override public List<Event> upcomingEvents(UUID family, boolean allBranches, List<UUID> readableBranches,
+                                                 OffsetDateTime from, int limit) {
+        if (!allBranches && readableBranches.isEmpty()) return List.of();
+        var args = p("family",family,"from",from,"limit",limit);
+        var where = new StringBuilder(" FROM event WHERE family_id=:family AND deleted_at IS NULL " +
+                "AND hidden_at IS NULL AND start_at >= :from");
+        if (!allBranches) {
+            where.append(" AND (branch_id IS NULL OR branch_id IN (:visible))");
+            args.addValue("visible",readableBranches);
+        }
+        return jdbc.query("SELECT " + EVENT_COLUMNS + where +
+                " ORDER BY start_at, id LIMIT :limit",args,EVENT_MAPPER);
+    }
+
     @Override public Event updateEvent(UUID id, UUID branch, String title, String description,
                                        OffsetDateTime start, OffsetDateTime end, String location, UUID actor) {
         return jdbc.queryForObject("UPDATE event SET branch_id=:branch,title=:title,description=:desc," +

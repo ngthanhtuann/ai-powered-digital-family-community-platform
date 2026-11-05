@@ -100,6 +100,19 @@ public class User {
         this.updatedBy = this.id;
     }
 
+    /** UC-AUTH-08: service đã kiểm tra lý do và quy tắc ADM_001. */
+    public void lock(String reason, UUID by) {
+        this.status = UserStatus.LOCKED;
+        this.lockReason = reason;
+        this.updatedBy = by;
+    }
+
+    public void unlock(UUID by) {
+        this.status = UserStatus.ACTIVE;
+        this.lockReason = null;
+        this.updatedBy = by;
+    }
+
     public void recordLogin(OffsetDateTime at) {
         this.lastLoginAt = at;
     }
@@ -130,6 +143,10 @@ public class User {
 
     public UserStatus getStatus() {
         return status;
+    }
+
+    public String getLockReason() {
+        return lockReason;
     }
 
     public OffsetDateTime getLastLoginAt() {
