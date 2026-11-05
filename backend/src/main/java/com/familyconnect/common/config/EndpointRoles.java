@@ -83,6 +83,16 @@ public class EndpointRoles {
             Map.entry("DELETE /media/{}", SIGNED_IN),
             Map.entry("GET /posts/{}/media", SIGNED_IN),
             Map.entry("POST /posts/{}/media", SIGNED_IN),
+            // SCRUM-53: thư viện ảnh sự kiện, thông báo và announcements.
+            Map.entry("GET /events/{}/media", SIGNED_IN),
+            Map.entry("POST /events/{}/media", SIGNED_IN),
+            Map.entry("GET /notifications", SIGNED_IN),
+            Map.entry("PATCH /notifications/{}", SIGNED_IN),
+            Map.entry("GET /announcements", SIGNED_IN),
+            Map.entry("POST /announcements", ADMINS),
+            Map.entry("GET /announcements/{}", SIGNED_IN),
+            Map.entry("PATCH /announcements/{}", ADMINS),
+            Map.entry("DELETE /announcements/{}", ADMINS),
             Map.entry("POST /content-reports", List.of("MEMBER", "BRANCH_ADMIN")),
             // Quản trị (auth.yaml, UC-AUTH-08, 09): chỉ SYSTEM_ADMIN, kiểm ở AdminService.
             Map.entry("GET /admin/users", SYSTEM_ADMIN),

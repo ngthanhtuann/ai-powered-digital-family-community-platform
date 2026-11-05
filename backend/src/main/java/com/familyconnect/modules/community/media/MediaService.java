@@ -86,6 +86,9 @@ public class MediaService implements CommunityQuery {
     public MediaView upload(String ownerType, UUID ownerId, String caption, MultipartFile file) throws IOException {
         Actor current = actor();
         if (ownerId == null) throw ApiException.invalidField("ownerId", "Thiếu tài nguyên sở hữu");
+        // /media chỉ dùng HERITAGE/PERSON; EVENT có endpoint /events/{id}/media riêng.
+        if (!"HERITAGE".equals(ownerType) && !"PERSON".equals(ownerType))
+            throw ApiException.invalidField("ownerType", "ownerType phải là HERITAGE hoặc PERSON");
         MediaOwnerPolicy owner = policy(ownerType);
         UUID familyId = owner.requireUploadFamily(ownerId);
         return save(file, ownerType, ownerId, familyId, caption(caption), current.userId());
@@ -97,6 +100,13 @@ public class MediaService implements CommunityQuery {
         Post post = readablePost(current, postId);
         if (!post.createdBy().equals(current.userId())) throw new ApiException(ErrorCode.PERM_001);
         return save(file, "POST", postId, post.familyId(), null, current.userId());
+    }
+
+    @Transactional
+    public MediaView uploadEvent(UUID eventId, MultipartFile file) throws IOException {
+        Actor current = actor();
+        UUID family = policy("EVENT").requireUploadFamily(eventId);
+        return save(file,"EVENT",eventId,family,null,current.userId());
     }
 
     private MediaView save(MultipartFile file, String type, UUID ownerId, UUID family,
@@ -125,6 +135,16 @@ public class MediaService implements CommunityQuery {
         return PageSuccess.of(result.items().stream().map(MediaView::of).toList(), page, size, result.total());
     }
 
+    @Transactional(readOnly = true)
+    public PageSuccess<MediaView> listEventMedia(UUID eventId, int page, int size, String sort) {
+        actor();
+        policy("EVENT").requireRead(eventId,null);
+        if (page < 0 || size < 1 || size > 100)
+            throw ApiException.invalidField("page", "Phân trang không hợp lệ");
+        var result = repository.list("EVENT",eventId,page,size,order(sort));
+        return PageSuccess.of(result.items().stream().map(MediaView::of).toList(),page,size,result.total());
+    }
+
     private static String order(String sort) {
         String[] parts = (sort == null ? "createdAt,desc" : sort).split(",", -1);
         if (parts.length != 2 || !(parts[1].equalsIgnoreCase("asc") || parts[1].equalsIgnoreCase("desc"))) {
@@ -146,8 +166,8 @@ public class MediaService implements CommunityQuery {
                 Post post = readablePost(current, media.ownerId());
                 if (!media.familyId().equals(post.familyId())) throw new ApiException(ErrorCode.PERM_001);
             }
+            case "EVENT" -> policy("EVENT").requireRead(media.ownerId(),media.familyId());
             case "HERITAGE", "PERSON" -> policy(media.ownerType()).requireRead(media.ownerId(), media.familyId());
-            // EVENT chưa có module quản lý sự kiện trong develop; không cấp quyền mặc định.
             default -> throw new ApiException(ErrorCode.NOT_FOUND_001);
         }
     }
@@ -177,7 +197,7 @@ public class MediaService implements CommunityQuery {
                     platform.requireCanModerate(current, post.familyId(), post.branchId());
                 }
             }
-            case "HERITAGE", "PERSON" ->
+            case "EVENT", "HERITAGE", "PERSON" ->
                 policy(media.ownerType()).requireDelete(media.id(), media.ownerId(), media.familyId(), own);
             default -> throw new ApiException(ErrorCode.NOT_FOUND_001);
         }
@@ -198,5 +218,12 @@ public class MediaService implements CommunityQuery {
     public java.util.Optional<PersonMedia> getPersonMedia(UUID id) {
         return repository.find(id).filter(m -> "PERSON".equals(m.ownerType()))
             .map(m -> new PersonMedia(m.id(), m.ownerId()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<EventMedia> getEventMedia(UUID id) {
+        return repository.find(id).filter(m -> "EVENT".equals(m.ownerType()))
+            .map(m -> new EventMedia(m.id(),m.ownerId(),m.familyId(),MediaView.of(m).contentUrl()));
     }
 }

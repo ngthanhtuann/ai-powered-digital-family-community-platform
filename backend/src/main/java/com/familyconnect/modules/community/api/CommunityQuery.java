@@ -17,4 +17,9 @@ public interface CommunityQuery {
 
     record PersonMedia(UUID id, UUID personId) {
     }
+
+    /** Event chỉ giữ UUID media, không FK xuyên module (quyết định 9). */
+    Optional<EventMedia> getEventMedia(UUID mediaId);
+
+    record EventMedia(UUID id, UUID eventId, UUID familyId, String contentUrl) {}
 }
