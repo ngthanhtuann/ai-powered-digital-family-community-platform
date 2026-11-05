@@ -35,6 +35,11 @@ public class EndpointRoles {
             Map.entry("PATCH /users/me", SIGNED_IN),
             Map.entry("PUT /users/me/password", SIGNED_IN),
             Map.entry("GET /users/me/membership", SIGNED_IN),
+            // Xin tham gia và duyệt (UC-AUTH-06, 07); phạm vi chi kiểm ở JoinRequestService.
+            Map.entry("POST /join-requests", List.of("MEMBER")),
+            Map.entry("GET /join-requests", ADMINS),
+            Map.entry("PATCH /join-requests/{}", ADMINS),
+            Map.entry("DELETE /join-requests/{}", List.of("MEMBER")),
             // Gia phả (genealogy.yaml). Tạo gia đình: MEMBER chưa thuộc gia đình nào hoặc SYSTEM_ADMIN.
             Map.entry("GET /families", SIGNED_IN),
             Map.entry("POST /families", List.of("MEMBER", "SYSTEM_ADMIN")),
@@ -83,6 +88,18 @@ public class EndpointRoles {
             Map.entry("DELETE /media/{}", SIGNED_IN),
             Map.entry("GET /posts/{}/media", SIGNED_IN),
             Map.entry("POST /posts/{}/media", SIGNED_IN),
+            Map.entry("POST /content-reports", List.of("MEMBER", "BRANCH_ADMIN")),
+            // Quản trị (auth.yaml, UC-AUTH-08, 09): chỉ SYSTEM_ADMIN, kiểm ở AdminService.
+            Map.entry("GET /admin/users", SYSTEM_ADMIN),
+            Map.entry("GET /admin/users/{}", SYSTEM_ADMIN),
+            Map.entry("PATCH /admin/users/{}", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/users/{}/roles", SYSTEM_ADMIN),
+            Map.entry("GET /admin/content-reports", SYSTEM_ADMIN),
+            Map.entry("PATCH /admin/content-reports/{}", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/users/{}/membership", SYSTEM_ADMIN),
+            // Trưởng họ bổ nhiệm trưởng chi (UC-AUTH-14): chỉ BRANCH_ADMIN không gán chi, kiểm ở FamilyAccountService.
+            Map.entry("GET /families/{}/accounts", ADMINS),
+            Map.entry("PUT /families/{}/accounts/{}", ADMINS),
             // Di sản (heritage-directory-dashboard.yaml)
             Map.entry("GET /heritage/documents", SIGNED_IN),
             Map.entry("POST /heritage/documents", ADMINS),
