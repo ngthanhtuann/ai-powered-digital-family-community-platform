@@ -237,6 +237,37 @@ class MediaApiIntegrationTest {
     }
 
     @Test
+    void heritagePhotoGalleryOnlyShowsUnattachedImagesAndSupportsPhotoLookup() throws Exception {
+        Object[] a = familyWithPost();
+        String admin = (String) a[0];
+        UUID familyId = (UUID) a[1];
+        UUID photo = id(uploadHeritage(admin, familyId, "family.jpg", JPG).andExpect(status().isCreated()));
+        UUID pdf = id(uploadHeritage(admin, familyId, "record.pdf", PDF).andExpect(status().isCreated()));
+
+        call(get("/api/v1/heritage/photos"), admin, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data[0].mediaId").value(photo.toString()));
+        call(get("/api/v1/heritage/photos").queryParam("mediaId", photo.toString()), admin, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data[0].mediaId").value(photo.toString()));
+        call(get("/api/v1/heritage/photos").queryParam("mediaId", pdf.toString()), admin, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(0));
+
+        call(post("/api/v1/heritage/documents"), admin,
+                Map.of("title", "Ảnh tư liệu", "mediaId", photo.toString()))
+                .andExpect(status().isCreated());
+        call(get("/api/v1/heritage/photos"), admin, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(0));
+        call(get("/api/v1/media/" + pdf + "/content"), admin, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"));
+    }
+
+    @Test
     void avatarInUseCannotBeDeleted() throws Exception {
         Object[] a = familyWithPost();
         String admin = (String) a[0];

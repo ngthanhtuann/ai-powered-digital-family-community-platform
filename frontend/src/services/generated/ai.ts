@@ -104,13 +104,13 @@ export interface components {
     schemas: {
         SourceReference: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
         };
         SearchResult: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
             title: string;

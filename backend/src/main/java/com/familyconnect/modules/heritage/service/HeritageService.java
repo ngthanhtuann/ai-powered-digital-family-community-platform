@@ -12,11 +12,14 @@ import com.familyconnect.modules.auth.api.UserDirectory;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.ai.api.SummarySource;
 import com.familyconnect.modules.community.api.CommunityQuery;
+import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
+import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateStory;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.DocumentData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.ListResponse;
+import com.familyconnect.modules.heritage.dto.HeritageResponses.PhotoData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.StoryData;
 import com.familyconnect.modules.heritage.entity.FamilyStory;
 import com.familyconnect.modules.heritage.entity.HeritageDocument;
@@ -85,6 +88,18 @@ public class HeritageService implements SummarySource {
     }
 
     @Transactional(readOnly = true)
+    public ListResponse<PhotoData> listPhotos(UUID requestedFamilyId, UUID mediaId,
+                                              int page, int size, boolean ascending) {
+        validatePage(page, size);
+        UUID familyId = resolveFamily(requestedFamilyId);
+        List<UUID> documentMediaIds = documentRepository.findMediaIdByFamilyIdAndDeletedAtIsNull(familyId);
+        HeritagePhotoPage result = communityQuery.getHeritagePhotos(familyId, mediaId, documentMediaIds,
+                page, size, ascending);
+        List<PhotoData> photos = result.items().stream().map(this::toPhotoData).toList();
+        return ListResponse.of(photos, page, size, result.total());
+    }
+
+    @Transactional(readOnly = true)
     public DocumentData getDocument(UUID id) {
         HeritageDocument document = findDocument(id);
         requireFamilyAccess(document.getFamilyId());
@@ -108,6 +123,9 @@ public class HeritageService implements SummarySource {
         HeritageDocument document = documentRepository.save(new HeritageDocument(
                 familyId, request.title().trim(), request.description(), request.category(),
                 request.mediaId(), actorId));
+        if (media.fileType().startsWith("image/")) {
+            afterCommit(() -> aiGateway.removeSource(AiGateway.SourceType.PHOTO, media.id()));
+        }
         indexDocument(document);
         return toDocumentData(document);
     }
@@ -140,6 +158,12 @@ public class HeritageService implements SummarySource {
         HeritageDocument document = findDocument(id);
         requireAdmin(document.getFamilyId());
         document.delete(OffsetDateTime.now(clock), CurrentUser.require().id());
+        CommunityQuery.HeritageMedia media = communityQuery.getHeritageMedia(document.getMediaId()).orElse(null);
+        if (media != null && media.fileType().startsWith("image/")
+                && !documentRepository.existsByMediaIdAndDeletedAtIsNull(media.id())) {
+            afterCommit(() -> aiGateway.upsertSource(AiGateway.SourceType.PHOTO, media.id(),
+                    media.familyId(), null, media.caption() == null ? "" : media.caption()));
+        }
         afterCommit(() -> aiGateway.removeSource(AiGateway.SourceType.DOCUMENT, document.getId()));
     }
 
@@ -310,6 +334,10 @@ public class HeritageService implements SummarySource {
                 document.getCreatedAt(), document.getUpdatedAt());
     }
 
+    private PhotoData toPhotoData(HeritagePhoto photo) {
+        return new PhotoData(photo.id(), photo.contentUrl(), photo.caption(), photo.createdAt(), photo.updatedAt());
+    }
+
     private StoryData toStoryData(FamilyStory story) {
         return toStoryData(story, userDirectory.getFullNames(Set.of(story.getCreatedBy())));
     }
@@ -366,11 +394,15 @@ public class HeritageService implements SummarySource {
     }
 
     private static PageRequest pageRequest(int page, int size, boolean ascending) {
+        validatePage(page, size);
+        return PageRequest.of(page, size, Sort.by(
+                ascending ? Sort.Direction.ASC : Sort.Direction.DESC, "createdAt"));
+    }
+
+    private static void validatePage(int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw ApiException.invalidField("page", "Phân trang không hợp lệ");
         }
-        return PageRequest.of(page, size, Sort.by(
-                ascending ? Sort.Direction.ASC : Sort.Direction.DESC, "createdAt"));
     }
 
     private static void ensurePatchFields(JsonNode patch, String... allowed) {

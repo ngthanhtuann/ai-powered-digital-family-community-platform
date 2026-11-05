@@ -43,6 +43,11 @@ public class GenealogyPortImpl implements GenealogyPort {
     }
 
     @Override
+    public Optional<UUID> findBranchFamily(UUID branchId) {
+        return branchRepository.findByIdAndDeletedAtIsNull(branchId).map(Branch::getFamilyId);
+    }
+
+    @Override
     public Optional<String> findBranchName(UUID familyId, UUID branchId) {
         return branchRepository.findByIdAndFamilyIdAndDeletedAtIsNull(branchId, familyId).map(Branch::getName);
     }

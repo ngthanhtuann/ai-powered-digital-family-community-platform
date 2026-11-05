@@ -71,3 +71,13 @@ springdoc:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   embedding-model: gemini-embedding-001
+  chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+
+ai:
+  chat:
+    limit_per_hour: ${AI_CHAT_LIMIT_PER_HOUR:20}
+    top_k: 5
+    minimum_score: 0.55
+    retention_days: 30
+    timeout_ms: ${AI_CHAT_TIMEOUT_MS:30000}
+    enabled: ${AI_CHAT_ENABLED:true}

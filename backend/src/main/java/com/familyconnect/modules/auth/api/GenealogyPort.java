@@ -14,6 +14,9 @@ public interface GenealogyPort {
 
     Optional<String> findBranchName(UUID familyId, UUID branchId);
 
+    /** Gia đình chứa chi; rỗng nếu chi không tồn tại hoặc đã xóa (mã chi khi xin tham gia, BR-AUTH-09). */
+    Optional<UUID> findBranchFamily(UUID branchId);
+
     /** branchId là chính ancestorBranchId hoặc chi con của nó. */
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);
 

@@ -29,6 +29,7 @@ tags:
 - {name: Profile, description: Hồ sơ cá nhân (UC-AUTH-05).}
 - {name: Membership, description: 'Xin tham gia gia đình, duyệt thành viên (UC-AUTH-06, 07).'}
 - {name: Admin, description: Quản lý người dùng (UC-AUTH-08).}
+- {name: FamilyRoles, description: 'Trưởng họ bổ nhiệm trưởng chi trong dòng họ (UC-AUTH-14).'}
 - {name: Moderation, description: Kiểm duyệt nội dung (UC-AUTH-09).}
 - {name: Audit, description: Nhật ký kiểm toán (UC-AUTH-10).}
 - {name: Backup, description: Sao lưu và khôi phục (UC-AUTH-11).}
@@ -284,7 +285,7 @@ paths:
     post:
       tags: [Membership]
       summary: Gửi yêu cầu tham gia gia đình (UC-AUTH-06)
-      description: 'Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` và người đã thuộc gia đình nhận `403 PERM_001`. Gia đình hoặc chi không tồn tại trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).'
+      description: 'Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` nhận `403 PERM_001` (BR-AUTH-08). `code` là mã gia đình (yêu cầu vào cả dòng họ) hoặc mã chi (yêu cầu vào chi đó, gia đình lấy theo chi; BR-AUTH-09). Mã không khớp gia đình hay chi nào trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).'
       operationId: createJoinRequest
       x-roles: [MEMBER]
       requestBody:
@@ -292,7 +293,7 @@ paths:
         content:
           application/json:
             schema: {$ref: '#/components/schemas/JoinRequestCreateRequest'}
-            example: {familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, branchId: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.'}
+            example: {code: 7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44, message: 'Con gái ông Nguyễn Văn Bình, chi trưởng.'}
       responses:
         '201':
           description: Đã gửi yêu cầu, chờ trưởng chi duyệt
@@ -355,7 +356,7 @@ paths:
     patch:
       tags: [Membership]
       summary: Duyệt hoặc từ chối yêu cầu tham gia (UC-AUTH-07)
-      description: 'Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.'
+      description: 'Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`) và `branchId` để đặt chi cho thành viên (chi phải thuộc gia đình, không thì `404`; trưởng chi chỉ đặt chi trong phạm vi mình, không thì `403 PERM_001`; bỏ trống thì giữ chi của yêu cầu). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.'
       operationId: reviewJoinRequest
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
@@ -421,6 +422,74 @@ paths:
                   message: Yêu cầu đã được xử lý
                   details: []
         '500': {$ref: '#/components/responses/InternalServerError'}
+  /families/{familyId}/accounts:
+    get:
+      tags: [FamilyRoles]
+      summary: Tài khoản đã xác minh trong dòng họ (UC-AUTH-14)
+      description: 'Vai trò: trưởng họ của dòng họ (`BRANCH_ADMIN` không gán chi) hoặc SYSTEM_ADMIN; người khác `403 PERM_001`. Chỉ trả họ tên, vai trò, chi (không email, số điện thoại). Sắp xếp theo họ tên.'
+      operationId: listFamilyAccounts
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/FamilyIdPath'}
+      - {$ref: '#/components/parameters/Page'}
+      - {$ref: '#/components/parameters/Size'}
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FamilyAccountListResponse'}
+              example:
+                success: true
+                data:
+                - {userId: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, fullName: Nguyễn Văn An, role: BRANCH_ADMIN, branchId: null, branchName: null}
+                - {userId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, fullName: Nguyễn Văn Bình, role: MEMBER, branchId: 7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f, branchName: Chi trưởng}
+                meta: {page: 0, size: 20, total: 2}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /families/{familyId}/accounts/{userId}:
+    put:
+      tags: [FamilyRoles]
+      summary: Bổ nhiệm hoặc thu quyền trưởng chi (UC-AUTH-14)
+      description: 'Vai trò: trưởng họ của dòng họ hoặc SYSTEM_ADMIN (BR-AUTH-22). `BRANCH_ADMIN` kèm `branchId` là trưởng chi của chi đó (kèm chi con); `branchId` null là đồng quản lý cả dòng họ. `MEMBER` là thu quyền (`branchId` là chi của thành viên, chỉ để thông tin). Có hiệu lực ở request kế tiếp, ghi nhật ký `MEMBERSHIP_CHANGED`. Người không phải thành viên đã xác minh của dòng họ, hoặc chi không thuộc dòng họ: `404 NOT_FOUND_001`. Tự đổi vai trò của mình hoặc thu quyền trưởng họ cuối cùng: `409 ADM_001`.'
+      operationId: setFamilyAccountRole
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+      - {$ref: '#/components/parameters/FamilyIdPath'}
+      - {$ref: '#/components/parameters/UserId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/FamilyAccountRoleRequest'}
+            example: {role: BRANCH_ADMIN, branchId: 7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f}
+      responses:
+        '200':
+          description: Sau khi cập nhật
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/FamilyAccountResponse'}
+              example:
+                success: true
+                data: {userId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, fullName: Nguyễn Văn Bình, role: BRANCH_ADMIN, branchId: 7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f, branchName: Chi trưởng}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '409':
+          description: 'ADM_001: Không thể thu quyền của chính mình hay trưởng họ cuối cùng'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorResponse'}
+              example:
+                success: false
+                error:
+                  code: ADM_001
+                  message: Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng
+                  details: []
+        '500': {$ref: '#/components/responses/InternalServerError'}
   /admin/users:
     get:
       tags: [Admin]
@@ -431,7 +500,7 @@ paths:
       parameters:
       - name: q
         in: query
-        description: Chứa trong họ tên hoặc email, không phân biệt hoa thường.
+        description: Chứa trong họ tên hoặc email, không phân biệt hoa thường và dấu tiếng Việt ("nguyen" khớp "Nguyễn").
         schema: {type: string, maxLength: 100}
       - name: status
         in: query
@@ -559,7 +628,7 @@ paths:
     put:
       tags: [Admin]
       summary: Đổi vai trò toàn hệ thống (UC-AUTH-08)
-      description: 'Vai trò: SYSTEM_ADMIN. Ghi đè danh sách vai trò toàn hệ thống (`MEMBER`, `SYSTEM_ADMIN`). Vai trò `BRANCH_ADMIN` không đặt ở đây mà qua `PUT /admin/users/{userId}/membership`. Không tự thu quyền của mình và không thu quyền quản trị viên cuối cùng (`409 ADM_001`).'
+      description: 'Vai trò: SYSTEM_ADMIN. Ghi đè danh sách vai trò toàn hệ thống (`MEMBER`, `SYSTEM_ADMIN`). Vai trò `BRANCH_ADMIN` không đặt ở đây mà qua `PUT /admin/users/{userId}/membership`. Không tự thu quyền của mình và không thu quyền quản trị viên cuối cùng (`409 ADM_001`). Không thêm `SYSTEM_ADMIN` cho người đang có yêu cầu `PENDING` hoặc `APPROVED` ở một gia đình (`400 VALID_001`, BR-AUTH-08).'
       operationId: adminSetUserRoles
       x-roles: [SYSTEM_ADMIN]
       parameters:
@@ -653,7 +722,7 @@ paths:
     get:
       tags: [Moderation]
       summary: Danh sách nội dung bị báo cáo (UC-AUTH-09)
-      description: 'Vai trò: SYSTEM_ADMIN (kiểm duyệt toàn hệ thống, FR-ADM-02). Mặc định `status = PENDING`. Dữ liệu do module community cung cấp (nút "Báo cáo bài viết" thuộc community, SCRUM-50 bước 2).'
+      description: 'Vai trò: SYSTEM_ADMIN (kiểm duyệt toàn hệ thống, FR-ADM-02). Mặc định `status = PENDING`. Mỗi nội dung một dòng (báo cáo sớm nhất ở trạng thái đó), `reportCount` là số lượt báo cáo cùng trạng thái của nội dung; `total` đếm theo nội dung. Dữ liệu do module community cung cấp (nút "Báo cáo bài viết" thuộc community, SCRUM-50 bước 2).'
       operationId: adminListContentReports
       x-roles: [SYSTEM_ADMIN]
       parameters:
@@ -677,7 +746,7 @@ paths:
               example:
                 success: true
                 data:
-                - {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., status: PENDING, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+                - {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., contentOwnerName: Nguyễn Văn Bình, reportCount: 3, status: PENDING, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
                 meta: {page: 0, size: 20, total: 1}
         '400': {$ref: '#/components/responses/BadRequestError'}
         '401': {$ref: '#/components/responses/UnauthorizedError'}
@@ -687,7 +756,7 @@ paths:
     patch:
       tags: [Moderation]
       summary: Xử lý báo cáo nội dung (UC-AUTH-09)
-      description: 'Vai trò: SYSTEM_ADMIN. `HIDE_CONTENT`: ẩn nội dung qua module community (đặt cột `hidden_at`; nội dung ẩn không hiện trên bảng tin) và ghi nhật ký `CONTENT_HIDDEN`. `DISMISS`: bỏ qua báo cáo. Báo cáo đã xử lý trả `409 ADM_002`.'
+      description: 'Vai trò: SYSTEM_ADMIN. Quyết định áp cho cả nội dung (BR-AUTH-15). `HIDE_CONTENT`: ẩn nội dung qua module community (đặt cột `hidden_at`; nội dung ẩn không hiện trên bảng tin), mọi báo cáo `PENDING` của nội dung thành `HIDDEN`, ghi nhật ký `CONTENT_HIDDEN`. `DISMISS`: mọi báo cáo `PENDING` của nội dung thành `DISMISSED`, ghi `REPORT_DISMISSED`. `RESTORE_CONTENT` (chỉ với báo cáo `HIDDEN`): nội dung hiện lại, các báo cáo `HIDDEN` của nội dung thành `DISMISSED`, ghi `CONTENT_RESTORED`. Báo cáo đã xử lý, hoặc khôi phục báo cáo không ở trạng thái `HIDDEN`, trả `409 ADM_002`.'
       operationId: adminReviewContentReport
       x-roles: [SYSTEM_ADMIN]
       parameters:
@@ -706,7 +775,7 @@ paths:
               schema: {$ref: '#/components/schemas/ContentReportResponse'}
               example:
                 success: true
-                data: {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., status: HIDDEN, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
+                data: {id: e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a81, targetType: POST, targetId: 550e8400-e29b-41d4-a716-446655440000, familyId: 3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01, familyName: Dòng họ Nguyễn, reporterId: 2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33, reason: Bài đăng quảng cáo không liên quan., contentSnippet: Mua hàng giảm giá 50% tại..., contentOwnerName: Nguyễn Văn Bình, reportCount: 3, status: HIDDEN, createdAt: '2026-10-12T09:30:00+07:00', updatedAt: '2026-10-12T09:30:00+07:00'}
         '400': {$ref: '#/components/responses/BadRequestError'}
         '401': {$ref: '#/components/responses/UnauthorizedError'}
         '403': {$ref: '#/components/responses/ForbiddenError'}
@@ -952,6 +1021,11 @@ components:
       in: path
       required: true
       schema: {type: string, format: uuid}
+    FamilyIdPath:
+      name: familyId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
     ConfigKey:
       name: key
       in: path
@@ -1097,9 +1171,12 @@ components:
     ContentReport:
       type: object
       description: Báo cáo do module community lưu; admin đọc qua interface Java `ContentModerationPort`, không đọc trực tiếp bảng.
-      required: [id, targetType, targetId, familyId, reporterId, reason, contentSnippet, status, createdAt, updatedAt]
+      required: [id, targetType, targetId, familyId, familyName, reporterId, reason, contentSnippet, contentOwnerName, reportCount, status, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
+        familyName: {type: string, nullable: true, description: Tên dòng họ của nội dung (null nếu dòng họ đã bị xóa).}
+        contentOwnerName: {type: string, nullable: true, description: Họ tên người đăng nội dung (null nếu tài khoản đã xóa).}
+        reportCount: {type: integer, minimum: 1, description: 'Số lượt báo cáo cùng trạng thái của nội dung này (hàng đợi gộp theo nội dung, BR-AUTH-15).'}
         targetType: {$ref: '#/components/schemas/ContentType'}
         targetId: {type: string, format: uuid}
         familyId: {type: string, format: uuid}
@@ -1208,10 +1285,9 @@ components:
         dateOfBirth: {type: string, format: date}
     JoinRequestCreateRequest:
       type: object
-      required: [familyId]
+      required: [code]
       properties:
-        familyId: {type: string, format: uuid, description: 'Mã gia đình muốn tham gia. Trưởng chi cung cấp cho người thân (xem auth.md mục 8, câu 2).'}
-        branchId: {type: string, format: uuid, description: Chi muốn tham gia; bỏ trống nếu không biết., nullable: true}
+        code: {type: string, format: uuid, description: 'Mã gia đình hoặc mã chi do trưởng họ, trưởng chi hoặc người thân gửi (BR-AUTH-09, auth.md mục 8 câu 2).'}
         message: {type: string, maxLength: 255, description: Lời nhắn giới thiệu bản thân cho trưởng chi., nullable: true}
     JoinRequestReviewRequest:
       type: object
@@ -1222,14 +1298,15 @@ components:
           enum: [APPROVED, REJECTED]
         rejectReason: {type: string, maxLength: 255, description: Chỉ dùng khi `REJECTED`., nullable: true}
         personId: {type: string, format: uuid, description: 'Chỉ dùng khi `APPROVED`: gắn tài khoản với hồ sơ thành viên (`person`) có sẵn của gia đình.', nullable: true}
+        branchId: {type: string, format: uuid, description: 'Chỉ dùng khi `APPROVED`: chi của thành viên; bỏ trống thì giữ chi của yêu cầu.', nullable: true}
     ContentReportReviewRequest:
       type: object
       required: [action]
       properties:
         action:
           type: string
-          enum: [HIDE_CONTENT, DISMISS]
-          description: '`HIDE_CONTENT`: ẩn nội dung bị báo cáo (đặt cột `hidden_at`, không xóa cứng). `DISMISS`: bỏ qua báo cáo.'
+          enum: [HIDE_CONTENT, DISMISS, RESTORE_CONTENT]
+          description: '`HIDE_CONTENT`: ẩn nội dung bị báo cáo (đặt cột `hidden_at`, không xóa cứng). `DISMISS`: bỏ qua báo cáo. `RESTORE_CONTENT`: khôi phục nội dung đã ẩn nhầm (chỉ với báo cáo `HIDDEN`).'
     AdminUserStatusRequest:
       type: object
       required: [status]
@@ -1246,6 +1323,22 @@ components:
           items: {$ref: '#/components/schemas/GlobalRole'}
           uniqueItems: true
           description: Danh sách đầy đủ vai trò toàn hệ thống (ghi đè). Luôn phải có `MEMBER`.
+    FamilyAccount:
+      type: object
+      description: Tài khoản đã xác minh trong dòng họ (UC-AUTH-14). Không có email, số điện thoại.
+      required: [userId, fullName, role, branchId, branchName]
+      properties:
+        userId: {type: string, format: uuid}
+        fullName: {type: string}
+        role: {$ref: '#/components/schemas/MemberRole'}
+        branchId: {type: string, format: uuid, nullable: true, description: 'Với `BRANCH_ADMIN`: chi quản lý (null là cả dòng họ, tức trưởng họ).'}
+        branchName: {type: string, nullable: true}
+    FamilyAccountRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: {$ref: '#/components/schemas/MemberRole'}
+        branchId: {type: string, format: uuid, nullable: true, description: 'Với `BRANCH_ADMIN`: chi quản lý, null là cả dòng họ.'}
     AdminMembershipRequest:
       type: object
       required: [familyId, role]
@@ -1344,6 +1437,21 @@ components:
         data:
           type: array
           items: {$ref: '#/components/schemas/ContentReport'}
+        meta: {$ref: '#/components/schemas/PaginationMeta'}
+    FamilyAccountResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: {type: boolean, example: true}
+        data: {$ref: '#/components/schemas/FamilyAccount'}
+    FamilyAccountListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success: {type: boolean, example: true}
+        data:
+          type: array
+          items: {$ref: '#/components/schemas/FamilyAccount'}
         meta: {$ref: '#/components/schemas/PaginationMeta'}
     AdminUserListResponse:
       type: object
