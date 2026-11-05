@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -72,6 +73,22 @@ public class JdbcCommunityStore implements CommunityStore {
         return jdbc.queryForList("SELECT DISTINCT branch_id FROM post WHERE family_id=:family " +
                                  "AND branch_id IS NOT NULL AND deleted_at IS NULL AND hidden_at IS NULL",
             p("family",family), UUID.class);
+    }
+    @Override public List<WeeklyPostCount> countPostsByWeek(UUID familyId, boolean allBranches,
+                                                            List<UUID> branchIds, OffsetDateTime fromInclusive,
+                                                            OffsetDateTime toExclusive) {
+        if (!allBranches && branchIds.isEmpty()) return List.of();
+        var args = p("family",familyId,"from",fromInclusive,"to",toExclusive);
+        var where = new StringBuilder(" WHERE family_id=:family AND deleted_at IS NULL AND hidden_at IS NULL " +
+                "AND created_at >= :from AND created_at < :to");
+        if (!allBranches) {
+            where.append(" AND (branch_id IS NULL OR branch_id IN (:branchIds))");
+            args.addValue("branchIds",branchIds);
+        }
+        return jdbc.query("SELECT date_trunc('week', created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS week_start, " +
+                "COUNT(*) AS post_count FROM post" + where +
+                " GROUP BY week_start ORDER BY week_start",args,
+                (rs,n) -> new WeeklyPostCount(rs.getObject("week_start",LocalDate.class),rs.getLong("post_count")));
     }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
                                        UUID branch, PostType type, int page, int size, String order) {

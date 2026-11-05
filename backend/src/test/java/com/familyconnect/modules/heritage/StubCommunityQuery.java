@@ -4,10 +4,11 @@ import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.List;
 import java.util.UUID;
 
 public final class StubCommunityQuery implements CommunityQuery {
@@ -33,5 +34,11 @@ public final class StubCommunityQuery implements CommunityQuery {
     public HeritagePhotoPage getHeritagePhotos(UUID familyId, UUID mediaId, List<UUID> excludedMediaIds,
                                                 int page, int size, boolean ascending) {
         return new HeritagePhotoPage(List.of(), 0);
+    }
+
+    @Override
+    public List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                     OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return List.of();
     }
 }

@@ -50,6 +50,12 @@ export const communityApi = {
       type,
     } satisfies Community['schemas']['ReactionRequest']),
   removeReaction: (postId: string) => api.delete('/posts/' + postId + '/reactions'),
+  report: (targetType: Community['schemas']['ContentReportRequest']['targetType'], targetId: string, reason: string) =>
+    api.post<Community['schemas']['ContentReport']>('/content-reports', {
+      targetType,
+      targetId,
+      reason,
+    } satisfies Community['schemas']['ContentReportRequest']),
   postMedia: (postId: string, page: number) =>
     api.list<Media>('/posts/' + postId + '/media', { page, size: 20, sort: 'createdAt,desc' }),
   uploadPostMedia: (postId: string, file: File, onProgress?: (percent: number) => void) => {

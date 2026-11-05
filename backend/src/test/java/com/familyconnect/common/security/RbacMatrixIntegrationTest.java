@@ -202,7 +202,8 @@ class RbacMatrixIntegrationTest {
                 new Endpoint(HttpMethod.POST, "/api/v1/heritage/documents?familyId=" + familyA,
                         Map.of("title", "Tài liệu mới", "mediaId", f.mediaA().toString())),
                 new Endpoint(HttpMethod.PATCH, "/api/v1/heritage/documents/" + f.documentA(), Map.of("title", "Đổi tên")),
-                new Endpoint(HttpMethod.DELETE, "/api/v1/heritage/documents/" + f.documentA(), null));
+                new Endpoint(HttpMethod.DELETE, "/api/v1/heritage/documents/" + f.documentA(), null),
+                new Endpoint(HttpMethod.GET, "/api/v1/dashboard/statistics?familyId=" + familyA, null));
 
         SoftAssertions soft = new SoftAssertions();
         for (Endpoint e : adminOnly) {
@@ -226,6 +227,8 @@ class RbacMatrixIntegrationTest {
                 Map.of("name", "Chi 1")), ownerA).getStatus()).as("BRANCH_ADMIN tạo chi").isEqualTo(201);
         soft.assertThat(send(new Endpoint(HttpMethod.POST, "/api/v1/posts?familyId=" + familyA,
                 Map.of("content", "Tin tức", "type", "NEWS")), ownerA).getStatus()).as("BRANCH_ADMIN đăng tin").isEqualTo(201);
+        soft.assertThat(send(new Endpoint(HttpMethod.GET, "/api/v1/dashboard/statistics", null),
+                ownerA).getStatus()).as("BRANCH_ADMIN xem thống kê").isEqualTo(200);
 
         // Xóa gia đình: x-roles chỉ SYSTEM_ADMIN.
         Endpoint deleteFamily = new Endpoint(HttpMethod.DELETE, "/api/v1/families/" + familyA, null);

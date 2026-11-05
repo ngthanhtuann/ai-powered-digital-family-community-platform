@@ -7,6 +7,7 @@ import com.familyconnect.modules.ai.api.AiGateway.SourceType;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
+import com.familyconnect.modules.community.api.CommunityQuery.WeeklyPostCount;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
 import com.familyconnect.modules.community.repository.CommunityStore;
@@ -64,6 +65,15 @@ public class MediaService implements CommunityQuery {
         this.aiGateway = aiGateway;
         this.policies = policies.stream().collect(Collectors.toUnmodifiableMap(
             MediaOwnerPolicy::ownerType, Function.identity()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                      OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return posts.countPostsByWeek(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(item -> new WeeklyPostCount(item.weekStart(), item.postCount()))
+                .toList();
     }
 
     private Actor actor() {
