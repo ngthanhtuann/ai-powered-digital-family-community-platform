@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi, heritageDownloadName } from '@/services/heritage';
+import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 export default function HeritageDocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -171,6 +172,7 @@ export default function HeritageDocumentDetailsPage() {
                 {item.description && (
                   <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>
                 )}
+                <AiSummaryPanel sourceType="DOCUMENT" sourceId={id} />
                 <div className="mt-6 flex flex-wrap gap-4">
                   <button
                     type="button"

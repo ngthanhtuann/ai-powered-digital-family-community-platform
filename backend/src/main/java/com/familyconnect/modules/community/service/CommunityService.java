@@ -2,6 +2,7 @@ package com.familyconnect.modules.community.service;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.ai.api.SummarySource;
 import com.familyconnect.modules.community.dto.CommunityDto.*;
 import com.familyconnect.modules.community.media.MediaRepository;
 import com.familyconnect.modules.community.media.MediaService;
@@ -15,12 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.UUID;
 
 /** Nghiệp vụ UC-COM-01..04 (community-events.md); quyền và phạm vi chi hỏi qua CommunityPlatformPort. */
 @Service
-public class CommunityService {
+public class CommunityService implements SummarySource {
     private final CommunityStore store;
     private final CommunityPlatformPort platform;
 
@@ -163,6 +165,29 @@ public class CommunityService {
     public PostView post(UUID id) {
         Actor user = actor();
         return asView(readablePost(user,id),user);
+    }
+
+    @Override
+    public Set<String> sourceTypes() {
+        return Set.of("POST");
+    }
+
+    /** Bài đăng và bình luận cho AI tóm tắt (UC-AI-04), sau khi áp dụng đúng quyền đọc của Community. */
+    @Override
+    @Transactional(readOnly=true)
+    public SummaryText readForSummary(String sourceType, UUID id) {
+        Actor user = actor();
+        Post post = readablePost(user, id);
+        StringBuilder text = new StringBuilder(post.content());
+        for (int page = 0; page < 10; page++) {
+            Page<Comment> comments = store.comments(id, page, 100, "created_at ASC, id ASC");
+            for (Comment comment : comments.items()) {
+                if (text.length() + comment.content().length() + 1 > 30001) return new SummaryText(post.familyId(), text.toString());
+                text.append("\n").append(comment.content());
+            }
+            if ((page + 1L) * 100 >= comments.total()) break;
+        }
+        return new SummaryText(post.familyId(), text.toString());
     }
 
     @Transactional

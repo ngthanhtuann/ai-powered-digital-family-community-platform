@@ -122,7 +122,8 @@ public class EndpointRoles {
             Map.entry("GET /dashboard/statistics", ADMINS),
             // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
             Map.entry("GET /ai/search", SIGNED_IN),
-            Map.entry("POST /ai/chat", SIGNED_IN));
+            Map.entry("POST /ai/chat", SIGNED_IN),
+            Map.entry("POST /ai/summaries", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {
