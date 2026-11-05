@@ -10,6 +10,7 @@ import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.auth.api.UserDirectory;
 import com.familyconnect.modules.ai.api.AiGateway;
+import com.familyconnect.modules.ai.api.SummarySource;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument;
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
-public class HeritageService {
+public class HeritageService implements SummarySource {
 
     private static final Logger log = LoggerFactory.getLogger(HeritageService.class);
     static final String DELETED_AUTHOR_NAME = "Thành viên đã rời hệ thống";
@@ -160,9 +161,15 @@ public class HeritageService {
         return toStoryData(story);
     }
 
-    /** Nội dung dùng cho AI; luôn kiểm tra quyền đọc ở module Heritage trước khi trả về module AI. */
+    @Override
+    public Set<String> sourceTypes() {
+        return Set.of("STORY", "DOCUMENT");
+    }
+
+    /** Nội dung dùng cho AI tóm tắt; luôn kiểm tra quyền đọc ở module Heritage trước khi trả về module AI. */
+    @Override
     @Transactional(readOnly = true)
-    public String summarySource(String type, UUID id) {
+    public SummaryText readForSummary(String type, UUID id) {
         if ("STORY".equals(type)) {
             FamilyStory story = findStory(id);
             requireFamilyAccess(story.getFamilyId());
@@ -172,20 +179,14 @@ public class HeritageService {
                     && membershipQuery.getMembership(CurrentUser.require().id()).role() == EffectiveRole.MEMBER) {
                 throw new ApiException(ErrorCode.PERM_001);
             }
-            return joinLines(story.getTitle(), story.getContent());
+            return new SummaryText(story.getFamilyId(), joinLines(story.getTitle(), story.getContent()));
         }
         if ("DOCUMENT".equals(type)) {
             HeritageDocument document = findDocument(id);
             requireFamilyAccess(document.getFamilyId());
-            return joinLines(document.getTitle(), document.getCategory(), document.getDescription());
+            return new SummaryText(document.getFamilyId(),
+                    joinLines(document.getTitle(), document.getCategory(), document.getDescription()));
         }
-        throw new ApiException(ErrorCode.VALID_001);
-    }
-
-    @Transactional(readOnly = true)
-    public UUID familyIdForSummary(String type, UUID id) {
-        if ("STORY".equals(type)) return findStory(id).getFamilyId();
-        if ("DOCUMENT".equals(type)) return findDocument(id).getFamilyId();
         throw new ApiException(ErrorCode.VALID_001);
     }
 

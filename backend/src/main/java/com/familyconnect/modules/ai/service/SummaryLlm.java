@@ -21,6 +21,7 @@ public class SummaryLlm {
         client=RestClient.builder().requestFactory(factory)
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta").build();
     }
+    public String modelName() { return model; }
     public String summarize(String source) {
         if (key == null || key.isBlank()) throw new IllegalStateException("Gemini is not configured");
         String instruction = "Tóm tắt bằng tiếng Việt tự nhiên trong 3-5 câu. Chỉ sử dụng dữ kiện có trong " +

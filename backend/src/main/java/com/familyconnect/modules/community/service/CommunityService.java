@@ -2,6 +2,7 @@ package com.familyconnect.modules.community.service;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.ai.api.SummarySource;
 import com.familyconnect.modules.community.dto.CommunityDto.*;
 import com.familyconnect.modules.community.media.MediaRepository;
 import com.familyconnect.modules.community.media.MediaService;
@@ -15,12 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.UUID;
 
 /** Nghiệp vụ UC-COM-01..04 (community-events.md); quyền và phạm vi chi hỏi qua CommunityPlatformPort. */
 @Service
-public class CommunityService {
+public class CommunityService implements SummarySource {
     private final CommunityStore store;
     private final CommunityPlatformPort platform;
 
@@ -165,27 +167,27 @@ public class CommunityService {
         return asView(readablePost(user,id),user);
     }
 
-    /** Lấy văn bản bài đăng và bình luận để AI tóm tắt, sau khi áp dụng đúng quyền đọc của Community. */
+    @Override
+    public Set<String> sourceTypes() {
+        return Set.of("POST");
+    }
+
+    /** Bài đăng và bình luận cho AI tóm tắt (UC-AI-04), sau khi áp dụng đúng quyền đọc của Community. */
+    @Override
     @Transactional(readOnly=true)
-    public String summarySource(UUID id) {
+    public SummaryText readForSummary(String sourceType, UUID id) {
         Actor user = actor();
         Post post = readablePost(user, id);
         StringBuilder text = new StringBuilder(post.content());
         for (int page = 0; page < 10; page++) {
             Page<Comment> comments = store.comments(id, page, 100, "created_at ASC, id ASC");
             for (Comment comment : comments.items()) {
-                if (text.length() + comment.content().length() + 1 > 30001) return text.toString();
+                if (text.length() + comment.content().length() + 1 > 30001) return new SummaryText(post.familyId(), text.toString());
                 text.append("\n").append(comment.content());
             }
             if ((page + 1L) * 100 >= comments.total()) break;
         }
-        return text.toString();
-    }
-
-    @Transactional(readOnly=true)
-    public UUID summaryFamilyId(UUID id) {
-        Actor user = actor();
-        return readablePost(user, id).familyId();
+        return new SummaryText(post.familyId(), text.toString());
     }
 
     @Transactional
@@ -230,7 +232,6 @@ public class CommunityService {
         Actor user = actor();
         Post post = readablePost(user,postId);
         Comment created = store.insertComment(postId,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
-        platform.postChanged(post.id(), post.familyId());
         return commentViews(List.of(created),post,user).get(0);
     }
 
@@ -241,7 +242,6 @@ public class CommunityService {
         Post post = readablePost(user,comment.postId());
         if (!comment.createdBy().equals(user.userId())) throw new ApiException(ErrorCode.PERM_001);
         Comment updated = store.updateComment(id,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
-        platform.postChanged(post.id(), post.familyId());
         return commentViews(List.of(updated),post,user).get(0);
     }
 
@@ -257,7 +257,6 @@ public class CommunityService {
         }
         store.deleteComment(id);
         platform.logContentDeleted("COMMENT",id,post.familyId(),owner);
-        platform.postChanged(post.id(), post.familyId());
     }
 
     @Transactional
