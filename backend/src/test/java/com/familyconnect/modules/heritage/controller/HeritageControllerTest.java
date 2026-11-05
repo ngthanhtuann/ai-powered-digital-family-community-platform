@@ -60,6 +60,24 @@ class HeritageControllerTest {
     }
 
     @Test
+    void photoListAcceptsOptionalMediaIdAndPagination() throws Exception {
+        UUID mediaId = UUID.randomUUID();
+        when(service.listPhotos(eq(FAMILY_ID), eq(mediaId), eq(1), eq(10), eq(true)))
+                .thenReturn(HeritageResponses.ListResponse.of(List.of(), 1, 10, 0));
+
+        mvc.perform(get("/api/v1/heritage/photos")
+                        .queryParam("familyId", FAMILY_ID.toString())
+                        .queryParam("mediaId", mediaId.toString())
+                        .queryParam("page", "1")
+                        .queryParam("size", "10")
+                        .queryParam("sort", "createdAt,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.page").value(1));
+
+        verify(service).listPhotos(FAMILY_ID, mediaId, 1, 10, true);
+    }
+
+    @Test
     void creatingStoryReturns201AndSuccessEnvelope() throws Exception {
         HeritageResponses.StoryData story = new HeritageResponses.StoryData(
                 DOCUMENT_ID, "Ký ức", "Ngày sum họp", "Người đăng", AUTHOR_ID, null,

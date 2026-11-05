@@ -14,5 +14,5 @@ public interface AiGateway {
     /** Xóa mềm, ẩn hoặc nguồn không còn hiển thị. */
     void removeSource(SourceType type, UUID sourceId);
 
-    enum SourceType { PERSON, POST, STORY, DOCUMENT, EVENT }
+    enum SourceType { PERSON, POST, STORY, DOCUMENT, EVENT, PHOTO }
 }

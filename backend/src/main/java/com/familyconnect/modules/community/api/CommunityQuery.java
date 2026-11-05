@@ -1,5 +1,7 @@
 package com.familyconnect.modules.community.api;
 
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -12,7 +14,21 @@ public interface CommunityQuery {
     /** Tệp tải lên; rỗng nếu không tồn tại. Module gọi tự kiểm tra ownerType và familyId. */
     Optional<HeritageMedia> getHeritageMedia(UUID mediaId);
 
-    record HeritageMedia(UUID id, UUID familyId, String ownerType, String contentUrl) {
+    record HeritageMedia(UUID id, UUID familyId, String ownerType, String fileType,
+                         String caption, String contentUrl) {
+    }
+
+    HeritagePhotoPage getHeritagePhotos(UUID familyId, UUID mediaId, List<UUID> excludedMediaIds,
+                                        int page, int size, boolean ascending);
+
+    record HeritagePhoto(UUID id, String contentUrl, String caption,
+                         OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    }
+
+    record HeritagePhotoPage(List<HeritagePhoto> items, long total) {
+        public HeritagePhotoPage {
+            items = List.copyOf(items);
+        }
     }
 
     /** Ảnh đại diện (owner_type = PERSON); rỗng nếu không tồn tại hoặc không phải ảnh của hồ sơ thành viên. */

@@ -44,8 +44,8 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Di sản',
     items: [
       { label: 'Lịch sử dòng họ', href: '/heritage', icon: 'book-open', roles: ALL_ROLES },
-      { label: 'Thư viện ảnh', icon: 'image', roles: ALL_ROLES },
-      { label: 'Kho lưu trữ số', icon: 'archive', roles: ALL_ROLES },
+      { label: 'Thư viện ảnh', href: '/heritage/photos', icon: 'image', roles: ALL_ROLES },
+      { label: 'Kho lưu trữ số', href: '/heritage/documents', icon: 'archive', roles: ALL_ROLES },
     ],
   },
   {

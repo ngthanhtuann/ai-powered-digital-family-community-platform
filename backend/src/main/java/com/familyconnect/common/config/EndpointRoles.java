@@ -106,6 +106,7 @@ public class EndpointRoles {
             Map.entry("GET /heritage/documents/{}", SIGNED_IN),
             Map.entry("PATCH /heritage/documents/{}", ADMINS),
             Map.entry("DELETE /heritage/documents/{}", ADMINS),
+            Map.entry("GET /heritage/photos", SIGNED_IN),
             Map.entry("GET /heritage/stories", SIGNED_IN),
             Map.entry("POST /heritage/stories", SIGNED_IN),
             Map.entry("GET /heritage/stories/{}", SIGNED_IN),

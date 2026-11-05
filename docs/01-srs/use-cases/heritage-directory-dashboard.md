@@ -80,10 +80,10 @@ Theo tài liệu SRS mục 3, các yêu cầu chức năng thuộc phạm vi 3 m
 | **Mã UC / FR** | UC-HER-03 / FR-HER-04 |
 | **Actor** | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN |
 | **Tiền điều kiện** | Đã đăng nhập và xác minh. |
-| **Luồng chính** | 1. Gửi yêu cầu GET đọc danh sách ảnh từ module community qua interface với điều kiện `owner_type = 'HERITAGE'` và `family_id`.<br>2. Trả kết quả ảnh phân trang.<br>*(Tải ảnh lên dùng `POST /api/v1/media` của community với `ownerType = HERITAGE`; MEMBER và BRANCH_ADMIN được tải theo `srs.md`. Tệp tài liệu `pdf` cũng dùng `media` với `owner_type = HERITAGE` nhưng thuộc UC-HER-01, không hiện ở thư viện ảnh.)* |
-| **Luồng lỗi** | - Chưa xác minh: 403 PERM_002.<br>*(Ghi chú: Việc upload tệp bị quá dung lượng hoặc sai định dạng do module community xử lý)* |
-| **Hậu điều kiện** | Người dùng xem được danh sách hình ảnh di sản. |
-| **Quy tắc** | **BR-HER-03:** Không có bảng riêng, đọc trực tiếp từ `media` (`owner_type = HERITAGE`, cùng `family_id`). Thư viện ảnh chỉ gồm tệp ảnh (`jpg`, `png`, `webp`) **chưa** được `heritage_document` tham chiếu. Tệp tài liệu (`pdf`) và ảnh đã được `heritage_document` tham chiếu (bản scan tài liệu) thì **không** hiện trong thư viện ảnh, chỉ hiện ở UC-HER-01. |
+| **Luồng chính** | 1. Gửi yêu cầu GET đọc ảnh từ module community qua interface với điều kiện `owner_type = 'HERITAGE'` và `family_id`.<br>2. Trả kết quả phân trang; người dùng có thể mở ảnh toàn màn hình hoặc trình chiếu.<br>3. MEMBER và BRANCH_ADMIN tải ảnh JPG/PNG/WebP lên qua `POST /api/v1/media` với `ownerType = HERITAGE`, kèm chú thích tùy chọn để tìm kiếm ngữ nghĩa.<br>*(Tệp tài liệu `pdf` cũng dùng `media` với `owner_type = HERITAGE` nhưng thuộc UC-HER-01, không hiện ở thư viện ảnh.)* |
+| **Luồng lỗi** | - Chưa xác minh: 403 PERM_002.<br>- Tệp sai định dạng hoặc quá dung lượng: module community trả 415 FILE_002 hoặc 413 FILE_001. |
+| **Hậu điều kiện** | Người dùng xem được danh sách hình ảnh di sản; ảnh và chú thích được lưu trong media và lập chỉ mục AI. |
+| **Quy tắc** | **BR-HER-03:** Không có bảng riêng, đọc trực tiếp từ `media` (`owner_type = HERITAGE`, cùng `family_id`). Thư viện ảnh chỉ gồm tệp ảnh (`jpg`, `png`, `webp`) **chưa** được `heritage_document` tham chiếu. Tệp tài liệu (`pdf`) và ảnh đã được `heritage_document` tham chiếu (bản scan tài liệu) thì **không** hiện trong thư viện ảnh, chỉ hiện ở UC-HER-01. Tham số tùy chọn `mediaId` trên GET chỉ tìm ảnh trong đúng phạm vi gia đình và tuân theo các điều kiện loại trừ trên. |
 
 | Tên Use Case | UC-HER-04: Quản lý người tiêu biểu |
 | :--- | :--- |

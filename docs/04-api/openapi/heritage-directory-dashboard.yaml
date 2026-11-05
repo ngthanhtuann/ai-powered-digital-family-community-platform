@@ -357,6 +357,11 @@ paths:
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
         - $ref: '#/components/parameters/FamilyId'
+        - name: mediaId
+          in: query
+          required: false
+          description: Trả riêng ảnh này nếu thuộc thư viện của gia đình; dùng để mở nguồn từ tìm kiếm AI.
+          schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
         - $ref: '#/components/parameters/SortCreated'

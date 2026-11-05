@@ -6,6 +6,7 @@ import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateStory;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.DocumentData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.ListResponse;
+import com.familyconnect.modules.heritage.dto.HeritageResponses.PhotoData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.StoryData;
 import com.familyconnect.modules.heritage.service.HeritageService;
 import jakarta.validation.Valid;
@@ -31,6 +32,16 @@ public class HeritageController {
 
     public HeritageController(HeritageService heritageService) {
         this.heritageService = heritageService;
+    }
+
+    @GetMapping("/photos")
+    public ListResponse<PhotoData> listPhotos(
+            @RequestParam(name = "familyId", required = false) UUID familyId,
+            @RequestParam(name = "mediaId", required = false) UUID mediaId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
+        return heritageService.listPhotos(familyId, mediaId, page, size, ascending(sort));
     }
 
     @GetMapping("/documents")

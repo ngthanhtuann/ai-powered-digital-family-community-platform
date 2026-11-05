@@ -13,6 +13,10 @@ public final class HeritageResponses {
                                String contentUrl, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }
 
+    public record PhotoData(UUID mediaId, String contentUrl, String caption,
+                            OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    }
+
     public record StoryData(UUID id, String title, String content, String authorName, UUID authorId,
                             UUID relatedPersonId, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }
