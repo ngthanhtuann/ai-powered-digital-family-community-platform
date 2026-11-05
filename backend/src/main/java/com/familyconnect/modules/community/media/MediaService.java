@@ -3,6 +3,7 @@ package com.familyconnect.modules.community.media;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.community.api.CommunityQuery;
+import com.familyconnect.modules.community.api.CommunityQuery.WeeklyPostCount;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
 import com.familyconnect.modules.community.repository.CommunityStore;
@@ -52,6 +53,15 @@ public class MediaService implements CommunityQuery {
         this.platform = platform;
         this.policies = policies.stream().collect(Collectors.toUnmodifiableMap(
             MediaOwnerPolicy::ownerType, Function.identity()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                      OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return posts.countPostsByWeek(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(item -> new WeeklyPostCount(item.weekStart(), item.postCount()))
+                .toList();
     }
 
     private Actor actor() {

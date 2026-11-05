@@ -54,7 +54,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Duyệt yêu cầu tham gia', href: '/join-requests', icon: 'user-check', roles: ADMIN_ROLES },
       { label: 'Phân công trưởng chi', href: '/family-roles', icon: 'user-cog', roles: ADMIN_ROLES },
-      { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
+      { label: 'Thống kê và báo cáo', href: '/dashboard', icon: 'chart-column', roles: ADMIN_ROLES },
     ],
   },
   {

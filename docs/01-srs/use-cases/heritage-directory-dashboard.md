@@ -279,6 +279,7 @@ CREATE INDEX idx_edu_creator ON education_profile (created_by);
 | :--- | :--- | :--- | :--- |
 | Tổng thành viên | FR-DSH-01 | `GenealogyQuery.getTotalMembers()` | BRANCH_ADMIN, SYSTEM_ADMIN |
 | Theo thế hệ | FR-DSH-04 | `GenealogyQuery.getDemographics()` | BRANCH_ADMIN, SYSTEM_ADMIN |
+| Theo độ tuổi | FR-DSH-04 | `GenealogyQuery.getDemographics()` | BRANCH_ADMIN, SYSTEM_ADMIN |
 | Theo giới tính | FR-DSH-04 | `GenealogyQuery.getDemographics()` | BRANCH_ADMIN, SYSTEM_ADMIN |
 | Nghề nghiệp | FR-DSH-04 | `DirectoryQuery.getJobStats()` | BRANCH_ADMIN, SYSTEM_ADMIN |
 | Nơi ở | FR-DSH-04 | `DirectoryQuery.getLocationStats()` | BRANCH_ADMIN, SYSTEM_ADMIN |
@@ -292,6 +293,8 @@ WHERE family_id = :familyId AND deleted_at IS NULL;
 ```
 ### 5.2 Thống kê theo thế hệ
 Lấy từ `GenealogyQuery.getDemographics()`; cách tính thế hệ xem `genealogy.md` mục 6.8 (không lặp lại truy vấn ở đây để hai tài liệu không lệch nhau).
+
+Thống kê tuổi là số liệu tổng hợp theo các nhóm `Dưới 16`, `16-29`, `30-44`, `45-59`, `60+`; người đã mất dùng tuổi tại `death_date` nếu có. Trẻ em chỉ xuất hiện trong số đếm nhóm, không trả dữ liệu cá nhân.
 
 ### 5.3 Thống kê giới tính
 ```sql
