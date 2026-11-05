@@ -119,6 +119,85 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
         verificationRepository.save(MemberVerification.familyOwner(userId, familyId, OffsetDateTime.now(clock)));
     }
 
+    // ---- Gán, đổi vai trò trong gia đình (BR-AUTH-14, BR-AUTH-22) ----
+
+    /** Gia đình và chi (nếu có) phải tồn tại, chi phải thuộc gia đình; không thì 404 NOT_FOUND_001. */
+    public void requireFamilyAndBranch(UUID familyId, UUID branchId) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        if (port == null || port.findFamilyName(familyId).isEmpty()
+                || (branchId != null && port.findBranchName(familyId, branchId).isEmpty())) {
+            throw new ApiException(ErrorCode.NOT_FOUND_001);
+        }
+    }
+
+    /**
+     * PUT /admin/users/{userId}/membership: có hiệu lực ngay. Cùng gia đình thì đổi vai trò, chi tại chỗ; khác gia đình
+     * thì bản ghi cũ REMOVED và gỡ liên kết hồ sơ; yêu cầu PENDING thì CANCELLED. Người gọi đã kiểm người dùng không
+     * phải SYSTEM_ADMIN.
+     */
+    @Transactional
+    public MemberVerification assignByAdmin(UUID userId, UUID familyId, UUID branchId, MemberRole role, UUID actor) {
+        requireFamilyAndBranch(familyId, branchId);
+        Optional<MemberVerification> active = verificationRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES);
+        if (active.isPresent()) {
+            MemberVerification current = active.get();
+            if (current.getStatus() == VerificationStatus.APPROVED && current.getFamilyId().equals(familyId)) {
+                return changeRole(current, role, branchId, actor);
+            }
+            if (current.getStatus() == VerificationStatus.PENDING) {
+                current.cancel(actor);
+            } else {
+                requireAnotherFamilyHead(current);
+                current.remove(actor);
+            }
+            // Ghi ngay để unique index "một bản ghi đang hiệu lực" không chặn bản ghi mới.
+            verificationRepository.saveAndFlush(current);
+            if (current.getStatus() == VerificationStatus.REMOVED) {
+                GenealogyPort port = genealogyPort.getIfAvailable();
+                if (port != null) {
+                    port.unlinkAccount(userId);
+                }
+            }
+        }
+        return verificationRepository.saveAndFlush(
+                MemberVerification.assigned(userId, familyId, branchId, role, actor, OffsetDateTime.now(clock)));
+    }
+
+    /** Đổi vai trò, chi trong cùng gia đình; gia đình luôn còn ít nhất một trưởng họ (ADM_001). */
+    @Transactional
+    public MemberVerification changeRole(MemberVerification mv, MemberRole role, UUID branchId, UUID actor) {
+        boolean staysHead = role == MemberRole.BRANCH_ADMIN && branchId == null;
+        if (!staysHead) {
+            requireAnotherFamilyHead(mv);
+        }
+        mv.changeRole(role, branchId, actor);
+        return verificationRepository.saveAndFlush(mv);
+    }
+
+    private void requireAnotherFamilyHead(MemberVerification mv) {
+        if (mv.isFamilyHead() && verificationRepository.lockFamilyHeads(mv.getFamilyId()).stream()
+                .noneMatch(other -> !other.getUserId().equals(mv.getUserId()))) {
+            throw new ApiException(ErrorCode.ADM_001, "Dòng họ phải còn ít nhất một trưởng họ");
+        }
+    }
+
+    /** Bản ghi đang hiệu lực (PENDING hoặc APPROVED), dùng cho BR-AUTH-08 khi thêm SYSTEM_ADMIN. */
+    @Transactional(readOnly = true)
+    public boolean hasActiveMembership(UUID userId) {
+        return verificationRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES).isPresent();
+    }
+
+    /** Schema FamilyAccount: tên chi (null nếu không có chi hoặc chưa có module Gia phả). */
+    public String branchName(UUID familyId, UUID branchId) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        return port == null || branchId == null ? null : port.findBranchName(familyId, branchId).orElse(null);
+    }
+
+    public String familyName(UUID familyId) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        return port == null ? null : port.findFamilyName(familyId).orElse(null);
+    }
+
     // ---- Dùng cho API của module auth ----
 
     /** Schema Membership cho đăng nhập và GET /users/me/membership. */

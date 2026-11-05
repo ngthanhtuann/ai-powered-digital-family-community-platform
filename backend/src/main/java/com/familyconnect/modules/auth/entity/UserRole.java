@@ -50,6 +50,11 @@ public class UserRole {
         this.role = role;
     }
 
+    /** Thu vai trò: xóa mềm để giữ lịch sử (BR-AUTH-13). */
+    public void remove(OffsetDateTime at) {
+        this.deletedAt = at;
+    }
+
     public UUID getUserId() {
         return userId;
     }

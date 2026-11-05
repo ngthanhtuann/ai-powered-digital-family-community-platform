@@ -1170,8 +1170,9 @@ paths:
         thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một
         lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn
         tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò
-        hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Quản trị xử lý báo cáo
-        ở /admin/content-reports (auth.yaml, UC-AUTH-09).
+        hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Mỗi người tối đa 20 báo
+        cáo mỗi giờ, vượt thì 429 RATE_001 kèm Retry-After (conventions.md mục 7.1).
+        Quản trị xử lý báo cáo ở /admin/content-reports (auth.yaml, UC-AUTH-09).
       security:
       - bearerAuth: []
       responses:
@@ -1204,6 +1205,8 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '409':
           $ref: '#/components/responses/DuplicateReportError'
+        '429':
+          $ref: '#/components/responses/ReportRateLimitError'
       requestBody:
         required: true
         content:
@@ -3094,6 +3097,23 @@ components:
             error:
               code: CONFLICT_001
               message: Người dùng đã có trong danh sách người tham dự
+              details: []
+    ReportRateLimitError:
+      description: Gửi quá 20 báo cáo trong một giờ
+      headers:
+        Retry-After:
+          description: Số giây cần chờ trước khi gửi tiếp
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RATE_001
+              message: Bạn thao tác quá nhanh, vui lòng thử lại sau
               details: []
     DuplicateReportError:
       description: Người dùng đã báo cáo nội dung này
