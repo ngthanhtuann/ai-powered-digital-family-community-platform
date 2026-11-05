@@ -5,6 +5,7 @@ import com.familyconnect.modules.auth.entity.VerificationStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -33,6 +34,18 @@ public interface MemberVerificationRepository extends JpaRepository<MemberVerifi
               and mv.deletedAt is null
             """)
     List<UUID> findApprovedUserIds(UUID familyId);
+
+    /** Khóa dòng khi duyệt, từ chối, hủy: hai người xử lý cùng lúc thì người sau thấy trạng thái mới (AUTH_006). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<MemberVerification> findByIdAndDeletedAtIsNull(UUID id);
+
+    /** Yêu cầu tham gia theo trạng thái (UC-AUTH-07); anyFamily = true khi SYSTEM_ADMIN không lọc gia đình. */
+    @Query("""
+            select mv from MemberVerification mv
+            where mv.deletedAt is null and mv.status = :status and (:anyFamily = true or mv.familyId = :familyId)
+            """)
+    List<MemberVerification> findRequests(VerificationStatus status, boolean anyFamily, UUID familyId,
+                                          Sort sort);
 
     /** Trưởng họ đang có của gia đình, khóa dòng để hai người thu quyền nhau cùng lúc không làm mất hết (BR-AUTH-22). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

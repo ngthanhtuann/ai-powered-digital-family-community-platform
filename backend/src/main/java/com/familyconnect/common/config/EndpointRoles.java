@@ -35,6 +35,11 @@ public class EndpointRoles {
             Map.entry("PATCH /users/me", SIGNED_IN),
             Map.entry("PUT /users/me/password", SIGNED_IN),
             Map.entry("GET /users/me/membership", SIGNED_IN),
+            // Xin tham gia và duyệt (UC-AUTH-06, 07); phạm vi chi kiểm ở JoinRequestService.
+            Map.entry("POST /join-requests", List.of("MEMBER")),
+            Map.entry("GET /join-requests", ADMINS),
+            Map.entry("PATCH /join-requests/{}", ADMINS),
+            Map.entry("DELETE /join-requests/{}", List.of("MEMBER")),
             // Gia phả (genealogy.yaml). Tạo gia đình: MEMBER chưa thuộc gia đình nào hoặc SYSTEM_ADMIN.
             Map.entry("GET /families", SIGNED_IN),
             Map.entry("POST /families", List.of("MEMBER", "SYSTEM_ADMIN")),

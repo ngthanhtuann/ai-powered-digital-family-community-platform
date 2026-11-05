@@ -52,7 +52,7 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Quản lý',
     roles: ADMIN_ROLES,
     items: [
-      { label: 'Duyệt yêu cầu tham gia', icon: 'user-check', roles: ADMIN_ROLES },
+      { label: 'Duyệt yêu cầu tham gia', href: '/join-requests', icon: 'user-check', roles: ADMIN_ROLES },
       { label: 'Phân công trưởng chi', href: '/family-roles', icon: 'user-cog', roles: ADMIN_ROLES },
       { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
     ],
