@@ -381,6 +381,7 @@ paths:
           application/json:
             schema:
               type: object
+              description: Nguồn tối đa 30.000 ký tự; DOCUMENT chỉ dùng tiêu đề, danh mục và mô tả, không đọc nội dung PDF scan.
               required:
               - sourceType
               - sourceId
@@ -394,15 +395,9 @@ paths:
                 sourceId:
                   type: string
                   format: uuid
-                maxLength:
-                  type: integer
-                  minimum: 50
-                  maximum: 2000
-                  default: 500
             example:
               sourceType: STORY
               sourceId: e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014
-              maxLength: 500
       responses:
         '200':
           description: Tóm tắt nguồn mà người dùng được phép xem

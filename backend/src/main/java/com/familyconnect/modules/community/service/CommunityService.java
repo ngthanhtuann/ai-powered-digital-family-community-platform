@@ -165,6 +165,29 @@ public class CommunityService {
         return asView(readablePost(user,id),user);
     }
 
+    /** Lấy văn bản bài đăng và bình luận để AI tóm tắt, sau khi áp dụng đúng quyền đọc của Community. */
+    @Transactional(readOnly=true)
+    public String summarySource(UUID id) {
+        Actor user = actor();
+        Post post = readablePost(user, id);
+        StringBuilder text = new StringBuilder(post.content());
+        for (int page = 0; page < 10; page++) {
+            Page<Comment> comments = store.comments(id, page, 100, "created_at ASC, id ASC");
+            for (Comment comment : comments.items()) {
+                if (text.length() + comment.content().length() + 1 > 30001) return text.toString();
+                text.append("\n").append(comment.content());
+            }
+            if ((page + 1L) * 100 >= comments.total()) break;
+        }
+        return text.toString();
+    }
+
+    @Transactional(readOnly=true)
+    public UUID summaryFamilyId(UUID id) {
+        Actor user = actor();
+        return readablePost(user, id).familyId();
+    }
+
     @Transactional
     public PostView updatePost(UUID id, UpdatePost input) {
         Actor user = actor();
@@ -207,6 +230,7 @@ public class CommunityService {
         Actor user = actor();
         Post post = readablePost(user,postId);
         Comment created = store.insertComment(postId,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        platform.postChanged(post.id(), post.familyId());
         return commentViews(List.of(created),post,user).get(0);
     }
 
@@ -217,6 +241,7 @@ public class CommunityService {
         Post post = readablePost(user,comment.postId());
         if (!comment.createdBy().equals(user.userId())) throw new ApiException(ErrorCode.PERM_001);
         Comment updated = store.updateComment(id,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        platform.postChanged(post.id(), post.familyId());
         return commentViews(List.of(updated),post,user).get(0);
     }
 
@@ -232,6 +257,7 @@ public class CommunityService {
         }
         store.deleteComment(id);
         platform.logContentDeleted("COMMENT",id,post.familyId(),owner);
+        platform.postChanged(post.id(), post.familyId());
     }
 
     @Transactional

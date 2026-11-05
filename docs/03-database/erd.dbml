@@ -449,18 +449,16 @@ Table ai_chat_message {
 Table ai_summary_cache {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']
-  source_type varchar(40) [not null, note: 'Loại nguồn']
-  source_id uuid [not null, note: 'ID nguồn, không FK liên module; tham chiếu logic -> post hoặc family_story hoặc heritage_document hoặc person, không có FK']
-  source_version_hash varchar(64) [not null, note: 'Hash phiên bản nguồn']
-  summary text [not null, note: 'Tóm tắt đã lọc']
+  source_type varchar(40) [not null, note: 'POST, STORY, DOCUMENT']
+  source_id uuid [not null, note: 'ID nguồn, không FK liên module']
+  source_version_hash varchar(64) [not null, note: 'SHA-256 nội dung nguồn; cache theo hash']
+  summary text [not null, note: 'Tóm tắt tiếng Việt']
   model_name varchar(100) [not null, note: 'Model tạo tóm tắt']
-  expires_at timestamptz [not null, note: 'Hạn cache']
-  created_by uuid [note: 'tham chiếu logic -> users, không có FK']
-  updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
+  expires_at timestamptz [not null, note: 'Hạn cache 30 ngày']
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'AI · TV5 Lê Nhựt · Cache kết quả tóm tắt · Chỉ mục (family_id, source_type, source_id, source_version_hash) và (expires_at); unique partial khi deleted_at IS NULL.'
+  Note: 'AI · Cache kết quả tóm tắt theo hash nội dung; không có FK sang module khác. Index family_id và source; hash active unique, xóa cache khi nguồn cập nhật/xóa.'
 }
 
 Ref: branch.family_id > family.id

@@ -160,6 +160,35 @@ public class HeritageService {
         return toStoryData(story);
     }
 
+    /** Nội dung dùng cho AI; luôn kiểm tra quyền đọc ở module Heritage trước khi trả về module AI. */
+    @Transactional(readOnly = true)
+    public String summarySource(String type, UUID id) {
+        if ("STORY".equals(type)) {
+            FamilyStory story = findStory(id);
+            requireFamilyAccess(story.getFamilyId());
+            if (story.getRelatedPersonId() != null
+                    && genealogyQuery.findMinorPersonIds(story.getFamilyId(), java.time.LocalDate.now(clock))
+                    .contains(story.getRelatedPersonId())
+                    && membershipQuery.getMembership(CurrentUser.require().id()).role() == EffectiveRole.MEMBER) {
+                throw new ApiException(ErrorCode.PERM_001);
+            }
+            return joinLines(story.getTitle(), story.getContent());
+        }
+        if ("DOCUMENT".equals(type)) {
+            HeritageDocument document = findDocument(id);
+            requireFamilyAccess(document.getFamilyId());
+            return joinLines(document.getTitle(), document.getCategory(), document.getDescription());
+        }
+        throw new ApiException(ErrorCode.VALID_001);
+    }
+
+    @Transactional(readOnly = true)
+    public UUID familyIdForSummary(String type, UUID id) {
+        if ("STORY".equals(type)) return findStory(id).getFamilyId();
+        if ("DOCUMENT".equals(type)) return findDocument(id).getFamilyId();
+        throw new ApiException(ErrorCode.VALID_001);
+    }
+
     @Transactional
     public StoryData createStory(UUID requestedFamilyId, CreateStory request) {
         UUID familyId = resolveFamily(requestedFamilyId);

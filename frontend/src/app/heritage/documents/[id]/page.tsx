@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi } from '@/services/heritage';
+import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 export default function HeritageDocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -102,6 +103,7 @@ export default function HeritageDocumentDetailsPage() {
                   {item.category || 'Chưa phân loại'} · {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                 </p>
                 {item.description && <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>}
+                <AiSummaryPanel sourceType="DOCUMENT" sourceId={id} />
                 <button
                   type="button"
                   className="mt-6 inline-flex text-label text-info underline disabled:text-text-secondary"
