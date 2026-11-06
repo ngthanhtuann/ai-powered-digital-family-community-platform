@@ -30,6 +30,9 @@ Nếu lỗi CORS, thêm `http://localhost:3000` vào danh sách origin của bac
 
 ## Docker
 
+Cách nhanh nhất là chạy cả hệ thống ở thư mục gốc repo: `docker compose up -d --build`, rồi mở http://localhost:3000.
+Chỉ build riêng web:
+
 ```bash
 docker build -t familyconnect-frontend --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 .
 docker run --rm -p 3000:3000 familyconnect-frontend
