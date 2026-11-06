@@ -14,6 +14,7 @@ import { BranchSelect } from '@/components/admin/BranchSelect';
 import {
   adminApi,
   PAGE_SIZE,
+  type BackupFile,
   type AdminUser,
   type ContentType,
   type GlobalRole,
@@ -304,6 +305,92 @@ function ModerationSection() {
   );
 }
 
+/** UC-AUTH-11: sao lưu PostgreSQL + ảnh, khôi phục có xác nhận ghi đè. */
+function BackupSection() {
+  const cache = useQueryClient();
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<BackupFile | null>(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [notice, setNotice] = useState('');
+  const backups = useQuery({
+    queryKey: ['admin-backups', page],
+    queryFn: () => adminApi.backups(page),
+  });
+  const create = useMutation({
+    mutationFn: () => adminApi.createBackup(),
+    onSuccess: async (file) => {
+      setNotice(`Đã tạo bản sao lưu ${file.fileName}.`);
+      setPage(0);
+      await cache.invalidateQueries({ queryKey: ['admin-backups'] });
+    },
+  });
+  const restore = useMutation({
+    mutationFn: ({ id, text }: { id: string; text: 'RESTORE' }) => adminApi.restore(id, text),
+    onSuccess: async () => {
+      setNotice('Khôi phục hoàn tất. Tất cả refresh token đã bị thu hồi; vui lòng đăng nhập lại.');
+      setSelected(null);
+      setConfirmText('');
+      await cache.invalidateQueries({ queryKey: ['admin-backups'] });
+    },
+  });
+  const busy = create.isPending || restore.isPending;
+
+  return (
+    <section id="sao-luu-khoi-phuc" aria-labelledby="backup-title"
+      className="scroll-mt-4 space-y-4 rounded-card border border-border bg-surface p-5">
+      <h2 id="backup-title" className="text-section-title">Sao lưu &amp; Khôi phục</h2>
+      <p className="text-body text-text-secondary">Bản sao lưu gồm PostgreSQL (cả dữ liệu vector) và ảnh/tệp đã tải lên.</p>
+      <Button fullWidth={false} disabled={busy} loading={create.isPending} onClick={() => {
+        setNotice(''); create.mutate();
+      }}>Tạo bản sao lưu</Button>
+      {create.isError && <p role="alert" className="text-body text-error">{errorText(create.error)}</p>}
+      {notice && <p role="status" className="text-body text-text-primary">{notice}</p>}
+      {backups.isPending && <p className="text-body text-text-secondary">Đang tải danh sách...</p>}
+      {backups.isError && <p role="alert" className="text-body text-error">{errorText(backups.error)}</p>}
+      {backups.isSuccess && backups.data.items.length === 0 && (
+        <p className="text-body text-text-secondary">Chưa có bản sao lưu.</p>
+      )}
+      <ul className="space-y-3">
+        {backups.data?.items.map((file) => (
+          <li key={file.id} className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border p-4">
+            <div className="min-w-0 text-body">
+              <p className="break-all font-semibold">{file.fileName}</p>
+              <p className="text-caption text-text-secondary">{dateText(file.createdAt)} · {(file.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB</p>
+            </div>
+            <Button fullWidth={false} variant="danger" disabled={busy}
+              onClick={() => { setSelected(file); setConfirmText(''); setNotice(''); }}>
+              Khôi phục
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {backups.isSuccess && <Pager page={page} total={backups.data.meta.total} onChange={setPage} />}
+      {selected && (
+        <Modal open title={`Khôi phục ${selected.fileName}`} onClose={() => { if (!busy) setSelected(null); }}
+          description="CẢNH BÁO: Dữ liệu cơ sở dữ liệu và toàn bộ ảnh/tệp tải lên hiện tại sẽ bị ghi đè bằng bản sao lưu đã chọn.">
+          <form className="grid gap-4" onSubmit={(e) => {
+            e.preventDefault();
+            if (confirmText === 'RESTORE' && !busy && window.confirm('Xác nhận ghi đè dữ liệu hiện tại?')) {
+              setNotice(''); restore.mutate({ id: selected.id, text: confirmText });
+            }
+          }}>
+            <label className="grid gap-1.5 text-label">Nhập chính xác RESTORE để xác nhận
+              <input className={selectClass} autoComplete="off" value={confirmText} disabled={busy}
+                onChange={(e) => setConfirmText(e.target.value)} placeholder="RESTORE" />
+            </label>
+            {restore.isError && <p role="alert" className="text-body text-error">{errorText(restore.error)}</p>}
+            <div className="flex flex-wrap gap-2">
+              <Button fullWidth={false} variant="secondary" disabled={busy} onClick={() => setSelected(null)}>Hủy</Button>
+              <Button type="submit" fullWidth={false} variant="danger" loading={restore.isPending}
+                disabled={confirmText !== 'RESTORE' || busy}>Ghi đè và khôi phục</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </section>
+  );
+}
+
 /** Trang /admin (SCRUM-50): chỉ SYSTEM_ADMIN; backend vẫn kiểm quyền ở mọi API (PERM_001). */
 export default function AdminPage() {
   const access = useHeritageAccess();
@@ -314,7 +401,7 @@ export default function AdminPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
         <h1 className="text-page-title">Quản trị hệ thống</h1>
-        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng và xử lý nội dung bị báo cáo.</p>
+        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng, kiểm duyệt nội dung và sao lưu dữ liệu.</p>
       </header>
       <AccessState loading={loading} error={error} />
       {access.profile.isSuccess && !access.isSystemAdmin && (
@@ -326,6 +413,7 @@ export default function AdminPage() {
         <>
           <UsersSection myId={access.profile.data?.id} />
           <ModerationSection />
+          <BackupSection />
         </>
       )}
     </div>
