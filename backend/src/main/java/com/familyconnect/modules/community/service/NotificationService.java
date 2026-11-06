@@ -89,6 +89,7 @@ public class NotificationService implements CommunityNotificationPort {
     public void announce(UUID familyId, UUID branchId, UUID announcementId,
                          String title, String content, UUID creator) {
         for (UUID user : membership.findVerifiedUserIds(familyId)) {
+            if (user.equals(creator)) continue; // người đăng không cần được báo về bài của chính mình
             var m = membership.getMembership(user);
             Role role = switch (m.role()) {
                 case SYSTEM_ADMIN -> Role.SYSTEM_ADMIN;

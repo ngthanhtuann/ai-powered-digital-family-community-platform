@@ -119,6 +119,7 @@ class AnnouncementNotificationApiIntegrationTest {
         assertThat(mine.get(0).get("type").asText()).isEqualTo("ANNOUNCEMENT");
         assertThat(mine.get(0).get("isRead").asBoolean()).isFalse();
         assertThat(data(call(get("/api/v1/notifications"), inB, null).andExpect(status().isOk()))).isEmpty();
+        assertThat(data(call(get("/api/v1/notifications"), head, null).andExpect(status().isOk()))).isEmpty();
 
         UUID notification = UUID.fromString(mine.get(0).get("id").asText());
         call(patch("/api/v1/notifications/" + notification), outsider, Map.of("isRead", true))
