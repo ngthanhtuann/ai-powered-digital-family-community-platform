@@ -14,6 +14,8 @@ export type ContentType = Schemas['ContentType'];
 export type ReviewAction = Schemas['ContentReportReviewRequest']['action'];
 export type FamilyAccount = Schemas['FamilyAccount'];
 export type MembershipRequest = Schemas['AdminMembershipRequest'];
+export type BackupFile = Schemas['BackupFile'];
+export type RestoreResult = Schemas['RestoreResult'];
 
 export const PAGE_SIZE = 20;
 
@@ -32,6 +34,10 @@ export const adminApi = {
     api.patch<ContentReport>(`/admin/content-reports/${id}`, {
       action,
     } satisfies Schemas['ContentReportReviewRequest']),
+  backups: (page: number) => api.list<BackupFile>('/admin/backups', { page, size: PAGE_SIZE }),
+  createBackup: () => api.post<BackupFile>('/admin/backups'),
+  restore: (backupId: string, confirmText: 'RESTORE') =>
+    api.post<RestoreResult>('/admin/restores', { backupId, confirmText } satisfies Schemas['RestoreCreateRequest']),
 };
 
 /** UC-AUTH-14: trưởng họ (hoặc quản trị) phân công trưởng chi. */

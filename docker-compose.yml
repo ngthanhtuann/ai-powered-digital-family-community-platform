@@ -28,6 +28,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-familyconnect}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
       MEDIA_STORAGE_PATH: /var/lib/familyconnect/media
+      BACKUP_STORAGE_PATH: /var/lib/familyconnect/backups
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-familyconnect}
+      PGUSER: ${POSTGRES_USER:-familyconnect}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
       # Bắt buộc (SCRUM-35): đặt trong .env; thiếu thì backend dừng ngay khi khởi động và báo lỗi.
       JWT_SECRET: ${JWT_SECRET:-}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
@@ -38,6 +44,7 @@ services:
       - "8080:8080"
     volumes:
       - uploads:/var/lib/familyconnect/media
+      - backups:/var/lib/familyconnect/backups
     depends_on:
       db:
         condition: service_healthy
@@ -48,3 +55,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  backups:

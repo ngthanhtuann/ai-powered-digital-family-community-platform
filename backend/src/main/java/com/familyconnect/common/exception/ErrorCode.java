@@ -28,6 +28,7 @@ public enum ErrorCode {
     // Mã riêng của module quản trị (auth.md mục 6.2).
     ADM_001(HttpStatus.CONFLICT, "Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng"),
     ADM_002(HttpStatus.CONFLICT, "Báo cáo đã được xử lý"),
+    ADM_003(HttpStatus.CONFLICT, "Đang có tác vụ sao lưu hoặc khôi phục khác"),
     // Mã riêng của module Gia phả (genealogy.md mục 7.2, HTTP 409).
     GEN_001(HttpStatus.CONFLICT, "Gia đình còn thành viên, không xóa được"),
     GEN_002(HttpStatus.CONFLICT, "Chi còn thành viên hoặc chi con, không xóa được"),
