@@ -6,11 +6,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ParentChildRepository extends JpaRepository<ParentChild, UUID> {
+
+    List<ParentChild> findByChildIdAndDeletedAtIsNull(UUID childId);
 
     Optional<ParentChild> findByParentIdAndChildIdAndDeletedAtIsNull(UUID parentId, UUID childId);
 
