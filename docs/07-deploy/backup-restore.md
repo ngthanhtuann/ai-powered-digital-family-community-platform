@@ -34,6 +34,17 @@ Audit `BACKUP_CREATED`/`RESTORE_COMPLETED` đi qua `AuditLogger`; trong
 `develop` hiện tại, adapter `LoggingAuditLogger` ghi vào log ứng dụng, còn
 chuyển sang bảng `audit_log` thuộc SCRUM-57.
 
+## Giới hạn khi khôi phục
+
+- Chỉ khôi phục được bản sao lưu **cùng phiên bản migration** (Flyway) với cơ sở dữ liệu hiện tại.
+  Khác phiên bản thì script dừng trước khi đụng vào dữ liệu, API trả `500 SERVER_001` và log ghi
+  "Bản sao lưu ở schema Vx, DB hiện tại ở Vy". Lý do: `pg_restore --clean` chỉ dựng lại bảng có trong
+  bản sao lưu; bảng của migration mới hơn vẫn còn và Flyway sẽ lỗi ở lần khởi động sau.
+- Ảnh trong bản sao lưu được chép vào thư mục tạm trên volume `uploads` trước, rồi mới khôi phục DB và hoán
+  đổi bằng `mv`. Lỗi trước bước hoán đổi thì DB và ảnh hiện tại giữ nguyên.
+- Sau khi khôi phục nên khởi động lại backend (`docker compose restart backend`) để xóa cache trong bộ nhớ
+  (dashboard, hạn mức AI).
+
 ## Cách 2: Chạy script bằng PowerShell
 
 ```powershell

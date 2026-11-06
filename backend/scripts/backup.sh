@@ -27,7 +27,8 @@ trap 'rm -rf -- "$staging"; rm -f -- "$archive"' EXIT
 
 pg_dump --format=custom --no-owner --no-acl --file="$staging/database.dump"
 mkdir -p -- "$staging/media"
-cp -a -- "$media_dir/." "$staging/media/"
+# Bỏ thư mục tạm .restore-* nếu một lần khôi phục trước bị ngắt giữa chừng.
+find "$media_dir" -mindepth 1 -maxdepth 1 ! -name '.restore-*' -exec cp -a -t "$staging/media/" -- {} +
 tar -czf "$archive" -C "$staging" database.dump media
 mv -- "$archive" "$target"
 echo "$target"
