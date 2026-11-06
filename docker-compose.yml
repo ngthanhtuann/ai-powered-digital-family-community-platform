@@ -50,7 +50,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # frontend: sẽ thêm ở các task sau (Next.js, SCRUM-33)
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Trình duyệt gọi thẳng backend nên dùng địa chỉ máy người dùng; giá trị được nhúng lúc build.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    container_name: familyconnect-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   pgdata:
