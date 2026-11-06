@@ -45,9 +45,9 @@ public final class GenealogyResponses {
                                LocalDate endDate, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }
 
-    /** genealogy.yaml TreeNode; gender, generation null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10). */
+    /** genealogy.yaml TreeNode; gender, generation, avatarMediaId null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10). */
     public record TreeNode(UUID id, String fullName, String gender, Integer birthYear, boolean isDeceased,
-                           boolean hasMoreChildren, Integer generation) {
+                           boolean hasMoreChildren, Integer generation, UUID avatarMediaId) {
     }
 
     /** genealogy.yaml TreeEdge: PARENT_CHILD (source là cha/mẹ, kèm kind) hoặc MARRIAGE (kèm status). */

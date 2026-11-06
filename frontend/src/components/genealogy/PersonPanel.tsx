@@ -1,0 +1,86 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/genealogy/PersonNode';
+import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
+import { genealogyApi, type Relationship, type TreeNode } from '@/services/genealogy';
+
+const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
+
+/**
+ * Panel chi tiết khi bấm một người trên cây (SCRUM-52 bước 4): thông tin chính, nút thêm cha/mẹ/con/vợ chồng
+ * cho người quản lý, và tra "A là gì của B" để tô sáng đường quan hệ (UC-GEN-07, gọi UC-GEN-08).
+ */
+export function PersonPanel({ familyId, personId, people, canManage, onRelation, onClose }: {
+  familyId: string;
+  personId: string;
+  people: TreeNode[];
+  canManage: boolean;
+  onRelation: (relation: Relationship | null) => void;
+  onClose: () => void;
+}) {
+  const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId) });
+  const [mode, setMode] = useState<RelationMode | null>(null);
+  const [otherId, setOtherId] = useState('');
+  const relation = useMutation({
+    mutationFn: () => genealogyApi.relationship(personId, otherId),
+    onSuccess: (data) => onRelation(data),
+  });
+  const p = person.data;
+  const others = people.filter((n) => n.id !== personId).sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'vi'));
+  const shownOnTree = new Set(people.map((n) => n.id));
+  const offTree = relation.data?.path?.filter((step) => !shownOnTree.has(step.id)).length ?? 0;
+
+  return (
+    <aside aria-label="Chi tiết thành viên" className="space-y-4 rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-section-title">Chi tiết</h2>
+        <Button fullWidth={false} variant="secondary" onClick={onClose}>Đóng</Button>
+      </div>
+      {person.isPending && <p className="text-body text-text-secondary">Đang tải...</p>}
+      {person.isError && <p role="alert" className="text-body text-error">{errorText(person.error)}</p>}
+      {p && <>
+        <div className="flex items-center gap-3">
+          <Avatar mediaId={p.avatarMediaId} name={p.fullName ?? ''} size="h-14 w-14" />
+          <div className="min-w-0">
+            <p className="truncate text-label">{p.fullName}</p>
+            <p className="text-caption text-text-secondary">
+              {[p.gender && GENDER_LABEL[p.gender], yearOf(p) && `Sinh ${yearOf(p)}`, p.isDeceased && 'Đã mất']
+                .filter(Boolean).join(' · ') || 'Chưa có thông tin'}
+            </p>
+            {p.currentProvince && <p className="text-caption text-text-secondary">{p.currentProvince}</p>}
+          </div>
+        </div>
+        <Link href={`/persons/${p.id}`} className="inline-block text-body text-info underline">Xem hồ sơ đầy đủ</Link>
+        {canManage && (
+          <div className="grid gap-2">
+            <Button variant="secondary" onClick={() => setMode('parent')}>Thêm cha/mẹ</Button>
+            <Button variant="secondary" onClick={() => setMode('child')}>Thêm con</Button>
+            <Button variant="secondary" onClick={() => setMode('spouse')}>Thêm vợ/chồng</Button>
+          </div>
+        )}
+        <form className="grid gap-2 border-t border-border pt-4" onSubmit={(e) => { e.preventDefault(); relation.mutate(); }}>
+          <label className="grid gap-1 text-label">{p.fullName} là gì của
+            <select className={selectClass} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+              <option value="">Chọn người trên cây</option>
+              {others.map((n) => <option key={n.id} value={n.id}>{n.fullName}{n.birthYear ? ` (${n.birthYear})` : ''}</option>)}
+            </select>
+          </label>
+          <Button type="submit" loading={relation.isPending} disabled={!otherId}>Tra quan hệ</Button>
+          {relation.isError && <p role="alert" className="text-body text-error">{errorText(relation.error)}</p>}
+          {relation.data && (
+            <div role="status" className="space-y-1 rounded-control bg-info-soft p-3 text-body">
+              <p>{relation.data.description}</p>
+              {offTree > 0 && <p className="text-caption">{offTree} người trên đường đi chưa hiện trên cây (mở thêm nhánh để thấy).</p>}
+              <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
+            </div>
+          )}
+        </form>
+      </>}
+      {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} onClose={() => setMode(null)} />}
+    </aside>
+  );
+}
