@@ -1,130 +1,100 @@
 package com.familyconnect.modules.genealogy.service;
 
+import com.familyconnect.common.exception.ApiException;
+import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import com.familyconnect.modules.genealogy.dto.RelationshipResponse.PathPerson;
+import com.familyconnect.modules.genealogy.entity.Marriage;
+import com.familyconnect.modules.genealogy.entity.Person;
+import com.familyconnect.modules.genealogy.repository.MarriageRepository;
+import com.familyconnect.modules.genealogy.repository.ParentChildRepository;
+import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
+/** UC-GEN-08 GET /relationships: kiểm quyền rồi chạy {@link KinshipCalculator} trên dữ liệu bảng gia phả. */
 @Service
 public class KinshipService {
 
-    private final EntityManager entityManager;
+    private final PersonRepository personRepository;
+    private final ParentChildRepository parentChildRepository;
+    private final MarriageRepository marriageRepository;
+    private final GenealogyAccess access;
 
-    public KinshipService(EntityManager entityManager) {
-        this.entityManager = entityManager;
+    public KinshipService(PersonRepository personRepository, ParentChildRepository parentChildRepository,
+                          MarriageRepository marriageRepository, GenealogyAccess access) {
+        this.personRepository = personRepository;
+        this.parentChildRepository = parentChildRepository;
+        this.marriageRepository = marriageRepository;
+        this.access = access;
     }
 
-    @SuppressWarnings("unchecked")
     @Transactional(readOnly = true)
-    public RelationshipResponse calculateRelationship(UUID personAId, UUID personBId, String userRole) {
-        if (personAId.equals(personBId)) {
-            return new RelationshipResponse("Bản thân", "Tôi", "Tôi", Collections.singletonList("Bản thân"));
+    public RelationshipResponse relationship(UUID personAId, UUID personBId) {
+        Person a = find(personAId);
+        Person b = find(personBId);
+        access.requireRead(a.getFamilyId()); // PERM_002 chưa xác minh, PERM_001 gia đình khác
+        if (!a.getFamilyId().equals(b.getFamilyId())) {
+            throw new ApiException(ErrorCode.PERM_001);
         }
-
-        // 1. Tìm tất cả tổ tiên của A và B kèm số bước (Distance) bằng SQL Recursive CTE ngắn chống lỗi chuỗi
-        String ancestorSql = "WITH RECURSIVE AncestorCTE AS ( " +
-                "  SELECT parent_id, child_id, 1 as steps FROM parent_child WHERE child_id = :personId AND deleted_at IS NULL " +
-                "  UNION ALL " +
-                "  SELECT pc.parent_id, pc.child_id, a.steps + 1 FROM parent_child pc " +
-                "  JOIN AncestorCTE a ON pc.child_id = a.parent_id WHERE pc.deleted_at IS NULL " +
-                ") SELECT parent_id, MIN(steps) FROM AncestorCTE GROUP BY parent_id";
-
-        Map<UUID, Integer> ancestorsA = getAncestorsMap(ancestorSql, personAId);
-        Map<UUID, Integer> ancestorsB = getAncestorsMap(ancestorSql, personBId);
-
-        // 2. Tìm tổ tiên chung gần nhất (LCA)
-        UUID commonAncestorId = null;
-        int minTotalSteps = Integer.MAX_VALUE;
-
-        for (UUID ancestorId : ancestorsA.keySet()) {
-            if (ancestorsB.containsKey(ancestorId)) {
-                int totalSteps = ancestorsA.get(ancestorId) + ancestorsB.get(ancestorId);
-                if (totalSteps < minTotalSteps) {
-                    minTotalSteps = totalSteps;
-                    commonAncestorId = ancestorId;
-                }
-            }
-        }
-
-        int stepsA = commonAncestorId != null ? ancestorsA.get(commonAncestorId) : -1;
-        int stepsB = commonAncestorId != null ? ancestorsB.get(commonAncestorId) : -1;
-
-        String relation = "Chưa hỗ trợ hoặc quan hệ phức tạp";
-        String callA = "Anh/Chị/Em";
-        String callB = "Anh/Chị/Em";
-
-        Object[] personAData = getPersonBasicData(personAId);
-        Object[] personBData = getPersonBasicData(personBId);
-        
-        boolean isAOlder = false;
-        if (personAData != null && personBData != null) {
-            LocalDate birthA = personAData[3] != null ? ((java.sql.Date) personAData[3]).toLocalDate() : LocalDate.MIN;
-            LocalDate birthB = personBData[3] != null ? ((java.sql.Date) personBData[3]).toLocalDate() : LocalDate.MIN;
-            isAOlder = birthA.isBefore(birthB);
-        }
-
-        // 3. Ánh xạ quan hệ cơ bản theo khoảng cách bước đồ thị
-        if (stepsA == 1 && stepsB == -1) {
-            relation = "Cha/Mẹ ruột"; callA = "Con"; callB = "Cha/Mẹ";
-        } else if (stepsA == -1 && stepsB == 1) {
-            relation = "Con ruột"; callA = "Cha/Mẹ"; callB = "Con";
-        } else if (stepsA == 1 && stepsB == 1) {
-            relation = isAOlder ? "Anh/Chị ruột" : "Em ruột";
-            callA = isAOlder ? "Anh/Chị" : "Em";
-            callB = isAOlder ? "Em" : "Anh/Chị";
-        } else if (stepsA == 2 && stepsB == -1) {
-            relation = "Ông/Bà nội ngoại"; callA = "Cháu"; callB = "Ông/Bà";
-        } else if (stepsA == -1 && stepsB == 2) {
-            relation = "Cháu nội ngoại"; callA = "Ông/Bà"; callB = "Cháu";
-        } else if (stepsA == 2 && stepsB == 1) {
-            relation = "Chú/Bác/Cô/Dì"; callA = "Cháu"; callB = "Thúc Bá Cô Dì";
-        } else if (stepsA == 1 && stepsB == 2) {
-            relation = "Cháu (Gọi bằng Chú/Bác/Cô/Dì)"; callA = "Chú/Bác/Cô/Dì"; callB = "Cháu";
-        }
-
-        // 4. Kiểm tra luật bảo mật trẻ em dưới 16 tuổi đối với MEMBER
-        List<String> pathList = new ArrayList<>();
-        pathList.add(buildNodeName(personAData, userRole));
-        pathList.add(buildNodeName(personBData, userRole));
-
-        return new RelationshipResponse(relation, callA, callB, pathList);
+        DbGraph graph = new DbGraph();
+        KinshipCalculator.Result r = new KinshipCalculator(graph).relationship(a.getId().toString(), b.getId().toString());
+        List<PathPerson> path = r.path().stream()
+                .map(id -> new PathPerson(UUID.fromString(id), graph.person(id).fullName()))
+                .toList();
+        return new RelationshipResponse(r.supported(), r.relation(), describe(r, a, b), r.commonAncestorId() == null
+                ? null : UUID.fromString(r.commonAncestorId()), r.stepsFromA(), r.stepsFromB(), path);
     }
 
-    private Map<UUID, Integer> getAncestorsMap(String sql, UUID personId) {
-        Query query = entityManager.createNativeQuery(sql);
-        query.setParameter("personId", personId);
-        List<Object[]> rows = query.getResultList();
-        Map<UUID, Integer> map = new HashMap<>();
-        for (Object[] r : rows) {
-            map.put((UUID) r[0], ((Number) r[1]).intValue());
+    private static String describe(KinshipCalculator.Result r, Person a, Person b) {
+        if (!r.supported()) {
+            return "Chưa hỗ trợ hoặc không có quan hệ huyết thống trong dữ liệu";
         }
-        return map;
+        if (a.getId().equals(b.getId())) {
+            return a.getFullName() + " là cùng một người";
+        }
+        return a.getFullName() + " là " + r.relation() + " của " + b.getFullName();
     }
 
-    private Object[] getPersonBasicData(UUID personId) {
-        String sql = "SELECT id, first_name, last_name, birth_date, is_deceased FROM person WHERE id = :id";
-        List<Object[]> result = entityManager.createNativeQuery(sql).setParameter("id", personId).getResultList();
-        return result.isEmpty() ? null : result.get(0);
+    private Person find(UUID id) {
+        return personRepository.findByIdAndDeletedAtIsNull(id).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
     }
 
-    private String buildNodeName(Object[] personData, String userRole) {
-        if (personData == null) return "Ẩn thông tin";
-        String firstName = (String) personData[1];
-        String lastName = (String) personData[2];
-        java.sql.Date birthSql = (java.sql.Date) personData[3];
-        boolean isDeceased = (Boolean) personData[4];
+    /** Đọc bảng person, parent_child, marriage; nhớ đệm người đã đọc trong một yêu cầu. */
+    private final class DbGraph implements KinshipCalculator.Graph {
+        private final Map<String, KinshipCalculator.Person> people = new HashMap<>();
 
-        if ("MEMBER".equalsIgnoreCase(userRole) && !isDeceased && birthSql != null) {
-            LocalDate birthDate = birthSql.toLocalDate();
-            if (birthDate.plusYears(16).isAfter(LocalDate.now())) {
-                return "Người dưới 16 tuổi (MEMBER ẩn tên)";
-            }
+        @Override
+        public KinshipCalculator.Person person(String id) {
+            return people.computeIfAbsent(id, key -> {
+                Person p = find(UUID.fromString(key));
+                return new KinshipCalculator.Person(key, p.getFullName(), p.getGender(), p.getBirthDate(),
+                        p.getBirthYear() == null ? null : p.getBirthYear().intValue());
+            });
         }
-        return lastName + " " + firstName;
+
+        @Override
+        public List<KinshipCalculator.ParentLink> parentsOf(String id) {
+            return parentChildRepository.findByChildIdAndDeletedAtIsNull(UUID.fromString(id)).stream()
+                    .map(pc -> new KinshipCalculator.ParentLink(pc.getParentId().toString(), pc.getParentRole(), pc.getKind()))
+                    .toList();
+        }
+
+        @Override
+        public List<KinshipCalculator.MarriageLink> marriagesOf(String id) {
+            UUID self = UUID.fromString(id);
+            return marriageRepository.findAllByPersonId(self).stream()
+                    .map(m -> new KinshipCalculator.MarriageLink(spouse(m, self).toString(), m.getStatus()))
+                    .toList();
+        }
+
+        private static UUID spouse(Marriage m, UUID self) {
+            return self.equals(m.getPerson1Id()) ? m.getPerson2Id() : m.getPerson1Id();
+        }
     }
 }
-
