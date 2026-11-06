@@ -795,7 +795,7 @@ export interface components {
              * @example EVENT_REMINDER_24H
              * @enum {string}
              */
-            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT";
+            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED";
             /** @example Nhắc sự kiện: Họp mặt gia đình */
             title: string;
             /** @example EVENT */

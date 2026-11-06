@@ -51,6 +51,20 @@ public class MediaController {
         return service.listPostMedia(id, page, size, sort);
     }
 
+    @PostMapping(path = "/events/{id}/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<MediaView>> uploadEvent(
+            @PathVariable UUID id, @RequestParam("file") MultipartFile file) throws IOException {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(service.uploadEvent(id,file)));
+    }
+
+    @GetMapping("/events/{id}/media")
+    public PageSuccess<MediaView> eventMedia(
+            @PathVariable UUID id, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        return service.listEventMedia(id,page,size,sort);
+    }
+
     @GetMapping("/media/{id}/content")
     public ResponseEntity<Resource> content(@PathVariable UUID id) {
         MediaService.MediaContent media = service.content(id);

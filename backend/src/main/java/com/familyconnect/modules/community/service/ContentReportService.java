@@ -9,6 +9,8 @@ import com.familyconnect.modules.community.dto.CommunityDto.ReportInput;
 import com.familyconnect.modules.community.dto.CommunityDto.ReportView;
 import com.familyconnect.modules.community.repository.JdbcContentReportStore;
 import com.familyconnect.modules.community.repository.JdbcContentReportStore.Target;
+import com.familyconnect.modules.community.repository.JdbcContentReportStore.Reporter;
+import com.familyconnect.modules.community.service.NotificationService.ModerationType;
 import com.familyconnect.modules.community.service.CommunityPlatformPort.Actor;
 import com.familyconnect.modules.community.service.CommunityPlatformPort.Role;
 import org.slf4j.Logger;
@@ -44,13 +46,15 @@ public class ContentReportService implements ContentModerationPort {
     private final CommunityPlatformPort platform;
     private final AuditLogger auditLogger;
     private final AiGateway aiGateway;
+    private final NotificationService notifications;
 
     public ContentReportService(JdbcContentReportStore store, CommunityPlatformPort platform, AuditLogger auditLogger,
-                                AiGateway aiGateway) {
+                                AiGateway aiGateway, NotificationService notifications) {
         this.store = store;
         this.platform = platform;
         this.auditLogger = auditLogger;
         this.aiGateway = aiGateway;
+        this.notifications = notifications;
     }
 
     /** POST /content-reports: x-roles MEMBER, BRANCH_ADMIN; chỉ nội dung mình xem được; mỗi người một lần. */
@@ -106,9 +110,14 @@ public class ContentReportService implements ContentModerationPort {
     public ContentReportView hideContent(UUID reportId, UUID adminUserId) {
         ContentReportView report = locked(reportId, ReportStatus.PENDING);
         store.setHidden(report.targetType(), report.targetId(), true, adminUserId);
-        int count = store.moveReports(report.targetType(), report.targetId(), ReportStatus.PENDING, ReportStatus.HIDDEN,
+        List<Reporter> reporters = store.moveReports(report.targetType(), report.targetId(), ReportStatus.PENDING, ReportStatus.HIDDEN,
                 adminUserId);
+        int count = reporters.size();
         audit("CONTENT_HIDDEN", report, count);
+        notifyOwner(report,ModerationType.CONTENT_HIDDEN,"Nội dung của bạn đã bị ẩn",
+            "Nội dung đã bị quản trị ẩn sau khi xử lý báo cáo.");
+        notifyReporters(report,reporters,ModerationType.REPORT_HIDDEN,
+            "Báo cáo của bạn đã được xử lý","Nội dung bạn báo cáo đã bị ẩn.");
         reindexAfterCommit(report, false);
         return result(reportId, count);
     }
@@ -117,9 +126,12 @@ public class ContentReportService implements ContentModerationPort {
     @Transactional
     public ContentReportView dismissReport(UUID reportId, UUID adminUserId) {
         ContentReportView report = locked(reportId, ReportStatus.PENDING);
-        int count = store.moveReports(report.targetType(), report.targetId(), ReportStatus.PENDING,
+        List<Reporter> reporters = store.moveReports(report.targetType(), report.targetId(), ReportStatus.PENDING,
                 ReportStatus.DISMISSED, adminUserId);
+        int count = reporters.size();
         audit("REPORT_DISMISSED", report, count);
+        notifyReporters(report,reporters,ModerationType.REPORT_DISMISSED,
+            "Báo cáo của bạn đã được xử lý","Báo cáo đã được xem xét và bỏ qua.");
         return result(reportId, count);
     }
 
@@ -128,9 +140,14 @@ public class ContentReportService implements ContentModerationPort {
     public ContentReportView restoreContent(UUID reportId, UUID adminUserId) {
         ContentReportView report = locked(reportId, ReportStatus.HIDDEN);
         store.setHidden(report.targetType(), report.targetId(), false, adminUserId);
-        int count = store.moveReports(report.targetType(), report.targetId(), ReportStatus.HIDDEN,
+        List<Reporter> reporters = store.moveReports(report.targetType(), report.targetId(), ReportStatus.HIDDEN,
                 ReportStatus.DISMISSED, adminUserId);
+        int count = reporters.size();
         audit("CONTENT_RESTORED", report, count);
+        notifyOwner(report,ModerationType.CONTENT_RESTORED,"Nội dung của bạn đã được khôi phục",
+            "Nội dung được khôi phục sau khi quản trị xem xét lại.");
+        notifyReporters(report,reporters,ModerationType.REPORT_RESTORED,
+            "Nội dung đã được khôi phục","Nội dung trong báo cáo của bạn đã được khôi phục sau khi xem xét.");
         reindexAfterCommit(report, true);
         return result(reportId, count);
     }
@@ -164,6 +181,18 @@ public class ContentReportService implements ContentModerationPort {
         detail.put("reportCount", reportCount);
         store.ownerOf(report.targetType(), report.targetId()).ifPresent(owner -> detail.put("contentOwnerId", owner));
         auditLogger.log(action, report.targetType().name(), report.targetId(), report.familyId(), detail);
+    }
+
+    private void notifyOwner(ContentReportView report, ModerationType type, String title, String body) {
+        store.ownerOf(report.targetType(),report.targetId()).ifPresent(owner ->
+            notifications.sendModeration(owner,report.familyId(),report.id(),type,title,body));
+    }
+
+    private void notifyReporters(ContentReportView report, List<Reporter> reporters,
+                                 ModerationType type, String title, String body) {
+        for (Reporter reporter : reporters) {
+            notifications.sendModeration(reporter.userId(),report.familyId(),reporter.reportId(),type,title,body);
+        }
     }
 
     /** BR-AI-15: ẩn thì gỡ khỏi chỉ mục AI, khôi phục thì thêm lại. Gọi sau commit, lỗi AI không hỏng thao tác. */

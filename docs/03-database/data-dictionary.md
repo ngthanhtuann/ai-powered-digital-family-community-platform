@@ -368,9 +368,10 @@ Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHER
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | user_id | UUID | NOT NULL | Người nhận → `users` (tham chiếu logic) |
-| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT |
+| family_id | UUID | NOT NULL, INDEX | Gia đình của thông báo → `family` (tham chiếu logic, SCRUM-53) |
+| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT |
 | ref_id | UUID | NULL | Tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT |
+| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED |
 | title | VARCHAR(255) | NOT NULL |  |
 | content | TEXT | NOT NULL |  |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE |  |

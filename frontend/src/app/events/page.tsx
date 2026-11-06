@@ -7,6 +7,7 @@ import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { EventGallery } from '@/components/events/EventGallery';
 import { eventsApi, type Event, type EventRequest, type RsvpStatus } from '@/services/events/events';
 
 const inputClass = 'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body '
@@ -177,6 +178,7 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
         {showParticipants ? 'Ẩn người tham dự' : 'Xem danh sách người tham dự'}
       </button>
       {showParticipants && <Participants eventId={event.id} />}
+      <EventGallery eventId={event.id} />
     </article>
   );
 }

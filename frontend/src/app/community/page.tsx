@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/TextField';
 import { ImagePicker } from '@/components/community/ImagePicker';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
+import { Announcements } from '@/components/community/Announcements';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
@@ -366,6 +367,8 @@ export default function CommunityPage() {
       )}
       {ready && (
         <>
+          <Announcements familyId={familyId} branchId={branchAdmin ? membership.data?.branchId ?? undefined : undefined}
+            canManage={canNews} canReport={!systemAdmin} />
           <nav aria-label="Lọc bài đăng" className="flex border-b border-border">
             {([{ key: 'ALL', label: 'Tất cả' }, { key: 'NEWS', label: 'Tin tức gia đình' }] as const)
               .map(({ key, label }) => (

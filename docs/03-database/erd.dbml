@@ -176,9 +176,10 @@ Table content_report {
 Table notification {
   id uuid [pk, note: 'Khóa chính']
   user_id uuid [not null, note: 'Người nhận; tham chiếu logic -> users, không có FK']
-  ref_type varchar(30) [note: 'EVENT, ANNOUNCEMENT']
+  family_id uuid [not null, note: 'Gia đình của thông báo; tham chiếu logic, không FK (SCRUM-53)']
+  ref_type varchar(30) [note: 'EVENT, ANNOUNCEMENT, CONTENT_REPORT']
   ref_id uuid [note: 'Tài nguyên tham chiếu']
-  type varchar(50) [not null, note: 'EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT']
+  type varchar(50) [not null, note: 'EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt: CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED']
   title varchar(255) [not null]
   content text [not null]
   is_read boolean [not null]

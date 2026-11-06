@@ -26,6 +26,9 @@ public class JdbcContentReportStore {
     public record Page(List<ContentReportView> items, long total) {
     }
 
+    /** Mỗi người báo cáo có một bản ghi để nhận kết quả riêng (hàng đợi quản trị vẫn gộp). */
+    public record Reporter(UUID reportId, UUID userId) {}
+
     private static final String COLUMNS = "id, target_type, target_id, family_id, reporter_id, reason, "
             + "content_snippet, status, created_at, updated_at";
 
@@ -65,8 +68,9 @@ public class JdbcContentReportStore {
             case EVENT -> "SELECT family_id, branch_id, created_by, "
                     + "title || ' ' || COALESCE(description, '') AS text FROM event "
                     + "WHERE id=:id AND deleted_at IS NULL" + hidden;
-            // shortcut: chưa có bảng announcement (ERD có, chưa migration); thêm nhánh khi module thông báo được làm.
-            case ANNOUNCEMENT -> null;
+            case ANNOUNCEMENT -> "SELECT family_id, branch_id, created_by, "
+                    + "title || ' ' || content AS text FROM announcement "
+                    + "WHERE id=:id AND deleted_at IS NULL" + hidden;
         };
         if (sql == null) {
             return Optional.empty();
@@ -127,12 +131,14 @@ public class JdbcContentReportStore {
                 new MapSqlParameterSource("id", id), SINGLE).stream().findFirst();
     }
 
-    /** Đổi mọi báo cáo của cùng nội dung từ trạng thái from sang to; trả số báo cáo đã đổi. */
-    public int moveReports(ContentType type, UUID targetId, ReportStatus from, ReportStatus to, UUID adminId) {
-        return jdbc.update("UPDATE content_report SET status=:to, updated_by=:admin, updated_at=now() "
-                        + "WHERE target_type=:type AND target_id=:target AND status=:from AND deleted_at IS NULL",
-                new MapSqlParameterSource().addValue("type", type.name()).addValue("target", targetId)
-                        .addValue("from", from.name()).addValue("to", to.name()).addValue("admin", adminId));
+    /** UPDATE RETURNING nhận đúng danh sách đã đổi, không bỏ sót người báo cáo khi có request đồng thời. */
+    public List<Reporter> moveReports(ContentType type, UUID targetId, ReportStatus from, ReportStatus to, UUID adminId) {
+        return jdbc.query("UPDATE content_report SET status=:to, updated_by=:admin, updated_at=now() "
+                + "WHERE target_type=:type AND target_id=:target AND status=:from AND deleted_at IS NULL "
+                + "RETURNING id, reporter_id",
+            new MapSqlParameterSource().addValue("type",type.name()).addValue("target",targetId)
+                .addValue("from",from.name()).addValue("to",to.name()).addValue("admin",adminId),
+            (rs,n) -> new Reporter(rs.getObject("id",UUID.class),rs.getObject("reporter_id",UUID.class)));
     }
 
     public Optional<ContentReportView> find(UUID id) {
@@ -164,7 +170,7 @@ public class JdbcContentReportStore {
             case POST -> "post";
             case COMMENT -> "comment";
             case EVENT -> "event";
-            case ANNOUNCEMENT -> null;
+            case ANNOUNCEMENT -> "announcement";
         };
     }
 }
