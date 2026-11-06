@@ -28,7 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Gia phả',
     items: [
       { label: 'Thành viên', href: '/members', icon: 'users', roles: ALL_ROLES },
-      { label: 'Cây gia phả', icon: 'network', roles: ALL_ROLES },
+      { label: 'Cây gia phả', href: '/tree', icon: 'network', roles: ALL_ROLES },
       { label: 'Tra cứu xưng hô', icon: 'search', roles: ALL_ROLES },
     ],
   },
