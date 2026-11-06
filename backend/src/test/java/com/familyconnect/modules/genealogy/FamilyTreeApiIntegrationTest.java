@@ -2,6 +2,7 @@ package com.familyconnect.modules.genealogy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -46,6 +47,9 @@ class FamilyTreeApiIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private String newUser() throws Exception {
         String email = "tree." + UUID.randomUUID() + "@example.com";
@@ -140,12 +144,17 @@ class FamilyTreeApiIntegrationTest {
         assertThat(node(branch, kid)).isNotNull();
         assertThat(node(branch, kid).get("gender").asText()).isEqualTo("FEMALE"); // trưởng chi thấy đủ
 
+        UUID photo = UUID.randomUUID(); // avatar_media_id chỉ là tham chiếu logic, không cần tệp thật cho test này
+        jdbc.update("update person set avatar_media_id = ? where id in (?, ?)", photo, dad, kid);
+        entityManager.clear(); // JDBC đi vòng JPA: bỏ entity cũ trong transaction của test
         JsonNode asMember = tree(member(fam), fam, "?rootId=" + dad + "&depth=2");
+        assertThat(node(asMember, dad).get("avatarMediaId").asText()).isEqualTo(photo.toString());
         JsonNode kidForMember = node(asMember, kid);
         assertThat(kidForMember.get("fullName").asText()).isEqualTo("Bé Na");
         assertThat(kidForMember.get("birthYear").asInt()).isEqualTo(LocalDate.now().minusYears(8).getYear());
         assertThat(kidForMember.get("gender").isNull()).isTrue();
         assertThat(kidForMember.get("generation").isNull()).isTrue();
+        assertThat(kidForMember.get("avatarMediaId").isNull()).isTrue(); // BR-GEN-10: trẻ em chỉ hiện tên, năm sinh
         assertThat(asMember.toString()).doesNotContain("birthDate");
     }
 

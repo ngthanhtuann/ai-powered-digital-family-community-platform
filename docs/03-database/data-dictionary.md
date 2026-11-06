@@ -29,7 +29,7 @@ Người sở hữu: **TV1 Tuấn**
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Ràng buộc bổ sung:** Chỉ mục (status).
+**Ràng buộc bổ sung:** Chỉ mục (status). Tìm theo họ tên không phân biệt dấu dùng extension `unaccent` (migration V12, SCRUM-50); chưa có chỉ mục riêng cho tìm kiếm này.
 
 ### `role`
 
@@ -358,7 +358,7 @@ Người sở hữu: **TV3 PiLo257**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHERE deleted_at IS NULL`; `(status, created_at)`.
+Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHERE deleted_at IS NULL`; `(status, created_at)`. Chuyển trạng thái (BR-AUTH-15): `PENDING` → `HIDDEN` hoặc `DISMISSED` (áp cho mọi báo cáo của cùng nội dung); `HIDDEN` → `DISMISSED` khi quản trị khôi phục nội dung ẩn nhầm.
 
 ### `notification`
 
@@ -368,9 +368,10 @@ Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHER
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | user_id | UUID | NOT NULL | Người nhận → `users` (tham chiếu logic) |
-| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT |
+| family_id | UUID | NOT NULL, INDEX | Gia đình của thông báo → `family` (tham chiếu logic, SCRUM-53) |
+| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT |
 | ref_id | UUID | NULL | Tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT |
+| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED |
 | title | VARCHAR(255) | NOT NULL |  |
 | content | TEXT | NOT NULL |  |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE |  |
@@ -540,7 +541,7 @@ Người sở hữu: **TV5 Lê Nhựt**
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL, INDEX | Phạm vi gia đình → `family` (tham chiếu logic) |
 | branch_id | UUID | NULL | Phạm vi chi của nguồn (`ai.md` BR-AI-13); NULL là toàn gia đình → `branch.id` (tham chiếu logic, không FK) |
-| source_type | VARCHAR(40) | NOT NULL, CHECK | `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT` |
+| source_type | VARCHAR(40) | NOT NULL, CHECK | `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`, `PHOTO` (ảnh di sản, `source_id` = `media.id`) |
 | source_id | UUID | NOT NULL, INDEX | ID nguồn của module sở hữu, không FK → `person` hoặc `post` hoặc `family_story` hoặc `heritage_document` (tham chiếu logic); với `EVENT` → `event.id` |
 | chunk_no | INTEGER | NOT NULL, CHECK (chunk_no >= 0) | Thứ tự chunk trong nguồn |
 | content | TEXT | NOT NULL | Nội dung đã lọc dữ liệu nhạy cảm |

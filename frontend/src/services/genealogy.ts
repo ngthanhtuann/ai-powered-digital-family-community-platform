@@ -10,8 +10,12 @@ export type MarriageInput = Schemas['MarriageInput'];
 export type MarriageUpdate = Schemas['MarriageUpdate'];
 export type ParentChild = Schemas['ParentChild'];
 export type Marriage = Schemas['Marriage'];
+export type TreeNode = Schemas['TreeNode'];
+export type TreeEdge = Schemas['TreeEdge'];
+export type TreeData = NonNullable<Schemas['TreeResponse']['data']>;
+export type Relationship = NonNullable<Schemas['RelationshipResponse']['data']>;
 
-/** API Gia phả theo genealogy.yaml (UC-GEN-03, 04, 05). */
+/** API Gia phả theo genealogy.yaml (UC-GEN-03 đến 08). */
 export const genealogyApi = {
   persons: (familyId: string, params: { q?: string; page: number; size: number; sort?: string }) =>
     api.list<Person>(`/families/${familyId}/persons`, params),
@@ -22,6 +26,12 @@ export const genealogyApi = {
   createMarriage: (input: MarriageInput) => api.post<Marriage>('/marriages', input),
   updateMarriage: (marriageId: string, input: MarriageUpdate) => api.put<Marriage>(`/marriages/${marriageId}`, input),
   deleteMarriage: (marriageId: string) => api.delete(`/marriages/${marriageId}`),
+  tree: (familyId: string, params: { rootId?: string; depth?: number } = {}) =>
+    api.get<TreeData>(`/families/${familyId}/tree`, params),
+  person: (personId: string) => api.get<Person>(`/persons/${personId}`),
+  relationship: (personA: string, personB: string) => api.get<Relationship>('/relationships', { personA, personB }),
+  /** Ảnh qua API có kiểm quyền (tệp không có URL công khai). */
+  mediaContent: (mediaId: string) => api.download(`/media/${mediaId}/content`),
 };
 
 /** Dữ liệu hồ sơ hiện có thành input đầy đủ: PUT /persons ghi đè mọi trường nên phải gửi lại trường không sửa. */

@@ -6,6 +6,7 @@ export type Event = Community['schemas']['Event'];
 export type EventRequest = Community['schemas']['EventRequest'];
 export type EventUpdateRequest = Community['schemas']['EventUpdateRequest'];
 export type Participant = Community['schemas']['Participant'];
+export type Media = Community['schemas']['Media'];
 export type RsvpStatus = Community['schemas']['RsvpRequest']['rsvpStatus'];
 export type User = Auth['schemas']['User'];
 export type Membership = Auth['schemas']['Membership'];
@@ -32,4 +33,12 @@ export const eventsApi = {
       page, size: 20, sort: 'createdAt,desc',
       ...(rsvpStatus ? { rsvpStatus } : {}),
     }),
+  media: (id: string, page: number) => api.list<Media>('/events/' + id + '/media', {
+    page, size: 20, sort: 'createdAt,desc',
+  }),
+  uploadMedia: (id: string, file: File) => {
+    const form = new FormData();
+    form.set('file',file);
+    return api.upload<Media>('/events/' + id + '/media',form);
+  },
 };

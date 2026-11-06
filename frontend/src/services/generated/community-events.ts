@@ -315,7 +315,7 @@ export interface paths {
         put?: never;
         /**
          * Báo cáo nội dung vi phạm
-         * @description Thành viên đã xác minh báo cáo bài đăng, bình luận, sự kiện hoặc thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Quản trị xử lý báo cáo ở /admin/content-reports (auth.yaml, UC-AUTH-09).
+         * @description Thành viên đã xác minh báo cáo bài đăng, bình luận, sự kiện hoặc thông báo trong phạm vi mình xem được (BR-COM-12). Mỗi người chỉ báo cáo một lần cho mỗi nội dung; báo cáo trùng trả 409 CONFLICT_001. Nội dung không tồn tại trả 404 NOT_FOUND_001; chưa xác minh trả 403 PERM_002; không đủ vai trò hoặc nội dung ngoài phạm vi được xem trả 403 PERM_001. Mỗi người tối đa 20 báo cáo mỗi giờ, vượt thì 429 RATE_001 kèm Retry-After (conventions.md mục 7.1). Quản trị xử lý báo cáo ở /admin/content-reports (auth.yaml, UC-AUTH-09).
          */
         post: operations["createContentReport"];
         delete?: never;
@@ -795,7 +795,7 @@ export interface components {
              * @example EVENT_REMINDER_24H
              * @enum {string}
              */
-            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT";
+            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED";
             /** @example Nhắc sự kiện: Họp mặt gia đình */
             title: string;
             /** @example EVENT */
@@ -1321,6 +1321,27 @@ export interface components {
                  *       "error": {
                  *         "code": "CONFLICT_001",
                  *         "message": "Người dùng đã có trong danh sách người tham dự",
+                 *         "details": []
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description Gửi quá 20 báo cáo trong một giờ */
+        ReportRateLimitError: {
+            headers: {
+                /** @description Số giây cần chờ trước khi gửi tiếp */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "success": false,
+                 *       "error": {
+                 *         "code": "RATE_001",
+                 *         "message": "Bạn thao tác quá nhanh, vui lòng thử lại sau",
                  *         "details": []
                  *       }
                  *     }
@@ -2541,6 +2562,7 @@ export interface operations {
             403: components["responses"]["PermissionError"];
             404: components["responses"]["NotFoundError"];
             409: components["responses"]["DuplicateReportError"];
+            429: components["responses"]["ReportRateLimitError"];
         };
     };
     listEvents: {

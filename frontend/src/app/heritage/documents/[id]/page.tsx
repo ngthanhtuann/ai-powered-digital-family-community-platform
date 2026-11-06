@@ -9,7 +9,8 @@ import { HeritageHeader, HeritagePage } from '@/components/heritage/HeritageHead
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
-import { heritageApi } from '@/services/heritage';
+import { heritageApi, heritageDownloadName } from '@/services/heritage';
+import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 export default function HeritageDocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,18 +22,31 @@ export default function HeritageDocumentDetailsPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [error, setError] = useState('');
-  const document = useQuery({ queryKey: ['heritage-document', id], queryFn: () => heritageApi.document(id) });
+  const document = useQuery({
+    queryKey: ['heritage-document', id],
+    queryFn: () => heritageApi.document(id),
+  });
 
   const update = useMutation({
-    mutationFn: () => heritageApi.updateDocument(id, { title: title.trim(), description, category: category || null }),
+    mutationFn: () =>
+      heritageApi.updateDocument(id, {
+        title: title.trim(),
+        description,
+        category: category || null,
+      }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['heritage-document', id] });
       await queryClient.invalidateQueries({ queryKey: ['heritage-documents'] });
       setEditing(false);
     },
-    onError: (reason: unknown) => setError(reason instanceof ApiError
-      ? `${reason.code}: ${reason.message}`
-      : reason instanceof Error ? reason.message : 'Không thể cập nhật tài liệu.'),
+    onError: (reason: unknown) =>
+      setError(
+        reason instanceof ApiError
+          ? `${reason.code}: ${reason.message}`
+          : reason instanceof Error
+            ? reason.message
+            : 'Không thể cập nhật tài liệu.',
+      ),
   });
   // Thẻ <a href> không gửi được token (lưu ở localStorage), nên tải tệp qua API rồi mở bằng blob URL.
   const openFile = useMutation({
@@ -47,9 +61,32 @@ export default function HeritageDocumentDetailsPage() {
       }
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
-    onError: (reason: unknown) => setError(reason instanceof ApiError
-      ? `${reason.code}: ${reason.message}`
-      : 'Không mở được tệp đính kèm.'),
+    onError: (reason: unknown) =>
+      setError(
+        reason instanceof ApiError
+          ? `${reason.code}: ${reason.message}`
+          : 'Không mở được tệp đính kèm.',
+      ),
+  });
+  const downloadFile = useMutation({
+    mutationFn: (contentUrl: string) => heritageApi.file(contentUrl),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = heritageDownloadName(document.data?.title ?? 'tai-lieu', blob);
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setError('');
+    },
+    onError: (reason: unknown) =>
+      setError(
+        reason instanceof ApiError
+          ? `${reason.code}: ${reason.message}`
+          : reason instanceof Error
+            ? reason.message
+            : 'Không thể tải tệp xuống.',
+      ),
   });
   const remove = useMutation({
     mutationFn: () => heritageApi.deleteDocument(id),
@@ -57,13 +94,19 @@ export default function HeritageDocumentDetailsPage() {
       await queryClient.invalidateQueries({ queryKey: ['heritage-documents'] });
       router.replace('/heritage');
     },
-    onError: (reason: unknown) => setError(reason instanceof ApiError
-      ? `${reason.code}: ${reason.message}`
-      : reason instanceof Error ? reason.message : 'Không thể xóa tài liệu.'),
+    onError: (reason: unknown) =>
+      setError(
+        reason instanceof ApiError
+          ? `${reason.code}: ${reason.message}`
+          : reason instanceof Error
+            ? reason.message
+            : 'Không thể xóa tài liệu.',
+      ),
   });
 
   const isLoading = document.isLoading || access.membership.isLoading || access.profile.isLoading;
-  const loadError = (document.error as Error | undefined)?.message ??
+  const loadError =
+    (document.error as Error | undefined)?.message ??
     (access.membership.error as Error | undefined)?.message ??
     (access.profile.error as Error | undefined)?.message;
   const item = document.data;
@@ -84,55 +127,112 @@ export default function HeritageDocumentDetailsPage() {
                   update.mutate();
                 }}
               >
-                <TextField label="Tiêu đề" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required />
+                <TextField
+                  label="Tiêu đề"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={200}
+                  required
+                />
                 <label className="flex flex-col gap-1.5 text-label">
                   Mô tả
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={5} className="rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body" />
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    rows={5}
+                    className="rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body"
+                  />
                 </label>
-                <TextField label="Danh mục" value={category} onChange={(event) => setCategory(event.target.value)} maxLength={50} />
+                <TextField
+                  label="Danh mục"
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  maxLength={50}
+                />
                 <div className="flex flex-wrap gap-3">
-                  <Button type="submit" className="w-auto" disabled={update.isPending}>Lưu thay đổi</Button>
-                  <button type="button" className="text-label underline" onClick={() => setEditing(false)}>Hủy</button>
+                  <Button type="submit" className="w-auto" disabled={update.isPending}>
+                    Lưu thay đổi
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-label underline"
+                    onClick={() => setEditing(false)}
+                  >
+                    Hủy
+                  </button>
                 </div>
               </form>
             ) : (
               <>
                 <h2 className="text-page-title">{item.title}</h2>
                 <p className="mt-2 text-caption text-text-secondary">
-                  {item.category || 'Chưa phân loại'} · {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                  {item.category || 'Chưa phân loại'} ·{' '}
+                  {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                 </p>
-                {item.description && <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>}
-                <button
-                  type="button"
-                  className="mt-6 inline-flex text-label text-info underline disabled:text-text-secondary"
-                  disabled={openFile.isPending}
-                  onClick={() => openFile.mutate(item.contentUrl)}
-                >
-                  {openFile.isPending ? 'Đang mở tệp...' : 'Mở tệp đính kèm'}
-                </button>
+                {item.description && (
+                  <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>
+                )}
+                <AiSummaryPanel sourceType="DOCUMENT" sourceId={id} />
+                <div className="mt-6 flex flex-wrap gap-4">
+                  <button
+                    type="button"
+                    className="inline-flex text-label text-info underline disabled:text-text-secondary"
+                    disabled={openFile.isPending}
+                    onClick={() => openFile.mutate(item.contentUrl)}
+                  >
+                    {openFile.isPending ? 'Đang mở tệp...' : 'Mở tệp đính kèm'}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex text-label text-info underline disabled:text-text-secondary"
+                    disabled={downloadFile.isPending}
+                    onClick={() => downloadFile.mutate(item.contentUrl)}
+                  >
+                    {downloadFile.isPending ? 'Đang tải xuống...' : 'Tải xuống'}
+                  </button>
+                </div>
                 {access.isAdmin && (
                   <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-4">
-                    <button type="button" className="text-label text-info underline" onClick={() => {
-                      setTitle(item.title);
-                      setDescription(item.description ?? '');
-                      setCategory(item.category ?? '');
-                      setEditing(true);
-                    }}>
+                    <button
+                      type="button"
+                      className="text-label text-info underline"
+                      onClick={() => {
+                        setTitle(item.title);
+                        setDescription(item.description ?? '');
+                        setCategory(item.category ?? '');
+                        setEditing(true);
+                      }}
+                    >
                       Sửa tài liệu
                     </button>
-                    <button type="button" className="text-label text-error underline" onClick={() => {
-                      if (window.confirm('Xóa mềm tài liệu này? Tệp đính kèm sẽ được giữ lại.')) remove.mutate();
-                    }} disabled={remove.isPending}>
+                    <button
+                      type="button"
+                      className="text-label text-error underline"
+                      onClick={() => {
+                        if (window.confirm('Xóa mềm tài liệu này? Tệp đính kèm sẽ được giữ lại.'))
+                          remove.mutate();
+                      }}
+                      disabled={remove.isPending}
+                    >
                       Xóa tài liệu
                     </button>
                   </div>
                 )}
               </>
             )}
-            {error && <p role="alert" className="mt-4 rounded-control bg-error-soft p-3 text-body text-error">{error}</p>}
+            {error && (
+              <p
+                role="alert"
+                className="mt-4 rounded-control bg-error-soft p-3 text-body text-error"
+              >
+                {error}
+              </p>
+            )}
           </article>
         )}
-        <Link className="mt-5 inline-block text-label text-info underline" href="/heritage">Quay lại kho di sản</Link>
+        <Link className="mt-5 inline-block text-label text-info underline" href="/heritage">
+          Quay lại kho di sản
+        </Link>
       </div>
     </HeritagePage>
   );

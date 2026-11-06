@@ -3,6 +3,7 @@ package com.familyconnect.modules.ai.service;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.ai.dto.EmbeddingChunkData;
 import com.familyconnect.modules.ai.repository.EmbeddingChunkRepository;
+import com.familyconnect.modules.ai.repository.AiSummaryCache;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -32,23 +33,26 @@ public class EmbeddingIndexService implements AiGateway {
     private final TextChunkingService textChunkingService;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
+    private final AiSummaryCache summaryCache;
 
     public EmbeddingIndexService(EmbeddingPipelineService embeddingPipelineService,
                                  EmbeddingChunkRepository embeddingChunkRepository,
                                  ContentHashService contentHashService,
                                  TextChunkingService textChunkingService,
                                  PlatformTransactionManager transactionManager,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper, AiSummaryCache summaryCache) {
         this.embeddingPipelineService = embeddingPipelineService;
         this.embeddingChunkRepository = embeddingChunkRepository;
         this.contentHashService = contentHashService;
         this.textChunkingService = textChunkingService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
+        this.summaryCache = summaryCache;
     }
 
     @Override
     public void upsertSource(SourceType type, UUID sourceId, UUID familyId, UUID branchId, String content) {
+        summaryCache.invalidate(type.name(), sourceId);
         try {
             index(type, sourceId, familyId, branchId, content);
         } catch (RuntimeException ex) {
@@ -59,6 +63,7 @@ public class EmbeddingIndexService implements AiGateway {
 
     @Override
     public void removeSource(SourceType type, UUID sourceId) {
+        summaryCache.invalidate(type.name(), sourceId);
         try {
             embeddingChunkRepository.softDeleteActiveBySource(type.name(), sourceId);
         } catch (RuntimeException ex) {

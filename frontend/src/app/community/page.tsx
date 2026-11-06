@@ -6,10 +6,13 @@ import {
   type InfiniteData, type QueryKey,
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/TextField';
 import { ImagePicker } from '@/components/community/ImagePicker';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
+import { Announcements } from '@/components/community/Announcements';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
+import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
@@ -29,7 +32,47 @@ const inputClass = 'w-full rounded-control border border-border-strong bg-surfac
 // Nút dạng chữ vẫn đủ vùng chạm 44px.
 const linkButtonClass = 'min-h-11 px-1 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-60';
 
-function Comments({ postId, userId }: { postId: string; userId?: string }) {
+type ReportTarget = { targetType: 'POST' | 'COMMENT'; targetId: string; label: string };
+
+/** BR-COM-12: thành viên báo cáo nội dung vi phạm; quản trị hệ thống xử lý ở /admin. */
+function ReportButton({ target }: { target: ReportTarget }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const report = useMutation({
+    mutationFn: () => communityApi.report(target.targetType, target.targetId, reason.trim()),
+  });
+  const close = () => { setOpen(false); setReason(''); report.reset(); };
+  return (
+    <>
+      <button type="button" className={linkButtonClass + ' text-text-secondary'} onClick={() => setOpen(true)}>
+        Báo cáo
+      </button>
+      {open && (
+        <Modal open title={`Báo cáo ${target.label}`} onClose={close}
+          description="Quản trị hệ thống sẽ xem xét và ẩn nội dung nếu vi phạm.">
+          {report.isSuccess ? (
+            <div className="space-y-4">
+              <p role="status" className="text-body">Đã gửi báo cáo. Cảm ơn bạn.</p>
+              <Button onClick={close}>Đóng</Button>
+            </div>
+          ) : (
+            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); report.mutate(); }}>
+              <label htmlFor={'report-' + target.targetId} className="block font-medium">Lý do</label>
+              <textarea id={'report-' + target.targetId} className={inputClass} maxLength={255} required
+                value={reason} onChange={(event) => setReason(event.target.value)}
+                placeholder="Ví dụ: quảng cáo, nội dung xúc phạm..." />
+              <p className="text-xs text-text-secondary">{reason.length}/255</p>
+              {report.isError && <p role="alert" className="text-error">{errorText(report.error)}</p>}
+              <Button type="submit" loading={report.isPending} disabled={!reason.trim()}>Gửi báo cáo</Button>
+            </form>
+          )}
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function Comments({ postId, userId, canReport }: { postId: string; userId?: string; canReport: boolean }) {
   const client = useQueryClient();
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
@@ -81,8 +124,11 @@ function Comments({ postId, userId }: { postId: string; userId?: string }) {
             ) : (
               <p className="mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
             )}
-            {(comment.createdBy === userId || comment.canDelete) && editing !== comment.id && (
+            {(comment.createdBy === userId || comment.canDelete || canReport) && editing !== comment.id && (
               <div className="mt-2 flex gap-3 text-sm text-text-secondary">
+                {canReport && comment.createdBy !== userId && (
+                  <ReportButton target={{ targetType: 'COMMENT', targetId: comment.id, label: 'bình luận' }} />
+                )}
                 {comment.createdBy === userId && (
                   <button type="button" className={linkButtonClass} onClick={() => {
                     setEditing(comment.id); setEditContent(comment.content);
@@ -125,8 +171,8 @@ function Comments({ postId, userId }: { postId: string; userId?: string }) {
   );
 }
 
-function PostCard({ post, userId, onReaction }: {
-  post: Post; userId?: string;
+function PostCard({ post, userId, canReport, onReaction }: {
+  post: Post; userId?: string; canReport: boolean;
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
   const client = useQueryClient();
@@ -152,8 +198,11 @@ function PostCard({ post, userId, onReaction }: {
             {post.authorName} · {dateText(post.createdAt)}
           </p>
         </div>
-        {(post.createdBy === userId || post.canDelete) && (
+        {(post.createdBy === userId || post.canDelete || canReport) && (
           <div className="flex gap-2">
+            {canReport && post.createdBy !== userId && (
+              <ReportButton target={{ targetType: 'POST', targetId: post.id, label: 'bài viết' }} />
+            )}
             {post.createdBy === userId && !editing && (
               <Button variant="secondary" fullWidth={false}
                 onClick={() => { setContent(post.content); setEditing(true); }}>Sửa</Button>
@@ -179,6 +228,7 @@ function PostCard({ post, userId, onReaction }: {
       ) : (
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
+      {!editing && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
       <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
@@ -196,7 +246,7 @@ function PostCard({ post, userId, onReaction }: {
       </button>
       {(update.isError || remove.isError) &&
         <p className="mt-2 text-error" role="alert">{errorText(update.error || remove.error)}</p>}
-      {showComments && <Comments postId={post.id} userId={userId} />}
+      {showComments && <Comments postId={post.id} userId={userId} canReport={canReport} />}
     </article>
   );
 }
@@ -317,6 +367,8 @@ export default function CommunityPage() {
       )}
       {ready && (
         <>
+          <Announcements familyId={familyId} branchId={branchAdmin ? membership.data?.branchId ?? undefined : undefined}
+            canManage={canNews} canReport={!systemAdmin} />
           <nav aria-label="Lọc bài đăng" className="flex border-b border-border">
             {([{ key: 'ALL', label: 'Tất cả' }, { key: 'NEWS', label: 'Tin tức gia đình' }] as const)
               .map(({ key, label }) => (
@@ -368,7 +420,7 @@ export default function CommunityPage() {
             {!feed.isPending && !feed.isError && posts.length === 0 &&
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} userId={me.data?.id}
+              <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&

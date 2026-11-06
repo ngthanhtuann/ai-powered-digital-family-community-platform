@@ -28,7 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Gia phả',
     items: [
       { label: 'Thành viên', href: '/members', icon: 'users', roles: ALL_ROLES },
-      { label: 'Cây gia phả', icon: 'network', roles: ALL_ROLES },
+      { label: 'Cây gia phả', href: '/tree', icon: 'network', roles: ALL_ROLES },
       { label: 'Tra cứu xưng hô', icon: 'search', roles: ALL_ROLES },
     ],
   },
@@ -44,24 +44,25 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Di sản',
     items: [
       { label: 'Lịch sử dòng họ', href: '/heritage', icon: 'book-open', roles: ALL_ROLES },
-      { label: 'Thư viện ảnh', icon: 'image', roles: ALL_ROLES },
-      { label: 'Kho lưu trữ số', icon: 'archive', roles: ALL_ROLES },
+      { label: 'Thư viện ảnh', href: '/heritage/photos', icon: 'image', roles: ALL_ROLES },
+      { label: 'Kho lưu trữ số', href: '/heritage/documents', icon: 'archive', roles: ALL_ROLES },
     ],
   },
   {
     heading: 'Quản lý',
     roles: ADMIN_ROLES,
     items: [
-      { label: 'Duyệt yêu cầu tham gia', icon: 'user-check', roles: ADMIN_ROLES },
-      { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
+      { label: 'Duyệt yêu cầu tham gia', href: '/join-requests', icon: 'user-check', roles: ADMIN_ROLES },
+      { label: 'Phân công trưởng chi', href: '/family-roles', icon: 'user-cog', roles: ADMIN_ROLES },
+      { label: 'Thống kê và báo cáo', href: '/dashboard', icon: 'chart-column', roles: ADMIN_ROLES },
     ],
   },
   {
     heading: 'Quản trị hệ thống',
     roles: ['SYSTEM_ADMIN'],
     items: [
-      { label: 'Quản lý người dùng', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
-      { label: 'Kiểm duyệt nội dung', icon: 'shield-check', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Quản lý người dùng', href: '/admin', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Kiểm duyệt nội dung', href: '/admin#kiem-duyet', icon: 'shield-check', roles: ['SYSTEM_ADMIN'] },
       { label: 'Nhật ký kiểm toán', icon: 'history', roles: ['SYSTEM_ADMIN'] },
       { label: 'Sao lưu và khôi phục', icon: 'database', roles: ['SYSTEM_ADMIN'] },
       { label: 'Cấu hình hệ thống', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },

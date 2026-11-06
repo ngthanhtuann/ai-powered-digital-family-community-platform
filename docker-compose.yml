@@ -9,8 +9,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-familyconnect}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
     # Chỉ mở cho chính máy này để chạy backend bằng IDE (privacy.md mục 7); bản triển khai (SCRUM-68) bỏ cổng này.
+    # Máy đã cài PostgreSQL chiếm 5432 thì đặt POSTGRES_HOST_PORT trong .env (xem .env.example).
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -28,6 +29,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-familyconnect}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
       MEDIA_STORAGE_PATH: /var/lib/familyconnect/media
+      BACKUP_STORAGE_PATH: /var/lib/familyconnect/backups
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-familyconnect}
+      PGUSER: ${POSTGRES_USER:-familyconnect}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-familyconnect}
       # Bắt buộc (SCRUM-35): đặt trong .env; thiếu thì backend dừng ngay khi khởi động và báo lỗi.
       JWT_SECRET: ${JWT_SECRET:-}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
@@ -38,13 +45,26 @@ services:
       - "8080:8080"
     volumes:
       - uploads:/var/lib/familyconnect/media
+      - backups:/var/lib/familyconnect/backups
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
-  # frontend: sẽ thêm ở các task sau (Next.js, SCRUM-33)
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Trình duyệt gọi thẳng backend nên dùng địa chỉ máy người dùng; giá trị được nhúng lúc build.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    container_name: familyconnect-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   pgdata:
   uploads:
+  backups:

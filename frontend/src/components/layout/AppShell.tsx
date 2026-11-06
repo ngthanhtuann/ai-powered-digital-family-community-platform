@@ -31,7 +31,9 @@ import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getMyMembership, getMyProfile, logout } from '@/services/auth';
+import { memberRoleLabel } from '@/services/admin';
 import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { tokenStorage } from '@/lib/token-storage';
 import {
   FAMILY_NAV_ITEM,
@@ -281,8 +283,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SemanticSearchBox systemAdmin={role === 'SYSTEM_ADMIN'} />
             </div>
           )}
-          <div className="text-right">
+          <div className="flex items-center gap-3 text-right">
+            {role !== 'UNVERIFIED' && <NotificationBell />}
             {profile.data && <p className="text-label">{profile.data.fullName}</p>}
+            {role !== 'UNVERIFIED' && membership.data && (
+              <p className="text-caption text-text-secondary">
+                {role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống'
+                  : memberRoleLabel(membership.data.role, membership.data.branchId, membership.data.branchName)}
+              </p>
+            )}
             {profile.isLoading && (
               <p className="text-caption text-text-secondary">Đang tải tài khoản...</p>
             )}

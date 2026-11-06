@@ -22,4 +22,11 @@ public interface MarriageRepository extends JpaRepository<Marriage, UUID> {
               and m.status = 'MARRIED' and m.deletedAt is null
             """)
     List<Marriage> findMarriedByPersonId(@Param("personId") UUID personId);
+
+    /** Mọi hôn nhân chưa xóa của một người, mọi trạng thái (thuật toán quan hệ cần cả DIVORCED, WIDOWED). */
+    @Query("""
+            select m from Marriage m
+            where (m.person1Id = :personId or m.person2Id = :personId) and m.deletedAt is null
+            """)
+    List<Marriage> findAllByPersonId(@Param("personId") UUID personId);
 }

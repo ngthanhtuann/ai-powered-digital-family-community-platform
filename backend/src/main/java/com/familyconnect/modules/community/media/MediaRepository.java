@@ -21,6 +21,9 @@ public interface MediaRepository {
 
     Page list(String ownerType, UUID ownerId, int page, int size, String order);
 
+    Page listHeritagePhotos(UUID familyId, UUID mediaId, List<UUID> excludedMediaIds,
+                            int page, int size, String order);
+
     /** Số media đang hoạt động theo từng chủ sở hữu, một truy vấn cho cả trang. */
     java.util.Map<UUID, Long> countByOwners(String ownerType, List<UUID> ownerIds);
 

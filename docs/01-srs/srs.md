@@ -291,6 +291,7 @@ Cột trống được điền dần trong các sprint sau; mỗi hàng nối y�
 | Tìm kiếm ngữ nghĩa, hỏi trợ lý AI, tóm tắt, gợi ý | Không | Không | Có | Có | Có |
 | Xem dashboard thống kê | Không | Không | Không | Có (gia đình/chi của mình) | Có |
 | Tạo báo cáo PDF, xuất CSV | Không | Không | Không | Có | Có |
+| Bổ nhiệm, thu quyền trưởng chi trong dòng họ (đổi `MEMBER` và `BRANCH_ADMIN`, gán chi quản lý) | Không | Không | Không | Có (chỉ trưởng họ: quản lý cả dòng họ, không gán chi) | Có |
 | Quản lý người dùng (khóa, đổi vai trò) | Không | Không | Không | Không | Có |
 | Gỡ bài đăng, bình luận, sự kiện của người khác | Không | Không | Không | Có (chi mình quản lý, kèm chi con) | Có |
 | Kiểm duyệt nội dung (toàn hệ thống, FR-ADM-02) | Không | Không | Không | Không | Có |
@@ -300,7 +301,7 @@ Cột trống được điền dần trong các sprint sau; mỗi hàng nối y�
 
 > Ghi chú: "Thành viên chưa xác minh" là một **trạng thái** của vai trò `MEMBER` (chờ trưởng chi duyệt), không phải vai trò riêng. Vì vậy hệ thống chỉ có 4 vai trò: GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN.
 
-> Ghi chú: Phạm vi của `BRANCH_ADMIN` là chi được gán (kèm các chi con); nếu không gán chi cụ thể thì quản lý cả gia đình. Mỗi người dùng thuộc tối đa một gia đình. Bảng người dùng đặt tên `users` (vì `user` là từ khóa PostgreSQL).
+> Ghi chú: Phạm vi của `BRANCH_ADMIN` là chi được gán (kèm các chi con); nếu không gán chi cụ thể thì quản lý cả gia đình. Giao diện gọi `BRANCH_ADMIN` không gán chi là **Trưởng họ**, có gán chi là **Trưởng chi** kèm tên chi (chỉ là tên hiển thị, vẫn là một vai trò). Dòng "Bổ nhiệm, thu quyền trưởng chi" bổ sung ngày 2/11/2026 (SCRUM-50, UC-AUTH-14). Mỗi người dùng thuộc tối đa một gia đình. Bảng người dùng đặt tên `users` (vì `user` là từ khóa PostgreSQL).
 
 ---
 

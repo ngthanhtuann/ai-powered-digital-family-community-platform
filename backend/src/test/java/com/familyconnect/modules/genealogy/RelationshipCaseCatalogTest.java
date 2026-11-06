@@ -2,12 +2,13 @@ package com.familyconnect.modules.genealogy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Disabled;
+import com.familyconnect.modules.genealogy.service.KinshipCalculator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.InputStream;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,8 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Bộ ca kiểm thử thuật toán quan hệ họ hàng, lấy từ docs/02-design/algorithm-relationship.md mục 6 và 7.
- * Thuật toán chưa có trong repo: các test hiện tại kiểm tra bộ ca khớp với dữ liệu mẫu (số bước, tổ tiên chung);
- * khi TV2 cài đặt xong, bỏ @Disabled ở {@link #algorithmMatchesExpected} và nối {@link #calculator()}.
+ * Kiểm tra bộ ca khớp dữ liệu mẫu, rồi chạy {@link KinshipCalculator} (SCRUM-51) trên đúng dữ liệu đó.
  * Ca #51 đến #53 (PERM_001, PERM_002, NOT_FOUND_001) viết ở tầng controller khi có endpoint GET /relationships.
  */
 class RelationshipCaseCatalogTest {
@@ -131,7 +131,6 @@ class RelationshipCaseCatalogTest {
         // Quy tắc hòa (ưu tiên qua cha, id nhỏ hơn) do test thuật toán bên dưới kiểm tra.
     }
 
-    @Disabled("Chờ TV2 cài đặt thuật toán quan hệ họ hàng; nối calculator() rồi bỏ @Disabled")
     @ParameterizedTest(name = "SCRUM-42 algorithm #{0}: {1} => {2}")
     @MethodSource("cases")
     void algorithmMatchesExpected(Case testCase) throws Exception {
@@ -141,7 +140,46 @@ class RelationshipCaseCatalogTest {
     }
 
     private static RelationshipCalculator calculator() {
-        throw new UnsupportedOperationException("Chưa có cài đặt thuật toán quan hệ họ hàng");
+        return (fixture, a, b) -> {
+            KinshipCalculator.Result r = new KinshipCalculator(new FixtureGraph(fixture)).relationship(a, b);
+            return new Result(r.supported(), r.relation(), r.stepsFromA(), r.stepsFromB(), r.commonAncestorId());
+        };
+    }
+
+    /** Dữ liệu mẫu JSON dưới dạng đồ thị cho thuật toán; kind trống là BIOLOGICAL như mặc định của bảng. */
+    private record FixtureGraph(JsonNode fixture) implements KinshipCalculator.Graph {
+        @Override
+        public KinshipCalculator.Person person(String id) {
+            JsonNode p = RelationshipCaseCatalogTest.person(fixture, id);
+            return new KinshipCalculator.Person(id, p.path("name").asText(), p.path("gender").asText(),
+                    p.has("birthDate") ? LocalDate.parse(p.path("birthDate").asText()) : null,
+                    p.has("birthYear") ? p.path("birthYear").asInt() : null);
+        }
+
+        @Override
+        public List<KinshipCalculator.ParentLink> parentsOf(String id) {
+            List<KinshipCalculator.ParentLink> links = new ArrayList<>();
+            for (JsonNode e : fixture.path("parentChild")) {
+                if (id.equals(e.path("child").asText())) {
+                    links.add(new KinshipCalculator.ParentLink(e.path("parent").asText(), e.path("role").asText(),
+                            e.path("kind").asText("BIOLOGICAL")));
+                }
+            }
+            return links;
+        }
+
+        @Override
+        public List<KinshipCalculator.MarriageLink> marriagesOf(String id) {
+            List<KinshipCalculator.MarriageLink> links = new ArrayList<>();
+            for (JsonNode m : fixture.path("marriages")) {
+                String p1 = m.path("person1").asText();
+                String p2 = m.path("person2").asText();
+                if (id.equals(p1) || id.equals(p2)) {
+                    links.add(new KinshipCalculator.MarriageLink(id.equals(p1) ? p2 : p1, m.path("status").asText()));
+                }
+            }
+            return links;
+        }
     }
 
     @Test

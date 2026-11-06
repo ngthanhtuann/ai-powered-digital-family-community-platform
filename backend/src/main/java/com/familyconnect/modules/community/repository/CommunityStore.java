@@ -3,6 +3,7 @@ package com.familyconnect.modules.community.repository;
 import com.familyconnect.modules.community.dto.CommunityDto.PostType;
 import com.familyconnect.modules.community.dto.CommunityDto.ReactionType;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +31,12 @@ public interface CommunityStore {
     /** Luôn có đủ LIKE, LOVE, HAHA, SAD (0 nếu chưa có) cho mỗi bài. */
     Map<UUID, Map<ReactionType, Long>> reactionCounts(List<UUID> postIds);
     Map<UUID, ReactionType> myReactions(List<UUID> postIds, UUID userId);
+    List<WeeklyPostCount> countPostsByWeek(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                           OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
+
+    record WeeklyPostCount(LocalDate weekStart, long postCount) {
+    }
+
     Optional<Reaction> myReaction(UUID postId, UUID userId);
     Comment insertComment(UUID postId, String content, UUID userId);
     Optional<Comment> findComment(UUID id);

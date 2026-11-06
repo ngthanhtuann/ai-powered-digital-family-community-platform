@@ -5,7 +5,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { communityApi, type Media } from '@/services/community/posts';
 
-function ProtectedImage({ media }: { media: Media }) {
+export function ProtectedImage({ media }: { media: Media }) {
   const [src, setSrc] = useState<string>();
   const [failed, setFailed] = useState(false);
 
