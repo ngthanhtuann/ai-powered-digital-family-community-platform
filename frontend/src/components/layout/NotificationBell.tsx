@@ -1,13 +1,14 @@
 'use client';
 
 import { Bell } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/services/notifications';
 
 /** Số chưa đọc dùng meta.total của bộ lọc isRead=false, không chỉ đếm 20 dòng trang đầu. */
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
   const cache = useQueryClient();
   const unread = useQuery({
     queryKey: ['notifications', 'unread'],
@@ -25,9 +26,20 @@ export function NotificationBell() {
       await cache.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
   return (
     <div className="relative">
       <button
+        ref={button}
         type="button"
         aria-label="Thông báo"
         aria-expanded={open}
