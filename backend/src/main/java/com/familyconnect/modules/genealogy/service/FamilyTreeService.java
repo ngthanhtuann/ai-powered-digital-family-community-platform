@@ -117,6 +117,6 @@ public class FamilyTreeService {
                 && p.getBirthDate().plusYears(CHILD_AGE).isAfter(today);
         boolean limited = child && !fullData;
         return new TreeNode(p.getId(), p.getFullName(), limited ? null : p.getGender(), birthYear, p.isDeceased(),
-                hasMoreChildren, limited ? null : generation);
+                hasMoreChildren, limited ? null : generation, limited ? null : p.getAvatarMediaId());
     }
 }
