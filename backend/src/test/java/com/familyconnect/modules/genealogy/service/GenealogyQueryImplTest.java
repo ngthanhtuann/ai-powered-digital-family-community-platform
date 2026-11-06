@@ -2,6 +2,8 @@ package com.familyconnect.modules.genealogy.service;
 
 import com.familyconnect.modules.genealogy.entity.Person;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
+import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
+import com.familyconnect.modules.genealogy.repository.FamilyRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +27,18 @@ class GenealogyQueryImplTest {
     @Mock
     private BranchRepository branchRepository;
 
+    @Mock
+    private FamilyRepository familyRepository;
+
+    @Mock
+    private DashboardDemographicsRepository dashboardRepository;
+
     private GenealogyQueryImpl genealogyQuery;
 
     @BeforeEach
     void setUp() {
-        genealogyQuery = new GenealogyQueryImpl(personRepository, branchRepository);
+        genealogyQuery = new GenealogyQueryImpl(personRepository, branchRepository,
+                familyRepository, dashboardRepository);
     }
 
     @Test

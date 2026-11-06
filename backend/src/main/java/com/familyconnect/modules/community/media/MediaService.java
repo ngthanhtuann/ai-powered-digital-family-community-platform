@@ -2,15 +2,24 @@ package com.familyconnect.modules.community.media;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.ai.api.AiGateway;
+import com.familyconnect.modules.ai.api.AiGateway.SourceType;
 import com.familyconnect.modules.community.api.CommunityQuery;
+import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
+import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
+import com.familyconnect.modules.community.api.CommunityQuery.WeeklyPostCount;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
 import com.familyconnect.modules.community.repository.CommunityStore;
 import com.familyconnect.modules.community.repository.CommunityStore.Post;
 import com.familyconnect.modules.community.service.CommunityPlatformPort;
 import com.familyconnect.modules.community.service.CommunityPlatformPort.Actor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -26,10 +35,13 @@ import java.util.stream.Collectors;
 /** [4-04] UC-COM-05: upload, đọc có quyền, xóa mềm; metadata lưu trong PostgreSQL. */
 @Service
 public class MediaService implements CommunityQuery {
+    private static final Logger log = LoggerFactory.getLogger(MediaService.class);
+
     private final MediaRepository repository;
     private final MediaStorage storage;
     private final CommunityStore posts;
     private final CommunityPlatformPort platform;
+    private final AiGateway aiGateway;
     private final Map<String, MediaOwnerPolicy> policies;
 
     public record MediaView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
@@ -45,13 +57,23 @@ public class MediaService implements CommunityQuery {
     public record MediaContent(Path path, String contentType) {}
 
     public MediaService(MediaRepository repository, MediaStorage storage, CommunityStore posts,
-                        CommunityPlatformPort platform, List<MediaOwnerPolicy> policies) {
+                        CommunityPlatformPort platform, AiGateway aiGateway, List<MediaOwnerPolicy> policies) {
         this.repository = repository;
         this.storage = storage;
         this.posts = posts;
         this.platform = platform;
+        this.aiGateway = aiGateway;
         this.policies = policies.stream().collect(Collectors.toUnmodifiableMap(
             MediaOwnerPolicy::ownerType, Function.identity()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WeeklyPostCount> getWeeklyPostCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                      OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return posts.countPostsByWeek(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(item -> new WeeklyPostCount(item.weekStart(), item.postCount()))
+                .toList();
     }
 
     private Actor actor() {
@@ -115,6 +137,10 @@ public class MediaService implements CommunityQuery {
         try {
             MediaRepository.Media media = repository.insert(UUID.randomUUID(), type, ownerId, family,
                 stored.size(), stored.fileName(), stored.storageKey(), caption, stored.mimeType(), userId);
+            if ("HERITAGE".equals(type) && stored.mimeType().startsWith("image/")) {
+                afterCommit(() -> aiGateway.upsertSource(SourceType.PHOTO, media.id(), family, null,
+                    caption == null ? "" : caption));
+            }
             return MediaView.of(media);
         } catch (RuntimeException e) {
             // Ghi metadata lỗi thì xóa tệp vừa lưu để không để lại tệp không ai quản lý.
@@ -203,6 +229,9 @@ public class MediaService implements CommunityQuery {
         }
         if (!repository.softDelete(id, current.userId())) throw new ApiException(ErrorCode.NOT_FOUND_001);
         platform.logContentDeleted("MEDIA", id, media.familyId(), own);
+        if ("HERITAGE".equals(media.ownerType()) && media.fileType().startsWith("image/")) {
+            afterCommit(() -> aiGateway.removeSource(SourceType.PHOTO, id));
+        }
         // Theo ADR: soft delete giữ lại tệp vật lý.
     }
 
@@ -210,7 +239,22 @@ public class MediaService implements CommunityQuery {
     @Transactional(readOnly = true)
     public java.util.Optional<HeritageMedia> getHeritageMedia(UUID id) {
         return repository.find(id).filter(m -> "HERITAGE".equals(m.ownerType()))
-            .map(m -> new HeritageMedia(m.id(), m.familyId(), m.ownerType(), MediaView.of(m).contentUrl()));
+            .map(m -> new HeritageMedia(m.id(), m.familyId(), m.ownerType(), m.fileType(), m.caption(),
+                    MediaView.of(m).contentUrl()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HeritagePhotoPage getHeritagePhotos(UUID familyId, UUID mediaId, List<UUID> excludedMediaIds,
+                                                int page, int size, boolean ascending) {
+        String direction = ascending ? "ASC" : "DESC";
+        MediaRepository.Page result = repository.listHeritagePhotos(familyId, mediaId, excludedMediaIds,
+                page, size, "created_at " + direction + ", id " + direction);
+        List<HeritagePhoto> photos = result.items().stream()
+                .map(media -> new HeritagePhoto(media.id(), MediaView.of(media).contentUrl(), media.caption(),
+                        media.createdAt(), media.updatedAt()))
+                .toList();
+        return new HeritagePhotoPage(photos, result.total());
     }
 
     @Override
@@ -220,10 +264,23 @@ public class MediaService implements CommunityQuery {
             .map(m -> new PersonMedia(m.id(), m.ownerId()));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public java.util.Optional<EventMedia> getEventMedia(UUID id) {
-        return repository.find(id).filter(m -> "EVENT".equals(m.ownerType()))
-            .map(m -> new EventMedia(m.id(),m.ownerId(),m.familyId(),MediaView.of(m).contentUrl()));
+    private static void afterCommit(Runnable action) {
+        Runnable safeAction = () -> {
+            try {
+                action.run();
+            } catch (RuntimeException ex) {
+                log.warn("Không cập nhật được chỉ mục AI cho ảnh di sản", ex);
+            }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            safeAction.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                safeAction.run();
+            }
+        });
     }
 }

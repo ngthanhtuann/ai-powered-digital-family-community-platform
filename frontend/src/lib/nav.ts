@@ -44,17 +44,17 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Di sản',
     items: [
       { label: 'Lịch sử dòng họ', href: '/heritage', icon: 'book-open', roles: ALL_ROLES },
-      { label: 'Thư viện ảnh', icon: 'image', roles: ALL_ROLES },
-      { label: 'Kho lưu trữ số', icon: 'archive', roles: ALL_ROLES },
+      { label: 'Thư viện ảnh', href: '/heritage/photos', icon: 'image', roles: ALL_ROLES },
+      { label: 'Kho lưu trữ số', href: '/heritage/documents', icon: 'archive', roles: ALL_ROLES },
     ],
   },
   {
     heading: 'Quản lý',
     roles: ADMIN_ROLES,
     items: [
-      { label: 'Duyệt yêu cầu tham gia', icon: 'user-check', roles: ADMIN_ROLES },
+      { label: 'Duyệt yêu cầu tham gia', href: '/join-requests', icon: 'user-check', roles: ADMIN_ROLES },
       { label: 'Phân công trưởng chi', href: '/family-roles', icon: 'user-cog', roles: ADMIN_ROLES },
-      { label: 'Thống kê và báo cáo', icon: 'chart-column', roles: ADMIN_ROLES },
+      { label: 'Thống kê và báo cáo', href: '/dashboard', icon: 'chart-column', roles: ADMIN_ROLES },
     ],
   },
   {

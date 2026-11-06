@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi } from '@/services/heritage';
+import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 export default function FamilyStoryDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -91,6 +92,7 @@ export default function FamilyStoryDetailsPage() {
                   {item.authorName} · {new Date(item.createdAt).toLocaleDateString('vi-VN')}
                 </p>
                 <p className="mt-6 whitespace-pre-wrap text-body">{item.content}</p>
+                <AiSummaryPanel sourceType="STORY" sourceId={id} />
                 {canManage && (
                   <div className="mt-6 flex flex-wrap gap-4 border-t border-border pt-4">
                     <button type="button" className="text-label text-info underline" onClick={() => {

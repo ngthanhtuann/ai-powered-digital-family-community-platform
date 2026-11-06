@@ -1,6 +1,7 @@
 package com.familyconnect.modules.heritage;
 
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemographics;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 
@@ -50,6 +51,17 @@ public final class StubGenealogyQuery implements GenealogyQuery {
     @Override
     public boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId) {
         return false;
+    }
+
+    @Override
+    public boolean familyExists(UUID familyId) {
+        return people.stream().anyMatch(person -> person.familyId().equals(familyId));
+    }
+
+    @Override
+    public DashboardDemographics getDashboardDemographics(UUID familyId, UUID branchId, LocalDate asOfDate) {
+        return new DashboardDemographics(0, List.of(), List.of(), 0, 0, 0,
+                List.of(), List.of(), List.of());
     }
 
     @Override

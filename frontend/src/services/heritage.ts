@@ -8,15 +8,42 @@ export type CreateDocument = Schemas['CreateHeritageDocumentRequest'];
 export type CreateStory = Schemas['CreateFamilyStoryRequest'];
 export type UpdateDocument = Schemas['UpdateHeritageDocumentRequest'];
 export type UpdateStory = Schemas['UpdateFamilyStoryRequest'];
+export type HeritagePhoto = Schemas['PhotoItem'];
 
 export interface HeritagePage<T> {
   items: T[];
   meta: Schemas['PaginationMeta'];
 }
 
+export function heritageDownloadName(title: string, blob: Blob) {
+  const extension =
+    blob.type === 'application/pdf'
+      ? '.pdf'
+      : blob.type === 'image/jpeg'
+        ? '.jpg'
+        : blob.type === 'image/png'
+          ? '.png'
+          : blob.type === 'image/webp'
+            ? '.webp'
+            : '';
+  return /\.[a-z0-9]{2,5}$/i.test(title) ? title : `${title}${extension}`;
+}
+
 export const heritageApi = {
-  documents: (params: { category?: string; familyId?: string; page?: number; size?: number; sort?: string }) =>
-    api.list<HeritageDocument>('/heritage/documents', params),
+  photos: (params: {
+    familyId?: string;
+    mediaId?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+  }) => api.list<HeritagePhoto>('/heritage/photos', params),
+  documents: (params: {
+    category?: string;
+    familyId?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+  }) => api.list<HeritageDocument>('/heritage/documents', params),
   document: (id: string) => api.get<HeritageDocument>(`/heritage/documents/${id}`),
   createDocument: (body: CreateDocument, familyId?: string) =>
     api.post<HeritageDocument>(
@@ -30,17 +57,21 @@ export const heritageApi = {
     api.list<FamilyStory>('/heritage/stories', params),
   story: (id: string) => api.get<FamilyStory>(`/heritage/stories/${id}`),
   createStory: (body: CreateStory, familyId?: string) =>
-    api.post<FamilyStory>(`/heritage/stories${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`, body),
+    api.post<FamilyStory>(
+      `/heritage/stories${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`,
+      body,
+    ),
   updateStory: (id: string, body: UpdateStory) =>
     api.patch<FamilyStory>(`/heritage/stories/${id}`, body),
   deleteStory: (id: string) => api.delete(`/heritage/stories/${id}`),
   /** contentUrl dạng /api/v1/media/{id}/content; client đã có tiền tố /api/v1. */
   file: (contentUrl: string) => api.download(contentUrl.replace(/^\/api\/v1/, '')),
-  upload: (file: File, familyId: string) => {
+  upload: (file: File, familyId: string, caption?: string) => {
     const body = new FormData();
     body.set('file', file);
     body.set('ownerType', 'HERITAGE');
     body.set('ownerId', familyId);
+    if (caption?.trim()) body.set('caption', caption.trim());
     return api.upload<{ id: string }>('/media', body);
   },
 };

@@ -1,7 +1,7 @@
 import { api } from '@/lib/api';
 
 export type SemanticSearchResult = {
-  sourceType: 'PERSON' | 'POST' | 'STORY' | 'DOCUMENT' | 'EVENT';
+  sourceType: 'PERSON' | 'POST' | 'STORY' | 'DOCUMENT' | 'EVENT' | 'PHOTO';
   sourceId: string;
   title: string;
   snippet: string;
@@ -19,4 +19,9 @@ export type SemanticSearchResponse = {
 };
 
 export const semanticSearch = (q: string, page = 0, familyId?: string) =>
-  api.get<SemanticSearchResponse>('/ai/search', { q, page, size: 100, ...(familyId ? { familyId } : {}) });
+  api.get<SemanticSearchResponse>('/ai/search', {
+    q,
+    page,
+    size: 100,
+    ...(familyId ? { familyId } : {}),
+  });

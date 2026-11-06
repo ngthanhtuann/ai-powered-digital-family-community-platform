@@ -24,6 +24,8 @@ public interface EventStore {
     Page<Event> listEvents(UUID family, boolean allBranches, List<UUID> readableBranches,
                            UUID branch, OffsetDateTime from, OffsetDateTime to,
                            int page, int size, String order);
+    List<Event> upcomingEvents(UUID family, boolean allBranches, List<UUID> readableBranches,
+                               OffsetDateTime from, int limit);
     Event updateEvent(UUID id, UUID branch, String title, String description,
                       OffsetDateTime start, OffsetDateTime end, String location, UUID actor);
     void deleteEvent(UUID id, UUID actor);

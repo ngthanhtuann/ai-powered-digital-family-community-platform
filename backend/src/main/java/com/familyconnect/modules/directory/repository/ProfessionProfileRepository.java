@@ -22,4 +22,18 @@ public interface ProfessionProfileRepository extends JpaRepository<ProfessionPro
               and lower(p.jobTitle) like lower(concat('%', :job, '%'))
             """)
     List<UUID> findPersonIdsByJobTitle(@Param("familyId") UUID familyId, @Param("job") String job);
+
+    @Query("""
+            select p.jobTitle as jobTitle, count(p.id) as count
+            from ProfessionProfile p
+            where p.personId in :personIds and p.deletedAt is null
+            group by p.jobTitle
+            order by count(p.id) desc, p.jobTitle asc
+            """)
+    List<JobTitleCount> countByPersonIds(@Param("personIds") List<UUID> personIds);
+
+    interface JobTitleCount {
+        String getJobTitle();
+        long getCount();
+    }
 }

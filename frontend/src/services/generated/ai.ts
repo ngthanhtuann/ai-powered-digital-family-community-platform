@@ -104,13 +104,13 @@ export interface components {
     schemas: {
         SourceReference: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
         };
         SearchResult: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
             title: string;
@@ -496,8 +496,7 @@ export interface operations {
                 /**
                  * @example {
                  *       "sourceType": "STORY",
-                 *       "sourceId": "e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014",
-                 *       "maxLength": 500
+                 *       "sourceId": "e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014"
                  *     }
                  */
                 "application/json": {
@@ -505,8 +504,6 @@ export interface operations {
                     sourceType: "POST" | "STORY" | "DOCUMENT";
                     /** Format: uuid */
                     sourceId: string;
-                    /** @default 500 */
-                    maxLength?: number;
                 };
             };
         };

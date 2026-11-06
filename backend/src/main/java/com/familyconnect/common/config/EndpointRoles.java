@@ -35,6 +35,11 @@ public class EndpointRoles {
             Map.entry("PATCH /users/me", SIGNED_IN),
             Map.entry("PUT /users/me/password", SIGNED_IN),
             Map.entry("GET /users/me/membership", SIGNED_IN),
+            // Xin tham gia và duyệt (UC-AUTH-06, 07); phạm vi chi kiểm ở JoinRequestService.
+            Map.entry("POST /join-requests", List.of("MEMBER")),
+            Map.entry("GET /join-requests", ADMINS),
+            Map.entry("PATCH /join-requests/{}", ADMINS),
+            Map.entry("DELETE /join-requests/{}", List.of("MEMBER")),
             // Gia phả (genealogy.yaml). Tạo gia đình: MEMBER chưa thuộc gia đình nào hoặc SYSTEM_ADMIN.
             Map.entry("GET /families", SIGNED_IN),
             Map.entry("POST /families", List.of("MEMBER", "SYSTEM_ADMIN")),
@@ -111,6 +116,7 @@ public class EndpointRoles {
             Map.entry("GET /heritage/documents/{}", SIGNED_IN),
             Map.entry("PATCH /heritage/documents/{}", ADMINS),
             Map.entry("DELETE /heritage/documents/{}", ADMINS),
+            Map.entry("GET /heritage/photos", SIGNED_IN),
             Map.entry("GET /heritage/stories", SIGNED_IN),
             Map.entry("POST /heritage/stories", SIGNED_IN),
             Map.entry("GET /heritage/stories/{}", SIGNED_IN),
@@ -122,8 +128,12 @@ public class EndpointRoles {
             Map.entry("PUT /directory/members/{}/profession-profile", SIGNED_IN),
             Map.entry("GET /directory/members/{}/education-profile", SIGNED_IN),
             Map.entry("PUT /directory/members/{}/education-profile", SIGNED_IN),
-            // AI (ai.yaml). Phạm vi gia đình, chi và trẻ dưới 16 tuổi kiểm ở SemanticSearchService.
-            Map.entry("GET /ai/search", SIGNED_IN));
+            // Dashboard (heritage-directory-dashboard.yaml): chỉ quản trị viên gia đình/chi.
+            Map.entry("GET /dashboard/statistics", ADMINS),
+            // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
+            Map.entry("GET /ai/search", SIGNED_IN),
+            Map.entry("POST /ai/chat", SIGNED_IN),
+            Map.entry("POST /ai/summaries", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {

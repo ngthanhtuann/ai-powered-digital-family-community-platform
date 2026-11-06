@@ -94,7 +94,7 @@
 | `ai_embedding_chunk.family_id`, `ai_chat_session.family_id`, `ai_summary_cache.family_id` | `family.id` | TV5 |
 | `ai_embedding_chunk.branch_id` | `branch.id` | TV5 (NULL là toàn gia đình; lọc phạm vi chi, `ai.md` BR-AI-13) |
 | `ai_chat_session.user_id` | `users.id` | TV5 |
-| `ai_embedding_chunk.source_id` (theo `source_type`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`) | `person`, `post`, `family_story`, `heritage_document`, `event` | TV5 (chỉ lưu id, không FK) |
+| `ai_embedding_chunk.source_id` (theo `source_type`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`, `PHOTO`) | `person`, `post`, `family_story`, `heritage_document`, `event`, `media` | TV5 (chỉ lưu id, không FK) |
 | `ai_summary_cache.source_id` (theo `source_type`) | bảng nguồn tương ứng | TV5 (chỉ lưu id, không FK) |
 
 ## 5. Sơ đồ

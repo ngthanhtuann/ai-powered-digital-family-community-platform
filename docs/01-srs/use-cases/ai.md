@@ -80,10 +80,10 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Tóm tắt một bài đăng, câu chuyện hoặc tài liệu mà người dùng có quyền xem. |
 | Tiền điều kiện | Đã đăng nhập và xác minh; có quyền xem nguồn; nguồn tồn tại và chưa bị xóa. |
-| Dữ liệu đầu vào | `sourceType`, `sourceId`, `maxLength` tùy chọn. |
+| Dữ liệu đầu vào | `sourceType` (`POST`, `STORY`, `DOCUMENT`), `sourceId`. Nguồn dài hơn 8.000 ký tự được chia phần, tóm tắt từng phần rồi tổng hợp. |
 | Nguồn tri thức | Nội dung lấy qua interface của module community/heritage; cache trong `ai_summary_cache` nếu còn hiệu lực và đúng phiên bản nguồn. |
 | Luồng chính | 1. Người dùng yêu cầu tóm tắt nguồn. 2. Hệ thống xác thực quyền xem nguồn. 3. Lấy nội dung qua interface module sở hữu dữ liệu. 4. Loại dữ liệu không được gửi LLM theo `privacy.md`. 5. Kiểm tra cache theo khóa nguồn, phiên bản/nội dung và tham số tóm tắt. 6. Nếu cache hợp lệ, trả tóm tắt. 7. Nếu chưa có cache, gọi Gemini với chỉ dẫn chỉ tóm tắt nội dung nguồn, lưu cache và trả kết quả. |
-| Luồng thay thế / ngoại lệ | 1a. Quản trị tắt tóm tắt (`ai.summary.enabled = false`): 409 `AI_002`. 1b. `sourceType` không hợp lệ: 400 `VALID_001`. 2a. Nguồn thuộc gia đình khác hoặc ngoài phạm vi chi được xem: 403 `PERM_001`. 2b. Nguồn không tồn tại hoặc đã xóa: 404 `NOT_FOUND_001`. 4a. Sau khi lọc không còn nội dung đủ để tóm tắt: trả “Không tìm thấy thông tin.” 7a. LLM lỗi: 503 `AI_001`. |
+| Luồng thay thế / ngoại lệ | 1a. Quản trị tắt tóm tắt (`ai.summary.enabled = false`): 409 `AI_002`. 1b. `sourceType` không hợp lệ: 400 `VALID_001`. 1c. Nội dung nguồn dài quá `ai.summary.max_input_chars` (mặc định 30.000 ký tự): 400 `VALID_001`. 1d. Vượt hạn mức tóm tắt: 429 `RATE_001` (BR-AI-04). 2a. Nguồn thuộc gia đình khác hoặc ngoài phạm vi chi được xem: 403 `PERM_001`. 2b. Nguồn không tồn tại hoặc đã xóa: 404 `NOT_FOUND_001`. 4a. Sau khi lọc không còn nội dung đủ để tóm tắt: trả “Không tìm thấy thông tin.” 7a. LLM lỗi: 503 `AI_001`. |
 | Hậu điều kiện | Tóm tắt được trả về; cache có thể được tạo/cập nhật; dữ liệu nguồn không bị sửa. |
 | Quy tắc nghiệp vụ | BR-AI-01, BR-AI-02, BR-AI-04, BR-AI-05, BR-AI-09 |
 
@@ -107,7 +107,7 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | BR-AI-01 | Chỉ tài khoản đã xác minh mới được dùng chức năng AI; nếu chưa xác minh, trả HTTP 403, mã `PERM_002`. |
 | BR-AI-02 | Mọi truy xuất phải lọc theo `family_id` và quyền xem trước khi ghép ngữ cảnh hoặc trả kết quả. `family_id` phải lấy/đối chiếu từ security context; không tin dữ liệu client tự khai. |
 | BR-AI-03 | Nếu không có kết quả phù hợp hoặc ngữ cảnh không chứa câu trả lời, trả chính xác `Không tìm thấy thông tin.`; không bịa hoặc suy luận ngoài dữ liệu. |
-| BR-AI-04 | Chat AI giới hạn 20 câu mỗi giờ cho mỗi người dùng (`conventions.md` mục 7.1), đổi được qua khóa cấu hình `ai.chat.limit_per_hour` (`auth.md` mục 5.3); vượt giới hạn trả HTTP 429, mã `RATE_001`, kèm header `Retry-After`. Giới hạn riêng cho tìm kiếm, tóm tắt, gợi ý chưa chốt (mục 8). |
+| BR-AI-04 | Chat AI giới hạn 20 câu mỗi giờ cho mỗi người dùng (`conventions.md` mục 7.1), đổi được qua khóa cấu hình `ai.chat.limit_per_hour` (`auth.md` mục 5.3); vượt giới hạn trả HTTP 429, mã `RATE_001`, kèm header `Retry-After`. Tóm tắt tạm đặt 10 lần gọi LLM mỗi giờ cho mỗi người dùng (`ai.summary.limit_per_hour`), lấy từ cache không tính lượt; con số này chờ nhóm chốt. Giới hạn riêng cho tìm kiếm, gợi ý chưa chốt (mục 8). |
 | BR-AI-05 | Chỉ module `ai` đọc/ghi các bảng `ai_*`; module khác gọi qua Java interface `AiGateway`, không join trực tiếp và không gọi REST nội bộ. |
 | BR-AI-06 | Khi truy xuất RAG, áp dụng lọc `family_id`, quyền xem và ngưỡng tương đồng trước khi ghép prompt. Ngưỡng 0,88 hiện là giá trị thử nghiệm ban đầu, chưa được xác nhận tối ưu. |
 | BR-AI-07 | Dữ liệu gửi LLM và đưa vào chỉ mục theo đúng `docs/01-srs/privacy.md` mục 6. **Được gửi:** họ tên, quan hệ, năm sinh, nghề nghiệp mức chung của người cùng gia đình; nội dung bài đăng, câu chuyện, tài liệu, sự kiện trong phạm vi được xem. **Không bao giờ gửi:** mật khẩu, token, email, số điện thoại, địa chỉ chi tiết, địa chỉ IP, dữ liệu của gia đình khác. **Người dưới 16 tuổi:** chỉ đưa họ tên và quan hệ (BR-GEN-18). Dùng dữ liệu giả trong phát triển; không dùng gói miễn phí với dữ liệu gia đình thật (gói miễn phí cho phép Google dùng nội dung để cải thiện sản phẩm). |
@@ -130,7 +130,7 @@ Quy ước chung: schema `public`; khóa chính UUID; thời gian `TIMESTAMPTZ`;
 | id | UUID | PK, NOT NULL | ID chunk |
 | family_id | UUID | NOT NULL, INDEX | Phạm vi gia đình |
 | branch_id | UUID | NULL, INDEX | Phạm vi chi của nguồn (BR-AI-13); NULL là toàn gia đình; không FK liên module |
-| source_type | VARCHAR(40) | NOT NULL, CHECK source_type IN ('PERSON','POST','STORY','DOCUMENT','EVENT') | Loại nguồn; `EVENT` cho sự kiện (BR-EVT-06) |
+| source_type | VARCHAR(40) | NOT NULL, CHECK source_type IN ('PERSON','POST','STORY','DOCUMENT','EVENT','PHOTO') | Loại nguồn; `EVENT` cho sự kiện (BR-EVT-06); `PHOTO` cho ảnh di sản theo chú thích (UC-HER-03, `source_id` = `media.id`) |
 | source_id | UUID | NOT NULL, INDEX | ID nguồn từ module sở hữu; không FK liên module |
 | chunk_no | INTEGER | NOT NULL, CHECK (chunk_no >= 0) | Thứ tự chunk trong nguồn |
 | content | TEXT | NOT NULL | Nội dung đã lọc dữ liệu nhạy cảm |
@@ -184,7 +184,7 @@ Index: `(family_id, user_id, updated_at DESC)` và `(user_id, deleted_at)`.
 | created_by | UUID | NULL | Người tạo |
 | updated_by | UUID | NULL | Người cập nhật |
 
-Index: `(session_id, created_at)`; FK nội bộ `session_id` có `ON DELETE RESTRICT` hoặc xóa mềm theo chính sách. Không lưu API key hoặc dữ liệu cấm vào metadata/log.
+Index: `(session_id, created_at)`; FK nội bộ `session_id` có `ON DELETE RESTRICT` hoặc xóa mềm theo chính sách. Không lưu API key hoặc dữ liệu cấm vào metadata/log. Thời hạn lưu: tin nhắn và phiên không hoạt động quá `ai.chat.retention_days` ngày (mặc định 30) bị xóa mềm bởi tác vụ chạy mỗi giờ; phiên đã xóa mềm không dùng tiếp được (403 `PERM_001`).
 
 ### 5.4. `ai_summary_cache`
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
@@ -228,7 +228,7 @@ Module `genealogy`, `community`, `events`, `heritage` gọi để đồng bộ c
 | `void upsertSource(SourceType type, UUID sourceId, UUID familyId, UUID branchId, String content)` | Tạo hoặc sửa nguồn | `content` do module nguồn dựng, đã lọc theo BR-AI-07 và BR-AI-14; `branchId` NULL là toàn gia đình |
 | `void removeSource(SourceType type, UUID sourceId)` | Xóa mềm, ẩn khi kiểm duyệt, hoặc nguồn đổi sang phạm vi không còn hiển thị | Module `ai` xóa mềm mọi chunk của nguồn |
 
-`SourceType`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`.
+`SourceType`: `PERSON`, `POST`, `STORY`, `DOCUMENT`, `EVENT`, `PHOTO`.
 
 Module `ai` gọi ngược các interface sẵn có: truy vấn quan hệ của module genealogy (UC-GEN-08) cho UC-AI-03; interface đọc nội dung và kiểm tra quyền xem của module sở hữu cho UC-AI-04; `MembershipQuery` của module auth để lấy `family_id`, vai trò và chi của người gọi.
 
