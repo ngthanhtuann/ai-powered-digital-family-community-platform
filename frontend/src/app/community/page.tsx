@@ -7,11 +7,12 @@ import {
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { TextField } from '@/components/ui/TextField';
+import { dashboardApi } from '@/services/dashboard';
 import { ImagePicker } from '@/components/community/ImagePicker';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
 import { Announcements } from '@/components/community/Announcements';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
+import { branchesOf } from '@/services/admin';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
@@ -33,6 +34,30 @@ const inputClass = 'w-full rounded-control border border-border-strong bg-surfac
 const linkButtonClass = 'min-h-11 px-1 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-60';
 
 type ReportTarget = { targetType: 'POST' | 'COMMENT'; targetId: string; label: string };
+type BranchNode = { id?: string; name?: string; parentBranchId?: string | null };
+
+/** branch là ancestor hoặc nằm dưới ancestor (đi theo parentBranchId). */
+function within(parents: Map<string, string | null>, branch: string, ancestor: string) {
+  let current: string | null | undefined = branch;
+  for (let step = 0; current && step <= parents.size; step++) {
+    if (current === ancestor) return true;
+    current = parents.get(current);
+  }
+  return false;
+}
+
+const scopeHint = (branchId: string, label: string) => branchId
+  ? `Chỉ người trong ${label} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
+  : 'Mọi thành viên trong dòng họ đều thấy.';
+
+/** Chi được chọn khi đăng bài: cùng quy tắc đọc với backend (BR-COM-03, ModulePlatformAdapter.canRead). */
+function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch: string | null, branchAdmin: boolean) {
+  if (wholeFamily) return branches;
+  if (!myBranch) return [];
+  const parents = new Map(branches.map((b) => [b.id ?? '', b.parentBranchId ?? null]));
+  return branches.filter((b) => b.id
+    && (within(parents, myBranch, b.id) || (branchAdmin && within(parents, b.id, myBranch))));
+}
 
 /** BR-COM-12: thành viên báo cáo nội dung vi phạm; quản trị hệ thống xử lý ở /admin. */
 function ReportButton({ target }: { target: ReportTarget }) {
@@ -171,16 +196,22 @@ function Comments({ postId, userId, canReport }: { postId: string; userId?: stri
   );
 }
 
-function PostCard({ post, userId, canReport, onReaction }: {
+function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }: {
   post: Post; userId?: string; canReport: boolean;
+  scopeOptions: BranchNode[]; labelOf: (branchId?: string | null) => string;
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
   const client = useQueryClient();
   const [showComments, setShowComments] = useState(false);
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(post.content);
+  const currentScope = post.branchId ?? '';
+  const [editScope, setEditScope] = useState(currentScope);
+  // Giữ phạm vi hiện tại trong danh sách dù người đăng đã chuyển chi, để sửa nội dung không vô tình đổi phạm vi.
+  const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope
+    ? scopeOptions : [...scopeOptions, { id: currentScope, name: labelOf(currentScope) }];
   const update = useMutation({
-    mutationFn: () => communityApi.updatePost(post.id, content),
+    mutationFn: () => communityApi.updatePost(post.id, content, editScope || null),
     onSuccess: async () => { setEditing(false); await client.invalidateQueries({ queryKey: ['community-posts'] }); },
   });
   const remove = useMutation({
@@ -194,6 +225,10 @@ function PostCard({ post, userId, canReport, onReaction }: {
           <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
             {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
           </span>
+          <span className="ml-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
+            title="Phạm vi người được xem bài">
+            {labelOf(post.branchId)}
+          </span>
           <p className="mt-2 text-xs text-text-secondary">
             {post.authorName} · {dateText(post.createdAt)}
           </p>
@@ -205,7 +240,7 @@ function PostCard({ post, userId, canReport, onReaction }: {
             )}
             {post.createdBy === userId && !editing && (
               <Button variant="secondary" fullWidth={false}
-                onClick={() => { setContent(post.content); setEditing(true); }}>Sửa</Button>
+                onClick={() => { setContent(post.content); setEditScope(currentScope); setEditing(true); }}>Sửa</Button>
             )}
             {post.canDelete && (
               <Button variant="danger" fullWidth={false} loading={remove.isPending}
@@ -220,6 +255,17 @@ function PostCard({ post, userId, canReport, onReaction }: {
         <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
           <textarea className={inputClass} maxLength={5000} required value={content}
             onChange={(event) => setContent(event.target.value)} />
+          <label htmlFor={'scope-' + post.id} className="block text-sm">Ai được xem</label>
+          <select id={'scope-' + post.id} className={inputClass + ' h-[42px] py-0'} value={editScope}
+            aria-describedby={'scope-help-' + post.id} onChange={(event) => setEditScope(event.target.value)}>
+            <option value="">Cả dòng họ</option>
+            {editOptions.map((b) => <option key={b.id} value={b.id ?? ''}>{b.name}</option>)}
+          </select>
+          {editScope !== currentScope && (
+            <p id={'scope-help-' + post.id} className="text-xs text-text-secondary">
+              Sau khi lưu: {scopeHint(editScope, labelOf(editScope))}
+            </p>
+          )}
           <div className="flex gap-2">
             <Button type="submit" fullWidth={false} loading={update.isPending} disabled={!content.trim()}>Lưu bài</Button>
             <Button variant="secondary" fullWidth={false} onClick={() => setEditing(false)}>Hủy</Button>
@@ -267,8 +313,26 @@ export default function CommunityPage() {
   const systemAdmin = me.data?.roles.includes('SYSTEM_ADMIN') ?? false;
   const branchAdmin = membership.data?.role === 'BRANCH_ADMIN';
   const canNews = branchAdmin || systemAdmin;
-  const familyId = systemAdmin ? adminFamily.trim() : undefined;
+  // SYSTEM_ADMIN chọn gia đình từ GET /families (trả mọi gia đình cho quản trị), như trang Dashboard.
+  const families = useQuery({ queryKey: ['dashboard-families'], queryFn: dashboardApi.families, enabled: systemAdmin });
+  const familyId = systemAdmin ? adminFamily || families.data?.[0]?.id || '' : undefined;
   const ready = systemAdmin ? Boolean(familyId) : membership.data?.status === 'APPROVED';
+  const myBranch = membership.data?.branchId ?? null;
+  const branchFamily = (systemAdmin ? familyId : membership.data?.familyId) ?? '';
+  const branches = useQuery({
+    queryKey: ['branches', branchFamily],
+    enabled: ready && /^[0-9a-f-]{36}$/i.test(branchFamily),
+    queryFn: () => branchesOf(branchFamily),
+  });
+  const branchName = useMemo(
+    () => new Map((branches.data?.items ?? []).map((b) => [b.id ?? '', b.name ?? ''])), [branches.data]);
+  const scopeOptions = useMemo(() => postableBranches(branches.data?.items ?? [],
+    systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin), [branches.data, systemAdmin, branchAdmin, myBranch]);
+  // Mặc định là chi của mình; muốn cả họ thấy thì người đăng chọn "Cả dòng họ". '' là cả dòng họ.
+  const [scopeChoice, setScopeChoice] = useState<string>();
+  const wanted = scopeChoice ?? myBranch ?? '';
+  const scope = scopeOptions.some((b) => b.id === wanted) ? wanted : '';
+  const scopeLabel = (branchId?: string | null) => branchId ? branchName.get(branchId) ?? 'Một chi' : 'Cả dòng họ';
 
   const feedKey = useMemo(() => ['community-posts', tab, familyId ?? 'own'], [tab, familyId]);
   const feed = useInfiniteQuery({
@@ -284,7 +348,7 @@ export default function CommunityPage() {
       // Mỗi request /posts/{id}/media nhận 1 file, theo OpenAPI. Nhiều ảnh tải lần lượt.
       let postId = pendingPostId;
       if (!postId) {
-        postId = (await communityApi.createPost(draft, postType, familyId)).id;
+        postId = (await communityApi.createPost(draft, postType, scope || null, familyId)).id;
         setPendingPostId(postId);
       }
       for (let i = uploadedCount; i < selectedImages.length; i++) {
@@ -300,6 +364,7 @@ export default function CommunityPage() {
       setUploadProgress(undefined);
       setPendingPostId(null);
       setUploadedCount(0);
+      setScopeChoice(undefined);
       await Promise.all([
         client.invalidateQueries({ queryKey: ['community-posts'] }),
         client.invalidateQueries({ queryKey: ['post-media', postId] }),
@@ -361,8 +426,17 @@ export default function CommunityPage() {
         <p className="rounded-lg bg-surface p-4">Bạn cần được xác minh thành viên trước khi xem bảng tin.</p>}
       {systemAdmin && (
         <div className="rounded-lg border border-border bg-surface p-4">
-          <TextField id="family-id" label="Mã gia đình cần quản lý" value={adminFamily}
-            onChange={(event) => setAdminFamily(event.target.value)} placeholder="UUID gia đình" />
+          <label htmlFor="family-id" className="block text-sm">Gia đình cần quản lý</label>
+          <select id="family-id" className={inputClass + ' mt-1 h-[42px] py-0'} value={familyId}
+            disabled={families.isPending || !families.data?.length}
+            onChange={(event) => { setAdminFamily(event.target.value); setScopeChoice(undefined); }}>
+            {(families.data ?? []).map((family) => (
+              <option key={family.id} value={family.id}>{family.name}</option>
+            ))}
+          </select>
+          {families.isPending && <p className="mt-1 text-xs text-text-secondary">Đang tải danh sách gia đình...</p>}
+          {families.isError && <p role="alert" className="mt-1 text-error">{errorText(families.error)}</p>}
+          {families.data?.length === 0 && <p className="mt-1 text-text-secondary">Chưa có gia đình nào.</p>}
         </div>
       )}
       {ready && (
@@ -387,6 +461,21 @@ export default function CommunityPage() {
               <option value="POST">Bài đăng thường</option>
               {canNews && <option value="NEWS">Tin tức gia đình</option>}
             </select>
+            <label htmlFor="post-scope" className="block text-sm">Ai được xem</label>
+            <select id="post-scope" className={inputClass + ' h-[42px] py-0'} value={scope}
+              aria-describedby="post-scope-help"
+              disabled={branches.isPending || Boolean(pendingPostId) || create.isPending}
+              onChange={(event) => setScopeChoice(event.target.value)}>
+              <option value="">Cả dòng họ</option>
+              {scopeOptions.map((b) => (
+                <option key={b.id} value={b.id ?? ''}>{b.name}{b.id === myBranch ? ' (chi của tôi)' : ''}</option>
+              ))}
+            </select>
+            <p id="post-scope-help" className="text-xs text-text-secondary">
+              {branches.isPending ? 'Đang tải danh sách chi...'
+                : branches.isError ? 'Không tải được danh sách chi, bài sẽ hiển thị cho cả dòng họ.'
+                  : scopeHint(scope, scopeLabel(scope))}
+            </p>
             <label htmlFor="post-content" className="block text-sm">Nội dung</label>
             <textarea id="post-content" className={inputClass} rows={4} maxLength={5000} required
               placeholder="Chia sẻ cùng gia đình..." value={draft}
@@ -398,7 +487,7 @@ export default function CommunityPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary">{draft.length}/5000 ký tự</span>
               <Button type="submit" fullWidth={false} loading={create.isPending}
-                disabled={!draft.trim() && !pendingPostId}>
+                disabled={(!draft.trim() && !pendingPostId) || branches.isPending}>
                 {create.isPending ? 'Đang đăng...' : pendingPostId ? 'Tải tiếp ảnh' : 'Đăng bài'}
               </Button>
             </div>
@@ -421,6 +510,7 @@ export default function CommunityPage() {
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
+                scopeOptions={scopeOptions} labelOf={scopeLabel}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&
