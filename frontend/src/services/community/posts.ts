@@ -22,13 +22,15 @@ export const communityApi = {
       ...(type ? { type } : {}),
       ...(familyId ? { familyId } : {}),
     }),
-  createPost: (content: string, type: PostType, familyId?: string) =>
+  /** branchId null: cả dòng họ; có giá trị: chi đó và các chi con (BR-COM-03). */
+  createPost: (content: string, type: PostType, branchId: string | null, familyId?: string) =>
     api.post<Post>('/posts' + (familyId ? '?familyId=' + encodeURIComponent(familyId) : ''), {
       content,
       type,
+      branchId,
     } satisfies Community['schemas']['PostCreateRequest']),
-  updatePost: (id: string, content: string) =>
-    api.patch<Post>('/posts/' + id, { content } satisfies Community['schemas']['PostUpdateRequest']),
+  updatePost: (id: string, content: string, branchId: string | null) =>
+    api.patch<Post>('/posts/' + id, { content, branchId } satisfies Community['schemas']['PostUpdateRequest']),
   deletePost: (id: string) => api.delete('/posts/' + id),
   comments: (postId: string, page: number) =>
     api.list<Comment>('/posts/' + postId + '/comments', {
