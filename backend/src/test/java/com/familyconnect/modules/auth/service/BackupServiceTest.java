@@ -65,6 +65,16 @@ class BackupServiceTest {
     }
 
     @Test
+    void scriptExitCodesMapToApiErrors() {
+        assertThat(BackupService.scriptFailure("restore.sh", 3).code()).isEqualTo(ErrorCode.CONFLICT_001);
+        assertThat(BackupService.scriptFailure("restore.sh", 3).getMessage()).isEqualTo(BackupService.SCHEMA_MISMATCH);
+        assertThat(BackupService.scriptFailure("restore.sh", 75).code()).isEqualTo(ErrorCode.ADM_003);
+        assertThat(BackupService.scriptFailure("backup.sh", 75).code()).isEqualTo(ErrorCode.ADM_003);
+        assertThat(BackupService.scriptFailure("backup.sh", 3).code()).isEqualTo(ErrorCode.SERVER_001);
+        assertThat(BackupService.scriptFailure("restore.sh", 1).code()).isEqualTo(ErrorCode.SERVER_001);
+    }
+
+    @Test
     void listsOnlyMatchingArchivesNewestFirstWithPagination() throws Exception {
         when(roles.findRoleCodes(adminId)).thenReturn(List.of(Role.SYSTEM_ADMIN));
         Files.writeString(directory.resolve("familyconnect-20261105-010203.tar.gz"), "backup-a");
