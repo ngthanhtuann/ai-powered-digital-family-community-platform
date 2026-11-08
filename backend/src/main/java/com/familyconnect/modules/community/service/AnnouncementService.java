@@ -99,6 +99,7 @@ public class AnnouncementService {
         Announcement saved = store.create(family,input.branchId(),text(input.title(),"title",255),
             text(input.content(),"content",5000),Boolean.TRUE.equals(input.isPinned()),actor.userId());
         notifications.announce(family,saved.branchId(),saved.id(),saved.title(),saved.content(),actor.userId());
+        platform.logContentSaved(true,"ANNOUNCEMENT",saved.id(),family);
         return saved;
     }
 
@@ -141,7 +142,9 @@ public class AnnouncementService {
         String title = input.title() == null ? old.title() : text(input.title(),"title",255);
         String content = input.content() == null ? old.content() : text(input.content(),"content",5000);
         boolean pinned = input.isPinned() == null ? old.isPinned() : input.isPinned();
-        return store.update(id,branch,title,content,pinned,actor.userId());
+        Announcement saved = store.update(id,branch,title,content,pinned,actor.userId());
+        platform.logContentSaved(false,"ANNOUNCEMENT",id,old.familyId());
+        return saved;
     }
 
     @Transactional
