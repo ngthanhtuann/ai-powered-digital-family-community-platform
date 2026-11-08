@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Avatar } from '@/components/genealogy/PersonNode';
@@ -31,6 +31,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const candidates = useQuery({
     queryKey: ['persons-pick', familyId, q.trim()],
     queryFn: () => genealogyApi.persons(familyId, { q: q.trim() || undefined, page: 0, size: 100, sort: 'fullName,asc' }),
+    placeholderData: keepPreviousData, // gõ tên thì giữ danh sách cũ tới khi có kết quả mới, ô chọn không nháy
   });
   const relation = useMutation({
     mutationFn: () => genealogyApi.relationship(personId, otherId),
@@ -75,8 +76,8 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
             onChange={(e) => { setQ(e.target.value); setOtherId(''); }} />
           <label className="grid gap-1 text-label">{p.fullName} là gì của
             <select className={selectClass} value={otherId} onChange={(e) => setOtherId(e.target.value)}
-              disabled={candidates.isPending}>
-              <option value="">{candidates.isPending ? 'Đang tải...' : others.length ? 'Chọn người' : 'Không tìm thấy ai'}</option>
+              disabled={!candidates.data}>
+              <option value="">{!candidates.data ? 'Đang tải...' : others.length ? 'Chọn người' : 'Không tìm thấy ai'}</option>
               {others.map((n) => <option key={n.id} value={n.id}>{n.fullName}{yearOf(n) ? ` (${yearOf(n)})` : ''}</option>)}
             </select>
           </label>
@@ -87,7 +88,13 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
           {relation.data && (
             <div role="status" className="space-y-1 rounded-control bg-info-soft p-3 text-body">
               <p>{relation.data.description}</p>
-              {offTree > 0 && <p className="text-caption">Đang tải thêm {offTree} người trên đường đi lên cây...</p>}
+              {/* Có tổ tiên chung thì trang cây tự tải thêm; quan hệ chỉ qua hôn nhân thì không có gốc để tải. */}
+              {offTree > 0 && (
+                <p className="text-caption">
+                  {offTree} người trên đường đi chưa hiện trên cây
+                  {relation.data.commonAncestorId ? ', đang tải thêm...' : ' (mở thêm nhánh để thấy).'}
+                </p>
+              )}
               <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
             </div>
           )}
