@@ -59,7 +59,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         String sql = GENERATIONS + """
                 SELECT person.id, person.family_id, person.branch_id, person.full_name,
                        person.birth_date, person.birth_year, person.current_province,
-                       person.is_deceased, person.user_id, COALESCE(generations.generation, 1)
+                       person.is_deceased, person.user_id, person.gender,
+                       COALESCE(generations.generation, 1)
                 """ + from + " ORDER BY " + orderColumn + " " + direction
                 + ", person.id " + direction + " LIMIT :limit OFFSET :offset";
         Query dataQuery = entityManager.createNativeQuery(sql);
@@ -78,7 +79,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
             Number year = birthDate == null ? (Number) row[5] : birthDate.getYear();
             people.add(new DirectoryPerson((UUID) row[0], (UUID) row[1], (UUID) row[2],
                     (String) row[3], birthDate, year == null ? null : year.intValue(),
-                    (String) row[6], (Boolean) row[7], (UUID) row[8], ((Number) row[9]).intValue()));
+                    (String) row[6], (Boolean) row[7], (UUID) row[8], (String) row[9],
+                    ((Number) row[10]).intValue()));
         }
         return new DirectoryPage(people, ((Number) countQuery.getSingleResult()).longValue());
     }

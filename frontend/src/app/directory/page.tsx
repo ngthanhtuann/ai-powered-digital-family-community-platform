@@ -7,7 +7,9 @@ import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAc
 import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { ApiError } from '@/lib/api';
+import { datedFileName, saveBlob } from '@/lib/download';
 import { directoryApi } from '@/services/directory';
+import { dashboardApi } from '@/services/dashboard';
 
 const PAGE_SIZE = 20;
 
@@ -17,6 +19,8 @@ export default function DirectoryPage() {
   const [draft, setDraft] = useState({ keyword: '', job: '', location: '', generation: '' });
   const [filters, setFilters] = useState({ keyword: '', job: '', location: '', generation: '' });
   const [page, setPage] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const familyId = access.isSystemAdmin ? adminFamily.trim() : undefined;
 
   const members = useQuery({
@@ -50,14 +54,41 @@ export default function DirectoryPage() {
     setFilters({ ...draft });
   }
 
+  async function exportMembers() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const blob = await dashboardApi.exportMembersCsv({
+        ...(familyId ? { familyId } : {}),
+      });
+      saveBlob(blob, datedFileName('members', 'csv'));
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Không xuất được CSV.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
-      <header className="border-b border-border pb-5">
-        <p className="text-caption text-text-secondary">Cộng đồng gia đình</p>
-        <h1 className="mt-1 text-page-title">Danh bạ thành viên</h1>
-        <p className="mt-2 text-body text-text-secondary">
-          Tra cứu hồ sơ thành viên trong gia đình.
-        </p>
+      <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-caption text-text-secondary">Cộng đồng gia đình</p>
+          <h1 className="mt-1 text-page-title">Danh bạ thành viên</h1>
+          <p className="mt-2 text-body text-text-secondary">
+            Tra cứu hồ sơ thành viên trong gia đình.
+          </p>
+        </div>
+        {access.isAdmin && (
+          <Button
+            fullWidth={false}
+            loading={exporting}
+            disabled={access.isSystemAdmin && !familyId}
+            onClick={exportMembers}
+          >
+            Xuất CSV
+          </Button>
+        )}
       </header>
 
       <div className="mt-6">
@@ -125,6 +156,11 @@ export default function DirectoryPage() {
               className="mt-5 rounded-card border border-error bg-error-soft p-4 text-body text-error"
             >
               {dataError}
+            </p>
+          )}
+          {exportError && (
+            <p role="alert" className="mt-5 rounded-card border border-error bg-error-soft p-4 text-body text-error">
+              Không xuất được CSV: {exportError}
             </p>
           )}
           {members.isLoading ? (

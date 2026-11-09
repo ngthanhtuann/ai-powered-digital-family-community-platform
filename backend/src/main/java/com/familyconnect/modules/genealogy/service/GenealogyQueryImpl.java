@@ -4,16 +4,21 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemographics;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
+import com.familyconnect.modules.genealogy.entity.Marriage;
 import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
 import com.familyconnect.modules.genealogy.entity.Person;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
 import com.familyconnect.modules.genealogy.repository.FamilyRepository;
+import com.familyconnect.modules.genealogy.repository.MarriageRepository;
+import com.familyconnect.modules.genealogy.repository.ParentChildRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -26,14 +31,20 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     private final BranchRepository branchRepository;
     private final FamilyRepository familyRepository;
     private final DashboardDemographicsRepository dashboardRepository;
+    private final ParentChildRepository parentChildRepository;
+    private final MarriageRepository marriageRepository;
 
     public GenealogyQueryImpl(PersonRepository personRepository, BranchRepository branchRepository,
                               FamilyRepository familyRepository,
-                              DashboardDemographicsRepository dashboardRepository) {
+                              DashboardDemographicsRepository dashboardRepository,
+                              ParentChildRepository parentChildRepository,
+                              MarriageRepository marriageRepository) {
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
         this.familyRepository = familyRepository;
         this.dashboardRepository = dashboardRepository;
+        this.parentChildRepository = parentChildRepository;
+        this.marriageRepository = marriageRepository;
     }
 
     @Override
@@ -69,6 +80,11 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     }
 
     @Override
+    public List<UUID> findBranchAndDescendants(UUID familyId, UUID branchId) {
+        return branchRepository.findBranchAndDescendants(familyId, branchId);
+    }
+
+    @Override
     public boolean familyExists(UUID familyId) {
         return familyRepository.findByIdAndDeletedAtIsNull(familyId).isPresent();
     }
@@ -89,12 +105,82 @@ public class GenealogyQueryImpl implements GenealogyQuery {
         return new DirectoryPage(result.people(), result.total());
     }
 
+    @Override
+    public Map<UUID, String> relationshipLabels(UUID referencePersonId, List<UUID> personIds) {
+        Person reference = personRepository.findByIdAndDeletedAtIsNull(referencePersonId).orElse(null);
+        if (reference == null || personIds.isEmpty()) {
+            return Map.of();
+        }
+
+        CachedGraph graph = new CachedGraph(reference.getFamilyId());
+        KinshipCalculator calculator = new KinshipCalculator(graph);
+        Map<UUID, String> labels = new HashMap<>();
+        for (UUID personId : personIds) {
+            Person person = personRepository.findByIdAndDeletedAtIsNull(personId).orElse(null);
+            if (person == null || !reference.getFamilyId().equals(person.getFamilyId())) {
+                continue;
+            }
+            KinshipCalculator.Result result = calculator.relationship(personId.toString(), referencePersonId.toString());
+            if (result.supported()) {
+                labels.put(personId, result.relation());
+            }
+        }
+        return Map.copyOf(labels);
+    }
+
     private static DirectoryPerson toDirectoryPerson(Person person) {
         Integer birthYear = person.getBirthDate() == null
                 ? (person.getBirthYear() == null ? null : person.getBirthYear().intValue())
                 : person.getBirthDate().getYear();
         return new DirectoryPerson(person.getId(), person.getFamilyId(), person.getBranchId(),
                 person.getFullName(), person.getBirthDate(), birthYear, person.getCurrentProvince(),
-                person.isDeceased(), person.getUserId(), null);
+                person.isDeceased(), person.getUserId(), person.getGender(), null);
+    }
+
+    private final class CachedGraph implements KinshipCalculator.Graph {
+
+        private final UUID familyId;
+        private final Map<UUID, KinshipCalculator.Person> people = new HashMap<>();
+        private final Map<UUID, List<KinshipCalculator.ParentLink>> parents = new HashMap<>();
+        private final Map<UUID, List<KinshipCalculator.MarriageLink>> marriages = new HashMap<>();
+
+        private CachedGraph(UUID familyId) {
+            this.familyId = familyId;
+        }
+
+        @Override
+        public KinshipCalculator.Person person(String id) {
+            UUID personId = UUID.fromString(id);
+            return people.computeIfAbsent(personId, key -> {
+                Person person = personRepository.findByIdAndDeletedAtIsNull(key)
+                        .filter(value -> familyId.equals(value.getFamilyId()))
+                        .orElseThrow(() -> new IllegalStateException("Quan hệ gia phả tham chiếu thành viên không hợp lệ"));
+                return new KinshipCalculator.Person(key.toString(), person.getFullName(), person.getGender(),
+                        person.getBirthDate(), person.getBirthYear() == null ? null : person.getBirthYear().intValue());
+            });
+        }
+
+        @Override
+        public List<KinshipCalculator.ParentLink> parentsOf(String id) {
+            UUID personId = UUID.fromString(id);
+            return parents.computeIfAbsent(personId, key -> parentChildRepository
+                    .findByChildIdAndDeletedAtIsNull(key).stream()
+                    .map(link -> new KinshipCalculator.ParentLink(link.getParentId().toString(),
+                            link.getParentRole(), link.getKind()))
+                    .toList());
+        }
+
+        @Override
+        public List<KinshipCalculator.MarriageLink> marriagesOf(String id) {
+            UUID personId = UUID.fromString(id);
+            return marriages.computeIfAbsent(personId, key -> marriageRepository.findAllByPersonId(key).stream()
+                    .map(marriage -> new KinshipCalculator.MarriageLink(
+                            spouseId(marriage, key).toString(), marriage.getStatus()))
+                    .toList());
+        }
+
+        private UUID spouseId(Marriage marriage, UUID personId) {
+            return personId.equals(marriage.getPerson1Id()) ? marriage.getPerson2Id() : marriage.getPerson1Id();
+        }
     }
 }

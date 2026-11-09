@@ -4,6 +4,8 @@ import com.familyconnect.modules.genealogy.entity.Person;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
 import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
 import com.familyconnect.modules.genealogy.repository.FamilyRepository;
+import com.familyconnect.modules.genealogy.repository.MarriageRepository;
+import com.familyconnect.modules.genealogy.repository.ParentChildRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,12 +35,18 @@ class GenealogyQueryImplTest {
     @Mock
     private DashboardDemographicsRepository dashboardRepository;
 
+    @Mock
+    private ParentChildRepository parentChildRepository;
+
+    @Mock
+    private MarriageRepository marriageRepository;
+
     private GenealogyQueryImpl genealogyQuery;
 
     @BeforeEach
     void setUp() {
         genealogyQuery = new GenealogyQueryImpl(personRepository, branchRepository,
-                familyRepository, dashboardRepository);
+                familyRepository, dashboardRepository, parentChildRepository, marriageRepository);
     }
 
     @Test

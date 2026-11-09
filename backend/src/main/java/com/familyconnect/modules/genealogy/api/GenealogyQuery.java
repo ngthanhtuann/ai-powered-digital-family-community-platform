@@ -2,6 +2,7 @@ package com.familyconnect.modules.genealogy.api;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -19,6 +20,8 @@ public interface GenealogyQuery {
     boolean isParentOf(UUID parentPersonId, UUID childPersonId);
 
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);
+
+    List<UUID> findBranchAndDescendants(UUID familyId, UUID branchId);
 
     boolean familyExists(UUID familyId);
 
@@ -56,9 +59,11 @@ public interface GenealogyQuery {
                                         String sortField, boolean ascending,
                                         int page, int size);
 
+    Map<UUID, String> relationshipLabels(UUID referencePersonId, List<UUID> personIds);
+
     record DirectoryPerson(UUID id, UUID familyId, UUID branchId, String fullName, LocalDate birthDate,
                            Integer birthYear, String currentProvince, boolean deceased, UUID userId,
-                           Integer generation) {
+                           String gender, Integer generation) {
     }
 
     record DirectoryPage(List<DirectoryPerson> people, long total) {
