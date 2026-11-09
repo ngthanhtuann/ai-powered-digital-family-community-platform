@@ -135,6 +135,19 @@ class DirectoryApiIntegrationTest {
         call(get("/api/v1/directory/members?job=kỹ sư"), token, null)
                 .andExpect(jsonPath("$.meta.total").value(1))
                 .andExpect(jsonPath("$.data[0].jobTitle").value("Kỹ sư cầu đường"));
+
+        call(get("/api/v1/directory/members")
+                        .queryParam("keyword", "Cha")
+                        .queryParam("job", "kỹ sư")
+                        .queryParam("location", "hà")
+                        .queryParam("generation", "2")
+                        .queryParam("page", "0")
+                        .queryParam("size", "1"),
+                token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.meta.size").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(father.toString()));
     }
 
     @Test

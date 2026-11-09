@@ -226,12 +226,13 @@ class DirectoryServiceTest {
                 LocalDate.of(1990, 1, 1), 1990, "Hà Nội", false, ACTOR_ID, 3);
         DirectoryPerson child = new DirectoryPerson(CHILD_ID, FAMILY_ID, null, "Trẻ em",
                 LocalDate.of(2015, 1, 1), 2015, "Đà Nẵng", false, null, 5);
-        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq(null), eq(null), eq(LocalDate.now(CLOCK)), eq(null),
+        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq(null), eq(null), eq(null),
+                eq(LocalDate.now(CLOCK)), eq(null),
                 eq(false), eq("fullName"), eq(true), eq(0), eq(20)))
                 .thenReturn(new DirectoryPage(List.of(adult, child), 2));
         when(professionRepository.findAllByPersonIdInAndDeletedAtIsNull(anyCollection())).thenReturn(List.of());
 
-        var result = service.searchMembers(null, null, null, null, 0, 20, "fullName,asc");
+        var result = service.searchMembers(null, null, null, null, null, 0, 20, "fullName,asc");
 
         assertEquals(2, result.data().size());
         assertEquals(3, result.data().get(0).generation());
@@ -243,13 +244,37 @@ class DirectoryServiceTest {
 
     @Test
     void memberSearchExcludesChildrenWhenFilteringByWorkOrLocation() {
-        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq("Hà Nội"), eq(null), eq(LocalDate.now(CLOCK)), eq(null),
+        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq(null), eq("Hà Nội"), eq(null),
+                eq(LocalDate.now(CLOCK)), eq(null),
                 eq(true), eq("createdAt"), eq(false), eq(0), eq(20)))
                 .thenReturn(new DirectoryPage(List.of(), 0));
-        service.searchMembers(null, null, "Hà Nội", null, 0, 20, "createdAt,desc");
+        service.searchMembers(null, null, null, "Hà Nội", null, 0, 20, "createdAt,desc");
 
-        verify(genealogyQuery).searchDirectoryPeople(eq(FAMILY_ID), eq("Hà Nội"), eq(null), eq(LocalDate.now(CLOCK)), eq(null),
+        verify(genealogyQuery).searchDirectoryPeople(eq(FAMILY_ID), eq(null), eq("Hà Nội"), eq(null),
+                eq(LocalDate.now(CLOCK)), eq(null),
                 eq(true), eq("createdAt"), eq(false), eq(0), eq(20));
+    }
+
+    @Test
+    void memberSearchTrimsKeywordAndCombinesItWithOtherFilters() {
+        when(professionRepository.findPersonIdsByJobTitle(FAMILY_ID, "Kỹ sư"))
+                .thenReturn(List.of(PERSON_ID));
+        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq("Nguyễn"), eq("Hà Nội"), eq(3),
+                eq(LocalDate.now(CLOCK)), any(), eq(true), eq("fullName"), eq(true), eq(0), eq(20)))
+                .thenReturn(new DirectoryPage(List.of(), 0));
+
+        service.searchMembers(null, " Nguyễn ", "Kỹ sư", "Hà Nội", 3, 0, 20, "fullName,asc");
+
+        verify(genealogyQuery).searchDirectoryPeople(eq(FAMILY_ID), eq("Nguyễn"), eq("Hà Nội"), eq(3),
+                eq(LocalDate.now(CLOCK)), any(), eq(true), eq("fullName"), eq(true), eq(0), eq(20));
+    }
+
+    @Test
+    void keywordIsLimitedToOneHundredCharacters() {
+        ApiException error = assertThrows(ApiException.class, () -> service.searchMembers(
+                null, "x".repeat(101), null, null, null, 0, 20, "fullName,asc"));
+
+        assertEquals(ErrorCode.VALID_001, error.code());
     }
 
     private static DirectoryPerson person(UUID id, UUID userId, LocalDate birthDate, boolean deceased) {

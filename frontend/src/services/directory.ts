@@ -13,6 +13,7 @@ export type EducationProfileInput = Schemas['EducationProfileRequest'];
 export interface DirectorySearchParams extends PageParams {
   [key: string]: unknown;
   familyId?: string;
+  keyword?: string;
   job?: string;
   location?: string;
   generation?: number;

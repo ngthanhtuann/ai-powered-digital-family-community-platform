@@ -61,15 +61,17 @@ public class DirectoryService {
     }
 
     @Transactional(readOnly = true)
-    public ListResponse<PersonSearchResult> searchMembers(UUID requestedFamilyId, String job, String location,
+    public ListResponse<PersonSearchResult> searchMembers(UUID requestedFamilyId, String keyword,
+                                                           String job, String location,
                                                            Integer generation, int page, int size, String sort) {
         UUID actorId = CurrentUser.require().id();
         MembershipView membership = membershipQuery.getMembership(actorId);
         UUID familyId = resolveFamilyId(requestedFamilyId, membership);
         membershipQuery.requireFamilyAccess(actorId, familyId);
-        validateSearch(job, location, generation, page, size);
+        validateSearch(keyword, job, location, generation, page, size);
         SortSpec sortSpec = parseSort(sort);
 
+        String normalizedKeyword = blankToNull(keyword);
         String normalizedJob = blankToNull(job);
         String normalizedLocation = blankToNull(location);
         Set<UUID> matchingPeople = normalizedJob == null ? null
@@ -77,7 +79,8 @@ public class DirectoryService {
         boolean excludeChildren = membership.role() == EffectiveRole.MEMBER
                 && (normalizedJob != null || normalizedLocation != null);
         LocalDate today = LocalDate.now(clock);
-        DirectoryPage result = genealogyQuery.searchDirectoryPeople(familyId, normalizedLocation, generation, today,
+        DirectoryPage result = genealogyQuery.searchDirectoryPeople(familyId, normalizedKeyword, normalizedLocation,
+                generation, today,
                 matchingPeople, excludeChildren, sortSpec.field(), sortSpec.ascending(), page, size);
 
         List<UUID> personIds = result.people().stream().map(DirectoryPerson::id).toList();
@@ -227,7 +230,11 @@ public class DirectoryService {
         return membership.familyId();
     }
 
-    private void validateSearch(String job, String location, Integer generation, int page, int size) {
+    private void validateSearch(String keyword, String job, String location,
+                                Integer generation, int page, int size) {
+        if (keyword != null && keyword.length() > 100) {
+            throw ApiException.invalidField("keyword", "keyword tối đa 100 ký tự");
+        }
         if (job != null && job.length() > 100) {
             throw ApiException.invalidField("job", "job tối đa 100 ký tự");
         }

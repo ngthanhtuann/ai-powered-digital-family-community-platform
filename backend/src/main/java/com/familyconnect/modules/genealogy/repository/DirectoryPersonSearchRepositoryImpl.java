@@ -23,7 +23,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
     private EntityManager entityManager;
 
     @Override
-    public DirectoryPage search(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    public DirectoryPage search(UUID familyId, String keyword, String location,
+                                Integer generation, LocalDate asOfDate,
                                 Set<UUID> personIds,
                                 boolean excludeChildren, String sortField, boolean ascending, int page, int size) {
         if (personIds != null && personIds.isEmpty()) {
@@ -33,6 +34,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         String where = """
                 person.family_id = :familyId
                 AND person.deleted_at IS NULL
+                AND (CAST(:keyword AS text) IS NULL
+                    OR lower(person.full_name) LIKE lower(concat('%', CAST(:keyword AS text), '%')))
                 AND (CAST(:location AS text) IS NULL
                     OR lower(person.current_province) LIKE lower(concat('%', CAST(:location AS text), '%')))
                 AND (CAST(:generation AS integer) IS NULL
@@ -60,12 +63,12 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                 """ + from + " ORDER BY " + orderColumn + " " + direction
                 + ", person.id " + direction + " LIMIT :limit OFFSET :offset";
         Query dataQuery = entityManager.createNativeQuery(sql);
-        setParameters(dataQuery, familyId, location, generation, asOfDate, personIds, excludeChildren);
+        setParameters(dataQuery, familyId, keyword, location, generation, asOfDate, personIds, excludeChildren);
         dataQuery.setParameter("limit", size);
         dataQuery.setParameter("offset", (long) page * size);
 
         Query countQuery = entityManager.createNativeQuery(GENERATIONS + "SELECT COUNT(*) " + from);
-        setParameters(countQuery, familyId, location, generation, asOfDate, personIds, excludeChildren);
+        setParameters(countQuery, familyId, keyword, location, generation, asOfDate, personIds, excludeChildren);
         List<?> rows = dataQuery.getResultList();
         List<DirectoryPerson> people = new ArrayList<>(rows.size());
         for (Object value : rows) {
@@ -80,9 +83,11 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         return new DirectoryPage(people, ((Number) countQuery.getSingleResult()).longValue());
     }
 
-    private static void setParameters(Query query, UUID familyId, String location, Integer generation,
+    private static void setParameters(Query query, UUID familyId, String keyword, String location,
+                                      Integer generation,
                                       LocalDate asOfDate, Set<UUID> personIds, boolean excludeChildren) {
         query.setParameter("familyId", familyId);
+        query.setParameter("keyword", keyword);
         query.setParameter("location", location);
         query.setParameter("generation", generation);
         query.setParameter("asOfDate", asOfDate);

@@ -40,7 +40,7 @@ Theo tài liệu SRS mục 3, các yêu cầu chức năng thuộc phạm vi 3 m
 | **Mã UC / FR** | UC-DIR-01 / FR-DIR-01, FR-DIR-04 |
 | **Actor** | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN |
 | **Tiền điều kiện** | Người dùng đã xác thực, có token hợp lệ và được duyệt vào gia đình. |
-| **Luồng chính** | 1. Người dùng truy cập Danh bạ, nhập các tiêu chí tìm kiếm tùy chọn (kết hợp Nghề nghiệp, Nơi ở, Thế hệ).<br>2. Hệ thống kiểm tra xác thực, lấy `family_id`.<br>3. Truy vấn danh sách thành viên thỏa mãn từ module genealogy qua interface.<br>4. Lọc thông tin theo độ tuổi và hiển thị kết quả phân trang. |
+| **Luồng chính** | 1. Người dùng truy cập Danh bạ, nhập từ khóa họ tên và các tiêu chí tùy chọn (kết hợp Nghề nghiệp, Nơi ở, Thế hệ).<br>2. Hệ thống kiểm tra xác thực, lấy `family_id`.<br>3. Truy vấn danh sách thành viên thỏa mãn qua interface Genealogy và Directory.<br>4. Lọc thông tin theo độ tuổi và hiển thị kết quả phân trang. |
 | **Luồng lỗi** | - Chưa đăng nhập/token hết hạn: 401 AUTH_002.<br>- Chưa xác minh: 403 PERM_002. |
 | **Hậu điều kiện** | Người dùng xem được danh bạ theo chính sách quyền riêng tư. |
 | **Quy tắc** | **BR-DIR-01:** Trẻ em dưới 16 tuổi bắt buộc ẩn khỏi kết quả tìm kiếm theo nghề nghiệp/nơi ở. Trong danh bạ chung, ẩn liên hệ, nơi làm việc, trường học; chỉ trả về họ tên, quan hệ, năm sinh. |
