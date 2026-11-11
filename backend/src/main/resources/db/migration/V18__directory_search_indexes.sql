@@ -1,3 +1,5 @@
+-- SCRUM-61 (UC-DIR-01): chỉ mục trigram cho tìm danh bạ theo họ tên, tỉnh/thành, nghề (LIKE '%...%' trên lower()).
+-- V17 dành cho audit_log (SCRUM-57). pg_trgm là extension có sẵn của PostgreSQL (contrib), không tạo bảng.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE INDEX idx_person_active_full_name_trgm
