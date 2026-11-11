@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
 
 /** Dữ liệu của module Gia phả cho module khác đọc (genealogy.md mục 9: GenealogyQuery). */
 public interface GenealogyQuery {
+
+    /** Structured relationship result from the genealogy algorithm (SCRUM-51). */
+    RelationshipResponse relationship(UUID personAId, UUID personBId);
 
     /** Gia đình của một thành viên; rỗng nếu không tồn tại hoặc đã xóa mềm. Heritage dùng để kiểm tra related_person_id. */
     Optional<UUID> findPersonFamilyId(UUID personId);

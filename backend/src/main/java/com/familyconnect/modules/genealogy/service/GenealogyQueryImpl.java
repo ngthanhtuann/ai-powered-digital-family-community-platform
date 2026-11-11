@@ -6,6 +6,7 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
 import com.familyconnect.modules.genealogy.entity.Person;
+import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
 import com.familyconnect.modules.genealogy.repository.FamilyRepository;
 import com.familyconnect.modules.genealogy.repository.PersonRepository;
@@ -26,14 +27,21 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     private final BranchRepository branchRepository;
     private final FamilyRepository familyRepository;
     private final DashboardDemographicsRepository dashboardRepository;
+    private final KinshipService kinshipService;
 
     public GenealogyQueryImpl(PersonRepository personRepository, BranchRepository branchRepository,
                               FamilyRepository familyRepository,
-                              DashboardDemographicsRepository dashboardRepository) {
+                              DashboardDemographicsRepository dashboardRepository, KinshipService kinshipService) {
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
         this.familyRepository = familyRepository;
         this.dashboardRepository = dashboardRepository;
+        this.kinshipService = kinshipService;
+    }
+
+    @Override
+    public RelationshipResponse relationship(UUID personAId, UUID personBId) {
+        return kinshipService.relationship(personAId, personBId);
     }
 
     @Override

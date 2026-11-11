@@ -32,13 +32,15 @@ class GenealogyQueryImplTest {
 
     @Mock
     private DashboardDemographicsRepository dashboardRepository;
+    @Mock
+    private KinshipService kinshipService;
 
     private GenealogyQueryImpl genealogyQuery;
 
     @BeforeEach
     void setUp() {
         genealogyQuery = new GenealogyQueryImpl(personRepository, branchRepository,
-                familyRepository, dashboardRepository);
+                familyRepository, dashboardRepository, kinshipService);
     }
 
     @Test

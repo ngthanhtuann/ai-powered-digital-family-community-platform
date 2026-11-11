@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/genealogy/PersonNode';
 import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
 import { genealogyApi, type Relationship, type TreeNode } from '@/services/genealogy';
+import { aiApi } from '@/services/ai';
 
 const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
@@ -29,6 +30,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
     mutationFn: () => genealogyApi.relationship(personId, otherId),
     onSuccess: (data) => onRelation(data),
   });
+  const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
   const p = person.data;
   const others = people.filter((n) => n.id !== personId).sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'vi'));
   const shownOnTree = new Set(people.map((n) => n.id));
@@ -74,6 +76,12 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
           {relation.data && (
             <div role="status" className="space-y-1 rounded-control bg-info-soft p-3 text-body">
               <p>{relation.data.description}</p>
+              <Button fullWidth={false} variant="secondary" loading={explanation.isPending}
+                onClick={() => explanation.mutate()} disabled={!relation.data.supported}>
+                Giải thích bằng AI
+              </Button>
+              {explanation.isError && <p role="alert" className="text-body text-error">Không thể tạo giải thích AI lúc này.</p>}
+              {explanation.data && <p className="text-body">{explanation.data.explanation}</p>}
               {offTree > 0 && <p className="text-caption">{offTree} người trên đường đi chưa hiện trên cây (mở thêm nhánh để thấy).</p>}
               <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
             </div>
