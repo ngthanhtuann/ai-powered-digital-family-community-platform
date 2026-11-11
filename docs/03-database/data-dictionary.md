@@ -204,6 +204,8 @@ Người sở hữu: **TV2 Trí**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
+**Chỉ mục tìm kiếm (SCRUM-61, V18):** GIN trigram trên `lower(full_name)` và `lower(current_province)` (WHERE deleted_at IS NULL) cho tìm danh bạ theo họ tên, tỉnh/thành.
+
 ### `parent_child`
 
 **Mục đích:** Quan hệ cha/mẹ - con.  **Người sở hữu:** TV2 Trí.  **Trạng thái:** Đầy đủ.
@@ -504,7 +506,7 @@ Người sở hữu: **TV4 Huy Quốc**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL.
+**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL. Chỉ mục GIN trigram trên `lower(job_title)` (WHERE deleted_at IS NULL) cho lọc danh bạ theo nghề (SCRUM-61, V18).
 
 ### `education_profile`
 
