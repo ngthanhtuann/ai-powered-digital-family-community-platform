@@ -8,6 +8,7 @@
 - React Navigation: stack gốc chọn nhánh theo đăng nhập và `membership`, menu drawer trong ứng dụng (không dùng tab bar, không dùng Expo Router).
 - TanStack Query, axios, react-hook-form + zod (cùng thư viện với web).
 - `expo-secure-store` lưu access token và refresh token.
+- `expo-image-picker` chọn ảnh từ thư viện hoặc chụp ảnh để đăng bài (cấp quyền camera khi sử dụng).
 - Kiểu API sinh từ `docs/04-api/openapi/` bằng `openapi-typescript`.
 
 TypeScript giữ bản 5.9 thay vì 6.0 mà Expo SDK 58 đề xuất, vì `openapi-typescript` 7 chỉ hỗ trợ TypeScript 5. Vì vậy `package.json` có `expo.install.exclude: ["typescript"]`.
@@ -46,7 +47,7 @@ Backend chạy bằng Docker ở thư mục gốc: `docker compose up -d`. App n
 ```text
 src/
 ├── navigation/   RootNavigator (chọn nhánh), AppDrawer (menu drawer), types.ts (tên màn hình)
-├── screens/      Login, Register, Profile, ChangePassword, Home, MembershipScreens (Nhập mã gia đình, Chờ duyệt)
+├── screens/      Auth + Bảng tin, Chi tiết/Tạo bài, Sự kiện/Chi tiết, Thông báo
 ├── components/   ui.tsx (Button, TextField, Notice, Card, Screen), form-errors.ts
 ├── session/      SessionContext: người dùng và membership của phiên
 ├── services/     api.ts (axios, làm mới token, chuẩn hóa lỗi), token-storage.ts, auth.ts, generated/
@@ -69,9 +70,18 @@ Theo `mobile.md` mục 4.3 và 4.5:
 - `PERM_001`, `VALID_001`, `RATE_001`...: màn hình tự hiện thông báo, lỗi dưới từng ô theo `details[].field`.
 - Đổi mật khẩu xong: server thu hồi refresh token, app xóa token và yêu cầu đăng nhập lại.
 
+## Bảng tin, Sự kiện, Thông báo ([6-10])
+
+- Drawer có **Bảng tin** và **Sự kiện**, chuông trên header mở **Thông báo** và số chưa đọc; không dùng push notification.
+- Bảng tin phân trang, kéo làm mới, bài chi tiết/bình luận/reaction; đăng bài POST kèm nhiều ảnh/camera, có tiến trình upload và thử tải tiếp khi lỗi.
+- Sự kiện có bộ lọc sắp tới/đã qua, xem chi tiết, RSVP, danh sách người tham dự, gallery.
+- Ảnh của bài/sự kiện được đọc qua `/api/v1/media/{id}/content` kèm JWT. Backend hiện dùng `/posts/{id}/media` để upload ảnh bài đăng (khác `/media` cho HERITAGE/PERSON).
+- Ảnh tải lên chỉ nhận JPG/PNG/WebP tối đa 5 MB. HEIC từ iPhone phải chuyển sang JPG trước khi chọn.
+- Test thủ công Android/iOS theo `docs/06-test/mobile-community-events-6-10.md`; chỉ xác nhận Đạt khi đã chạy trên thiết bị.
+
 ## Còn thiếu (task khác)
 
 - Gửi, hủy yêu cầu tham gia gia đình và tạo gia đình trên mobile: màn Nhập mã gia đình hiện mới chỉ cho kiểm tra lại trạng thái.
-- Các module Bảng tin, Sự kiện, Gia phả, AI, Danh bạ, Di sản.
+- Các module Gia phả, AI, Danh bạ, Di sản.
 - Figma mobile chưa có khung Đăng ký, Hồ sơ, Đổi mật khẩu (`mobile.md` mục 5): các màn này dựng theo bản web và design system, cần đối chiếu lại khi có Figma.
 - Chọn ngày sinh đang nhập tay dạng `YYYY-MM-DD` (chưa thêm thư viện date picker).

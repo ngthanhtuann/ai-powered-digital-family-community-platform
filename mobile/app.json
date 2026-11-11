@@ -21,7 +21,17 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-secure-store"],
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép FamilyConnect chọn ảnh để đăng lên bảng tin.",
+          "cameraPermission": "Cho phép FamilyConnect chụp ảnh để đăng lên bảng tin.",
+          "microphonePermission": false
+        }
+      ]
+    ],
     "scheme": "familyconnect"
   }
 }

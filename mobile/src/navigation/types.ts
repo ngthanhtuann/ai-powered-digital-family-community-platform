@@ -5,6 +5,10 @@ export type RootStackParamList = {
   JoinFamily: undefined;
   PendingApproval: undefined;
   App: undefined;
+  PostDetail: { postId: string };
+  CreatePost: undefined;
+  EventDetail: { eventId: string };
+  Notifications: undefined;
   // Hồ sơ dùng được cả khi chưa xác minh (UC-AUTH-05): mở từ màn Nhập mã gia đình, Chờ duyệt.
   Profile: undefined;
   ChangePassword: undefined;
@@ -12,6 +16,8 @@ export type RootStackParamList = {
 
 export type AppDrawerParamList = {
   Home: undefined;
+  Feed: undefined;
+  Events: undefined;
   Profile: undefined;
   ChangePassword: undefined;
 };

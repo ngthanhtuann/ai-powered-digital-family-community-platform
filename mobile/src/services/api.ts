@@ -3,6 +3,7 @@ import axios, {
   AxiosError,
   create as createAxios,
   isAxiosError,
+  type AxiosProgressEvent,
   type AxiosRequestConfig,
 } from 'axios';
 import type {
@@ -15,7 +16,7 @@ import type {
 import type { components as AuthComponents } from './generated/auth';
 import { tokenStorage } from './token-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const API_PREFIX = '/api/v1';
 
 /** Lỗi chuẩn hóa theo conventions.md mục 2.2; `details` luôn là mảng. */
@@ -163,4 +164,20 @@ export const api = {
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
+  /** Multipart dùng cùng client để được gắn JWT, xử lý refresh và lỗi chuẩn. */
+  upload: async <T>(url: string, form: FormData, onProgress?: (percent: number) => void) => {
+    const res = await client.request<ApiSuccess<T>>({
+      method: 'POST',
+      url,
+      data: form,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event: AxiosProgressEvent) => {
+        if (event.total && event.total > 0) {
+          onProgress?.(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      },
+      timeout: 60000,
+    });
+    return res.data.data;
+  },
 };
