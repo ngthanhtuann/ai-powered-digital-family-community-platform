@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Giải thích quan hệ giữa hai thành viên
-         * @description Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không tự suy luận quan hệ.
+         * @description Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không tự suy luận quan hệ. Tên người dưới 16 tuổi trên đường đi được thay bằng "một thành viên" trước khi gửi tới nhà cung cấp AI; không gửi địa chỉ chi tiết. Áp dụng giới hạn RATE_001; lỗi nhà cung cấp trả AI_001 (503).
          */
         post: operations["explainRelationship"];
         delete?: never;

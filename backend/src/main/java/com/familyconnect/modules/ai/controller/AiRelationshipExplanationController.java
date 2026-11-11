@@ -11,11 +11,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** SCRUM-64: POST /ai/relationship-explanations (ai.yaml explainRelationship). */
 @RestController
 @RequestMapping("/api/v1/ai")
 public class AiRelationshipExplanationController {
     private final RelationshipExplanationService service;
-    public AiRelationshipExplanationController(RelationshipExplanationService service) { this.service = service; }
+
+    public AiRelationshipExplanationController(RelationshipExplanationService service) {
+        this.service = service;
+    }
 
     @PostMapping("/relationship-explanations")
     public ApiResponse<RelationshipExplanationResponse> explain(@Valid @RequestBody RelationshipExplanationRequest request) {

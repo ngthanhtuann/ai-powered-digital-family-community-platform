@@ -26,11 +26,12 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId) });
   const [mode, setMode] = useState<RelationMode | null>(null);
   const [otherId, setOtherId] = useState('');
+  const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
   const relation = useMutation({
     mutationFn: () => genealogyApi.relationship(personId, otherId),
+    onMutate: () => explanation.reset(), // tra cặp khác thì bỏ lời giải thích AI của cặp cũ
     onSuccess: (data) => onRelation(data),
   });
-  const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
   const p = person.data;
   const others = people.filter((n) => n.id !== personId).sort((a, b) => (a.fullName ?? '').localeCompare(b.fullName ?? '', 'vi'));
   const shownOnTree = new Set(people.map((n) => n.id));
@@ -80,10 +81,10 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
                 onClick={() => explanation.mutate()} disabled={!relation.data.supported}>
                 Giải thích bằng AI
               </Button>
-              {explanation.isError && <p role="alert" className="text-body text-error">Không thể tạo giải thích AI lúc này.</p>}
+              {explanation.isError && <p role="alert" className="text-body text-error">{errorText(explanation.error)}</p>}
               {explanation.data && <p className="text-body">{explanation.data.explanation}</p>}
               {offTree > 0 && <p className="text-caption">{offTree} người trên đường đi chưa hiện trên cây (mở thêm nhánh để thấy).</p>}
-              <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
+              <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); explanation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
             </div>
           )}
         </form>

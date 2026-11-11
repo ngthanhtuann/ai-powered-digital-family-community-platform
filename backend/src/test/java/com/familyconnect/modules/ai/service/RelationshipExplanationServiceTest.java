@@ -69,4 +69,35 @@ class RelationshipExplanationServiceTest {
                 new RelationshipExplanationRequest(a, b));
         assertEquals("một thành viên", response.path().get(1).fullName());
     }
+
+    @Test void unsupportedRelationReturnsFixedTextWithoutCallingModel() {
+        GenealogyQuery genealogy = mock(GenealogyQuery.class);
+        ChatLanguageModel model = mock(ChatLanguageModel.class);
+        UUID family = UUID.randomUUID(), a = UUID.randomUUID(), b = UUID.randomUUID();
+        when(genealogy.findPersonFamilyId(any())).thenReturn(java.util.Optional.of(family));
+        when(genealogy.findMinorPersonIds(any(), any())).thenReturn(List.of());
+        when(genealogy.relationship(a, b)).thenReturn(new RelationshipResponse(false, null, "", null, null, null, List.of()));
+        var service = new RelationshipExplanationService(genealogy, mock(MembershipQuery.class), model,
+                mock(AiSearchRateLimiter.class), Clock.systemUTC(), true);
+        var response = service.explain(new AuthenticatedUser(UUID.randomUUID(), List.of("MEMBER")),
+                new RelationshipExplanationRequest(a, b));
+        assertFalse(response.found());
+        assertEquals(RelationshipExplanationService.NOT_FOUND_TEXT, response.explanation());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void unverifiedUserIsRejectedBeforeAnyPersonLookup() {
+        GenealogyQuery genealogy = mock(GenealogyQuery.class);
+        MembershipQuery membership = mock(MembershipQuery.class);
+        UUID user = UUID.randomUUID();
+        doThrow(new com.familyconnect.common.exception.ApiException(
+                com.familyconnect.common.exception.ErrorCode.PERM_002)).when(membership).requireVerified(user);
+        var service = new RelationshipExplanationService(genealogy, membership, mock(ChatLanguageModel.class),
+                mock(AiSearchRateLimiter.class), Clock.systemUTC(), true);
+        var error = assertThrows(com.familyconnect.common.exception.ApiException.class, () -> service.explain(
+                new AuthenticatedUser(user, List.of("MEMBER")),
+                new RelationshipExplanationRequest(UUID.randomUUID(), UUID.randomUUID())));
+        assertEquals(com.familyconnect.common.exception.ErrorCode.PERM_002, error.code());
+        verify(genealogy, never()).findPersonFamilyId(any());
+    }
 }
