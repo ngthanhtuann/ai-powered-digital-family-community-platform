@@ -407,6 +407,8 @@ const ACTION_LABEL: Record<string, string> = {
   PERSON_CREATED: 'Thêm người', PERSON_UPDATED: 'Sửa người', PERSON_DELETED: 'Xóa người',
   PARENT_CHILD_CREATED: 'Thêm quan hệ cha/mẹ - con', PARENT_CHILD_DELETED: 'Xóa quan hệ cha/mẹ - con',
   MARRIAGE_CREATED: 'Thêm hôn nhân', MARRIAGE_UPDATED: 'Sửa hôn nhân', MARRIAGE_DELETED: 'Xóa hôn nhân',
+  MEMBERS_CSV_EXPORTED: 'Xuất CSV thành viên', OUTSTANDING_MEMBER_CREATED: 'Thêm người tiêu biểu',
+  OUTSTANDING_MEMBER_UPDATED: 'Sửa người tiêu biểu', OUTSTANDING_MEMBER_DELETED: 'Xóa người tiêu biểu',
 };
 const ROLE_LABEL: Record<string, string> = { MEMBER: 'Thành viên', BRANCH_ADMIN: 'Trưởng họ/chi', SYSTEM_ADMIN: 'Quản trị' };
 const shortId = (id?: string | null) => (id ? id.slice(0, 8) : '');
