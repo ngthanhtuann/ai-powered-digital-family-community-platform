@@ -9,10 +9,17 @@ import {
   ListLoadingMore,
   MediaGallery,
   nextPage,
+  useFamilyBranches,
 } from '../components/community-ui';
 import { Button, Card, Loading, Notice } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import { communityApi, type Comment, type Media, type ReactionType } from '../services/community';
+import {
+  communityApi,
+  scopeLabel,
+  type Comment,
+  type Media,
+  type ReactionType,
+} from '../services/community';
 import { colors, radius, spacing, text } from '../theme';
 
 const REACTIONS: { type: ReactionType; label: string }[] = [
@@ -25,6 +32,7 @@ const REACTIONS: { type: ReactionType; label: string }[] = [
 export function PostDetailScreen() {
   const { postId } = useRoute<RouteProp<RootStackParamList, 'PostDetail'>>().params;
   const qc = useQueryClient();
+  const { names: branchNames } = useFamilyBranches(); // nhãn phạm vi bài (SCRUM-101)
   const [content, setContent] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const post = useQuery({ queryKey: ['post', postId], queryFn: () => communityApi.detail(postId) });
@@ -115,7 +123,7 @@ export function PostDetailScreen() {
                   {post.data.authorName}
                 </Text>
                 <Text style={[text.caption, { color: colors.textSecondary }]}>
-                  {formatWhen(post.data.createdAt)}
+                  {formatWhen(post.data.createdAt)} · {scopeLabel(post.data.branchId, branchNames)}
                 </Text>
                 <Text style={[text.body, { color: colors.textPrimary }]}>{post.data.content}</Text>
                 <Text style={[text.caption, { color: colors.textSecondary }]}>

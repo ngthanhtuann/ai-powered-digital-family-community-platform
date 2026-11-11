@@ -11,9 +11,10 @@ import {
   ListLoadingMore,
   MediaGallery,
   nextPage,
+  useFamilyBranches,
 } from '../components/community-ui';
 import { Button, Card, Loading } from '../components/ui';
-import { communityApi, type Post } from '../services/community';
+import { communityApi, scopeLabel, type Post } from '../services/community';
 import { useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
@@ -24,6 +25,7 @@ export function FeedScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
   const { session } = useSession();
   const [filter, setFilter] = useState<FeedFilter>('ALL');
+  const { names: branchNames } = useFamilyBranches(); // nhãn phạm vi bài (SCRUM-101)
   const familyId =
     session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
   const query = useInfiniteQuery({
@@ -95,7 +97,8 @@ export function FeedScreen() {
             <Card>
               <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
               <Text style={[text.caption, { color: colors.textSecondary }]}>
-                {formatWhen(item.createdAt)} · {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
+                {formatWhen(item.createdAt)} · {scopeLabel(item.branchId, branchNames)} ·{' '}
+                {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
               </Text>
               <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={5}>
                 {item.content}

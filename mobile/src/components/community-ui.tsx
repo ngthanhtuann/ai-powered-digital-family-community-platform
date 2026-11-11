@@ -1,11 +1,30 @@
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { ApiMeta } from '../services/api-types';
 import { API_BASE_URL } from '../services/api';
-import type { Media } from '../services/community';
+import { communityApi, type Media } from '../services/community';
+import { useSession } from '../session/SessionContext';
 import { tokenStorage } from '../services/token-storage';
 import { colors, text } from '../theme';
 import { Button, Card, Notice } from './ui';
+
+/** Danh sách chi của gia đình đang đăng nhập và tên chi theo id, dùng cho ô "Ai được xem" và nhãn phạm vi. */
+export function useFamilyBranches() {
+  const { session } = useSession();
+  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
+  const query = useQuery({
+    queryKey: ['branches', familyId],
+    queryFn: () => communityApi.branches(familyId as string),
+    enabled: Boolean(familyId),
+  });
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
+  const names = useMemo(
+    () => new Map(items.map((branch) => [branch.id ?? '', branch.name ?? ''])),
+    [items],
+  );
+  return { query, items, names };
+}
 
 export function formatWhen(date?: string | null) {
   if (!date) return '';

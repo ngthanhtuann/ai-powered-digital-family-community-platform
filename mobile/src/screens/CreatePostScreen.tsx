@@ -3,10 +3,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { Image, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { useFamilyBranches } from '../components/community-ui';
 import { Button, Card, Notice, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import { communityApi, type UploadAsset } from '../services/community';
+import {
+  communityApi,
+  postableBranches,
+  scopeLabel,
+  type UploadAsset,
+} from '../services/community';
 import { useSession } from '../session/SessionContext';
 import { colors, radius, text } from '../theme';
 
@@ -51,6 +57,21 @@ export function CreatePostScreen() {
   const [progress, setProgress] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Ai được xem" giống web (SCRUM-101): mặc định chi của mình; chưa gán chi hoặc trưởng họ thì cả dòng họ.
+  const branches = useFamilyBranches();
+  const membership = session.status === 'signedIn' ? session.membership : null;
+  const systemAdmin = session.status === 'signedIn' && session.user.roles.includes('SYSTEM_ADMIN');
+  const branchAdmin = membership?.role === 'BRANCH_ADMIN';
+  const myBranch = membership?.branchId ?? null;
+  const scopeOptions = postableBranches(
+    branches.items,
+    systemAdmin || (branchAdmin && !myBranch),
+    myBranch,
+    branchAdmin,
+  );
+  const [scopeChoice, setScopeChoice] = useState<string | null | undefined>(undefined);
+  const wanted = scopeChoice === undefined ? myBranch : scopeChoice;
+  const scope = wanted && scopeOptions.some((b) => b.id === wanted) ? wanted : null;
 
   const addAssets = (selected: ImagePicker.ImagePickerAsset[]) => {
     try {
@@ -95,12 +116,12 @@ export function CreatePostScreen() {
     }
     setBusy(true);
     setError(null);
+    let id = postId;
     try {
-      let id = postId;
       if (!id) {
         const familyId =
           session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
-        id = (await communityApi.create(content.trim(), familyId)).id;
+        id = (await communityApi.create(content.trim(), scope, familyId)).id;
         setPostId(id);
       }
       // Nếu tải ảnh lỗi, chỉ tải lại ảnh còn thiếu, không tạo bài trùng.
@@ -115,7 +136,8 @@ export function CreatePostScreen() {
       ]);
       navigation.replace('PostDetail', { postId: id });
     } catch (caught) {
-      setError(`${(caught as Error).message}${postId ? ' — hãy thử tải tiếp ảnh.' : ''}`);
+      // Dùng id cục bộ: bài vừa tạo trong lần bấm này thì state postId chưa kịp cập nhật.
+      setError(`${(caught as Error).message}${id ? ' — hãy thử tải tiếp ảnh.' : ''}`);
     } finally {
       setBusy(false);
       setProgress(null);
@@ -146,6 +168,45 @@ export function CreatePostScreen() {
         />
         <Text style={[text.caption, { color: colors.textSecondary }]}>
           {content.length}/5000 ký tự
+        </Text>
+        <Text style={[text.label, { color: colors.textPrimary }]}>Ai được xem</Text>
+        <View accessibilityRole="radiogroup" style={{ gap: 6 }}>
+          {[{ id: null as string | null, label: 'Cả dòng họ' }]
+            .concat(
+              scopeOptions.map((b) => ({
+                id: b.id ?? null,
+                label: `${b.name}${b.id === myBranch ? ' (chi của tôi)' : ''}`,
+              })),
+            )
+            .map((option) => (
+              <Pressable
+                key={option.id ?? 'family'}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: scope === option.id, disabled: busy || !!postId }}
+                disabled={busy || !!postId || branches.query.isPending}
+                onPress={() => setScopeChoice(option.id)}
+                style={{
+                  minHeight: 44,
+                  justifyContent: 'center',
+                  paddingHorizontal: 12,
+                  borderRadius: radius.control,
+                  borderWidth: 1,
+                  borderColor: scope === option.id ? colors.primary : colors.border,
+                  backgroundColor: scope === option.id ? colors.secondary : colors.surface,
+                }}
+              >
+                <Text style={[text.body, { color: colors.textPrimary }]}>{option.label}</Text>
+              </Pressable>
+            ))}
+        </View>
+        <Text style={[text.caption, { color: colors.textSecondary }]}>
+          {branches.query.isPending
+            ? 'Đang tải danh sách chi...'
+            : branches.query.isError
+              ? 'Không tải được danh sách chi, bài sẽ hiển thị cho cả dòng họ.'
+              : scope
+                ? `Chỉ người trong ${scopeLabel(scope, branches.names)} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
+                : 'Mọi thành viên trong dòng họ đều thấy.'}
         </Text>
         <Button
           title="Chọn ảnh từ thư viện"
@@ -187,7 +248,12 @@ export function CreatePostScreen() {
           </Text>
         ) : null}
         {error ? <Notice variant="error" title="Không đăng được bài" message={error} /> : null}
-        <Button title={postId ? 'Tiếp tục tải ảnh' : 'Đăng bài'} loading={busy} onPress={publish} />
+        <Button
+          title={postId ? 'Tiếp tục tải ảnh' : 'Đăng bài'}
+          loading={busy}
+          disabled={branches.query.isPending}
+          onPress={publish}
+        />
         <Text style={[text.caption, { color: colors.textSecondary }]}>
           Mỗi ảnh tối đa 5 MB, định dạng JPG/PNG/WebP. Bài được tạo trước, ảnh sẽ được gắn vào bài
           sau.
