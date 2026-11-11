@@ -13,7 +13,8 @@ spring:
     # Khi chạy trong Docker, docker-compose.yml ghi đè bằng biến môi trường.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/familyconnect}
     username: ${SPRING_DATASOURCE_USERNAME:familyconnect}
-    password: ${SPRING_DATASOURCE_PASSWORD:familyconnect}
+    # Không đặt mật khẩu mặc định trong mã nguồn; cấu hình khi chạy bằng IDE hoặc Docker.
+    password: ${SPRING_DATASOURCE_PASSWORD:}
 
   jpa:
     open-in-view: false
@@ -43,6 +44,8 @@ app:
   auth:
     # Giới hạn đăng nhập theo IP và email (conventions.md mục 7.1).
     login-rate-limit-per-minute: 5
+    # /auth/refresh không có email, giới hạn theo IP để chặn dò token.
+    refresh-rate-limit-per-minute: ${AUTH_REFRESH_RATE_LIMIT_PER_MINUTE:20}
     # Tạo SYSTEM_ADMIN đầu tiên khi chưa có (BR-AUTH-20). Để trống thì bỏ qua.
     bootstrap-admin:
       email: ${BOOTSTRAP_ADMIN_EMAIL:}

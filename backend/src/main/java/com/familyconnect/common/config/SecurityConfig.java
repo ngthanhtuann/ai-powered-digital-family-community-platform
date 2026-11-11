@@ -19,11 +19,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Clock;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
@@ -51,6 +53,19 @@ public class SecurityConfig {
         if (origins.isEmpty()) {
             throw new IllegalStateException("At least one CORS allowed origin must be configured.");
         }
+        for (String origin : origins) {
+            try {
+                URI uri = URI.create(origin);
+                if (!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
+                        || uri.getHost() == null || uri.getRawUserInfo() != null
+                        || (uri.getRawPath() != null && !uri.getRawPath().isEmpty())
+                        || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+                    throw new IllegalArgumentException("Invalid CORS origin");
+                }
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalStateException("CORS_ALLOWED_ORIGINS must contain exact http(s) origins, without paths or wildcards", ex);
+            }
+        }
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
@@ -73,6 +88,12 @@ public class SecurityConfig {
             .formLogin(AbstractHttpConfigurer::disable)
             .logout(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .contentTypeOptions(contentType -> {})
+                .frameOptions(frame -> frame.deny())
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+                .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
             .exceptionHandling(e -> e
                 .authenticationEntryPoint(errorHandlers.entryPoint())
                 .accessDeniedHandler(errorHandlers.accessDeniedHandler()))

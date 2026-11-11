@@ -147,6 +147,8 @@ class RbacMatrixIntegrationTest {
         MockHttpServletResponse otherFamily = send(e, f.ownerB());
         soft.assertThat(otherFamily.getStatus()).as("trưởng chi gia đình khác: %s", e).isEqualTo(403);
         soft.assertThat(errorCode(otherFamily)).as("trưởng chi gia đình khác: %s", e).isEqualTo("PERM_001");
+        soft.assertThat(json.readTree(otherFamily.getContentAsString()).has("data"))
+                .as("IDOR không trả dữ liệu gia đình khác: %s", e).isFalse();
     }
 
     @Test

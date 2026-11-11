@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Kiểm tra API Auth qua HTTP (MockMvc) với PostgreSQL thật: docker compose up -d db.
  * Mỗi test chạy trong giao dịch và tự rollback, không để lại dữ liệu.
  */
-@SpringBootTest
+@SpringBootTest(properties = "app.cors.allowed-origins=http://localhost:3000,http://localhost:3001")
 @AutoConfigureMockMvc
 @Transactional
 class AuthApiIntegrationTest {
@@ -176,6 +176,39 @@ class AuthApiIntegrationTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.error.code").value("RATE_001"));
+    }
+
+    @Test
+    void refreshRateLimitReturns429EvenWhenTokensAreInvalid() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            mvc.perform(post("/api/v1/auth/refresh")
+                            .with(request -> { request.setRemoteAddr("198.51.100.42"); return request; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"refreshToken\":\"unknown-token\"}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error.code").value("AUTH_002"));
+        }
+        mvc.perform(post("/api/v1/auth/refresh")
+                        .with(request -> { request.setRemoteAddr("198.51.100.42"); return request; })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"unknown-token\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.error.code").value("RATE_001"));
+    }
+
+    @Test
+    void corsRestrictsOriginsAndApiHasSecurityHeaders() throws Exception {
+        mvc.perform(get("/actuator/health").header("Origin", "http://localhost:3000"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("X-Frame-Options", "DENY"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"))
+                .andExpect(header().string("Permissions-Policy", "camera=(), microphone=(), geolocation=()"));
+        mvc.perform(get("/actuator/health").header("Origin", "https://untrusted.example"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 
     @Test
