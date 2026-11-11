@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Làm mới token (UC-AUTH-03)
-         * @description Vai trò: công khai (`security: []`), xác thực bằng refresh token trong body. Mỗi refresh token chỉ dùng **một lần**: thành công thì cấp cặp token mới và vô hiệu token cũ (xoay vòng). Token không tồn tại, hết hạn hoặc đã bị thu hồi trả `401 AUTH_002`. Tài khoản bị khóa trả `403 AUTH_003`.
+         * @description Vai trò: công khai (`security: []`), xác thực bằng refresh token trong body. Mỗi refresh token chỉ dùng **một lần**: thành công thì cấp cặp token mới và vô hiệu token cũ (xoay vòng). Token không tồn tại, hết hạn hoặc đã bị thu hồi trả `401 AUTH_002`. Tài khoản bị khóa trả `403 AUTH_003`. Giới hạn mặc định 20 lần mỗi phút theo IP, vượt trả `429 RATE_001` kèm `Retry-After`.
          */
         post: operations["refreshToken"];
         delete?: never;
@@ -1277,6 +1277,7 @@ export interface operations {
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["AccountLockedError"];
+            429: components["responses"]["TooManyRequestsError"];
             500: components["responses"]["InternalServerError"];
         };
     };

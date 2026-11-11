@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -92,7 +93,8 @@ public class SecurityConfig {
                 .contentTypeOptions(contentType -> {})
                 .frameOptions(frame -> frame.deny())
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
-                .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+                // Spring Security 6.3: permissionsPolicy(...) trả về cấu hình con, không nối tiếp được nên ghi header trực tiếp.
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy", "camera=(), microphone=(), geolocation=()"))
                 .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
             .exceptionHandling(e -> e
                 .authenticationEntryPoint(errorHandlers.entryPoint())
