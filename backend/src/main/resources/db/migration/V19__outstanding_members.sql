@@ -1,3 +1,5 @@
+-- SCRUM-62 (UC-HER-04): bảng người tiêu biểu theo data-dictionary.md mục outstanding_member.
+-- family_id, person_id, created_by là UUID có chỉ mục, không khóa ngoại sang module Gia phả hoặc Auth (quyết định 9).
 CREATE TABLE outstanding_member (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     family_id UUID NOT NULL,

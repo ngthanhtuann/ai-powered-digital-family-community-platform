@@ -86,7 +86,8 @@ public class DashboardService {
         return result;
     }
 
-    @Transactional(readOnly = true)
+    // Không dùng readOnly: mỗi lần xuất ghi audit_log (INSERT) trong cùng transaction (SCRUM-57).
+    @Transactional
     public byte[] exportMembersCsv(UUID requestedFamilyId, UUID requestedBranchId) {
         UUID actorId = CurrentUser.require().id();
         MembershipView membership = membershipQuery.getMembership(actorId);
@@ -252,7 +253,8 @@ public class DashboardService {
             }
             String value = values.get(index) == null ? "" : values.get(index);
             String leading = value.stripLeading();
-            if (!leading.isEmpty() && "=+-@".indexOf(leading.charAt(0)) >= 0) {
+            if (!value.isEmpty() && "\t\r".indexOf(value.charAt(0)) >= 0
+                    || !leading.isEmpty() && "=+-@".indexOf(leading.charAt(0)) >= 0) {
                 value = "'" + value;
             }
             csv.append('"').append(value.replace("\"", "\"\"")).append('"');
