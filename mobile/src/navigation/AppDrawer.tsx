@@ -6,8 +6,8 @@ import {
   DrawerItem,
   DrawerItemList,
   type DrawerContentComponentProps,
+  type DrawerNavigationProp,
 } from '@react-navigation/drawer';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { ComponentType } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -33,9 +33,19 @@ function withAssistantFab<P extends object>(Screen: ComponentType<P>) {
           accessibilityRole="button"
           accessibilityLabel="Trợ lý AI"
           onPress={() => navigation.navigate('AiChat')}
-          style={{ position: 'absolute', right: 16, bottom: 20, minHeight: 48, borderRadius: 24,
-            paddingHorizontal: 18, justifyContent: 'center', backgroundColor: colors.primary,
-            borderWidth: 1, borderColor: colors.secondary, elevation: 5 }}
+          style={{
+            position: 'absolute',
+            right: 16,
+            bottom: 20,
+            minHeight: 48,
+            borderRadius: 24,
+            paddingHorizontal: 18,
+            justifyContent: 'center',
+            backgroundColor: colors.primary,
+            borderWidth: 1,
+            borderColor: colors.secondary,
+            elevation: 5,
+          }}
         >
           <Text style={[text.label, { color: colors.creamOnDark }]}>Trợ lý AI</Text>
         </Pressable>
@@ -45,7 +55,6 @@ function withAssistantFab<P extends object>(Screen: ComponentType<P>) {
 }
 
 const HomeWithFab = withAssistantFab(HomeScreen);
-const AiChatWithFab = withAssistantFab(AiChatScreen);
 const AiSearchWithFab = withAssistantFab(AiSearchScreen);
 const AiSourceDetailWithFab = withAssistantFab(AiSourceDetailScreen);
 const ProfileWithFab = withAssistantFab(ProfileScreen);
@@ -86,9 +95,13 @@ export function AppDrawer() {
       }}
     >
       <Drawer.Screen name="Home" component={HomeWithFab} options={{ title: 'Tổng quan' }} />
-      <Drawer.Screen name="AiChat" component={AiChatWithFab} options={{ title: 'Trợ lý AI' }} />
+      <Drawer.Screen name="AiChat" component={AiChatScreen} options={{ title: 'Trợ lý AI' }} />
       <Drawer.Screen name="AiSearch" component={AiSearchWithFab} options={{ title: 'Tìm kiếm' }} />
-      <Drawer.Screen name="AiSourceDetail" component={AiSourceDetailWithFab} options={{ title: 'Chi tiết', drawerItemStyle: { display: 'none' } }} />
+      <Drawer.Screen
+        name="AiSourceDetail"
+        component={AiSourceDetailWithFab}
+        options={{ title: 'Chi tiết', drawerItemStyle: { display: 'none' } }}
+      />
       <Drawer.Screen
         name="Profile"
         component={ProfileWithFab}

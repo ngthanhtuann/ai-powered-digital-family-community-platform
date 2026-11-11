@@ -14,7 +14,12 @@ export type AppDrawerParamList = {
   Home: undefined;
   AiChat: undefined;
   AiSearch: undefined;
-  AiSourceDetail: { sourceType: import('../services/ai').AiSourceType; sourceId: string; title?: string; snippet?: string };
+  AiSourceDetail: {
+    sourceType: import('../services/ai').AiSourceType;
+    sourceId: string;
+    title?: string;
+    snippet?: string;
+  };
   Profile: undefined;
   ChangePassword: undefined;
 };
