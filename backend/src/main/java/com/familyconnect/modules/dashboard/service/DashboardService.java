@@ -172,6 +172,9 @@ public class DashboardService {
         if (from.isAfter(to)) {
             throw ApiException.invalidField("from", "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc");
         }
+        if (to.isAfter(from.plusDays(365))) { // BR-DSH-03: tối đa 366 ngày, tránh báo cáo quá lớn
+            throw ApiException.invalidField("to", "Khoảng ngày tối đa 366 ngày");
+        }
 
         UUID actorId = CurrentUser.require().id();
         MembershipView membership = membershipQuery.getMembership(actorId);

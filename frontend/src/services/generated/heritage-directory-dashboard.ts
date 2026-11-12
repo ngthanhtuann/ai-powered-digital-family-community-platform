@@ -1503,7 +1503,7 @@ export interface operations {
                 branchId?: string;
                 /** @description Ngày bắt đầu, bao gồm cả ngày này; mốc ngày theo Asia/Ho_Chi_Minh. */
                 from: string;
-                /** @description Ngày kết thúc, bao gồm cả ngày này; phải bằng hoặc sau from. */
+                /** @description Ngày kết thúc, bao gồm cả ngày này; phải bằng hoặc sau from và cách from tối đa 366 ngày (vượt quá trả VALID_001). */
                 to: string;
             };
             header?: never;

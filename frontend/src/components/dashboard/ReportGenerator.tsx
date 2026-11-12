@@ -109,7 +109,12 @@ export function ReportGenerator() {
     }
   }
 
-  const invalidReportRange = !reportFrom || !reportTo || reportFrom > reportTo;
+  // BR-DSH-03: khoảng ngày tối đa 366 ngày, giống kiểm tra ở backend.
+  const invalidReportRange =
+    !reportFrom ||
+    !reportTo ||
+    reportFrom > reportTo ||
+    (Date.parse(reportTo) - Date.parse(reportFrom)) / 86_400_000 > 365;
 
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-8">
@@ -212,7 +217,7 @@ export function ReportGenerator() {
         </div>
         {invalidReportRange && (
           <p role="alert" className="mt-3 text-caption text-error">
-            Vui lòng chọn khoảng ngày hợp lệ.
+            Vui lòng chọn khoảng ngày hợp lệ, tối đa 366 ngày.
           </p>
         )}
         {pdfError && (

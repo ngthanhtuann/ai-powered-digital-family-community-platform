@@ -748,7 +748,7 @@ paths:
         - name: to
           in: query
           required: true
-          description: Ngày kết thúc, bao gồm cả ngày này; phải bằng hoặc sau from.
+          description: Ngày kết thúc, bao gồm cả ngày này; phải bằng hoặc sau from và cách from tối đa 366 ngày (vượt quá trả VALID_001).
           schema: { type: string, format: date }
       responses:
         '200':

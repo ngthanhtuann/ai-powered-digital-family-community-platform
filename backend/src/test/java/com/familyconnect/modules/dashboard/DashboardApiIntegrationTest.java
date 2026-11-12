@@ -425,6 +425,11 @@ class DashboardApiIntegrationTest {
                     .andReturn().getResponse().getContentAsByteArray();
             assertTrue(pdfText(pdf).contains("Báo cáo"));
         }
+        // BR-DSH-03: khoảng ngày quá 366 ngày bị từ chối, không ghi audit.
+        call(get("/api/v1/dashboard/reports/COMMUNITY/pdf?familyId=" + familyId
+                + "&from=" + to.minusDays(366) + "&to=" + to), ownerToken, null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"));
         assertEquals(3, jdbc.queryForObject("""
                 SELECT COUNT(*) FROM audit_log
                 WHERE action='STATISTICAL_REPORT_PDF_EXPORTED'
