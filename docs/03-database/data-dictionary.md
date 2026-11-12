@@ -204,7 +204,7 @@ Người sở hữu: **TV2 Trí**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Chỉ mục tìm kiếm (SCRUM-61, V18):** GIN trigram trên `lower(full_name)` và `lower(current_province)` (WHERE deleted_at IS NULL) cho tìm danh bạ theo họ tên, tỉnh/thành.
+**Chỉ mục tìm kiếm (SCRUM-61, V18):** GIN trigram trên `lower(current_province)` (WHERE deleted_at IS NULL) cho lọc danh bạ theo tỉnh/thành. Tìm theo họ tên không phân biệt dấu dùng `unaccent` (V12) trong phạm vi một gia đình, không có chỉ mục riêng.
 
 ### `parent_child`
 

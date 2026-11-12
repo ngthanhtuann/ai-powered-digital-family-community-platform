@@ -148,6 +148,15 @@ class DirectoryApiIntegrationTest {
                 .andExpect(jsonPath("$.meta.total").value(1))
                 .andExpect(jsonPath("$.meta.size").value(1))
                 .andExpect(jsonPath("$.data[0].id").value(father.toString()));
+
+        // Từ khóa không dấu vẫn khớp họ tên có dấu; "%" là ký tự thường, không phải "khớp mọi thứ".
+        call(get("/api/v1/directory/members").queryParam("keyword", "ME (DAU)"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data[0].fullName").value("Mẹ (dâu)"));
+        call(get("/api/v1/directory/members").queryParam("keyword", "%"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(0));
     }
 
     @Test

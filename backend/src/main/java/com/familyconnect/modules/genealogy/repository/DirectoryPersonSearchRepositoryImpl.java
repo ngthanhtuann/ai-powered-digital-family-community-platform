@@ -35,7 +35,7 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                 person.family_id = :familyId
                 AND person.deleted_at IS NULL
                 AND (CAST(:keyword AS text) IS NULL
-                    OR lower(person.full_name) LIKE lower(concat('%', CAST(:keyword AS text), '%')))
+                    OR lower(unaccent(person.full_name)) LIKE lower(unaccent(CAST(:keyword AS text))) ESCAPE '!')
                 AND (CAST(:location AS text) IS NULL
                     OR lower(person.current_province) LIKE lower(concat('%', CAST(:location AS text), '%')))
                 AND (CAST(:generation AS integer) IS NULL
@@ -87,7 +87,9 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                                       Integer generation,
                                       LocalDate asOfDate, Set<UUID> personIds, boolean excludeChildren) {
         query.setParameter("familyId", familyId);
-        query.setParameter("keyword", keyword);
+        // Họ tên so không dấu (unaccent, V12) như tìm người dùng ở trang quản trị; %, _ người dùng gõ là ký tự thường.
+        query.setParameter("keyword", keyword == null ? null
+                : "%" + keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%");
         query.setParameter("location", location);
         query.setParameter("generation", generation);
         query.setParameter("asOfDate", asOfDate);
