@@ -21,6 +21,10 @@ public final class HeritageResponses {
                             UUID relatedPersonId, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
     }
 
+    public record OutstandingMemberData(UUID id, UUID personId, String fullName, String achievement,
+                                        int displayOrder, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+    }
+
     public record PaginationMeta(int page, int size, long total) {
     }
 

@@ -101,6 +101,7 @@ public class EventService {
         access.requirePublish(actor,family,input.branchId());
         Event saved = store.insertEvent(family,input.branchId(),input.title(),input.description(),
             input.startAt(),input.endAt(),input.location(),actor.id());
+        access.eventSaved(saved,true);
         access.eventChanged(saved,false);
         return view(saved,actor);
     }
@@ -142,6 +143,7 @@ public class EventService {
         validate(title,description,start,end,location);
         access.requirePublish(actor,old.familyId(),branch);
         Event saved = store.updateEvent(id,branch,title,description,start,end,location,actor.id());
+        access.eventSaved(saved,false);
         access.eventChanged(saved,false);
         return view(saved,actor);
     }

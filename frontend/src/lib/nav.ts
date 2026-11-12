@@ -21,7 +21,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { label: 'Tổng quan', href: '/', icon: 'layout-dashboard', roles: ALL_ROLES },
-      { label: 'Trợ lý AI', icon: 'sparkles', roles: ALL_ROLES },
+      { label: 'Trợ lý AI', href: '/assistant', icon: 'sparkles', roles: ALL_ROLES },
     ],
   },
   {

@@ -35,6 +35,7 @@ paths:
       summary: Danh bạ và tìm kiếm thành viên (UC-DIR-01)
       description: |
         Vai trò: MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN. Không truyền bộ lọc thì trả toàn bộ danh bạ (FR-DIR-01).
+        Có thể kết hợp `keyword` (tìm một phần họ tên), `job`, `location` và `generation`; các chuỗi tìm kiếm so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt ("nguyen" khớp "Nguyễn", "ha noi" khớp "Hà Nội").
         `location` lọc theo tỉnh/thành (`person.current_province`), không phải nơi làm việc.
         `generation` do module genealogy cung cấp (đời 1 là tổ tiên gốc, mỗi cấp con +1).
         Không trả địa chỉ chi tiết. Trẻ dưới 16 tuổi chỉ có `fullName`, `relationship`, `birthYear`;
@@ -43,13 +44,17 @@ paths:
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       parameters:
         - $ref: '#/components/parameters/FamilyId'
+        - name: keyword
+          in: query
+          description: Từ khóa tìm một phần họ tên thành viên (không phân biệt hoa thường và dấu tiếng Việt).
+          schema: { type: string, maxLength: 100 }
         - name: job
           in: query
-          description: Nghề nghiệp (so khớp chứa, không phân biệt hoa thường).
+          description: Nghề nghiệp (so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt).
           schema: { type: string, maxLength: 100 }
         - name: location
           in: query
-          description: Tỉnh/thành đang sinh sống (person.current_province).
+          description: Tỉnh/thành đang sinh sống (person.current_province), so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt.
           schema: { type: string, maxLength: 100 }
         - name: generation
           in: query

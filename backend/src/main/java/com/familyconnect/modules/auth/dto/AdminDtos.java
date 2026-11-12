@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Request và response của /admin/* (auth.yaml, UC-AUTH-08, 09). */
@@ -81,6 +82,12 @@ public final class AdminDtos {
                     user.getDateOfBirth(), roles, user.getStatus(), user.getLockReason(), user.getLastLoginAt(),
                     membership, user.getCreatedAt(), user.getUpdatedAt());
         }
+    }
+
+    /** Một dòng nhật ký kiểm toán (auth.yaml AuditLog, UC-AUTH-10). */
+    public record AuditLogData(UUID id, UUID actorUserId, String actorRole, String action, String targetType,
+                               UUID targetId, UUID familyId, String ipAddress, Map<String, Object> detail,
+                               OffsetDateTime createdAt) {
     }
 
     public record Meta(int page, int size, long total) {

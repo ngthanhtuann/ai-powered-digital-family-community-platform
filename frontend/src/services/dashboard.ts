@@ -26,6 +26,12 @@ async function allPages<T>(url: string, params: Record<string, unknown> = {}): P
 export const dashboardApi = {
   statistics: (params: { familyId?: string; branchId?: string }) =>
     api.get<DashboardStatistics>('/dashboard/statistics', params),
+  exportMembersCsv: (params: { familyId?: string; branchId?: string }) => {
+    const query = new URLSearchParams();
+    if (params.familyId) query.set('familyId', params.familyId);
+    if (params.branchId) query.set('branchId', params.branchId);
+    return api.download(`/dashboard/reports/members${query.size ? `?${query.toString()}` : ''}`);
+  },
   families: () => allPages<DashboardFamily>('/families', { sort: 'name,asc' }),
   branches: (familyId: string) =>
     allPages<DashboardBranch>(`/families/${familyId}/branches`, { sort: 'name,asc' }),

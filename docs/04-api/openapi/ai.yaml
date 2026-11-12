@@ -272,7 +272,8 @@ paths:
       - BRANCH_ADMIN
       - SYSTEM_ADMIN
       description: 'Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không
-        tự suy luận quan hệ.
+        tự suy luận quan hệ. Tên người dưới 16 tuổi trên đường đi được thay bằng "một thành viên" trước khi gửi
+        tới nhà cung cấp AI; không gửi địa chỉ chi tiết. Áp dụng giới hạn RATE_001; lỗi nhà cung cấp trả AI_001 (503).
 
         '
       requestBody:
@@ -319,6 +320,10 @@ paths:
                         type: boolean
                       explanation:
                         type: string
+                      relation:
+                        type: string
+                        nullable: true
+                        description: Tên quan hệ do thuật toán gia phả tính (nguồn sự thật); null khi found = false.
                       path:
                         type: array
                         items:
@@ -331,6 +336,7 @@ paths:
                 data:
                   found: true
                   explanation: Theo dữ liệu gia phả, A là cháu của B qua đường quan hệ đã xác định.
+                  relation: cháu
                   path: []
         '400':
           $ref: '#/components/responses/ValidationError'

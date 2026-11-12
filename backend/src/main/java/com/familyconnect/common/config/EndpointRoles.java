@@ -111,6 +111,7 @@ public class EndpointRoles {
             Map.entry("POST /admin/backups", SYSTEM_ADMIN),
             Map.entry("GET /admin/backups", SYSTEM_ADMIN),
             Map.entry("POST /admin/restores", SYSTEM_ADMIN),
+            Map.entry("GET /admin/audit-logs", SYSTEM_ADMIN),
             // Trưởng họ bổ nhiệm trưởng chi (UC-AUTH-14): chỉ BRANCH_ADMIN không gán chi, kiểm ở FamilyAccountService.
             Map.entry("GET /families/{}/accounts", ADMINS),
             Map.entry("PUT /families/{}/accounts/{}", ADMINS),
@@ -126,6 +127,10 @@ public class EndpointRoles {
             Map.entry("GET /heritage/stories/{}", SIGNED_IN),
             Map.entry("PATCH /heritage/stories/{}", SIGNED_IN),
             Map.entry("DELETE /heritage/stories/{}", SIGNED_IN),
+            Map.entry("GET /heritage/outstanding-members", SIGNED_IN),
+            Map.entry("POST /heritage/outstanding-members", ADMINS),
+            Map.entry("PATCH /heritage/outstanding-members/{}", ADMINS),
+            Map.entry("DELETE /heritage/outstanding-members/{}", ADMINS),
             // Danh bạ (heritage-directory-dashboard.yaml). Quyền sửa hồ sơ kiểm ở service (UC-DIR-02).
             Map.entry("GET /directory/members", SIGNED_IN),
             Map.entry("GET /directory/members/{}/profession-profile", SIGNED_IN),
@@ -134,9 +139,11 @@ public class EndpointRoles {
             Map.entry("PUT /directory/members/{}/education-profile", SIGNED_IN),
             // Dashboard (heritage-directory-dashboard.yaml): chỉ quản trị viên gia đình/chi.
             Map.entry("GET /dashboard/statistics", ADMINS),
+            Map.entry("GET /dashboard/reports/members", ADMINS),
             // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
             Map.entry("GET /ai/search", SIGNED_IN),
             Map.entry("POST /ai/chat", SIGNED_IN),
+            Map.entry("POST /ai/relationship-explanations", SIGNED_IN),
             Map.entry("POST /ai/summaries", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */

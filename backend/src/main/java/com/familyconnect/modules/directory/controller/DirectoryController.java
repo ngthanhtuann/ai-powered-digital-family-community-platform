@@ -35,13 +35,14 @@ public class DirectoryController {
     @GetMapping("/members")
     public ListResponse<PersonSearchResult> searchMembers(
             @RequestParam(required = false) UUID familyId,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String job,
             @RequestParam(required = false) String location,
             @RequestParam(required = false) Integer generation,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
-        return directoryService.searchMembers(familyId, job, location, generation, page, size, sort);
+        return directoryService.searchMembers(familyId, keyword, job, location, generation, page, size, sort);
     }
 
     @GetMapping("/members/{personId}/profession-profile")

@@ -126,6 +126,7 @@ Theo `use-cases/auth.md` mục 4.2:
 ### 4.4. Gọi REST API và kiểu dữ liệu
 - Base URL đặt bằng biến môi trường `EXPO_PUBLIC_API_BASE_URL`, cộng tiền tố `/api/v1`; không ghi cứng địa chỉ máy phát triển trong màn hình.
 - Mọi lời gọi HTTP nằm trong `src/services/`; màn hình chỉ gọi hàm của service qua TanStack Query.
+- Ảnh đăng bài chọn từ thư viện hoặc chụp bằng `expo-image-picker` (Expo SDK 58, SCRUM-89); quyền camera chỉ xin khi người dùng bấm chụp. Ứng dụng kiểm tra `jpg`, `png`, `webp` tối đa 5 MB trước khi gửi (BR-COM-08), rồi tải multipart qua `api.upload` để được gắn JWT.
 - **Kiểu request, response sinh bằng `openapi-typescript`** từ `docs/04-api/openapi/` vào `src/services/generated/` (lệnh `npm run gen:api`, theo `conventions.md` mục 8 và `architecture.md` quyết định 2). Commit output của lệnh; không viết tay kiểu DTO.
 - Response thành công có dạng `{success: true, data, meta?}`; lỗi có dạng `{success: false, error: {code, message, details}}` (`conventions.md` mục 2). `api.ts` chuẩn hóa lỗi thành một kiểu chung để màn hình xử lý theo mục 4.5.
 

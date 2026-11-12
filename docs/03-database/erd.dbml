@@ -50,7 +50,7 @@ Table person {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Gia phả (genealogy) · TV2 Trí · Thành viên (người)'
+  Note: 'Gia phả (genealogy) · TV2 Trí · Thành viên (người) · Danh bạ tìm họ tên, tỉnh/thành không dấu bằng unaccent (SCRUM-61).'
 }
 
 Table parent_child {
@@ -277,7 +277,7 @@ Table profession_profile {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Hồ sơ nghề nghiệp (1 dòng mỗi người, từ 16 tuổi) · UNIQUE (person_id) WHERE deleted_at IS NULL.'
+  Note: 'Di sản, danh bạ (heritage, directory) · TV4 Huy Quốc · Hồ sơ nghề nghiệp (1 dòng mỗi người, từ 16 tuổi) · UNIQUE (person_id) WHERE deleted_at IS NULL · Danh bạ lọc nghề không dấu bằng unaccent (SCRUM-61).'
 }
 
 Table education_profile {

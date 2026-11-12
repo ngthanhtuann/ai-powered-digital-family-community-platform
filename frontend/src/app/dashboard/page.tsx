@@ -18,6 +18,8 @@ import {
   YAxis,
 } from 'recharts';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { datedFileName, saveBlob } from '@/lib/download';
 import { getMyMembership, getMyProfile } from '@/services/auth';
 import { dashboardApi, type DashboardBranch, type DashboardStatistics } from '@/services/dashboard';
 import tailwindConfig from '../../../tailwind.config';
@@ -70,6 +72,8 @@ function chartEmpty(data: DashboardStatistics | undefined, values: number[]) {
 export default function DashboardPage() {
   const [selectedFamily, setSelectedFamily] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const membership = useQuery({ queryKey: ['app-shell-membership'], queryFn: getMyMembership });
   const profile = useQuery({ queryKey: ['app-shell-profile'], queryFn: getMyProfile });
   const isSystemAdmin = profile.data?.roles.includes('SYSTEM_ADMIN') ?? false;
@@ -134,13 +138,43 @@ export default function DashboardPage() {
     (error) => error instanceof Error,
   );
 
+  async function exportMembers() {
+    setExporting(true);
+    setExportError('');
+    try {
+      const blob = await dashboardApi.exportMembersCsv({
+        ...(isSystemAdmin ? { familyId } : {}),
+        ...(branchId ? { branchId } : {}),
+      });
+      saveBlob(blob, datedFileName('members', 'csv'));
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Không xuất được CSV.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
-      <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <p className="text-body text-text-secondary">
           Theo dõi thành viên, hoạt động cộng đồng và sự kiện trong phạm vi được quản lý.
         </p>
+        <Button
+          fullWidth={false}
+          loading={exporting}
+          disabled={!familyId}
+          onClick={exportMembers}
+        >
+          Xuất CSV thành viên
+        </Button>
       </div>
+
+      {exportError && (
+        <p role="alert" className="rounded-card border border-error bg-error-soft p-4 text-body text-error">
+          Không xuất được CSV: {exportError}
+        </p>
+      )}
 
       <Card title="Bộ lọc thống kê">
         <div className="flex flex-col gap-4 sm:flex-row">

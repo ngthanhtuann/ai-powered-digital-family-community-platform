@@ -16,12 +16,13 @@ public interface ProfessionProfileRepository extends JpaRepository<ProfessionPro
 
     List<ProfessionProfile> findAllByPersonIdInAndDeletedAtIsNull(Collection<UUID> personIds);
 
+    /** pattern là mẫu LIKE đã escape bằng "!"; so không dấu (unaccent, V12), trong một gia đình. */
     @Query("""
             select p.personId from ProfessionProfile p
             where p.familyId = :familyId and p.deletedAt is null
-              and lower(p.jobTitle) like lower(concat('%', :job, '%'))
+              and lower(function('unaccent', p.jobTitle)) like lower(function('unaccent', :pattern)) escape '!'
             """)
-    List<UUID> findPersonIdsByJobTitle(@Param("familyId") UUID familyId, @Param("job") String job);
+    List<UUID> findPersonIdsByJobTitle(@Param("familyId") UUID familyId, @Param("pattern") String pattern);
 
     @Query("""
             select p.jobTitle as jobTitle, count(p.id) as count

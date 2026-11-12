@@ -7,6 +7,10 @@ import { JoinFamilyScreen, PendingApprovalScreen } from '../screens/MembershipSc
 import { LoginScreen } from '../screens/LoginScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { PostDetailScreen } from '../screens/PostDetailScreen';
+import { CreatePostScreen } from '../screens/CreatePostScreen';
+import { EventDetailScreen } from '../screens/EventDetailScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { branchOf, useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 import { AppDrawer } from './AppDrawer';
@@ -55,7 +59,29 @@ export function RootNavigator() {
         </>
       )}
       {branch === 'app' && (
-        <Stack.Screen name="App" component={AppDrawer} options={{ headerShown: false }} />
+        <>
+          <Stack.Screen name="App" component={AppDrawer} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="PostDetail"
+            component={PostDetailScreen}
+            options={{ title: 'Chi tiết bài viết' }}
+          />
+          <Stack.Screen
+            name="CreatePost"
+            component={CreatePostScreen}
+            options={{ title: 'Tạo bài đăng' }}
+          />
+          <Stack.Screen
+            name="EventDetail"
+            component={EventDetailScreen}
+            options={{ title: 'Chi tiết sự kiện' }}
+          />
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
+            options={{ title: 'Thông báo' }}
+          />
+        </>
       )}
       {(branch === 'join' || branch === 'pending') && (
         <>

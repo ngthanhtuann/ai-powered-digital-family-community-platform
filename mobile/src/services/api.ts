@@ -3,6 +3,7 @@ import axios, {
   AxiosError,
   create as createAxios,
   isAxiosError,
+  type AxiosProgressEvent,
   type AxiosRequestConfig,
 } from 'axios';
 import type {
@@ -15,7 +16,7 @@ import type {
 import type { components as AuthComponents } from './generated/auth';
 import { tokenStorage } from './token-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 const API_PREFIX = '/api/v1';
 
 /** Lỗi chuẩn hóa theo conventions.md mục 2.2; `details` luôn là mảng. */
@@ -98,6 +99,13 @@ function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
     );
   }
   if (!error.response) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return new ApiError(
+        'TIMEOUT_ERROR',
+        'Yêu cầu mất quá nhiều thời gian. Kiểm tra mạng rồi thử lại.',
+        0,
+      );
+    }
     return new ApiError(
       'NETWORK_ERROR',
       'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.',
@@ -154,13 +162,31 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
 }
 
 export const api = {
-  get: <T>(url: string, params?: object) => request<T>({ method: 'GET', url, params }),
+  get: <T>(url: string, params?: object, options?: { timeout?: number }) =>
+    request<T>({ method: 'GET', url, params, ...options }),
   list: async <T>(url: string, params?: PageParams & Record<string, unknown>) => {
     const res = await client.request<ApiListSuccess<T>>({ method: 'GET', url, params });
     return { items: res.data.data, meta: res.data.meta };
   },
-  post: <T>(url: string, data?: unknown) => request<T>({ method: 'POST', url, data }),
+  post: <T>(url: string, data?: unknown, options?: { timeout?: number }) =>
+    request<T>({ method: 'POST', url, data, ...options }),
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
+  /** Multipart dùng cùng client để được gắn JWT, xử lý refresh và lỗi chuẩn. */
+  upload: async <T>(url: string, form: FormData, onProgress?: (percent: number) => void) => {
+    const res = await client.request<ApiSuccess<T>>({
+      method: 'POST',
+      url,
+      data: form,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (event: AxiosProgressEvent) => {
+        if (event.total && event.total > 0) {
+          onProgress?.(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      },
+      timeout: 60000,
+    });
+    return res.data.data;
+  },
 };

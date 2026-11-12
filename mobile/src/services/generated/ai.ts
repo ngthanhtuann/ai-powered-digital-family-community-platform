@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Giải thích quan hệ giữa hai thành viên
-         * @description Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không tự suy luận quan hệ.
+         * @description Kết quả quan hệ phải do thuật toán của module genealogy cung cấp. LLM chỉ diễn đạt lại, không tự suy luận quan hệ. Tên người dưới 16 tuổi trên đường đi được thay bằng "một thành viên" trước khi gửi tới nhà cung cấp AI; không gửi địa chỉ chi tiết. Áp dụng giới hạn RATE_001; lỗi nhà cung cấp trả AI_001 (503).
          */
         post: operations["explainRelationship"];
         delete?: never;
@@ -104,13 +104,13 @@ export interface components {
     schemas: {
         SourceReference: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
         };
         SearchResult: {
             /** @enum {string} */
-            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
+            sourceType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
             /** Format: uuid */
             sourceId: string;
             title: string;
@@ -450,6 +450,7 @@ export interface operations {
                      *       "data": {
                      *         "found": true,
                      *         "explanation": "Theo dữ liệu gia phả, A là cháu của B qua đường quan hệ đã xác định.",
+                     *         "relation": "cháu",
                      *         "path": []
                      *       }
                      *     }
@@ -460,6 +461,8 @@ export interface operations {
                         data: {
                             found: boolean;
                             explanation: string;
+                            /** @description Tên quan hệ do thuật toán gia phả tính (nguồn sự thật); null khi found = false. */
+                            relation?: string | null;
                             path?: {
                                 [key: string]: unknown;
                             }[];
@@ -496,8 +499,7 @@ export interface operations {
                 /**
                  * @example {
                  *       "sourceType": "STORY",
-                 *       "sourceId": "e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014",
-                 *       "maxLength": 500
+                 *       "sourceId": "e7c6f7b1-87e8-4db2-9d9a-6acbb3c00014"
                  *     }
                  */
                 "application/json": {
@@ -505,8 +507,6 @@ export interface operations {
                     sourceType: "POST" | "STORY" | "DOCUMENT";
                     /** Format: uuid */
                     sourceId: string;
-                    /** @default 500 */
-                    maxLength?: number;
                 };
             };
         };

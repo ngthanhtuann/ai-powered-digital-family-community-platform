@@ -14,6 +14,7 @@ import { BranchSelect } from '@/components/admin/BranchSelect';
 import {
   adminApi,
   PAGE_SIZE,
+  type AuditLog,
   type BackupFile,
   type AdminUser,
   type ContentType,
@@ -391,6 +392,128 @@ function BackupSection() {
   );
 }
 
+/** Tên dễ đọc cho các mã hành động hay gặp (auth.md mục 6.4); mã khác hiện nguyên. */
+const ACTION_LABEL: Record<string, string> = {
+  LOGIN_SUCCESS: 'Đăng nhập', LOGIN_FAILED: 'Đăng nhập sai', LOGIN_BLOCKED: 'Đăng nhập bị chặn', LOGOUT: 'Đăng xuất',
+  USER_REGISTERED: 'Đăng ký tài khoản', PASSWORD_CHANGED: 'Đổi mật khẩu', PROFILE_UPDATED: 'Sửa hồ sơ tài khoản',
+  JOIN_REQUESTED: 'Xin vào gia đình', JOIN_CANCELLED: 'Hủy xin vào', JOIN_APPROVED: 'Duyệt thành viên',
+  JOIN_REJECTED: 'Từ chối thành viên', USER_LOCKED: 'Khóa tài khoản', USER_UNLOCKED: 'Mở khóa tài khoản',
+  ROLE_CHANGED: 'Đổi vai trò', MEMBERSHIP_CHANGED: 'Đổi tư cách thành viên', CONTENT_DELETED: 'Gỡ nội dung',
+  CONTENT_CREATED: 'Đăng nội dung', CONTENT_UPDATED: 'Sửa nội dung',
+  CONTENT_HIDDEN: 'Ẩn nội dung', REPORT_DISMISSED: 'Bỏ qua báo cáo', CONTENT_RESTORED: 'Khôi phục nội dung',
+  BACKUP_CREATED: 'Tạo sao lưu', RESTORE_COMPLETED: 'Khôi phục dữ liệu', AI_QUERY: 'Hỏi trợ lý AI',
+  FAMILY_CREATED: 'Tạo gia đình', FAMILY_UPDATED: 'Sửa gia đình', FAMILY_DELETED: 'Xóa gia đình',
+  BRANCH_CREATED: 'Tạo chi', BRANCH_UPDATED: 'Sửa chi', BRANCH_DELETED: 'Xóa chi',
+  PERSON_CREATED: 'Thêm người', PERSON_UPDATED: 'Sửa người', PERSON_DELETED: 'Xóa người',
+  PARENT_CHILD_CREATED: 'Thêm quan hệ cha/mẹ - con', PARENT_CHILD_DELETED: 'Xóa quan hệ cha/mẹ - con',
+  MARRIAGE_CREATED: 'Thêm hôn nhân', MARRIAGE_UPDATED: 'Sửa hôn nhân', MARRIAGE_DELETED: 'Xóa hôn nhân',
+  MEMBERS_CSV_EXPORTED: 'Xuất CSV thành viên', OUTSTANDING_MEMBER_CREATED: 'Thêm người tiêu biểu',
+  OUTSTANDING_MEMBER_UPDATED: 'Sửa người tiêu biểu', OUTSTANDING_MEMBER_DELETED: 'Xóa người tiêu biểu',
+};
+const ROLE_LABEL: Record<string, string> = { MEMBER: 'Thành viên', BRANCH_ADMIN: 'Trưởng họ/chi', SYSTEM_ADMIN: 'Quản trị' };
+const shortId = (id?: string | null) => (id ? id.slice(0, 8) : '');
+/** Ngày từ ô date (giờ máy người xem) thành ISO-8601 kèm múi giờ, đầu hoặc cuối ngày. */
+const dayBound = (day: string, end: boolean) =>
+  (day ? new Date(`${day}T${end ? '23:59:59.999' : '00:00:00'}`).toISOString() : undefined);
+const detailText = (detail: AuditLog['detail']) => Object.entries(detail ?? {})
+  .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`).join('; ');
+
+/** UC-AUTH-10: nhật ký kiểm toán, chỉ đọc, mới nhất trước, lọc theo ngày, hành động, người thực hiện. */
+function AuditSection() {
+  const [action, setAction] = useState('');
+  const [fromDay, setFromDay] = useState('');
+  const [toDay, setToDay] = useState('');
+  const [actor, setActor] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const badRange = Boolean(fromDay && toDay && fromDay > toDay);
+  const params = {
+    action: action || undefined, from: dayBound(fromDay, false), to: dayBound(toDay, true),
+    actorUserId: actor ?? undefined, page,
+  };
+  const list = useQuery({
+    queryKey: ['admin-audit-logs', params],
+    queryFn: () => adminApi.auditLogs(params),
+    enabled: !badRange,
+  });
+  const filter = (apply: () => void) => { setPage(0); apply(); };
+
+  const columns: TableColumn<AuditLog>[] = [
+    { key: 'time', header: 'Thời điểm', render: (r) => <span className="whitespace-nowrap">{dateText(r.createdAt)}</span> },
+    {
+      key: 'action', header: 'Hành động',
+      render: (r) => (
+        <div>
+          <p className="font-semibold">{ACTION_LABEL[r.action] ?? r.action}</p>
+          <p className="text-caption text-text-secondary">{r.action}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'actor', header: 'Người thực hiện',
+      render: (r) => !r.actorUserId ? <span className="text-text-secondary">Chưa xác định</span> : (
+        <div className="space-y-1">
+          <p>{ROLE_LABEL[r.actorRole ?? ''] ?? 'Không rõ vai trò'} · <span title={r.actorUserId}>{shortId(r.actorUserId)}</span></p>
+          {actor !== r.actorUserId && (
+            <button type="button" className="text-caption text-info underline"
+              onClick={() => filter(() => setActor(r.actorUserId))}>Chỉ xem người này</button>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'target', header: 'Đối tượng',
+      render: (r) => r.targetType
+        ? <span title={r.targetId ?? undefined}>{r.targetType}{r.targetId ? ` · ${shortId(r.targetId)}` : ''}</span>
+        : '—',
+    },
+    { key: 'ip', header: 'IP', render: (r) => r.ipAddress ?? '—' },
+    { key: 'detail', header: 'Chi tiết', render: (r) => <span className="break-all text-caption">{detailText(r.detail) || '—'}</span> },
+  ];
+
+  return (
+    <section id="nhat-ky" aria-labelledby="nhat-ky-title"
+      className="scroll-mt-4 space-y-4 rounded-card border border-border bg-surface p-5">
+      <h2 id="nhat-ky-title" className="text-section-title">Nhật ký kiểm toán</h2>
+      <p className="text-body text-text-secondary">
+        Các thao tác nhạy cảm: ai làm, làm gì, lúc nào, từ IP nào. Chỉ xem, không sửa hay xóa được.
+      </p>
+      <div className="grid gap-3 md:grid-cols-3">
+        <label className="grid gap-1.5 text-label">Hành động
+          <select className={selectClass} value={action} onChange={(e) => filter(() => setAction(e.target.value))}>
+            <option value="">Tất cả</option>
+            {Object.entries(ACTION_LABEL).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1.5 text-label">Từ ngày
+          <input type="date" className={selectClass} value={fromDay} max={toDay || undefined}
+            onChange={(e) => filter(() => setFromDay(e.target.value))} />
+        </label>
+        <label className="grid gap-1.5 text-label">Đến ngày
+          <input type="date" className={selectClass} value={toDay} min={fromDay || undefined}
+            onChange={(e) => filter(() => setToDay(e.target.value))} />
+        </label>
+      </div>
+      {actor && (
+        <div className="flex flex-wrap items-center gap-2 text-body">
+          <span>Đang lọc theo người thực hiện <span className="font-semibold" title={actor}>{shortId(actor)}</span></span>
+          <Button fullWidth={false} variant="secondary" onClick={() => filter(() => setActor(null))}>Bỏ lọc người</Button>
+        </div>
+      )}
+      {badRange && <p role="alert" className="text-body text-error">“Từ ngày” phải trước hoặc bằng “Đến ngày”.</p>}
+      {!badRange && list.isPending && <p className="text-body text-text-secondary">Đang tải nhật ký...</p>}
+      {!badRange && list.isError && <p role="alert" className="text-body text-error">{errorText(list.error)}</p>}
+      {!badRange && list.isSuccess && (
+        <>
+          <p className="text-caption text-text-secondary">{list.data.meta.total} bản ghi</p>
+          <Table caption="Nhật ký kiểm toán" columns={columns} rows={list.data.items} getRowKey={(r) => r.id}
+            emptyMessage="Không có bản ghi phù hợp." />
+          <Pager page={page} total={list.data.meta.total} onChange={setPage} />
+        </>
+      )}
+    </section>
+  );
+}
+
 /** Trang /admin (SCRUM-50): chỉ SYSTEM_ADMIN; backend vẫn kiểm quyền ở mọi API (PERM_001). */
 export default function AdminPage() {
   const access = useHeritageAccess();
@@ -401,7 +524,7 @@ export default function AdminPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
         <h1 className="text-page-title">Quản trị hệ thống</h1>
-        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng, kiểm duyệt nội dung và sao lưu dữ liệu.</p>
+        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng, kiểm duyệt nội dung, sao lưu dữ liệu và xem nhật ký kiểm toán.</p>
       </header>
       <AccessState loading={loading} error={error} />
       {access.profile.isSuccess && !access.isSystemAdmin && (
@@ -414,6 +537,7 @@ export default function AdminPage() {
           <UsersSection myId={access.profile.data?.id} />
           <ModerationSection />
           <BackupSection />
+          <AuditSection />
         </>
       )}
     </div>

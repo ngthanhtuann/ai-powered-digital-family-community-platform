@@ -64,12 +64,21 @@ export default function FamilyTreePage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [relation, setRelation] = useState<Relationship | null>(null);
+  // SCRUM-56: tra quan hệ với người chưa hiện trên cây thì tải thêm cây từ tổ tiên chung, đủ sâu tới cả hai người.
+  const [focusRoots, setFocusRoots] = useState<{ rootId: string; depth: number }[]>([]);
+  const focus = useQueries({
+    queries: focusRoots.map(({ rootId, depth }) => ({
+      queryKey: ['tree', familyId, rootId, depth],
+      queryFn: () => genealogyApi.tree(familyId, { rootId, depth }),
+    })),
+  });
 
   // useQueries trả mảng mới mỗi lần render; chỉ gộp lại khi có nhánh tải xong.
-  const branchVersion = branches.map((b) => b.dataUpdatedAt).join(',');
+  const branchVersion = [...branches, ...focus].map((b) => b.dataUpdatedAt).join(',');
   const graph = useMemo(
-    () => merge(first.data ? [first.data, ...branches.flatMap((b) => (b.data ? [b.data] : []))] : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- branchVersion đại diện cho branches
+    () => merge(first.data
+      ? [first.data, ...[...branches, ...focus].flatMap((b) => (b.data ? [b.data] : []))] : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- branchVersion đại diện cho branches và focus
     [first.data, branchVersion],
   );
   const loadingRoots = new Set(branchRoots.filter((_, i) => branches[i]?.isPending));
@@ -84,6 +93,15 @@ export default function FamilyTreePage() {
       if (!next.delete(id)) next.add(id);
       return next;
     });
+  }, [graph.nodes]);
+
+  const onRelation = useCallback((found: Relationship | null) => {
+    setRelation(found);
+    const shown = new Set(graph.nodes.map((n) => n.id));
+    const rootId = found?.commonAncestorId;
+    if (!rootId || found.path?.every((step) => shown.has(step.id))) return;
+    const depth = Math.min(10, Math.max(found.stepsFromA ?? 0, found.stepsFromB ?? 0) + 1);
+    setFocusRoots((roots) => (roots.some((r) => r.rootId === rootId && r.depth >= depth) ? roots : [...roots, { rootId, depth }]));
   }, [graph.nodes]);
 
   const onSelect = useCallback((id: string) => {
@@ -140,7 +158,7 @@ export default function FamilyTreePage() {
   }, [graph, collapsed, first.data?.rootId, loadingKey, relation, selected, onToggle, onSelect]);
 
   const error = (first.error as Error | null)?.message
-    ?? (branches.find((b) => b.error)?.error as Error | undefined)?.message;
+    ?? ([...branches, ...focus].find((b) => b.error)?.error as Error | undefined)?.message;
 
   return (
     <main className="space-y-4 px-4 py-6 sm:px-6">
@@ -184,7 +202,7 @@ export default function FamilyTreePage() {
               personId={selected}
               people={graph.nodes}
               canManage={access.isAdmin}
-              onRelation={setRelation}
+              onRelation={onRelation}
               onClose={() => { setSelected(null); setRelation(null); }}
             />
           )}

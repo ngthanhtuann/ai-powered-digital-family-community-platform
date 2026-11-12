@@ -204,6 +204,8 @@ Người sở hữu: **TV2 Trí**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
+**Tìm kiếm danh bạ (SCRUM-61):** họ tên và tỉnh/thành so không phân biệt dấu bằng `unaccent` (V12) trong phạm vi một gia đình, không có chỉ mục riêng (như tìm `users`).
+
 ### `parent_child`
 
 **Mục đích:** Quan hệ cha/mẹ - con.  **Người sở hữu:** TV2 Trí.  **Trạng thái:** Đầy đủ.
@@ -504,7 +506,7 @@ Người sở hữu: **TV4 Huy Quốc**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL.
+**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL. Lọc danh bạ theo nghề so không phân biệt dấu bằng `unaccent` (V12) trong phạm vi một gia đình (SCRUM-61).
 
 ### `education_profile`
 

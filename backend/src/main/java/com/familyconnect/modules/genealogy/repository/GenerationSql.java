@@ -11,7 +11,27 @@ public final class GenerationSql {
     private GenerationSql() {
     }
 
-    public static final String CTE = """
+    private static final String SEED = "/*seed*/";
+
+    /** Tính đời cho cả gia đình (Danh bạ, Dashboard). */
+    public static final String CTE = template("");
+
+    /**
+     * Chỉ tính đời cho những người trong tham số {@code :ids} (cây gia phả). Đời của một người chỉ phụ thuộc tổ tiên
+     * của người đó và của vợ/chồng, nên chỉ cần đi lên từ {@code :ids} cùng vợ/chồng của họ; kết quả cho {@code :ids}
+     * giống {@link #CTE} nhưng không phải duyệt cả gia đình mỗi lần tải một nhánh (SCRUM-59).
+     */
+    public static final String CTE_FOR_IDS = template("""
+             AND (relation.child_id IN (:ids) OR relation.child_id IN (
+                    SELECT CASE WHEN m.person1_id IN (:ids) THEN m.person2_id ELSE m.person1_id END
+                    FROM marriage m
+                    WHERE m.deleted_at IS NULL AND (m.person1_id IN (:ids) OR m.person2_id IN (:ids))))""");
+
+    private static String template(String seedFilter) {
+        return TEMPLATE.replace(SEED, seedFilter);
+    }
+
+    private static final String TEMPLATE = """
             WITH RECURSIVE ancestors(person_id, ancestor_id, depth) AS (
                 SELECT child.id, relation.parent_id, 1
                 FROM parent_child relation
@@ -19,7 +39,7 @@ public final class GenerationSql {
                     AND child.family_id = :familyId AND child.deleted_at IS NULL
                 JOIN person parent ON parent.id = relation.parent_id
                     AND parent.family_id = :familyId AND parent.deleted_at IS NULL
-                WHERE relation.deleted_at IS NULL
+                WHERE relation.deleted_at IS NULL /*seed*/
                 UNION
                 SELECT ancestry.person_id, relation.parent_id, ancestry.depth + 1
                 FROM ancestors ancestry
@@ -34,18 +54,28 @@ public final class GenerationSql {
                 FROM ancestors
                 GROUP BY person_id
             ),
-            -- genealogy.md mục 6.8: người không có cha mẹ trong gia đình nhưng có vợ/chồng thì lấy đời của vợ/chồng
+            -- genealogy.md mục 6.8: người không có cha mẹ trong gia đình nhưng có vợ/chồng thì lấy đời của vợ/chồng.
+            -- Gom một lần bằng JOIN; subquery tương quan cũ quét lại cả CTE blood cho mỗi người (SCRUM-59:
+            -- 5.000 người mất khoảng 950 ms, cách này khoảng 120 ms, cùng kết quả).
+            spouse_generation AS (
+                SELECT spouse_id AS person_id, MAX(generation) AS generation
+                FROM (
+                    SELECT m.person2_id AS spouse_id, blood.generation
+                    FROM marriage m JOIN blood ON blood.person_id = m.person1_id
+                    WHERE m.deleted_at IS NULL
+                    UNION ALL
+                    SELECT m.person1_id, blood.generation
+                    FROM marriage m JOIN blood ON blood.person_id = m.person2_id
+                    WHERE m.deleted_at IS NULL
+                ) spouse_sides
+                GROUP BY spouse_id
+            ),
             generations AS (
                 SELECT p.id AS person_id,
-                       COALESCE(blood.generation,
-                                (SELECT MAX(spouse.generation)
-                                 FROM marriage m
-                                 JOIN blood spouse ON spouse.person_id =
-                                      CASE WHEN m.person1_id = p.id THEN m.person2_id ELSE m.person1_id END
-                                 WHERE m.deleted_at IS NULL AND (m.person1_id = p.id OR m.person2_id = p.id)),
-                                1) AS generation
+                       COALESCE(blood.generation, spouse_generation.generation, 1) AS generation
                 FROM person p
                 LEFT JOIN blood ON blood.person_id = p.id
+                LEFT JOIN spouse_generation ON spouse_generation.person_id = p.id
                 WHERE p.family_id = :familyId AND p.deleted_at IS NULL
             )
             """;
