@@ -10,6 +10,8 @@
       "supportsTablet": false
     },
     "android": {
+      "package": "vn.familyconnect.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#F5F0E8",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,6 +24,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/with-cleartext-traffic",
       "expo-secure-store",
       [
         "expo-image-picker",
@@ -30,8 +33,23 @@
           "cameraPermission": "Cho phép FamilyConnect chụp ảnh để đăng lên bảng tin.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F0E8"
+        }
       ]
     ],
-    "scheme": "familyconnect"
+    "scheme": "familyconnect",
+    "extra": {
+      "eas": {
+        "projectId": "bca2d35c-82fc-4d7a-80db-71431325442c"
+      }
+    },
+    "owner": "thajnktuaans"
   }
 }
