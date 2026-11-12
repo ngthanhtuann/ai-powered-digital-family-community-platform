@@ -19,6 +19,9 @@ export const colors = {
   errorSoft: '#FCE4EC',
   warningSoft: '#FFF3E0',
   infoSoft: '#E3F2FD',
+  // Chỉ dùng cho cây gia phả, luôn kèm nhãn chữ (design-system.md mục 6).
+  accentGreen: '#5C8A6E',
+  accentPink: '#B87A9E',
 } as const;
 
 export const text = {
