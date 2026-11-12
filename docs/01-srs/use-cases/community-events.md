@@ -178,7 +178,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | Luồng chính | 1. Thành viên có quyền xem sự kiện mở sự kiện.<br>2. Hệ thống hiển thị danh sách người tham dự và trạng thái RSVP; người dùng có thể lọc theo trạng thái.<br>3. Người tạo sự kiện, BRANCH_ADMIN trong phạm vi quản lý hoặc SYSTEM_ADMIN thêm/gỡ người tham dự.<br>4. BRANCH_ADMIN trong phạm vi hoặc SYSTEM_ADMIN đánh dấu người tham dự có mặt hoặc hủy ghi nhận.<br>5. Hệ thống kiểm tra quyền, lưu trạng thái điểm danh và cập nhật danh sách. |
 | Luồng thay thế / ngoại lệ | 2a. Không có người tham dự, hệ thống hiển thị danh sách trống.<br>3a. Người không có quyền thực hiện thêm/gỡ hoặc ghi điểm danh thì bị từ chối (403 `PERM_001`); việc xem danh sách không bị từ chối.<br>3b. Người được thêm không thuộc cùng gia đình hoặc không tồn tại: hệ thống trả 404 `NOT_FOUND_001`; đã có trong danh sách: 409 `CONFLICT_001`. |
 | Hậu điều kiện | Danh sách RSVP và trạng thái điểm danh được cập nhật theo thao tác hợp lệ. |
-| Quy tắc nghiệp vụ | BR-EVT-03 |
+| Quy tắc nghiệp vụ | BR-EVT-03. Điểm danh ghi được cho mọi người trong danh sách tham dự (kể cả RSVP khác `GOING`, ví dụ người báo `MAYBE` nhưng vẫn đến); tỷ lệ điểm danh trong báo cáo chỉ tính trên nhóm RSVP `GOING` (BR-DSH-03). |
 
 ### UC-EVT-04: Thư viện ảnh sự kiện
 

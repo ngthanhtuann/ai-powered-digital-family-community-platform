@@ -5,6 +5,7 @@ import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.CurrentUser;
 import com.familyconnect.modules.auth.api.EffectiveRole;
+import com.familyconnect.modules.auth.api.GenealogyPort;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.auth.api.UserDirectory;
@@ -26,6 +27,7 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemographics;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,13 +64,15 @@ public class DashboardService {
     private final AuditLogger auditLogger;
     private final UserDirectory userDirectory;
     private final PdfReportGenerator pdfReportGenerator;
+    private final ObjectProvider<GenealogyPort> genealogyPort;
     private final Clock clock;
     private final Map<CacheKey, CacheEntry> cache = new LinkedHashMap<>(16, 0.75f, true);
 
     public DashboardService(GenealogyQuery genealogyQuery, DirectoryQuery directoryQuery,
                             CommunityQuery communityQuery, EventQuery eventQuery,
                             MembershipQuery membershipQuery, AuditLogger auditLogger,
-                            UserDirectory userDirectory, PdfReportGenerator pdfReportGenerator, Clock clock) {
+                            UserDirectory userDirectory, PdfReportGenerator pdfReportGenerator,
+                            ObjectProvider<GenealogyPort> genealogyPort, Clock clock) {
         this.genealogyQuery = genealogyQuery;
         this.directoryQuery = directoryQuery;
         this.communityQuery = communityQuery;
@@ -77,6 +81,7 @@ public class DashboardService {
         this.auditLogger = auditLogger;
         this.userDirectory = userDirectory;
         this.pdfReportGenerator = pdfReportGenerator;
+        this.genealogyPort = genealogyPort;
         this.clock = clock;
     }
 
@@ -191,8 +196,7 @@ public class DashboardService {
             case COMMUNITY -> communitySections(familyId, branchId, demographics, fromInclusive, toExclusive);
             case EVENTS -> eventSections(familyId, branchId, demographics, fromInclusive, toExclusive);
         };
-        String scope = "Gia đình " + familyId
-                + (branchId == null ? " (toàn gia đình)" : ", chi " + branchId);
+        String scope = reportScope(familyId, branchId);
         String period = from.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + " - "
                 + to.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         String creator = userDirectory.getFullNames(List.of(actorId)).getOrDefault(actorId, actorId.toString());
@@ -348,6 +352,16 @@ public class DashboardService {
             throw new ApiException(ErrorCode.NOT_FOUND_001);
         }
         return familyId;
+    }
+
+    /** Phạm vi in trên PDF bằng tên gia đình/chi (GenealogyPort), không in UUID. */
+    private String reportScope(UUID familyId, UUID branchId) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        String unknown = "(không rõ tên)";
+        String family = port == null ? unknown : port.findFamilyName(familyId).orElse(unknown);
+        if (branchId == null) return "Gia đình " + family + " (toàn gia đình)";
+        String branch = port == null ? unknown : port.findBranchName(familyId, branchId).orElse(unknown);
+        return "Gia đình " + family + ", chi " + branch;
     }
 
     private UUID resolveBranchId(UUID familyId, UUID requestedBranchId, MembershipView membership) {

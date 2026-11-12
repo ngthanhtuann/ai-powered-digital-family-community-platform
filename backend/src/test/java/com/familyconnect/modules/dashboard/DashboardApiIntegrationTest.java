@@ -359,6 +359,9 @@ class DashboardApiIntegrationTest {
         assertTrue(genealogyText.contains("Thành viên theo thế hệ"));
         assertFalse(genealogyText.contains("Tên thành viên riêng tư"));
         assertFalse(genealogyText.contains("DIA_CHI_KHONG_DUOC_XUAT"));
+        // Phạm vi in tên gia đình, không in UUID.
+        assertTrue(genealogyText.replaceAll("\\s+", " ").contains("Dòng họ PDF"));
+        assertFalse(genealogyText.contains(familyId.toString()));
 
         var community = call(get("/api/v1/dashboard/reports/COMMUNITY/pdf" + query), ownerToken, null)
                 .andExpect(status().isOk())
