@@ -204,7 +204,7 @@ Người sở hữu: **TV2 Trí**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Chỉ mục tìm kiếm (SCRUM-61, V18):** GIN trigram trên `lower(current_province)` (WHERE deleted_at IS NULL) cho lọc danh bạ theo tỉnh/thành. Tìm theo họ tên không phân biệt dấu dùng `unaccent` (V12) trong phạm vi một gia đình, không có chỉ mục riêng.
+**Tìm kiếm danh bạ (SCRUM-61):** họ tên và tỉnh/thành so không phân biệt dấu bằng `unaccent` (V12) trong phạm vi một gia đình, không có chỉ mục riêng (như tìm `users`).
 
 ### `parent_child`
 
@@ -506,7 +506,7 @@ Người sở hữu: **TV4 Huy Quốc**
 | updated_at | TIMESTAMPTZ | NOT NULL | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
-**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL. Chỉ mục GIN trigram trên `lower(job_title)` (WHERE deleted_at IS NULL) cho lọc danh bạ theo nghề (SCRUM-61, V18).
+**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE deleted_at IS NULL. Lọc danh bạ theo nghề so không phân biệt dấu bằng `unaccent` (V12) trong phạm vi một gia đình (SCRUM-61).
 
 ### `education_profile`
 

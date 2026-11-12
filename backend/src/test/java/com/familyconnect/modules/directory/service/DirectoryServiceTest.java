@@ -257,7 +257,7 @@ class DirectoryServiceTest {
 
     @Test
     void memberSearchTrimsKeywordAndCombinesItWithOtherFilters() {
-        when(professionRepository.findPersonIdsByJobTitle(FAMILY_ID, "Kỹ sư"))
+        when(professionRepository.findPersonIdsByJobTitle(FAMILY_ID, "%Kỹ sư%"))
                 .thenReturn(List.of(PERSON_ID));
         when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq("Nguyễn"), eq("Hà Nội"), eq(3),
                 eq(LocalDate.now(CLOCK)), any(), eq(true), eq("fullName"), eq(true), eq(0), eq(20)))
