@@ -13,7 +13,7 @@ import {
 } from '../components/community-ui';
 import { Card, Loading } from '../components/ui';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
-import { eventsApi, type Event } from '../services/events';
+import { eventsApi, RSVP_LABEL, type Event } from '../services/events';
 import { useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 
@@ -105,7 +105,9 @@ export function EventsScreen() {
                 {item.rsvpCounts.notGoing}
               </Text>
               <Text style={[text.label, { color: colors.primary }]}>
-                {item.myRsvpStatus ? `RSVP của bạn: ${item.myRsvpStatus}` : 'Xem chi tiết / RSVP'}
+                {item.myRsvpStatus
+                  ? `Phản hồi của bạn: ${RSVP_LABEL[item.myRsvpStatus]}`
+                  : 'Xem chi tiết / RSVP'}
               </Text>
             </Card>
           </Pressable>

@@ -5,7 +5,13 @@ import { Text, View } from 'react-native';
 import { ErrorPanel, formatWhen, MediaGallery, nextPage } from '../components/community-ui';
 import { Button, Card, Loading, Notice, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import { eventsApi, type EventMedia, type EventRsvp, type Participant } from '../services/events';
+import {
+  eventsApi,
+  RSVP_LABEL,
+  type EventMedia,
+  type EventRsvp,
+  type Participant,
+} from '../services/events';
 import { colors, text } from '../theme';
 
 const RSVP: { value: EventRsvp; title: string }[] = [
@@ -13,7 +19,6 @@ const RSVP: { value: EventRsvp; title: string }[] = [
   { value: 'NOT_GOING', title: 'Không' },
   { value: 'MAYBE', title: 'Có thể' },
 ];
-const STATUS: Record<EventRsvp, string> = { GOING: 'Tham dự', NOT_GOING: 'Không', MAYBE: 'Có thể' };
 
 export function EventDetailScreen() {
   const { eventId } = useRoute<RouteProp<RootStackParamList, 'EventDetail'>>().params;
@@ -82,7 +87,7 @@ export function EventDetailScreen() {
           ) : null}
           <Text style={[text.label, { color: colors.textPrimary }]}>
             Phản hồi của bạn:{' '}
-            {event.data.myRsvpStatus ? STATUS[event.data.myRsvpStatus] : 'Chưa chọn'}
+            {event.data.myRsvpStatus ? RSVP_LABEL[event.data.myRsvpStatus] : 'Chưa chọn'}
           </Text>
           <Text style={[text.caption, { color: colors.textSecondary }]}>
             Tham dự: {event.data.rsvpCounts.going} · Không: {event.data.rsvpCounts.notGoing} · Có
@@ -125,7 +130,7 @@ export function EventDetailScreen() {
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8 }}
             >
               <Text style={[text.body, { color: colors.textPrimary }]}>
-                {p.displayName ?? 'Thành viên'} — {STATUS[p.rsvpStatus]}
+                {p.displayName ?? 'Thành viên'} — {RSVP_LABEL[p.rsvpStatus]}
               </Text>
             </View>
           ))

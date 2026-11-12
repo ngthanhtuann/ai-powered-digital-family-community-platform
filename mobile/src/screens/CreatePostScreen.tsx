@@ -233,7 +233,8 @@ export function CreatePostScreen() {
               {asset.name}
               {index < nextImage ? ' · Đã tải' : ''}
             </Text>
-            {!busy && !postId ? (
+            {/* Ảnh chưa tải được thì vẫn bỏ được, kể cả sau khi bài đã tạo (ví dụ server từ chối ảnh đó). */}
+            {!busy && index >= nextImage ? (
               <Button
                 title="Bỏ"
                 variant="secondary"
@@ -249,7 +250,9 @@ export function CreatePostScreen() {
         ) : null}
         {error ? <Notice variant="error" title="Không đăng được bài" message={error} /> : null}
         <Button
-          title={postId ? 'Tiếp tục tải ảnh' : 'Đăng bài'}
+          title={
+            !postId ? 'Đăng bài' : nextImage < assets.length ? 'Tiếp tục tải ảnh' : 'Xem bài đăng'
+          }
           loading={busy}
           disabled={branches.query.isPending}
           onPress={publish}

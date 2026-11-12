@@ -6,6 +6,11 @@ export type Event = Schemas['Event'];
 export type Participant = Schemas['Participant'];
 export type EventRsvp = Schemas['RsvpRequest']['rsvpStatus'];
 export type EventMedia = Schemas['Media'];
+export const RSVP_LABEL: Record<EventRsvp, string> = {
+  GOING: 'Tham dự',
+  NOT_GOING: 'Không',
+  MAYBE: 'Có thể',
+};
 
 export const eventsApi = {
   list: (page: number, period: 'upcoming' | 'past', now: string, familyId?: string) =>
