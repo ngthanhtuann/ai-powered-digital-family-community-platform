@@ -79,7 +79,7 @@ gemini:
 
 ai:
   chat:
-    limit_per_hour: ${AI_CHAT_LIMIT_PER_HOUR:20}
+    # Giới hạn câu hỏi mỗi giờ đọc từ system_config (ai.chat.limit_per_hour, đổi ở trang Cấu hình hệ thống; SCRUM-94).
     top_k: 5
     minimum_score: 0.55
     retention_days: 30

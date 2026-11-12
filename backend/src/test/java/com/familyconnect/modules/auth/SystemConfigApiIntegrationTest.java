@@ -162,6 +162,8 @@ class SystemConfigApiIntegrationTest {
                 Map.of("code", familyId, "message", "Xin vào"));
         assertThat(joined.getStatus()).isEqualTo(201);
         assertThat(body(joined).at("/data/status").asText()).isEqualTo("APPROVED");
+        // Duyệt tự động có hiệu lực ngay ở request kế tiếp (BR-AUTH-11): xem được gia đình.
+        assertThat(send(HttpMethod.GET, "/api/v1/families/" + familyId, applicant, null).getStatus()).isEqualTo(200);
         assertThat(jdbc.queryForObject("select count(*) from audit_log where action = 'JOIN_APPROVED' and detail->>'auto' = 'true'",
                 Integer.class)).isEqualTo(1);
 
