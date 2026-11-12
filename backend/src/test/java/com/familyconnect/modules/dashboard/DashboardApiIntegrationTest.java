@@ -372,7 +372,7 @@ class DashboardApiIntegrationTest {
         var events = call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query), ownerToken, null)
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray();
-        String eventText = pdfText(events);
+        String eventText = pdfText(events).replaceAll("\\s+", " ");
         assertTrue(eventText.contains("Sự kiện tiếng Việt A"));
         assertTrue(eventText.contains("50.0%"));
         assertTrue(eventText.contains("Tỷ lệ điểm danh trong nhóm GOING"));
@@ -381,7 +381,7 @@ class DashboardApiIntegrationTest {
 
         var branchEvents = call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query),
                 branchAdminToken, null).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
-        String branchEventText = pdfText(branchEvents);
+        String branchEventText = pdfText(branchEvents).replaceAll("\\s+", " ");
         assertTrue(branchEventText.contains("Sự kiện tiếng Việt A"));
         assertFalse(branchEventText.contains("Sự kiện ngoài phạm vi"));
         call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query + "&branchId=" + branchB),

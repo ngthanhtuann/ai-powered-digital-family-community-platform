@@ -158,7 +158,7 @@ public class PdfReportGenerator {
                 long value = number(row.get(1));
                 float barWidth = max == 0 ? 0 : (chartWidth - 35) * value / max;
                 if (barWidth > 0) {
-                    stream.setNonStrokingColor(41, 106, 152);
+                    stream.setNonStrokingColor(41 / 255f, 106 / 255f, 152 / 255f);
                     stream.addRect(MARGIN + labelWidth, y - 3, barWidth, 10);
                     stream.fill();
                 }
@@ -201,7 +201,7 @@ public class PdfReportGenerator {
                 }
             }
             if (header) {
-                stream.setNonStrokingColor(231, 238, 244);
+                stream.setNonStrokingColor(231 / 255f, 238 / 255f, 244 / 255f);
                 stream.addRect(MARGIN, y - rowHeight + 3, PAGE_WIDTH - MARGIN * 2, rowHeight);
                 stream.fill();
             }
@@ -215,7 +215,7 @@ public class PdfReportGenerator {
                 x += columnWidth;
             }
             y -= rowHeight;
-            stream.setStrokingColor(205, 211, 217);
+            stream.setStrokingColor(205 / 255f, 211 / 255f, 217 / 255f);
             stream.moveTo(MARGIN, y);
             stream.lineTo(PAGE_WIDTH - MARGIN, y);
             stream.stroke();

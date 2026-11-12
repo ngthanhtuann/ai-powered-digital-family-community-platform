@@ -120,7 +120,7 @@ public class JdbcEventStore implements EventStore {
                            AS going_attended
                 FROM event e
                 LEFT JOIN event_participant p ON p.event_id=e.id AND p.deleted_at IS NULL
-                """ + where + """
+                """ + where + " " + """
                 GROUP BY e.id, e.title, e.start_at
                 ORDER BY e.start_at, e.id
                 """, args, (rs,n) -> new ReportEvent(id(rs,"id"),rs.getString("title"),
