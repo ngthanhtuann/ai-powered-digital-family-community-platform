@@ -119,6 +119,36 @@ class EventServiceTest {
         verify(store,never()).upsertRsvp(any(),any(),any(),any());
     }
 
+    @Test void branchAdminCannotRecordAttendanceForFamilyWideEvent() {
+        UUID branchId = UUID.fromString("50000000-0000-0000-0000-000000000001");
+        when(membership.getMembership(USER)).thenReturn(
+            new MembershipView(USER,FAMILY,branchId,EffectiveRole.BRANCH_ADMIN,true));
+        when(store.findEvent(EVENT_ID)).thenReturn(Optional.of(event(OTHER,NOW.plusDays(1))));
+
+        assertThatThrownBy(() -> service.updateAttendance(EVENT_ID,OTHER,new AttendanceRequest(true)))
+            .isInstanceOfSatisfying(ApiException.class,e -> assertThat(e.code()).isEqualTo(ErrorCode.PERM_001));
+        verify(store,never()).findParticipant(any());
+    }
+
+    @Test void unscopedBranchAdminCanRecordAttendance() {
+        when(membership.getMembership(USER)).thenReturn(
+            new MembershipView(USER,FAMILY,null,EffectiveRole.BRANCH_ADMIN,true));
+        when(store.findEvent(EVENT_ID)).thenReturn(Optional.of(event(OTHER,NOW.plusDays(1))));
+        UUID participantId = UUID.fromString("40000000-0000-0000-0000-000000000001");
+        Participant existing = new Participant(participantId,EVENT_ID,OTHER,RsvpStatus.GOING,NOW,NOW,null);
+        Participant updated = new Participant(participantId,EVENT_ID,OTHER,RsvpStatus.GOING,NOW,NOW,NOW);
+        when(store.findParticipant(participantId)).thenReturn(Optional.of(existing));
+        when(store.updateAttendance(participantId,true,USER)).thenReturn(updated);
+        when(users.getFullNames(Set.of(OTHER))).thenReturn(Map.of(OTHER,"Nguyễn Văn A"));
+
+        ParticipantView result = service.updateAttendance(EVENT_ID,participantId,new AttendanceRequest(true));
+
+        assertThat(result.attendedAt()).isEqualTo(NOW);
+        verify(audit).log(eq("EVENT_ATTENDANCE_RECORDED"),eq("EVENT"),eq(EVENT_ID),eq(FAMILY),
+            argThat(details -> details.get("participantId").equals(participantId.toString())
+                && details.get("attended").equals(true)));
+    }
+
     @Test void duplicateParticipantIsRejected() {
         verified();
         when(membership.getMembership(OTHER)).thenReturn(member(OTHER,true));
