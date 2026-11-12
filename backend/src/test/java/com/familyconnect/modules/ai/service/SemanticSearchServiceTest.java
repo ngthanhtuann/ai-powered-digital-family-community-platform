@@ -1,5 +1,6 @@
 package com.familyconnect.modules.ai.service;
 
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.modules.ai.dto.SemanticSearchResponse;
@@ -40,7 +41,7 @@ class SemanticSearchServiceTest {
         rateLimiter = mock(AiSearchRateLimiter.class);
         genealogyQuery = mock(GenealogyQuery.class);
         service = new SemanticSearchService(embedding, repository, membership, rateLimiter, genealogyQuery,
-                CLOCK, 0.88, true);
+                CLOCK, SystemConfigQuery.defaults(), 0.88, true);
     }
 
     @Test

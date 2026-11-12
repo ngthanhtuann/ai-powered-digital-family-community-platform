@@ -9,6 +9,7 @@ import com.familyconnect.modules.ai.repository.EmbeddingChunkRepository;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -29,12 +30,14 @@ public class SemanticSearchService {
     private final Clock clock;
     private final double minimumScore;
     private final boolean enabled;
+    private final SystemConfigQuery config;
 
     public SemanticSearchService(EmbeddingPipelineService embeddingPipeline, EmbeddingChunkRepository repository,
                                  MembershipQuery membershipQuery, AiSearchRateLimiter rateLimiter,
-                                 GenealogyQuery genealogyQuery, Clock clock,
+                                 GenealogyQuery genealogyQuery, Clock clock, SystemConfigQuery config,
                                  @Value("${ai.search.minimum-score:0.88}") double minimumScore,
                                  @Value("${ai.search.enabled:true}") boolean enabled) {
+        this.config = config;
         this.embeddingPipeline = embeddingPipeline;
         this.repository = repository;
         this.membershipQuery = membershipQuery;
@@ -47,7 +50,8 @@ public class SemanticSearchService {
 
     public SemanticSearchResponse search(AuthenticatedUser user, String query, UUID requestedFamilyId,
                                          int page, int size) {
-        if (!enabled) throw new ApiException(ErrorCode.AI_002);
+        // Biến môi trường là công tắc lúc triển khai; cấu hình hệ thống là công tắc của quản trị (SCRUM-94).
+        if (!enabled || !config.getBoolean(SystemConfigQuery.AI_SEARCH_ENABLED)) throw new ApiException(ErrorCode.AI_002);
         if (query == null || query.isBlank() || query.length() > 500 || page < 0 || size < 1 || size > 100
                 || page > Integer.MAX_VALUE / size) {
             throw new ApiException(ErrorCode.VALID_001);

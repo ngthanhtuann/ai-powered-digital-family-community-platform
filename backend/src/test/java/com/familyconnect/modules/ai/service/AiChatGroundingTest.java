@@ -1,5 +1,6 @@
 package com.familyconnect.modules.ai.service;
 
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
@@ -56,7 +57,7 @@ class AiChatGroundingTest {
         when(chats.recentMessages(any(), anyInt())).thenReturn(List.of());
         when(chats.saveExchange(any(), any(), anyString(), anyString(), anyList(), any(), anyLong())).thenReturn(UUID.randomUUID());
         service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, audit,
-                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), 5, .55, 30, true);
+                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), SystemConfigQuery.defaults(), 5, .55, 30, true);
     }
 
     /** Đoạn chỉ mục giả, khớp docs/06-test/ai-chat-5-06.md mục 1. */
@@ -141,7 +142,7 @@ class AiChatGroundingTest {
     @Test void foreignSessionIsRejectedBeforeRateLimit() {
         AiChatRateLimiter limiter = mock(AiChatRateLimiter.class);
         service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, mock(AuditLogger.class),
-                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), 5, .55, 30, true);
+                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), SystemConfigQuery.defaults(), 5, .55, 30, true);
         UUID foreign = UUID.randomUUID();
         when(chats.ownsActiveSession(foreign, userId, familyId)).thenReturn(false);
         assertEquals(ErrorCode.PERM_001, assertThrows(ApiException.class, () -> service.chat(
@@ -150,7 +151,7 @@ class AiChatGroundingTest {
     }
 
     @Test void rateLimitReturnsRate001() {
-        AiChatRateLimiter limiter = new AiChatRateLimiter(1,
+        AiChatRateLimiter limiter = new AiChatRateLimiter(key -> "1",
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC));
         limiter.check(userId);
         assertEquals(ErrorCode.RATE_001, assertThrows(ApiException.class, () -> limiter.check(userId)).code());

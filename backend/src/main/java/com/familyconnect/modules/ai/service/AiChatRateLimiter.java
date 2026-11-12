@@ -1,7 +1,7 @@
 package com.familyconnect.modules.ai.service;
 
 import com.familyconnect.common.exception.ApiException;
-import org.springframework.beans.factory.annotation.Value;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
@@ -13,13 +13,15 @@ import java.util.UUID;
 
 @Component
 public class AiChatRateLimiter {
-    private final int limit;
+    private final SystemConfigQuery config;
     private final Clock clock;
     private final Map<UUID, ArrayDeque<Instant>> calls = new HashMap<>();
-    public AiChatRateLimiter(@Value("${ai.chat.limit_per_hour:20}") int limit, Clock clock) {
-        this.limit = limit; this.clock = clock;
+    /** Giới hạn đọc từ cấu hình hệ thống ai.chat.limit_per_hour mỗi lần gọi (SCRUM-94, UC-AUTH-12). */
+    public AiChatRateLimiter(SystemConfigQuery config, Clock clock) {
+        this.config = config; this.clock = clock;
     }
     public synchronized void check(UUID userId) {
+        int limit = config.getInt(SystemConfigQuery.AI_CHAT_LIMIT_PER_HOUR);
         Instant now = clock.instant(), cutoff = now.minus(Duration.ofHours(1));
         calls.values().forEach(q -> { while (!q.isEmpty() && !q.peekFirst().isAfter(cutoff)) q.removeFirst(); });
         calls.entrySet().removeIf(e -> e.getValue().isEmpty());

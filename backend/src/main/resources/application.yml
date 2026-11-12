@@ -38,7 +38,8 @@ app:
   jwt:
     # Bắt buộc đặt bằng biến môi trường, tối thiểu 32 ký tự (conventions.md mục 7.2). Không ghi giá trị vào Git.
     secret: ${JWT_SECRET:}
-    # Thời hạn mặc định (auth.md mục 4.2). SCRUM-94 sẽ đọc từ system_config.
+    # Thời hạn mặc định (auth.md mục 4.2). Token cấp khi đăng nhập, làm mới dùng giá trị trong system_config
+    # (auth.access_token_minutes, auth.refresh_token_days; SCRUM-94); hai dòng dưới chỉ là dự phòng của JwtService.
     access-token-minutes: 15
     refresh-token-days: 7
   auth:
