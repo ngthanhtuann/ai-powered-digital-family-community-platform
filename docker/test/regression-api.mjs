@@ -110,6 +110,14 @@ async function main() {
   expect('FILE-03', 'FILE', 'Ảnh > 5 MB: 413 FILE_001',
     await call('POST', `/posts/${post.data?.id}/media`, { token: tM, form: fileForm('lon.png', png(5 * 1024 * 1024 + 1)) }),
     413, 'FILE_001');
+  const comment = await call('POST', `/posts/${post.data?.id}/comments`, { token: tA, body: { content: 'Bình luận hồi quy' } });
+  expect('COM-01', 'FLOW', 'Bình luận bài đăng (FR-COM-02)', comment, 201);
+  const comments = await call('GET', `/posts/${post.data?.id}/comments?page=0&size=20`, { token: tM });
+  record('COM-02', 'FLOW', 'Danh sách bình luận có bình luận vừa thêm', comments.status === 200
+    && (comments.json?.data ?? []).some((c) => c.id === comment.data?.id), `${comments.status} ${comments.json?.meta?.total ?? ''}`);
+  const reaction = await call('POST', `/posts/${post.data?.id}/reactions`, { token: tA, body: { type: 'LOVE' } });
+  record('COM-03', 'FLOW', 'Thả reaction (FR-COM-03)', reaction.status === 200 || reaction.status === 201,
+    `${reaction.status}${reaction.code ? ' ' + reaction.code : ''}`);
   const feed = await call('GET', '/posts?page=0&size=20', { token: tM });
   record('FLOW-12', 'FLOW', 'Bảng tin có bài vừa đăng', feed.status === 200 && feed.json?.data?.some((p) => p.id === post.data?.id),
     String(feed.status));
@@ -118,6 +126,8 @@ async function main() {
     title: 'Sự kiện hồi quy', startAt: '2026-12-31T08:00:00+07:00', location: 'Nhà thờ họ', branchId: null } });
   expect('FLOW-13', 'FLOW', 'Trưởng họ tạo sự kiện', event, 201);
   expect('FLOW-14', 'FLOW', 'Thành viên RSVP', await call('PUT', `/events/${event.data?.id}/rsvp`, { token: tM, body: { rsvpStatus: 'GOING' } }), 200);
+  expect('EVT-01', 'FILE', 'Tải ảnh vào thư viện sự kiện (FR-EVT-04)',
+    await call('POST', `/events/${event.data?.id}/media`, { token: tA, form: fileForm('su-kien.png', png(4096)) }), 201);
 
   const chat = await call('POST', '/ai/chat', { token: tM, body: { question: 'Ai là con của Hồi quy thanhvien?' } });
   record('AI-01', 'AI', 'Chatbot: 200 khi có khóa LLM, 503 AI_001 khi chưa có', chat.status === 200 || (chat.status === 503 && chat.code === 'AI_001'),

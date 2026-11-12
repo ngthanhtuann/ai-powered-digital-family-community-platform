@@ -16,10 +16,11 @@
 | Test tự động backend (`mvn -B verify`) | **426/426 đạt** |
 | Web (`gen:api`, `lint`, `build`) | Đạt |
 | Mobile (`gen:api`, `typecheck`, `lint`, `prettier`, `expo export` Android) | Đạt |
-| Kiểm thử API trên hệ thống chạy thật (`docker/test/regression-api.mjs`) | **49/49 ca đạt** |
+| Kiểm thử API trên hệ thống chạy thật (`docker/test/regression-api.mjs`) | **53/53 ca đạt** |
 | Dữ liệu demo (`docker/seed-demo.ps1`) | Đạt (53 người, bước tự kiểm tra đạt) |
-| Bug mới | **0**. Không có bug Critical hoặc Major |
-| Chưa xác minh | Giao diện 3 cỡ màn hình (UI), AI với LLM thật, đối chiếu từng FR Must (mục 6) |
+| Bug mới | **1 Minor** (SCRUM-102, mục 5). Không có bug Critical hoặc Major |
+| Đối chiếu FR Must (mục 4.3) | 43/46 FR có test đạt; 3 FR còn chờ (lý do ở mục 4.3) |
+| Chưa xác minh | Giao diện 3 cỡ màn hình (UI), AI với LLM thật |
 
 ## 2. Môi trường
 
@@ -92,13 +93,54 @@ node docker/test/regression-api.mjs --api http://localhost:8080/api/v1 --admin-e
 | 3.9 `AUTH` | AUTH-01 đến 08: đăng ký, đăng nhập, sai mật khẩu 401 `AUTH_001`, không hoặc sai token 401 `AUTH_002`, làm mới token, tài khoản khóa 403 `AUTH_003` | `AuthApiIntegrationTest` (gồm 429 `RATE_001`, token hết hạn) | Đạt |
 | 3.10 Thuật toán quan hệ | | `RelationshipCaseCatalogTest`: 153 ca từ bộ ca mẫu SCRUM-42 | Đạt |
 
-Kết quả từng ca của lần chạy cuối có trong đầu ra của kịch bản (49 dòng, 49 "Đạt").
+Kết quả từng ca của lần chạy cuối có trong đầu ra của kịch bản (53 dòng, 53 "Đạt").
+
+### 4.3. Đối chiếu FR Must với test (`test-plan.md` mục 7)
+
+Cả 46 FR trong `srs.md` đều là Must. Cột "Test" ghi lớp test backend (đã chạy, đạt ở mục 3.1) và mã ca trong kịch bản API (mục 4). Đối chiếu bằng endpoint mà test thực sự gọi.
+
+| FR | Test | Trạng thái |
+|---|---|---|
+| FR-AUTH-01 Đăng ký, xác thực | `AuthApiIntegrationTest`; AUTH-01 đến 08 | Đạt |
+| FR-AUTH-02 RBAC | `RbacMatrixIntegrationTest`, `EndpointRolesDocsSyncTest`; PERM-01 đến 03 | Đạt |
+| FR-AUTH-03 Hồ sơ người dùng | `AuthApiIntegrationTest`, `AuthServiceTest`; AUTH-07 | Đạt |
+| FR-AUTH-04 Xác minh thành viên | `JoinRequestApiIntegrationTest`; FLOW-03 đến 06 | Đạt |
+| FR-GEN-01 đến 03 Gia đình, chi, thành viên | `GenealogyApiIntegrationTest`; FLOW-01, 02, 04, 07 | Đạt |
+| FR-GEN-04, 05 Cha mẹ con, hôn nhân | `FamilyTreeApiIntegrationTest`, `RelationshipApiIntegrationTest`; FLOW-08 | Đạt |
+| FR-GEN-06 Cây gia phả | `FamilyTreeApiIntegrationTest`; FLOW-10 | Đạt |
+| FR-GEN-07 Hiển thị đường quan hệ | API trả đường đi (`KinshipApiIntegrationTest`); phần tô sáng trên giao diện chưa kiểm tra | Đạt phần API; giao diện Chưa xác minh |
+| FR-GEN-08 Truy vấn quan hệ | `RelationshipCaseCatalogTest` (153 ca), `KinshipApiIntegrationTest`; FLOW-09 | Đạt |
+| FR-COM-01 Bài đăng | `CommunityServiceTest`, `CommunityControllerTest`; FLOW-11, 12, API-03 | Đạt |
+| FR-COM-02 Bình luận | Kịch bản: COM-01, 02 (thêm và đọc bình luận); `AdminApiIntegrationTest` (kiểm duyệt) | Đạt |
+| FR-COM-03 Reaction | `CommunityControllerTest`; COM-03 | Đạt |
+| FR-COM-04 Chia sẻ ảnh | `MediaApiIntegrationTest`, `MediaStorageTest`; FILE-01 đến 03 | Đạt |
+| FR-COM-05 Thông báo dòng họ | `AnnouncementNotificationApiIntegrationTest` | Đạt |
+| FR-EVT-01 đến 03 Sự kiện, RSVP, người tham dự | `EventApiIntegrationTest`, `EventServiceTest`; FLOW-13, 14 | Đạt |
+| FR-EVT-04 Thư viện ảnh sự kiện | Kịch bản: EVT-01 (tải ảnh vào sự kiện) | Đạt |
+| FR-EVT-05 Nhắc sự kiện | `EventReminderSchedulerTest`, `NotificationServiceTest` | Đạt |
+| FR-DIR-01 đến 04 Danh bạ, hồ sơ nghề, học vấn, tìm kiếm | `DirectoryApiIntegrationTest`, `DirectoryServiceTest`, `DirectoryControllerTest` | Đạt |
+| FR-HER-01, 02 Tài liệu, câu chuyện | `HeritageServiceTest`, `HeritageControllerTest` | Đạt |
+| FR-HER-03 Người tiêu biểu | `OutstandingMemberApiIntegrationTest` | Đạt |
+| FR-HER-04, 05 Ảnh, lưu trữ số (PDF) | `MediaApiIntegrationTest`, `MediaStorageTest`, `HeritageControllerTest` | Đạt |
+| FR-AI-01 Tìm kiếm ngữ nghĩa | `SemanticSearchApiIntegrationTest`, `SemanticSearchServiceTest` (LLM giả lập) | Đạt; với Gemini thật Chưa xác minh |
+| FR-AI-02 Trợ lý AI | `AiChatApiIntegrationTest`, `AiChatGroundingTest` (LLM giả lập); AI-01, 02 | Đạt; với Gemini thật Chưa xác minh |
+| FR-AI-03 Giải thích quan hệ | `RelationshipExplanationServiceTest` | Đạt |
+| FR-AI-04 Tóm tắt | `AiSummaryApiIntegrationTest`, `AiSummaryServiceTest` | Đạt |
+| FR-AI-05 Gợi ý | Chưa có: SCRUM-70 chưa làm | **Chưa có test** |
+| FR-DSH-01 đến 04 Thống kê | `DashboardApiIntegrationTest` (một endpoint thống kê chung, phạm vi theo chi) | Đạt |
+| FR-DSH-05 Báo cáo | Xuất CSV: `DashboardApiIntegrationTest`. PDF: SCRUM-95 chưa làm | Đạt phần CSV; PDF **chưa có** |
+| FR-ADM-01, 02 Người dùng, kiểm duyệt | `AdminApiIntegrationTest`, `AdminConcurrencyIntegrationTest`; ADM-01, 02 | Đạt |
+| FR-ADM-03 Nhật ký kiểm toán | `AdminApiIntegrationTest`; NFR-11 | Đạt |
+| FR-ADM-04 Sao lưu, khôi phục | `BackupServiceTest` | Đạt |
+| FR-ADM-05 Cấu hình hệ thống | `SystemConfigApiIntegrationTest` trong PR #116 (431/431 đạt) | Đạt trên PR #116, chưa vào `develop` |
+
+**Kết luận mục 7 của test-plan:** 43/46 FR có test đạt; FR-ADM-05 chờ merge PR #116; FR-AI-05 và phần PDF của FR-DSH-05 chưa có vì task SCRUM-70, SCRUM-95 chưa làm.
 
 ## 5. Bug
 
 | Mã | Mô tả | Mức độ | Trạng thái |
 |---|---|---|---|
-| - | Không phát hiện bug mới trong lần hồi quy này | - | - |
+| SCRUM-102 | [Gia phả] Tìm thành viên theo họ tên (`GET /families/{id}/persons?q=`) không khớp khi gõ không dấu; Danh bạ và Admin đã hỗ trợ (`unaccent`) | Minor | To Do, giao TV2 (subtask của SCRUM-66) |
 
 Lần chạy đầu của kịch bản có 1 ca không đạt (IDOR-04 trả 404). Nguyên nhân nằm ở **kịch bản**: ca xóa bài chạy trước nên ảnh không còn. Sau khi sửa kịch bản, ca này trả 403 `PERM_001` đúng mong đợi. Không phải lỗi hệ thống nên không tạo bug.
 
@@ -108,7 +150,7 @@ Lần chạy đầu của kịch bản có 1 ca không đạt (IDOR-04 trả 404
 |---|---|---|
 | `UI`: các màn hình web ở 360, 768, 1440 px | Chưa chạy trên trình duyệt | Chủ module kiểm tra trong SCRUM-66, 67 (sửa bug, responsive) |
 | AI với LLM thật (trả lời đúng, "không tìm thấy", chỉ dữ liệu gia đình người hỏi) | Máy thử chưa có `GEMINI_API_KEY` | Đo trong SCRUM-69 (đánh giá AI) |
-| Đối chiếu từng FR Must với ít nhất một ca đạt (`test-plan.md` mục 7) | Chưa lập bảng đối chiếu FR với test | Bổ sung vào báo cáo trước khi kéo SCRUM-65 sang Done |
+| FR-AI-05, PDF của FR-DSH-05 | SCRUM-70, SCRUM-95 chưa làm | Viết test khi hai task này xong |
 | NFR-09 (`docker compose up` máy sạch), NFR-10 (2 bản backend) | Thuộc SCRUM-68, 77, 96, chưa làm | Hồi quy lại sau khi các task này merge |
 | PR #116 (SCRUM-94, cấu hình hệ thống) | Chưa merge vào `develop` lúc chạy | Đã có test riêng: 431/431 đạt. Chạy lại kịch bản này sau khi merge |
 
