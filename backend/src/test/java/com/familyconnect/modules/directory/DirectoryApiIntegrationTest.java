@@ -157,6 +157,12 @@ class DirectoryApiIntegrationTest {
         call(get("/api/v1/directory/members").queryParam("keyword", "%"), token, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.total").value(0));
+        // Nghề và tỉnh/thành cũng so không dấu.
+        call(get("/api/v1/directory/members").queryParam("job", "KY SU CAU").queryParam("location", "ha noi"),
+                token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(father.toString()));
     }
 
     @Test

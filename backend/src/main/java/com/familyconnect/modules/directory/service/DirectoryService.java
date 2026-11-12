@@ -75,7 +75,7 @@ public class DirectoryService {
         String normalizedJob = blankToNull(job);
         String normalizedLocation = blankToNull(location);
         Set<UUID> matchingPeople = normalizedJob == null ? null
-                : professionRepository.findPersonIdsByJobTitle(familyId, normalizedJob).stream().collect(Collectors.toSet());
+                : professionRepository.findPersonIdsByJobTitle(familyId, containsPattern(normalizedJob)).stream().collect(Collectors.toSet());
         boolean excludeChildren = membership.role() == EffectiveRole.MEMBER
                 && (normalizedJob != null || normalizedLocation != null);
         LocalDate today = LocalDate.now(clock);
@@ -228,6 +228,11 @@ public class DirectoryService {
             throw new ApiException(ErrorCode.PERM_001);
         }
         return membership.familyId();
+    }
+
+    /** Nghề so "chứa", không dấu; %, _ gõ vào là ký tự thường (escape "!" như ProfessionProfileRepository). */
+    private static String containsPattern(String value) {
+        return "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 
     private void validateSearch(String keyword, String job, String location,
