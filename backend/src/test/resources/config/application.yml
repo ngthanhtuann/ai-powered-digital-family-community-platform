@@ -1,5 +1,9 @@
 # Chỉ dùng khi chạy test: Spring Boot nạp thêm file này (classpath:/config/) đè lên application.yml chính.
-# Khóa dưới đây chỉ để ký token trong test, không dùng ở môi trường thật.
+# Khóa và mật khẩu DB dưới đây chỉ dùng cho test (CI dùng PostgreSQL tạm với tài khoản này), không dùng ở môi trường thật.
+# application.yml chính không còn mật khẩu mặc định (SCRUM-60), nên test cần giá trị riêng ở đây.
+spring:
+  datasource:
+    password: ${SPRING_DATASOURCE_PASSWORD:familyconnect}
 app:
   jwt:
     secret: test-only-secret-for-unit-tests-0123456789abcdef
