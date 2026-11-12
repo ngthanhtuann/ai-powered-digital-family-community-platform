@@ -1,7 +1,7 @@
 package com.familyconnect.modules.auth.service;
 
-import com.familyconnect.common.security.JwtProperties;
 import com.familyconnect.common.security.JwtService;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.modules.auth.dto.AuthResponses.TokenData;
 import com.familyconnect.modules.auth.entity.RefreshToken;
 import com.familyconnect.modules.auth.repository.RefreshTokenRepository;
@@ -31,25 +31,29 @@ public class TokenIssuer {
 
     private final JwtService jwtService;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final Duration refreshTokenTtl;
+    private final SystemConfigQuery config;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
     public TokenIssuer(JwtService jwtService, RefreshTokenRepository refreshTokenRepository,
-                       JwtProperties properties, Clock clock) {
+                       SystemConfigQuery config, Clock clock) {
         this.jwtService = jwtService;
         this.refreshTokenRepository = refreshTokenRepository;
-        this.refreshTokenTtl = Duration.ofDays(properties.refreshTokenDays());
+        this.config = config;
         this.clock = clock;
     }
 
-    /** Gọi trong giao dịch của service để refresh token được lưu cùng lúc. */
+    /**
+     * Gọi trong giao dịch của service để refresh token được lưu cùng lúc. Thời hạn hai token đọc từ cấu hình hệ thống
+     * (auth.access_token_minutes, auth.refresh_token_days; SCRUM-94), áp dụng cho token cấp sau khi đổi.
+     */
     public TokenData issue(UUID userId, List<String> roles) {
-        String accessToken = jwtService.createAccessToken(userId, roles);
+        Duration accessTtl = Duration.ofMinutes(config.getInt(SystemConfigQuery.AUTH_ACCESS_TOKEN_MINUTES));
+        String accessToken = jwtService.createAccessToken(userId, roles, accessTtl);
         String refreshToken = newRefreshToken();
-        OffsetDateTime expiresAt = now().plus(refreshTokenTtl);
+        OffsetDateTime expiresAt = now().plus(Duration.ofDays(config.getInt(SystemConfigQuery.AUTH_REFRESH_TOKEN_DAYS)));
         refreshTokenRepository.save(new RefreshToken(userId, hash(refreshToken), expiresAt));
-        return TokenData.bearer(accessToken, refreshToken, jwtService.accessTokenTtlSeconds());
+        return TokenData.bearer(accessToken, refreshToken, accessTtl.toSeconds());
     }
 
     public OffsetDateTime now() {

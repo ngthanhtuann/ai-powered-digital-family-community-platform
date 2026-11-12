@@ -13,6 +13,7 @@ import com.familyconnect.modules.ai.repository.EmbeddingChunkRepository.ChatChun
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,17 +43,19 @@ public class ChatService {
     private final double minimumScore;
     private final int retentionDays;
     private final boolean enabled;
+    private final SystemConfigQuery config;
     private final Map<String, CachedAnswer> cache = new ConcurrentHashMap<>();
 
     public ChatService(EmbeddingPipelineService embeddings, ChatLanguageModel model,
                        EmbeddingChunkRepository chunks, ChatRepository chats, MembershipQuery membership,
                        GenealogyQuery genealogy, AiChatRateLimiter limiter, AuditLogger audit, Clock clock,
+                       SystemConfigQuery config,
                        @Value("${ai.chat.top_k:5}") int topK,
                        @Value("${ai.chat.minimum_score:0.55}") double minimumScore,
                        @Value("${ai.chat.retention_days:30}") int retentionDays,
                        @Value("${ai.chat.enabled:true}") boolean enabled) {
         this.embeddings=embeddings; this.model=model; this.chunks=chunks; this.chats=chats; this.membership=membership;
-        this.genealogy=genealogy; this.limiter=limiter; this.audit=audit; this.clock=clock;
+        this.genealogy=genealogy; this.limiter=limiter; this.audit=audit; this.clock=clock; this.config=config;
         this.topK=topK; this.minimumScore=minimumScore; this.retentionDays=retentionDays; this.enabled=enabled;
     }
 
@@ -72,7 +75,8 @@ public class ChatService {
             if (request.familyId() != null && !familyId.equals(request.familyId())) throw new ApiException(ErrorCode.PERM_001);
             membership.requireFamilyAccess(user.id(), familyId);
         }
-        if (!enabled) throw new ApiException(ErrorCode.AI_002);
+        // Biến môi trường là công tắc lúc triển khai; cấu hình hệ thống là công tắc của quản trị (SCRUM-94).
+        if (!enabled || !config.getBoolean(SystemConfigQuery.AI_CHAT_ENABLED)) throw new ApiException(ErrorCode.AI_002);
         UUID sessionId = request.sessionId();
         // Kiểm phiên trước hạn mức: gửi phiên của người khác không làm mất lượt hỏi (ai.md UC-AI-02 1c).
         if (sessionId != null && !chats.ownsActiveSession(sessionId, user.id(), familyId)) throw new ApiException(ErrorCode.PERM_001);

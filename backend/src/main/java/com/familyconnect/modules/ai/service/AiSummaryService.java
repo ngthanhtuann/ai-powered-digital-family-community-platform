@@ -8,6 +8,7 @@ import com.familyconnect.modules.ai.api.SummarySource.SummaryText;
 import com.familyconnect.modules.ai.dto.SummaryRequest;
 import com.familyconnect.modules.ai.dto.SummaryResponse;
 import com.familyconnect.modules.ai.repository.AiSummaryCache;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.HashMap;
@@ -26,19 +27,22 @@ public class AiSummaryService {
     private final SummaryLlm llm;
     private final SummaryRateLimiter limiter;
     private final boolean enabled;
+    private final SystemConfigQuery config;
     private final int maxInput;
 
     public AiSummaryService(List<SummarySource> sources, AiSummaryCache cache,
                             ContentHashService hashes, SummaryLlm llm, SummaryRateLimiter limiter,
+                            SystemConfigQuery config,
                             @Value("${ai.summary.enabled:true}") boolean enabled,
                             @Value("${ai.summary.max_input_chars:30000}") int maxInput) {
         sources.forEach(source -> source.sourceTypes().forEach(type -> this.sources.put(type, source)));
-        this.cache = cache; this.hashes = hashes;
+        this.cache = cache; this.hashes = hashes; this.config = config;
         this.llm = llm; this.limiter = limiter; this.enabled = enabled; this.maxInput = maxInput;
     }
 
     public SummaryResponse summarize(AuthenticatedUser user, SummaryRequest request) {
-        if (!enabled) throw new ApiException(ErrorCode.AI_002);
+        // Biến môi trường là công tắc lúc triển khai; cấu hình hệ thống là công tắc của quản trị (SCRUM-94).
+        if (!enabled || !config.getBoolean(SystemConfigQuery.AI_SUMMARY_ENABLED)) throw new ApiException(ErrorCode.AI_002);
         SummarySource owner = sources.get(request.sourceType());
         if (owner == null) throw new ApiException(ErrorCode.VALID_001);
         // Module sở hữu kiểm quyền đọc (403/404) trước khi AI nhận văn bản (BR-AI-02).

@@ -23,6 +23,7 @@ import {
   memberRoleLabel,
   type ReportStatus,
   type ReviewAction,
+  type SystemConfig,
   type UserStatus,
 } from '@/services/admin';
 
@@ -402,6 +403,7 @@ const ACTION_LABEL: Record<string, string> = {
   CONTENT_CREATED: 'Đăng nội dung', CONTENT_UPDATED: 'Sửa nội dung',
   CONTENT_HIDDEN: 'Ẩn nội dung', REPORT_DISMISSED: 'Bỏ qua báo cáo', CONTENT_RESTORED: 'Khôi phục nội dung',
   BACKUP_CREATED: 'Tạo sao lưu', RESTORE_COMPLETED: 'Khôi phục dữ liệu', AI_QUERY: 'Hỏi trợ lý AI',
+  CONFIG_CHANGED: 'Đổi cấu hình hệ thống',
   FAMILY_CREATED: 'Tạo gia đình', FAMILY_UPDATED: 'Sửa gia đình', FAMILY_DELETED: 'Xóa gia đình',
   BRANCH_CREATED: 'Tạo chi', BRANCH_UPDATED: 'Sửa chi', BRANCH_DELETED: 'Xóa chi',
   PERSON_CREATED: 'Thêm người', PERSON_UPDATED: 'Sửa người', PERSON_DELETED: 'Xóa người',
@@ -514,6 +516,99 @@ function AuditSection() {
   );
 }
 
+/** Ô chọn cho khóa có tập giá trị cố định (auth.md mục 5.3); khóa khác dùng ô nhập. */
+const CONFIG_CHOICES: Record<string, { value: string; label: string }[]> = {
+  'membership.approval_mode': [
+    { value: 'MANUAL', label: 'Thủ công (trưởng họ, trưởng chi duyệt)' },
+    { value: 'AUTO', label: 'Tự động duyệt ngay' },
+  ],
+};
+const BOOLEAN_CHOICES = [{ value: 'true', label: 'Bật' }, { value: 'false', label: 'Tắt' }];
+
+const configSchema = z.object({ value: z.string().trim().min(1, 'Không được để trống').max(500, 'Tối đa 500 ký tự') });
+type ConfigValues = z.infer<typeof configSchema>;
+
+/** Một tham số: đổi giá trị hoặc khôi phục mặc định; khoảng hợp lệ do backend kiểm tra (400 VALID_001). */
+function ConfigRow({ config }: { config: SystemConfig }) {
+  const cache = useQueryClient();
+  const [saved, setSaved] = useState('');
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ConfigValues>({
+    resolver: zodResolver(configSchema), values: { value: config.value },
+  });
+  const save = useMutation({
+    mutationFn: (value: string) => adminApi.updateConfig(config.key, value),
+    onSuccess: async (updated) => {
+      reset({ value: updated.value });
+      setSaved('Đã lưu, có hiệu lực trong vòng 1 phút.');
+      await cache.invalidateQueries({ queryKey: ['admin-configs'] });
+    },
+  });
+  const draft = watch('value');
+  const choices = config.valueType === 'BOOLEAN' ? BOOLEAN_CHOICES : CONFIG_CHOICES[config.key];
+  const fieldId = `config-${config.key}`;
+  return (
+    <li className="rounded-card border border-border p-4">
+      <form className="grid gap-3 lg:grid-cols-[1fr_minmax(0,260px)_auto] lg:items-end" noValidate
+        onSubmit={handleSubmit((v) => { setSaved(''); save.mutate(v.value); })}>
+        <div className="min-w-0 text-body">
+          {/* Ô nhập chữ đã có nhãn riêng của TextField: mô tả chỉ là nhãn khi đi với ô chọn, tránh hai nhãn một ô. */}
+          {choices
+            ? <label htmlFor={fieldId} className="font-semibold">{config.description}</label>
+            : <p className="font-semibold">{config.description}</p>}
+          <p className="break-words text-caption text-text-secondary">
+            {config.key} · Mặc định: {config.defaultValue} · Cập nhật: {dateText(config.updatedAt)}
+          </p>
+        </div>
+        {choices ? (
+          <select id={fieldId} className={selectClass} disabled={save.isPending} {...register('value')}>
+            {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        ) : (
+          <TextField id={fieldId} label="Giá trị" inputMode={config.valueType === 'INTEGER' ? 'numeric' : undefined}
+            maxLength={500} disabled={save.isPending} error={errors.value?.message} {...register('value')} />
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" fullWidth={false} loading={save.isPending}
+            disabled={draft.trim() === config.value}>Lưu</Button>
+          <Button fullWidth={false} variant="secondary" disabled={save.isPending || config.value === config.defaultValue}
+            onClick={() => { setSaved(''); save.mutate(config.defaultValue); }}>Khôi phục mặc định</Button>
+        </div>
+      </form>
+      {save.isError && <p role="alert" className="mt-2 text-body text-error">{errorText(save.error)}</p>}
+      {saved && <p role="status" className="mt-2 text-body text-success">{saved}</p>}
+    </li>
+  );
+}
+
+/** UC-AUTH-12 (SCRUM-94): tham số hệ thống nhóm theo mục. Khóa bí mật chỉ ở biến môi trường, không hiện ở đây. */
+function ConfigSection() {
+  const configs = useQuery({ queryKey: ['admin-configs'], queryFn: () => adminApi.configs() });
+  const groups = new Map<string, SystemConfig[]>();
+  configs.data?.items.forEach((c) => groups.set(c.group, [...(groups.get(c.group) ?? []), c]));
+  return (
+    <section id="cau-hinh" aria-labelledby="cau-hinh-title"
+      className="scroll-mt-4 space-y-4 rounded-card border border-border bg-surface p-5">
+      <h2 id="cau-hinh-title" className="text-section-title">Cấu hình hệ thống</h2>
+      <p className="text-body text-text-secondary">
+        Thay đổi áp dụng trong vòng 1 phút, không cần khởi động lại. Mọi thay đổi được ghi vào nhật ký kiểm toán.
+      </p>
+      {configs.isPending && <p className="text-body text-text-secondary">Đang tải cấu hình...</p>}
+      {configs.isError && <p role="alert" className="text-body text-error">{errorText(configs.error)}</p>}
+      {configs.isSuccess && configs.data.items.length === 0 && (
+        <p className="text-body text-text-secondary">Chưa có tham số cấu hình.</p>
+      )}
+      {[...groups.entries()].map(([group, items]) => (
+        <div key={group} className="space-y-3">
+          <h3 className="text-label text-text-secondary">{group}</h3>
+          <ul className="space-y-3">
+            {items.map((c) => <ConfigRow key={c.key} config={c} />)}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 /** Trang /admin (SCRUM-50): chỉ SYSTEM_ADMIN; backend vẫn kiểm quyền ở mọi API (PERM_001). */
 export default function AdminPage() {
   const access = useHeritageAccess();
@@ -524,7 +619,7 @@ export default function AdminPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
         <h1 className="text-page-title">Quản trị hệ thống</h1>
-        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng, kiểm duyệt nội dung, sao lưu dữ liệu và xem nhật ký kiểm toán.</p>
+        <p className="mt-1 text-body text-text-secondary">Quản lý người dùng, kiểm duyệt nội dung, sao lưu dữ liệu, cấu hình hệ thống và xem nhật ký kiểm toán.</p>
       </header>
       <AccessState loading={loading} error={error} />
       {access.profile.isSuccess && !access.isSystemAdmin && (
@@ -537,6 +632,7 @@ export default function AdminPage() {
           <UsersSection myId={access.profile.data?.id} />
           <ModerationSection />
           <BackupSection />
+          <ConfigSection />
           <AuditSection />
         </>
       )}
