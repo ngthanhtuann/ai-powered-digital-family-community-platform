@@ -100,7 +100,7 @@ public class FamilyTreeRepository {
     /** Thế hệ theo hàm chung GenerationSql (genealogy.md mục 6.8). */
     public Map<UUID, Integer> findGenerations(UUID familyId, Collection<UUID> ids) {
         Map<UUID, Integer> generations = new HashMap<>();
-        jdbc.query(GenerationSql.CTE + "SELECT person_id, generation FROM generations WHERE person_id IN (:ids)",
+        jdbc.query(GenerationSql.CTE_FOR_IDS + "SELECT person_id, generation FROM generations WHERE person_id IN (:ids)",
                 new MapSqlParameterSource().addValue("familyId", familyId).addValue("ids", ids), rs -> {
                     generations.put(rs.getObject("person_id", UUID.class), rs.getInt("generation"));
                 });

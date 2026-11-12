@@ -130,5 +130,5 @@ Chỉ dùng dữ liệu mẫu. Bộ tài khoản tối thiểu: một khách; m�
 
 ## 8. Câu hỏi còn mở
 
-- [ ] k6 hay JMeter: TV2 chọn khi làm SCRUM-59.
+- [x] k6 hay JMeter: chọn **k6**, chạy bằng Docker image `grafana/k6` nên không cần cài (SCRUM-59, `performance-6-04.md`).
 - [ ] Lưu bộ test case của từng module ở đâu: chốt ở họp DOCS GATE.
