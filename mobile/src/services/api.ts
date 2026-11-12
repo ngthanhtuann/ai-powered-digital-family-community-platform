@@ -98,6 +98,13 @@ function toApiError(error: AxiosError<ApiErrorBody>): ApiError {
     );
   }
   if (!error.response) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return new ApiError(
+        'TIMEOUT_ERROR',
+        'Yêu cầu mất quá nhiều thời gian. Kiểm tra mạng rồi thử lại.',
+        0,
+      );
+    }
     return new ApiError(
       'NETWORK_ERROR',
       'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.',
@@ -154,12 +161,14 @@ async function request<T>(config: AxiosRequestConfig): Promise<T> {
 }
 
 export const api = {
-  get: <T>(url: string, params?: object) => request<T>({ method: 'GET', url, params }),
+  get: <T>(url: string, params?: object, options?: { timeout?: number }) =>
+    request<T>({ method: 'GET', url, params, ...options }),
   list: async <T>(url: string, params?: PageParams & Record<string, unknown>) => {
     const res = await client.request<ApiListSuccess<T>>({ method: 'GET', url, params });
     return { items: res.data.data, meta: res.data.meta };
   },
-  post: <T>(url: string, data?: unknown) => request<T>({ method: 'POST', url, data }),
+  post: <T>(url: string, data?: unknown, options?: { timeout?: number }) =>
+    request<T>({ method: 'POST', url, data, ...options }),
   put: <T>(url: string, data?: unknown) => request<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => request<T>({ method: 'PATCH', url, data }),
   delete: (url: string) => request<null>({ method: 'DELETE', url }),
