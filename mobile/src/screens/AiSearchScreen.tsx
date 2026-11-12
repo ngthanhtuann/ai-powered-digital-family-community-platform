@@ -22,6 +22,7 @@ const GROUPS: { title: string; types: AiSearchResult['sourceType'][] }[] = [
   { title: 'Thành viên', types: ['PERSON'] },
   { title: 'Bài đăng', types: ['POST'] },
   { title: 'Tài liệu và tư liệu', types: ['DOCUMENT', 'STORY', 'EVENT'] },
+  { title: 'Ảnh di sản', types: ['PHOTO'] },
 ];
 
 export function AiSearchScreen() {

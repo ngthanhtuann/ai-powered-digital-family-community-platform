@@ -45,6 +45,8 @@ export function AiChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const [retryQuestion, setRetryQuestion] = useState<string | null>(null);
   const listRef = useRef<FlatList<Message>>(null);
+  // Tăng khi bấm "Cuộc trò chuyện mới" để bỏ câu trả lời của cuộc cũ còn đang chờ (giống bản web).
+  const conversationVersion = useRef(0);
 
   useEffect(() => {
     if (messages.length)
@@ -60,8 +62,10 @@ export function AiChatScreen() {
     setError(null);
     setPending(true);
     setRetryQuestion(value);
+    const version = conversationVersion.current;
     try {
       const reply = await aiApi.chat(value, sessionId);
+      if (version !== conversationVersion.current) return;
       setSessionId(reply.sessionId ?? null);
       setMessages((current) => [
         ...current,
@@ -74,6 +78,7 @@ export function AiChatScreen() {
       ]);
       setRetryQuestion(null);
     } catch (cause) {
+      if (version !== conversationVersion.current) return;
       const message =
         cause instanceof ApiError
           ? cause.message
@@ -81,11 +86,13 @@ export function AiChatScreen() {
       setError(message);
       setMessages((current) => current.filter((item) => item.id !== userMessage.id));
     } finally {
-      setPending(false);
+      if (version === conversationVersion.current) setPending(false);
     }
   }
 
   function newConversation() {
+    conversationVersion.current += 1;
+    setPending(false);
     setMessages([]);
     setSessionId(null);
     setError(null);
