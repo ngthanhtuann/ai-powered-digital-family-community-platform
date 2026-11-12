@@ -548,14 +548,14 @@ function ConfigRow({ config }: { config: SystemConfig }) {
   const fieldId = `config-${config.key}`;
   return (
     <li className="rounded-card border border-border p-4">
-      <form className="grid gap-3 md:grid-cols-[1fr_minmax(0,260px)_auto] md:items-end" noValidate
+      <form className="grid gap-3 lg:grid-cols-[1fr_minmax(0,260px)_auto] lg:items-end" noValidate
         onSubmit={handleSubmit((v) => { setSaved(''); save.mutate(v.value); })}>
         <div className="min-w-0 text-body">
           {/* Ô nhập chữ đã có nhãn riêng của TextField: mô tả chỉ là nhãn khi đi với ô chọn, tránh hai nhãn một ô. */}
           {choices
             ? <label htmlFor={fieldId} className="font-semibold">{config.description}</label>
             : <p className="font-semibold">{config.description}</p>}
-          <p className="break-all text-caption text-text-secondary">
+          <p className="break-words text-caption text-text-secondary">
             {config.key} · Mặc định: {config.defaultValue} · Cập nhật: {dateText(config.updatedAt)}
           </p>
         </div>
