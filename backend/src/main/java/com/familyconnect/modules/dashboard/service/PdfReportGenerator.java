@@ -157,9 +157,11 @@ public class PdfReportGenerator {
                 String label = truncate(row.get(0), regular, 9, labelWidth - 8);
                 long value = number(row.get(1));
                 float barWidth = max == 0 ? 0 : (chartWidth - 35) * value / max;
-                stream.setNonStrokingColor(41, 106, 152);
-                stream.addRect(MARGIN + labelWidth, y - 3, barWidth, 10);
-                stream.fill();
+                if (barWidth > 0) {
+                    stream.setNonStrokingColor(41, 106, 152);
+                    stream.addRect(MARGIN + labelWidth, y - 3, barWidth, 10);
+                    stream.fill();
+                }
                 drawText(label, regular, 9, MARGIN, y);
                 drawText(Long.toString(value), regular, 9, MARGIN + labelWidth + barWidth + 5, y);
                 y -= 20;
