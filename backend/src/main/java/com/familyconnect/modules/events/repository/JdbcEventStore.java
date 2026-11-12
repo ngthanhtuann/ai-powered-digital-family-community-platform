@@ -96,6 +96,32 @@ public class JdbcEventStore implements EventStore {
                 " ORDER BY start_at, id LIMIT :limit",args,EVENT_MAPPER);
     }
 
+    @Override public List<ReportEvent> reportEvents(UUID family, boolean allBranches,
+                                                    List<UUID> readableBranches,
+                                                    OffsetDateTime fromInclusive,
+                                                    OffsetDateTime toExclusive) {
+        if (!allBranches && readableBranches.isEmpty()) return List.of();
+        var args = p("family",family,"from",fromInclusive,"to",toExclusive);
+        var where = new StringBuilder(" WHERE e.family_id=:family AND e.deleted_at IS NULL " +
+                "AND e.hidden_at IS NULL AND e.start_at >= :from AND e.start_at < :to");
+        if (!allBranches) {
+            where.append(" AND (e.branch_id IS NULL OR e.branch_id IN (:visible))");
+            args.addValue("visible",readableBranches);
+        }
+        return jdbc.query("""
+                SELECT e.id, e.title, e.start_at,
+                       COUNT(*) FILTER (WHERE p.rsvp_status='GOING') AS going,
+                       COUNT(*) FILTER (WHERE p.rsvp_status='NOT_GOING') AS not_going,
+                       COUNT(*) FILTER (WHERE p.rsvp_status='MAYBE') AS maybe
+                FROM event e
+                LEFT JOIN event_participant p ON p.event_id=e.id AND p.deleted_at IS NULL
+                """ + where + """
+                GROUP BY e.id, e.title, e.start_at
+                ORDER BY e.start_at, e.id
+                """, args, (rs,n) -> new ReportEvent(id(rs,"id"),rs.getString("title"),
+                at(rs,"start_at"),rs.getLong("going"),rs.getLong("not_going"),rs.getLong("maybe")));
+    }
+
     @Override public Event updateEvent(UUID id, UUID branch, String title, String description,
                                        OffsetDateTime start, OffsetDateTime end, String location, UUID actor) {
         return jdbc.queryForObject("UPDATE event SET branch_id=:branch,title=:title,description=:desc," +

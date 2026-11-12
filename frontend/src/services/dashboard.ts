@@ -8,6 +8,7 @@ type GenealogySchemas = GenealogyComponents['schemas'];
 export type DashboardStatistics = Schemas['DashboardStatisticsData'];
 export type DashboardFamily = GenealogySchemas['Family'];
 export type DashboardBranch = GenealogySchemas['Branch'];
+export type DashboardReportType = 'GENEALOGY' | 'COMMUNITY' | 'EVENTS';
 
 async function allPages<T>(url: string, params: Record<string, unknown> = {}): Promise<T[]> {
   const pageSize = 100;
@@ -31,6 +32,18 @@ export const dashboardApi = {
     if (params.familyId) query.set('familyId', params.familyId);
     if (params.branchId) query.set('branchId', params.branchId);
     return api.download(`/dashboard/reports/members${query.size ? `?${query.toString()}` : ''}`);
+  },
+  exportPdf: (params: {
+    reportType: DashboardReportType;
+    familyId?: string;
+    branchId?: string;
+    from: string;
+    to: string;
+  }) => {
+    const query = new URLSearchParams({ from: params.from, to: params.to });
+    if (params.familyId) query.set('familyId', params.familyId);
+    if (params.branchId) query.set('branchId', params.branchId);
+    return api.download(`/dashboard/reports/${params.reportType}/pdf?${query.toString()}`);
   },
   families: () => allPages<DashboardFamily>('/families', { sort: 'name,asc' }),
   branches: (familyId: string) =>

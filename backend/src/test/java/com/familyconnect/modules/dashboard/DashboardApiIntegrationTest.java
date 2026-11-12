@@ -1,7 +1,11 @@
 package com.familyconnect.modules.dashboard;
 
+import com.familyconnect.modules.dashboard.service.PdfReportGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,9 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
@@ -43,6 +52,9 @@ class DashboardApiIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private PdfReportGenerator pdfReportGenerator;
 
     private String newUser() throws Exception {
         String email = "dashboard." + UUID.randomUUID() + "@example.com";
@@ -78,6 +90,12 @@ class DashboardApiIntegrationTest {
 
     private UUID createdId(ResultActions result) throws Exception {
         return UUID.fromString(data(result).get("id").asText());
+    }
+
+    private String pdfText(byte[] pdf) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            return new PDFTextStripper().getText(document);
+        }
     }
 
     private UUID person(UUID familyId, UUID branchId, UUID actorId, String name, String gender,
@@ -248,5 +266,150 @@ class DashboardApiIntegrationTest {
         call(get("/api/v1/dashboard/reports/members"), token(memberEmail), null)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("PERM_001"));
+    }
+
+    @Test
+    void pdfReportsAreScopedAggregatedAuditedAndPaginated() throws Exception {
+        String ownerEmail = newUser();
+        String ownerToken = token(ownerEmail);
+        UUID ownerId = userId(ownerEmail);
+        UUID familyId = createdId(call(post("/api/v1/families"), ownerToken, Map.of("name", "Dòng họ PDF"))
+                .andExpect(status().isCreated()));
+        UUID branchA = createdId(call(post("/api/v1/families/" + familyId + "/branches"), ownerToken,
+                Map.of("name", "Chi A")).andExpect(status().isCreated()));
+        UUID branchB = createdId(call(post("/api/v1/families/" + familyId + "/branches"), ownerToken,
+                Map.of("name", "Chi B")).andExpect(status().isCreated()));
+
+        String branchAdminEmail = newUser();
+        UUID branchAdminId = userId(branchAdminEmail);
+        jdbc.update("""
+                INSERT INTO member_verification(user_id,family_id,branch_id,role,status)
+                VALUES (?,?,?,'BRANCH_ADMIN','APPROVED')
+                """, branchAdminId, familyId, branchA);
+        String branchAdminToken = token(branchAdminEmail);
+
+        String memberEmail = newUser();
+        UUID memberId = userId(memberEmail);
+        jdbc.update("""
+                INSERT INTO member_verification(user_id,family_id,branch_id,role,status)
+                VALUES (?,?,?,'MEMBER','APPROVED')
+                """, memberId, familyId, branchA);
+        String memberToken = token(memberEmail);
+
+        String guestEmail = newUser();
+        UUID guestId = userId(guestEmail);
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDate from = today.minusDays(7);
+        OffsetDateTime activityAt = from.plusDays(2).atTime(12, 0)
+                .atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toOffsetDateTime();
+
+        UUID privatePerson = person(familyId, branchA, ownerId, "Tên thành viên riêng tư", "MALE",
+                LocalDate.of(1980, 5, 1), null, "Hà Nội", false);
+        jdbc.update("UPDATE person SET current_address='DIA_CHI_KHONG_DUOC_XUAT' WHERE id=?", privatePerson);
+        UUID postId = jdbc.queryForObject("""
+                INSERT INTO post(family_id,branch_id,content,type,created_by,created_at)
+                VALUES (?,?,?,'POST',?,?) RETURNING id
+                """, UUID.class, familyId, branchA, "Nội dung không đưa vào báo cáo", ownerId, activityAt);
+        jdbc.update("""
+                INSERT INTO comment(post_id,content,created_by,created_at)
+                VALUES (?, 'Bình luận', ?, ?)
+                """, postId, ownerId, activityAt.plusHours(1));
+        jdbc.update("""
+                INSERT INTO reaction(post_id,type,created_by,created_at)
+                VALUES (?, 'LIKE', ?, ?)
+                """, postId, ownerId, activityAt.plusHours(2));
+
+        UUID eventA = jdbc.queryForObject("""
+                INSERT INTO event(family_id,branch_id,title,start_at,created_by)
+                VALUES (?,?,?,?,?) RETURNING id
+                """, UUID.class, familyId, branchA, "Sự kiện tiếng Việt A", activityAt, ownerId);
+        jdbc.update("""
+                INSERT INTO event_participant(event_id,user_id,rsvp_status,created_by)
+                VALUES (?,?,'GOING',?), (?,?,'NOT_GOING',?)
+                """, eventA, ownerId, ownerId, eventA, guestId, guestId);
+        jdbc.update("""
+                INSERT INTO event(family_id,branch_id,title,start_at,created_by)
+                VALUES (?,?,?,?,?)
+                """, familyId, branchB, "Sự kiện ngoài phạm vi", activityAt, ownerId);
+
+        String query = "?familyId=" + familyId + "&from=" + from + "&to=" + today;
+        var genealogy = call(get("/api/v1/dashboard/reports/GENEALOGY/pdf" + query), ownerToken, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+        String genealogyText = pdfText(genealogy);
+        assertTrue(genealogyText.contains("Báo cáo gia phả"));
+        assertTrue(genealogyText.contains("Thành viên theo thế hệ"));
+        assertFalse(genealogyText.contains("Tên thành viên riêng tư"));
+        assertFalse(genealogyText.contains("DIA_CHI_KHONG_DUOC_XUAT"));
+
+        var community = call(get("/api/v1/dashboard/reports/COMMUNITY/pdf" + query), ownerToken, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+        String communityText = pdfText(community);
+        assertTrue(communityText.contains("Bài đăng theo tuần"));
+        assertTrue(communityText.contains("Bình luận"));
+        assertTrue(communityText.contains("Reaction"));
+        assertFalse(communityText.contains("Nội dung không đưa vào báo cáo"));
+
+        var events = call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query), ownerToken, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+        String eventText = pdfText(events);
+        assertTrue(eventText.contains("Sự kiện tiếng Việt A"));
+        assertTrue(eventText.contains("50.0%"));
+        assertTrue(eventText.contains("Tỷ lệ xác nhận tham dự"));
+        assertFalse(eventText.contains("DIA_CHI_KHONG_DUOC_XUAT"));
+
+        var branchEvents = call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query),
+                branchAdminToken, null).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        String branchEventText = pdfText(branchEvents);
+        assertTrue(branchEventText.contains("Sự kiện tiếng Việt A"));
+        assertFalse(branchEventText.contains("Sự kiện ngoài phạm vi"));
+        call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query + "&branchId=" + branchB),
+                branchAdminToken, null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("PERM_001"));
+        call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query), memberToken, null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("PERM_001"));
+
+        assertTrue(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_log
+                WHERE actor_user_id=? AND action='STATISTICAL_REPORT_PDF_EXPORTED'
+                """, Integer.class, ownerId) >= 3);
+
+        List<List<String>> longRows = IntStream.range(0, 100)
+                .mapToObj(index -> List.of("Dòng dữ liệu " + index, Integer.toString(index)))
+                .toList();
+        byte[] longPdf = pdfReportGenerator.generate("Báo cáo dài", "Toàn gia đình", "01/01/2026 - 31/01/2026",
+                OffsetDateTime.now(), "Người tạo", List.of(new PdfReportGenerator.Section(
+                        "Bảng dài", List.of("Nội dung", "Số lượng"), longRows, false)));
+        try (PDDocument document = Loader.loadPDF(longPdf)) {
+            assertTrue(document.getNumberOfPages() > 1);
+            assertTrue(new PDFTextStripper().getText(document).contains("Trang 2 /"));
+        }
+    }
+
+    @Test
+    void pdfReportsHandleEmptyDatasets() throws Exception {
+        String ownerEmail = newUser();
+        String ownerToken = token(ownerEmail);
+        UUID familyId = createdId(call(post("/api/v1/families"), ownerToken, Map.of("name", "Dòng họ trống"))
+                .andExpect(status().isCreated()));
+        LocalDate to = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        String query = "?familyId=" + familyId + "&from=" + to.minusDays(13) + "&to=" + to;
+
+        for (String reportType : List.of("GENEALOGY", "COMMUNITY", "EVENTS")) {
+            byte[] pdf = call(get("/api/v1/dashboard/reports/" + reportType + "/pdf" + query),
+                    ownerToken, null)
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsByteArray();
+            assertTrue(pdfText(pdf).contains("Báo cáo"));
+        }
+        assertEquals(3, jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_log
+                WHERE action='STATISTICAL_REPORT_PDF_EXPORTED'
+                """, Integer.class));
     }
 }

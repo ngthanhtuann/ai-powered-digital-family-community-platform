@@ -15,6 +15,8 @@ public interface EventStore {
                  UUID createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     record Participant(UUID id, UUID eventId, UUID userId, RsvpStatus status,
                        OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
+    record ReportEvent(UUID id, String title, OffsetDateTime startAt,
+                       long going, long notGoing, long maybe) {}
     record Page<T>(List<T> items, long total) {}
 
     Event insertEvent(UUID family, UUID branch, String title, String description,
@@ -26,6 +28,8 @@ public interface EventStore {
                            int page, int size, String order);
     List<Event> upcomingEvents(UUID family, boolean allBranches, List<UUID> readableBranches,
                                OffsetDateTime from, int limit);
+    List<ReportEvent> reportEvents(UUID family, boolean allBranches, List<UUID> readableBranches,
+                                   OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
     Event updateEvent(UUID id, UUID branch, String title, String description,
                       OffsetDateTime start, OffsetDateTime end, String location, UUID actor);
     void deleteEvent(UUID id, UUID actor);

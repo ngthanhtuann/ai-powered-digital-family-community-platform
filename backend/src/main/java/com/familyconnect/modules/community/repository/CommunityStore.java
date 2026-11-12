@@ -33,8 +33,13 @@ public interface CommunityStore {
     Map<UUID, ReactionType> myReactions(List<UUID> postIds, UUID userId);
     List<WeeklyPostCount> countPostsByWeek(UUID familyId, boolean allBranches, List<UUID> branchIds,
                                            OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
+    List<WeeklyActivityCount> countWeeklyActivity(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                  OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
 
     record WeeklyPostCount(LocalDate weekStart, long postCount) {
+    }
+
+    record WeeklyActivityCount(LocalDate weekStart, long postCount, long commentCount, long reactionCount) {
     }
 
     Optional<Reaction> myReaction(UUID postId, UUID userId);
