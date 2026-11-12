@@ -65,7 +65,8 @@ public final class StubGenealogyQuery implements GenealogyQuery {
     }
 
     @Override
-    public DirectoryPage searchDirectoryPeople(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    public DirectoryPage searchDirectoryPeople(UUID familyId, String keyword, String location,
+                                               Integer generation, LocalDate asOfDate,
                                                Set<UUID> personIds, boolean excludeChildren,
                                                String sortField, boolean ascending, int page, int size) {
         return new DirectoryPage(List.of(), 0);

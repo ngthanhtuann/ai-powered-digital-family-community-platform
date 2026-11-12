@@ -50,7 +50,8 @@ public interface GenealogyQuery {
     /** Thành viên còn sống dưới 16 tuổi tại {@code asOfDate} (privacy.md mục 4); AI loại khỏi kết quả của MEMBER. */
     List<UUID> findMinorPersonIds(UUID familyId, LocalDate asOfDate);
 
-    DirectoryPage searchDirectoryPeople(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    DirectoryPage searchDirectoryPeople(UUID familyId, String keyword, String location,
+                                        Integer generation, LocalDate asOfDate,
                                         Set<UUID> personIds, boolean excludeChildren,
                                         String sortField, boolean ascending,
                                         int page, int size);

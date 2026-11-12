@@ -8,7 +8,8 @@ import java.util.UUID;
 
 public interface DirectoryPersonSearchRepository {
 
-    DirectoryPage search(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    DirectoryPage search(UUID familyId, String keyword, String location,
+                         Integer generation, LocalDate asOfDate,
                          Set<UUID> personIds,
                          boolean excludeChildren, String sortField, boolean ascending, int page, int size);
 }

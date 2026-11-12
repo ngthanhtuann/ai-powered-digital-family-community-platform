@@ -14,8 +14,8 @@ const PAGE_SIZE = 20;
 export default function DirectoryPage() {
   const access = useHeritageAccess();
   const [adminFamily, setAdminFamily] = useState('');
-  const [draft, setDraft] = useState({ job: '', location: '', generation: '' });
-  const [filters, setFilters] = useState({ job: '', location: '', generation: '' });
+  const [draft, setDraft] = useState({ keyword: '', job: '', location: '', generation: '' });
+  const [filters, setFilters] = useState({ keyword: '', job: '', location: '', generation: '' });
   const [page, setPage] = useState(0);
   const familyId = access.isSystemAdmin ? adminFamily.trim() : undefined;
 
@@ -24,6 +24,7 @@ export default function DirectoryPage() {
     queryFn: () =>
       directoryApi.members({
         ...(familyId ? { familyId } : {}),
+        ...(filters.keyword ? { keyword: filters.keyword } : {}),
         ...(filters.job ? { job: filters.job } : {}),
         ...(filters.location ? { location: filters.location } : {}),
         ...(filters.generation ? { generation: Number(filters.generation) } : {}),
@@ -80,8 +81,15 @@ export default function DirectoryPage() {
         <>
           <form
             onSubmit={applyFilters}
-            className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-5"
           >
+            <TextField
+              label="Từ khóa tên thành viên"
+              maxLength={100}
+              value={draft.keyword}
+              onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
+              placeholder="Nhập một phần họ tên"
+            />
             <TextField
               label="Nghề nghiệp"
               maxLength={100}

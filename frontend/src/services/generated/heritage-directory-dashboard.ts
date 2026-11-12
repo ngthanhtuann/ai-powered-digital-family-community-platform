@@ -14,6 +14,7 @@ export interface paths {
         /**
          * Danh bạ và tìm kiếm thành viên (UC-DIR-01)
          * @description Vai trò: MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN. Không truyền bộ lọc thì trả toàn bộ danh bạ (FR-DIR-01).
+         *     Có thể kết hợp `keyword` (tìm một phần họ tên), `job`, `location` và `generation`; các chuỗi tìm kiếm so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt ("nguyen" khớp "Nguyễn", "ha noi" khớp "Hà Nội").
          *     `location` lọc theo tỉnh/thành (`person.current_province`), không phải nơi làm việc.
          *     `generation` do module genealogy cung cấp (đời 1 là tổ tiên gốc, mỗi cấp con +1).
          *     Không trả địa chỉ chi tiết. Trẻ dưới 16 tuổi chỉ có `fullName`, `relationship`, `birthYear`;
@@ -783,9 +784,11 @@ export interface operations {
             query?: {
                 /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: components["parameters"]["FamilyId"];
-                /** @description Nghề nghiệp (so khớp chứa, không phân biệt hoa thường). */
+                /** @description Từ khóa tìm một phần họ tên thành viên (không phân biệt hoa thường và dấu tiếng Việt). */
+                keyword?: string;
+                /** @description Nghề nghiệp (so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt). */
                 job?: string;
-                /** @description Tỉnh/thành đang sinh sống (person.current_province). */
+                /** @description Tỉnh/thành đang sinh sống (person.current_province), so khớp chứa, không phân biệt hoa thường và dấu tiếng Việt. */
                 location?: string;
                 /** @description Thế hệ (đời), bắt đầu từ 1. */
                 generation?: number;

@@ -23,7 +23,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
     private EntityManager entityManager;
 
     @Override
-    public DirectoryPage search(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    public DirectoryPage search(UUID familyId, String keyword, String location,
+                                Integer generation, LocalDate asOfDate,
                                 Set<UUID> personIds,
                                 boolean excludeChildren, String sortField, boolean ascending, int page, int size) {
         if (personIds != null && personIds.isEmpty()) {
@@ -33,8 +34,10 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         String where = """
                 person.family_id = :familyId
                 AND person.deleted_at IS NULL
+                AND (CAST(:keyword AS text) IS NULL
+                    OR lower(unaccent(person.full_name)) LIKE lower(unaccent(CAST(:keyword AS text))) ESCAPE '!')
                 AND (CAST(:location AS text) IS NULL
-                    OR lower(person.current_province) LIKE lower(concat('%', CAST(:location AS text), '%')))
+                    OR lower(unaccent(person.current_province)) LIKE lower(unaccent(CAST(:location AS text))) ESCAPE '!')
                 AND (CAST(:generation AS integer) IS NULL
                     OR COALESCE(generations.generation, 1) = CAST(:generation AS integer))
                 AND (:excludeChildren = FALSE OR person.is_deceased = TRUE
@@ -60,12 +63,12 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                 """ + from + " ORDER BY " + orderColumn + " " + direction
                 + ", person.id " + direction + " LIMIT :limit OFFSET :offset";
         Query dataQuery = entityManager.createNativeQuery(sql);
-        setParameters(dataQuery, familyId, location, generation, asOfDate, personIds, excludeChildren);
+        setParameters(dataQuery, familyId, keyword, location, generation, asOfDate, personIds, excludeChildren);
         dataQuery.setParameter("limit", size);
         dataQuery.setParameter("offset", (long) page * size);
 
         Query countQuery = entityManager.createNativeQuery(GENERATIONS + "SELECT COUNT(*) " + from);
-        setParameters(countQuery, familyId, location, generation, asOfDate, personIds, excludeChildren);
+        setParameters(countQuery, familyId, keyword, location, generation, asOfDate, personIds, excludeChildren);
         List<?> rows = dataQuery.getResultList();
         List<DirectoryPerson> people = new ArrayList<>(rows.size());
         for (Object value : rows) {
@@ -80,10 +83,12 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         return new DirectoryPage(people, ((Number) countQuery.getSingleResult()).longValue());
     }
 
-    private static void setParameters(Query query, UUID familyId, String location, Integer generation,
+    private static void setParameters(Query query, UUID familyId, String keyword, String location,
+                                      Integer generation,
                                       LocalDate asOfDate, Set<UUID> personIds, boolean excludeChildren) {
         query.setParameter("familyId", familyId);
-        query.setParameter("location", location);
+        query.setParameter("keyword", containsPattern(keyword));
+        query.setParameter("location", containsPattern(location));
         query.setParameter("generation", generation);
         query.setParameter("asOfDate", asOfDate);
         query.setParameter("adultBirthYear", asOfDate.getYear() - 16);
@@ -91,5 +96,10 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         if (personIds != null) {
             query.unwrap(NativeQuery.class).setParameterList("personIds", personIds);
         }
+    }
+
+    /** Mẫu LIKE "chứa" cho so không dấu (unaccent, V12) như tìm người dùng ở trang quản trị; %, _ gõ vào là ký tự thường. */
+    private static String containsPattern(String value) {
+        return value == null ? null : "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
     }
 }
