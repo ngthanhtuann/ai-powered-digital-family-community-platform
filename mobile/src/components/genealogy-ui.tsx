@@ -1,6 +1,6 @@
 // Component dùng chung cho màn Cây gia phả và Tra cứu xưng hô (UC-GEN-06, 07, 08; SCRUM-90).
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, API_BASE_URL } from '../services/api';
 import { genealogyApi, lifeSpan, type Person } from '../services/genealogy';
 import { tokenStorage } from '../services/token-storage';
@@ -19,6 +20,26 @@ import { EmptyPanel, ErrorPanel } from './community-ui';
 import { Button, Loading, TextField } from './ui';
 
 type Gender = 'MALE' | 'FEMALE' | 'OTHER' | null | undefined;
+
+/**
+ * Modal là cửa sổ native riêng nên không nhận khoảng đệm của SafeAreaProvider ở App.tsx; trên Android
+ * (vẽ tràn màn hình) thanh trạng thái che phần đầu nội dung. Mỗi modal tự đo vùng an toàn của mình.
+ */
+function ModalSafeArea({
+  backgroundColor,
+  children,
+}: {
+  backgroundColor: string;
+  children: ReactNode;
+}) {
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor }}>
+        {children}
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
 
 /** Màu giới tính theo Figma "UC-GEN-06 Cây gia phả / 360"; luôn có chú giải bằng chữ đi kèm. */
 export function genderColor(gender: Gender): string {
@@ -145,69 +166,71 @@ export function PersonPicker({
   const items = persons.data?.items ?? [];
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.page, gap: 12 }}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <Text style={[text.sectionTitle, { color: colors.textPrimary, flex: 1 }]}>{title}</Text>
-          <Button title="Đóng" variant="secondary" onPress={onClose} />
-        </View>
-        <TextField
-          label="Tìm theo họ tên"
-          value={input}
-          onChangeText={setInput}
-          // API tìm theo họ tên có dấu (PersonRepository); gõ không dấu sẽ không ra.
-          placeholder="Gõ có dấu, ví dụ: Nguyễn Văn"
-          autoCorrect={false}
-        />
-        {persons.isLoading ? (
-          <Loading />
-        ) : persons.isError ? (
-          <ErrorPanel error={persons.error} retry={() => persons.refetch()} />
-        ) : (
-          <FlatList
-            data={items}
-            keyExtractor={(p) => p.id ?? ''}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={<EmptyPanel message="Không tìm thấy thành viên phù hợp." />}
-            ListFooterComponent={
-              persons.data && persons.data.meta.total > items.length ? (
-                <Text style={[text.caption, { color: colors.textSecondary, padding: 8 }]}>
-                  Hiện {items.length}/{persons.data.meta.total} người. Gõ thêm tên để thu hẹp.
-                </Text>
-              ) : undefined
-            }
-            renderItem={({ item }) => (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => onPick(item)}
-                style={({ pressed }) => ({
-                  minHeight: 56,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 8,
-                  borderBottomWidth: 1,
-                  borderColor: colors.border,
-                  backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
-                })}
-              >
-                <PersonAvatar
-                  name={item.fullName}
-                  gender={item.gender}
-                  mediaId={item.avatarMediaId}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={[text.label, { color: colors.textPrimary }]}>{item.fullName}</Text>
-                  <Text style={[text.caption, { color: colors.textSecondary }]}>
-                    {lifeSpan(item.birthYear, item.isDeceased, item.deathDate) || ' '}
-                  </Text>
-                </View>
-              </Pressable>
-            )}
+      <ModalSafeArea backgroundColor={colors.background}>
+        <View style={{ flex: 1, padding: spacing.page, gap: 12 }}>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <Text style={[text.sectionTitle, { color: colors.textPrimary, flex: 1 }]}>{title}</Text>
+            <Button title="Đóng" variant="secondary" onPress={onClose} />
+          </View>
+          <TextField
+            label="Tìm theo họ tên"
+            value={input}
+            onChangeText={setInput}
+            // API tìm theo họ tên có dấu (PersonRepository); gõ không dấu sẽ không ra.
+            placeholder="Gõ có dấu, ví dụ: Nguyễn Văn"
+            autoCorrect={false}
           />
-        )}
-      </View>
+          {persons.isLoading ? (
+            <Loading />
+          ) : persons.isError ? (
+            <ErrorPanel error={persons.error} retry={() => persons.refetch()} />
+          ) : (
+            <FlatList
+              data={items}
+              keyExtractor={(p) => p.id ?? ''}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={<EmptyPanel message="Không tìm thấy thành viên phù hợp." />}
+              ListFooterComponent={
+                persons.data && persons.data.meta.total > items.length ? (
+                  <Text style={[text.caption, { color: colors.textSecondary, padding: 8 }]}>
+                    Hiện {items.length}/{persons.data.meta.total} người. Gõ thêm tên để thu hẹp.
+                  </Text>
+                ) : undefined
+              }
+              renderItem={({ item }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onPick(item)}
+                  style={({ pressed }) => ({
+                    minHeight: 56,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 8,
+                    borderBottomWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+                  })}
+                >
+                  <PersonAvatar
+                    name={item.fullName}
+                    gender={item.gender}
+                    mediaId={item.avatarMediaId}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[text.label, { color: colors.textPrimary }]}>{item.fullName}</Text>
+                    <Text style={[text.caption, { color: colors.textSecondary }]}>
+                      {lifeSpan(item.birthYear, item.isDeceased, item.deathDate) || ' '}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+            />
+          )}
+        </View>
+      </ModalSafeArea>
     </Modal>
   );
 }
@@ -275,84 +298,80 @@ export function PersonDetailSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, backgroundColor: colors.surface }}>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-            {person.isLoading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : person.isError ? (
-              <ErrorPanel error={person.error} retry={() => person.refetch()} />
-            ) : p ? (
-              <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <PersonAvatar
-                    name={p.fullName}
-                    gender={p.gender}
-                    mediaId={p.avatarMediaId}
-                    size={56}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>
-                      {p.fullName}
-                    </Text>
-                    {p.isDeceased ? (
-                      <Text style={[text.caption, { color: colors.textSecondary }]}>Đã mất</Text>
-                    ) : null}
-                  </View>
-                </View>
-                <View style={{ gap: 8 }}>
-                  {rows
-                    .filter(([, value]) => Boolean(value))
-                    .map(([label, value]) => (
-                      <View key={label} style={{ flexDirection: 'row', gap: 8 }}>
-                        <Text style={[text.label, { color: colors.textSecondary, width: 120 }]}>
-                          {label}
-                        </Text>
-                        <Text style={[text.body, { color: colors.textPrimary, flex: 1 }]}>
-                          {value}
-                        </Text>
-                      </View>
-                    ))}
-                  {profession.isLoading ? (
-                    <Text style={[text.caption, { color: colors.textSecondary }]}>
-                      Đang tải nghề nghiệp...
-                    </Text>
+      <ModalSafeArea backgroundColor={colors.surface}>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+          {person.isLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : person.isError ? (
+            <ErrorPanel error={person.error} retry={() => person.refetch()} />
+          ) : p ? (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <PersonAvatar
+                  name={p.fullName}
+                  gender={p.gender}
+                  mediaId={p.avatarMediaId}
+                  size={56}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>
+                    {p.fullName}
+                  </Text>
+                  {p.isDeceased ? (
+                    <Text style={[text.caption, { color: colors.textSecondary }]}>Đã mất</Text>
                   ) : null}
                 </View>
-                {relatives.length ? (
-                  <View style={{ gap: 8 }}>
-                    <Text style={[text.label, { color: colors.textPrimary }]}>
-                      Quan hệ trong cây
-                    </Text>
-                    {relatives.map((r) => (
-                      <Pressable
-                        key={`${r.role}-${r.id}`}
-                        accessibilityRole="button"
-                        onPress={() => onOpenPerson(r.id)}
-                        style={{ minHeight: 44, justifyContent: 'center' }}
-                      >
-                        <Text style={[text.body, { color: colors.textPrimary }]}>
-                          <Text style={{ color: colors.textSecondary }}>{r.role}: </Text>
-                          {r.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
+              </View>
+              <View style={{ gap: 8 }}>
+                {rows
+                  .filter(([, value]) => Boolean(value))
+                  .map(([label, value]) => (
+                    <View key={label} style={{ flexDirection: 'row', gap: 8 }}>
+                      <Text style={[text.label, { color: colors.textSecondary, width: 120 }]}>
+                        {label}
+                      </Text>
+                      <Text style={[text.body, { color: colors.textPrimary, flex: 1 }]}>
+                        {value}
+                      </Text>
+                    </View>
+                  ))}
+                {profession.isLoading ? (
+                  <Text style={[text.caption, { color: colors.textSecondary }]}>
+                    Đang tải nghề nghiệp...
+                  </Text>
                 ) : null}
+              </View>
+              {relatives.length ? (
                 <View style={{ gap: 8 }}>
-                  <Button title="Xem nhánh từ người này" onPress={() => onShowBranch(p.id ?? '')} />
-                  <Button
-                    title="Tra cách xưng hô với người khác"
-                    variant="secondary"
-                    onPress={() => onLookup(p)}
-                  />
+                  <Text style={[text.label, { color: colors.textPrimary }]}>Quan hệ trong cây</Text>
+                  {relatives.map((r) => (
+                    <Pressable
+                      key={`${r.role}-${r.id}`}
+                      accessibilityRole="button"
+                      onPress={() => onOpenPerson(r.id)}
+                      style={{ minHeight: 44, justifyContent: 'center' }}
+                    >
+                      <Text style={[text.body, { color: colors.textPrimary }]}>
+                        <Text style={{ color: colors.textSecondary }}>{r.role}: </Text>
+                        {r.name}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
-              </>
-            ) : null}
-            <Button title="Đóng" variant="secondary" onPress={onClose} />
-          </ScrollView>
-        </View>
-      </View>
+              ) : null}
+              <View style={{ gap: 8 }}>
+                <Button title="Xem nhánh từ người này" onPress={() => onShowBranch(p.id ?? '')} />
+                <Button
+                  title="Tra cách xưng hô với người khác"
+                  variant="secondary"
+                  onPress={() => onLookup(p)}
+                />
+              </View>
+            </>
+          ) : null}
+          <Button title="Đóng" variant="secondary" onPress={onClose} />
+        </ScrollView>
+      </ModalSafeArea>
     </Modal>
   );
 }
