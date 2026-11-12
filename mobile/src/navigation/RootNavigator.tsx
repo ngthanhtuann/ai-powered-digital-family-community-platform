@@ -11,6 +11,8 @@ import { PostDetailScreen } from '../screens/PostDetailScreen';
 import { CreatePostScreen } from '../screens/CreatePostScreen';
 import { EventDetailScreen } from '../screens/EventDetailScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import { PersonDetailScreen } from '../screens/PersonDetailScreen';
+import { PersonPickerScreen } from '../screens/PersonPickerScreen';
 import { branchOf, useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 import { AppDrawer } from './AppDrawer';
@@ -75,6 +77,16 @@ export function RootNavigator() {
             name="EventDetail"
             component={EventDetailScreen}
             options={{ title: 'Chi tiết sự kiện' }}
+          />
+          <Stack.Screen
+            name="PersonDetail"
+            component={PersonDetailScreen}
+            options={{ title: 'Thông tin thành viên' }}
+          />
+          <Stack.Screen
+            name="PersonPicker"
+            component={PersonPickerScreen}
+            options={({ route }) => ({ title: route.params.title })}
           />
           <Stack.Screen
             name="Notifications"
