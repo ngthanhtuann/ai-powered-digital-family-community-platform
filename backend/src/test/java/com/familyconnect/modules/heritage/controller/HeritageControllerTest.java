@@ -2,6 +2,7 @@ package com.familyconnect.modules.heritage.controller;
 
 import com.familyconnect.modules.heritage.dto.HeritageResponses;
 import com.familyconnect.modules.heritage.service.HeritageService;
+import com.familyconnect.modules.heritage.service.OutstandingMemberService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,12 +24,14 @@ class HeritageControllerTest {
     private static final UUID AUTHOR_ID = UUID.fromString("10000000-0000-0000-0000-000000000001");
 
     private HeritageService service;
+    private OutstandingMemberService outstandingMemberService;
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         service = mock(HeritageService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new HeritageController(service)).build();
+        outstandingMemberService = mock(OutstandingMemberService.class);
+        mvc = MockMvcBuilders.standaloneSetup(new HeritageController(service, outstandingMemberService)).build();
     }
 
     @Test

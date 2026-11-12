@@ -163,7 +163,7 @@ class DirectoryServiceTest {
                 new MembershipView(ACTOR_ID, FAMILY_ID, BRANCH_ID, EffectiveRole.BRANCH_ADMIN, true));
         DirectoryPerson branchMember = new DirectoryPerson(CHILD_ID, FAMILY_ID, BRANCH_ID,
                 "Thành viên trong chi", LocalDate.of(1990, 1, 1), 1990,
-                null, false, null, null);
+                null, false, null, "MALE", null);
         when(genealogyQuery.findDirectoryPerson(CHILD_ID)).thenReturn(Optional.of(branchMember));
         when(genealogyQuery.isBranchWithin(FAMILY_ID, BRANCH_ID, BRANCH_ID)).thenReturn(true);
         when(professionRepository.findByPersonIdAndDeletedAtIsNull(CHILD_ID)).thenReturn(Optional.empty());
@@ -183,7 +183,7 @@ class DirectoryServiceTest {
                 new MembershipView(ACTOR_ID, FAMILY_ID, BRANCH_ID, EffectiveRole.BRANCH_ADMIN, true));
         DirectoryPerson branchMember = new DirectoryPerson(CHILD_ID, FAMILY_ID, UUID.randomUUID(),
                 "Thành viên ngoài chi", LocalDate.of(1990, 1, 1), 1990,
-                null, false, null, null);
+                null, false, null, "MALE", null);
         when(genealogyQuery.findDirectoryPerson(CHILD_ID)).thenReturn(Optional.of(branchMember));
         when(genealogyQuery.isBranchWithin(FAMILY_ID, branchMember.branchId(), BRANCH_ID)).thenReturn(false);
 
@@ -223,9 +223,9 @@ class DirectoryServiceTest {
     @Test
     void memberSearchHidesChildWorkAndLocationFields() {
         DirectoryPerson adult = new DirectoryPerson(PERSON_ID, FAMILY_ID, null, "Người lớn",
-                LocalDate.of(1990, 1, 1), 1990, "Hà Nội", false, ACTOR_ID, 3);
+                LocalDate.of(1990, 1, 1), 1990, "Hà Nội", false, ACTOR_ID, "MALE", 3);
         DirectoryPerson child = new DirectoryPerson(CHILD_ID, FAMILY_ID, null, "Trẻ em",
-                LocalDate.of(2015, 1, 1), 2015, "Đà Nẵng", false, null, 5);
+                LocalDate.of(2015, 1, 1), 2015, "Đà Nẵng", false, null, "FEMALE", 5);
         when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), eq(null), eq(null), eq(null),
                 eq(LocalDate.now(CLOCK)), eq(null),
                 eq(false), eq("fullName"), eq(true), eq(0), eq(20)))
@@ -279,6 +279,6 @@ class DirectoryServiceTest {
 
     private static DirectoryPerson person(UUID id, UUID userId, LocalDate birthDate, boolean deceased) {
         return new DirectoryPerson(id, FAMILY_ID, null, "Thành viên", birthDate, birthDate.getYear(),
-                null, deceased, userId, null);
+                null, deceased, userId, "MALE", null);
     }
 }

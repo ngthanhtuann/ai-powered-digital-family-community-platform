@@ -9,6 +9,9 @@ export type CreateStory = Schemas['CreateFamilyStoryRequest'];
 export type UpdateDocument = Schemas['UpdateHeritageDocumentRequest'];
 export type UpdateStory = Schemas['UpdateFamilyStoryRequest'];
 export type HeritagePhoto = Schemas['PhotoItem'];
+export type OutstandingMember = Schemas['OutstandingMemberData'];
+export type CreateOutstandingMember = Schemas['CreateOutstandingMemberRequest'];
+export type UpdateOutstandingMember = Schemas['UpdateOutstandingMemberRequest'];
 
 export interface HeritagePage<T> {
   items: T[];
@@ -64,6 +67,16 @@ export const heritageApi = {
   updateStory: (id: string, body: UpdateStory) =>
     api.patch<FamilyStory>(`/heritage/stories/${id}`, body),
   deleteStory: (id: string) => api.delete(`/heritage/stories/${id}`),
+  outstandingMembers: (params: { familyId?: string; page?: number; size?: number; sort?: string }) =>
+    api.list<OutstandingMember>('/heritage/outstanding-members', params),
+  createOutstandingMember: (body: CreateOutstandingMember, familyId?: string) =>
+    api.post<OutstandingMember>(
+      `/heritage/outstanding-members${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`,
+      body,
+    ),
+  updateOutstandingMember: (id: string, body: UpdateOutstandingMember) =>
+    api.patch<OutstandingMember>(`/heritage/outstanding-members/${id}`, body),
+  deleteOutstandingMember: (id: string) => api.delete(`/heritage/outstanding-members/${id}`),
   /** contentUrl dạng /api/v1/media/{id}/content; client đã có tiền tố /api/v1. */
   file: (contentUrl: string) => api.download(contentUrl.replace(/^\/api\/v1/, '')),
   upload: (file: File, familyId: string, caption?: string) => {

@@ -36,16 +36,21 @@ export default function HeritagePageIndex() {
   return (
     <HeritagePage>
       <HeritageHeader>
-        {access.isAdmin && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/outstanding-members">
+            Người tiêu biểu
+          </Link>
+          {access.isAdmin && (
+            <>
             <Link className="rounded-control bg-secondary px-4 py-2 text-label hover:bg-gold-hover" href="/heritage/documents/new">
               Thêm tài liệu
             </Link>
             <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/stories/new">
               Viết câu chuyện
             </Link>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </HeritageHeader>
 
       <div className="mt-6">

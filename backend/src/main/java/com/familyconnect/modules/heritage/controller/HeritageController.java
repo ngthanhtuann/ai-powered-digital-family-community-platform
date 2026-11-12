@@ -4,11 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.familyconnect.common.api.ApiResponse;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateDocument;
 import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateStory;
+import com.familyconnect.modules.heritage.dto.HeritageRequests.CreateOutstandingMember;
+import com.familyconnect.modules.heritage.dto.HeritageRequests.UpdateOutstandingMember;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.DocumentData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.ListResponse;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.PhotoData;
 import com.familyconnect.modules.heritage.dto.HeritageResponses.StoryData;
+import com.familyconnect.modules.heritage.dto.HeritageResponses.OutstandingMemberData;
 import com.familyconnect.modules.heritage.service.HeritageService;
+import com.familyconnect.modules.heritage.service.OutstandingMemberService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,9 +33,11 @@ import java.util.UUID;
 public class HeritageController {
 
     private final HeritageService heritageService;
+    private final OutstandingMemberService outstandingMemberService;
 
-    public HeritageController(HeritageService heritageService) {
+    public HeritageController(HeritageService heritageService, OutstandingMemberService outstandingMemberService) {
         this.heritageService = heritageService;
+        this.outstandingMemberService = outstandingMemberService;
     }
 
     @GetMapping("/photos")
@@ -108,6 +114,35 @@ public class HeritageController {
     @DeleteMapping("/stories/{id}")
     public ApiResponse<Void> deleteStory(@PathVariable UUID id) {
         heritageService.deleteStory(id);
+        return ApiResponse.empty();
+    }
+
+    @GetMapping("/outstanding-members")
+    public ListResponse<OutstandingMemberData> listOutstandingMembers(
+            @RequestParam(name = "familyId", required = false) UUID familyId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", defaultValue = "displayOrder,asc") String sort) {
+        return outstandingMemberService.list(familyId, page, size, sort);
+    }
+
+    @PostMapping("/outstanding-members")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<OutstandingMemberData> createOutstandingMember(
+            @RequestParam(name = "familyId", required = false) UUID familyId,
+            @Valid @RequestBody CreateOutstandingMember request) {
+        return ApiResponse.ok(outstandingMemberService.create(familyId, request));
+    }
+
+    @PatchMapping("/outstanding-members/{id}")
+    public ApiResponse<OutstandingMemberData> updateOutstandingMember(
+            @PathVariable UUID id, @Valid @RequestBody UpdateOutstandingMember request) {
+        return ApiResponse.ok(outstandingMemberService.update(id, request));
+    }
+
+    @DeleteMapping("/outstanding-members/{id}")
+    public ApiResponse<Void> deleteOutstandingMember(@PathVariable UUID id) {
+        outstandingMemberService.delete(id);
         return ApiResponse.empty();
     }
 

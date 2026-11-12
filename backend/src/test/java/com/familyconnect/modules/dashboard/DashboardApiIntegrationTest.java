@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +23,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -190,5 +194,59 @@ class DashboardApiIntegrationTest {
         call(get("/api/v1/dashboard/statistics"), systemAdminToken, null)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("VALID_001"));
+    }
+
+    @Test
+    void memberCsvUsesUtf8BomPreventsFormulaInjectionAndRedactsMinorFields() throws Exception {
+        String ownerEmail = newUser();
+        String ownerToken = token(ownerEmail);
+        UUID ownerId = userId(ownerEmail);
+        UUID familyId = createdId(call(post("/api/v1/families"), ownerToken, Map.of("name", "Dòng họ CSV"))
+                .andExpect(status().isCreated()));
+
+        LocalDate today = LocalDate.now();
+        UUID adult = person(familyId, null, ownerId, "=SUM(1,2)", "MALE",
+                LocalDate.of(1980, 5, 1), null, "Hà Nội", false);
+        UUID child = person(familyId, null, ownerId, "Trẻ em, thử", "FEMALE",
+                today.minusYears(10), null, "Đà Nẵng", false);
+        jdbc.update("UPDATE person SET user_id=?, current_address='KHONG_XUAT_DIA_CHI' WHERE id=?",
+                ownerId, adult);
+        jdbc.update("""
+                INSERT INTO parent_child(parent_id,child_id,parent_role,kind,created_by)
+                VALUES (?,?,'FATHER','BIOLOGICAL',?)
+                """, adult, child, ownerId);
+        jdbc.update("""
+                INSERT INTO profession_profile(family_id,person_id,job_title,work_location,created_by)
+                VALUES (?,?,?,?,?), (?,?,?,?,?)
+                """, familyId, adult, "Kỹ sư", "Hà Nội", ownerId,
+                familyId, child, "Học sinh", "Trường bí mật", ownerId);
+
+        var response = call(get("/api/v1/dashboard/reports/members"), ownerToken, null)
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.startsWith("attachment; filename=\"members-")))
+                .andReturn().getResponse();
+        String csv = new String(response.getContentAsByteArray(), StandardCharsets.UTF_8);
+        assertTrue(csv.startsWith("\uFEFF\"id\",\"fullName\",\"birthYear\",\"gender\",\"relationship\","
+                + "\"generation\",\"jobTitle\",\"workLocation\"\r\n"));
+        assertTrue(csv.contains("\"" + adult + "\",\"'=SUM(1,2)\",\"1980\",\"MALE\",\"cùng một người\""));
+        assertTrue(csv.contains("\"" + child + "\",\"Trẻ em, thử\",\"" + today.minusYears(10).getYear()
+                + "\",\"\",\"con\",\"\",\"\",\"\""));
+        assertFalse(csv.contains("KHONG_XUAT_DIA_CHI"));
+        assertFalse(csv.contains("Trường bí mật"));
+
+        call(get("/api/v1/dashboard/reports/members?format=pdf"), ownerToken, null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"));
+
+        String memberEmail = newUser();
+        UUID memberId = userId(memberEmail);
+        jdbc.update("""
+                INSERT INTO member_verification(user_id,family_id,role,status)
+                VALUES (?,?,'MEMBER','APPROVED')
+                """, memberId, familyId);
+        call(get("/api/v1/dashboard/reports/members"), token(memberEmail), null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("PERM_001"));
     }
 }
