@@ -27,6 +27,8 @@ public interface CommunityPlatformPort {
     Map<UUID, String> authorNames(Collection<UUID> userIds);
     /** BR-COM-10, BR-COM-12: mọi thao tác xóa nội dung đều ghi audit log. */
     void logContentDeleted(String contentType, UUID contentId, UUID familyId, boolean byOwner);
+    /** SCRUM-57: tạo, sửa nội dung cũng ghi audit log (auth.md mục 6.4, nhóm "Module khác"). */
+    void logContentSaved(boolean created, String contentType, UUID contentId, UUID familyId);
     /** BR-COM-11: báo module ai cập nhật chỉ mục sau khi giao dịch commit. */
     void postChanged(UUID postId, UUID familyId);
 }

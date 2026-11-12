@@ -117,6 +117,7 @@ class AdminApiIntegrationTest {
                 new Call(HttpMethod.PATCH, "/api/v1/admin/users/" + target, Map.of("status", "LOCKED", "lockReason", "x")),
                 new Call(HttpMethod.PUT, "/api/v1/admin/users/" + target + "/roles", Map.of("roles", List.of("MEMBER"))),
                 new Call(HttpMethod.GET, "/api/v1/admin/content-reports", null),
+                new Call(HttpMethod.GET, "/api/v1/admin/audit-logs", null),
                 new Call(HttpMethod.PATCH, "/api/v1/admin/content-reports/" + anyId, Map.of("action", "DISMISS")));
 
         SoftAssertions soft = new SoftAssertions();
@@ -453,5 +454,76 @@ class AdminApiIntegrationTest {
         assertThat(limited.getStatus()).isEqualTo(429);
         assertThat(code(limited)).isEqualTo("RATE_001");
         assertThat(Long.parseLong(limited.getHeader("Retry-After"))).isBetween(1L, 3600L);
+    }
+
+    @Test
+    void auditLogRecordsSensitiveActionsAndFilters() throws Exception {
+        String adminEmail = newAdmin();
+        String admin = token(adminEmail);
+        Family a = family("Dòng họ Nhật ký");
+        UUID target = userId(a.memberEmail());
+        MockHttpServletResponse wrong = send(HttpMethod.POST, "/api/v1/auth/login", null,
+                Map.of("email", a.memberEmail(), "password", "SaiMatKhau1"));
+        assertThat(wrong.getStatus()).isIn(401, 403);
+        send(HttpMethod.PATCH, "/api/v1/admin/users/" + target, admin, Map.of("status", "LOCKED", "lockReason", "Thử"));
+
+        // Khóa tài khoản: ghi người làm, vai trò hiệu lực, đối tượng, IP.
+        JsonNode locked = body(send(HttpMethod.GET, "/api/v1/admin/audit-logs?action=USER_LOCKED&actorUserId="
+                + userId(adminEmail), admin, null));
+        assertThat(locked.at("/success").asBoolean()).isTrue();
+        assertThat(locked.at("/meta/total").asLong()).isEqualTo(1);
+        JsonNode row = locked.at("/data/0");
+        assertThat(row.at("/targetId").asText()).isEqualTo(target.toString());
+        assertThat(row.at("/actorRole").asText()).isEqualTo("SYSTEM_ADMIN");
+        assertThat(row.at("/ipAddress").isNull()).isFalse();
+        assertThat(row.at("/createdAt").asText()).isNotBlank();
+
+        // Đăng nhập sai: chưa xác định người làm, email che bớt, không có mật khẩu.
+        JsonNode failed = body(send(HttpMethod.GET, "/api/v1/admin/audit-logs?action=LOGIN_FAILED&size=100", admin, null));
+        JsonNode mine = null;
+        for (JsonNode item : failed.at("/data")) {
+            if (target.toString().equals(item.at("/targetId").asText())) {
+                mine = item;
+            }
+        }
+        assertThat(mine).isNotNull();
+        assertThat(mine.at("/actorUserId").isNull()).isTrue();
+        assertThat(mine.at("/detail/email").asText()).isNotEqualTo(a.memberEmail());
+        assertThat(mine.toString()).doesNotContain("SaiMatKhau1");
+
+        // Đăng nhập thành công: người làm chính là tài khoản đó.
+        JsonNode success = body(send(HttpMethod.GET, "/api/v1/admin/audit-logs?action=LOGIN_SUCCESS&actorUserId="
+                + userId(adminEmail), admin, null));
+        assertThat(success.at("/data/0/targetId").asText()).isEqualTo(userId(adminEmail).toString());
+
+        // Đăng bài: ghi CONTENT_CREATED với loại POST và gia đình của bài.
+        UUID postId = createdId(send(HttpMethod.POST, "/api/v1/posts", a.owner(),
+                Map.of("content", "Bài để kiểm tra nhật ký", "type", "POST")));
+        JsonNode created = body(send(HttpMethod.GET, "/api/v1/admin/audit-logs?action=CONTENT_CREATED&size=100", admin, null));
+        JsonNode postRow = null;
+        for (JsonNode item : created.at("/data")) {
+            if (postId.toString().equals(item.at("/targetId").asText())) {
+                postRow = item;
+            }
+        }
+        assertThat(postRow).isNotNull();
+        assertThat(postRow.at("/targetType").asText()).isEqualTo("POST");
+        assertThat(postRow.at("/familyId").asText()).isEqualTo(a.familyId().toString());
+        assertThat(postRow.toString()).doesNotContain("Bài để kiểm tra nhật ký");
+
+        // Lọc khoảng thời gian trong tương lai: không có dòng nào.
+        JsonNode future = body(send(HttpMethod.GET, "/api/v1/admin/audit-logs?from=2999-01-01T00:00:00Z", admin, null));
+        assertThat(future.at("/meta/total").asLong()).isZero();
+
+        // Khoảng ngày, phân trang, ngày sai định dạng: 400 VALID_001; thành viên thường: 403 PERM_001.
+        for (String bad : List.of("from=2026-02-01T00:00:00Z&to=2026-01-01T00:00:00Z", "size=101", "page=-1",
+                "from=hom-qua", "sort=action,asc")) {
+            MockHttpServletResponse res = send(HttpMethod.GET, "/api/v1/admin/audit-logs?" + bad, admin, null);
+            assertThat(res.getStatus()).as(bad).isEqualTo(400);
+            assertThat(code(res)).as(bad).isEqualTo("VALID_001");
+        }
+        MockHttpServletResponse member = send(HttpMethod.GET, "/api/v1/admin/audit-logs", a.owner(), null);
+        assertThat(member.getStatus()).isEqualTo(403);
+        assertThat(code(member)).isEqualTo("PERM_001");
     }
 }

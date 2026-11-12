@@ -906,7 +906,7 @@ paths:
     post:
       tags: [Backup]
       summary: Khôi phục từ bản sao lưu (UC-AUTH-11)
-      description: 'Vai trò: SYSTEM_ADMIN. **Ghi đè dữ liệu hiện tại** bằng bản sao lưu nên bắt buộc `confirmText = "RESTORE"`. Chạy script khôi phục (`pg_restore` và giải nén tệp), trả `200` khi xong (không tạo tài nguyên mới nên không dùng 201). Bản sao lưu không tồn tại trả `404 NOT_FOUND_001`; đang có tác vụ khác trả `409 ADM_003`. Ghi nhật ký `RESTORE_COMPLETED`.'
+      description: 'Vai trò: SYSTEM_ADMIN. **Ghi đè dữ liệu hiện tại** bằng bản sao lưu nên bắt buộc `confirmText = "RESTORE"`. Chạy script khôi phục (`pg_restore` và giải nén tệp), trả `200` khi xong (không tạo tài nguyên mới nên không dùng 201). Bản sao lưu không tồn tại trả `404 NOT_FOUND_001`; đang có tác vụ khác trả `409 ADM_003`; bản sao lưu khác phiên bản migration với cơ sở dữ liệu đang chạy trả `409 CONFLICT_001` và không thay đổi dữ liệu. Ghi nhật ký `RESTORE_COMPLETED`.'
       operationId: adminCreateRestore
       x-roles: [SYSTEM_ADMIN]
       requestBody:
@@ -929,16 +929,25 @@ paths:
         '403': {$ref: '#/components/responses/ForbiddenError'}
         '404': {$ref: '#/components/responses/NotFoundError'}
         '409':
-          description: 'ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác'
+          description: 'ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác. CONFLICT_001: Bản sao lưu khác phiên bản cơ sở dữ liệu'
           content:
             application/json:
               schema: {$ref: '#/components/schemas/ErrorResponse'}
-              example:
-                success: false
-                error:
-                  code: ADM_003
-                  message: Đang có tác vụ sao lưu hoặc khôi phục khác
-                  details: []
+              examples:
+                busy:
+                  value:
+                    success: false
+                    error:
+                      code: ADM_003
+                      message: Đang có tác vụ sao lưu hoặc khôi phục khác
+                      details: []
+                schemaMismatch:
+                  value:
+                    success: false
+                    error:
+                      code: CONFLICT_001
+                      message: Bản sao lưu được tạo ở phiên bản cơ sở dữ liệu khác bản đang chạy nên không khôi phục được. Hãy chọn bản sao lưu tạo sau lần nâng cấp gần nhất.
+                      details: []
         '500': {$ref: '#/components/responses/InternalServerError'}
   /admin/configs:
     get:

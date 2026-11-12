@@ -9,6 +9,7 @@ import com.familyconnect.modules.auth.api.ContentModerationPort.ContentType;
 import com.familyconnect.modules.auth.api.ContentModerationPort.ReportStatus;
 import com.familyconnect.modules.auth.dto.AdminDtos.AdminContentReport;
 import com.familyconnect.modules.auth.dto.AdminDtos.AdminUserData;
+import com.familyconnect.modules.auth.dto.AdminDtos.AuditLogData;
 import com.familyconnect.modules.auth.dto.AdminDtos.GlobalRole;
 import com.familyconnect.modules.auth.dto.AdminDtos.MembershipRequest;
 import com.familyconnect.modules.auth.dto.AdminDtos.PageResponse;
@@ -21,6 +22,7 @@ import com.familyconnect.modules.auth.entity.Role;
 import com.familyconnect.modules.auth.entity.User;
 import com.familyconnect.modules.auth.entity.UserRole;
 import com.familyconnect.modules.auth.entity.UserStatus;
+import com.familyconnect.modules.auth.repository.AuditLogRepository;
 import com.familyconnect.modules.auth.repository.RefreshTokenRepository;
 import com.familyconnect.modules.auth.repository.RoleRepository;
 import com.familyconnect.modules.auth.repository.UserRepository;
@@ -57,12 +59,13 @@ public class AdminService {
     private final MembershipService membershipService;
     private final ContentModerationPort moderation;
     private final AuditLogger auditLogger;
+    private final AuditLogRepository auditLogs;
     private final Clock clock;
 
     public AdminService(UserRepository userRepository, UserRoleRepository userRoleRepository,
                         RoleRepository roleRepository, RefreshTokenRepository refreshTokenRepository,
                         MembershipService membershipService, ContentModerationPort moderation,
-                        AuditLogger auditLogger, Clock clock) {
+                        AuditLogger auditLogger, AuditLogRepository auditLogs, Clock clock) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
@@ -70,6 +73,7 @@ public class AdminService {
         this.membershipService = membershipService;
         this.moderation = moderation;
         this.auditLogger = auditLogger;
+        this.auditLogs = auditLogs;
         this.clock = clock;
     }
 
@@ -208,6 +212,25 @@ public class AdminService {
             case RESTORE_CONTENT -> moderation.restoreContent(reportId, adminId);
         };
         return toReports(List.of(done)).get(0);
+    }
+
+    // ---- UC-AUTH-10: nhật ký kiểm toán ----
+
+    @Transactional(readOnly = true)
+    public PageResponse<AuditLogData> listAuditLogs(UUID adminId, UUID actorUserId, String action,
+                                                    OffsetDateTime from, OffsetDateTime to,
+                                                    int page, int size, String sort) {
+        requireSystemAdmin(adminId);
+        boolean ascending = pageRequest(page, size, sort).getSort().getOrderFor("createdAt").isAscending();
+        String code = action == null || action.isBlank() ? null : action.trim();
+        if (code != null && code.length() > 60) {
+            throw ApiException.invalidField("action", "action tối đa 60 ký tự");
+        }
+        if (from != null && to != null && from.isAfter(to)) {
+            throw ApiException.invalidField("from", "from phải trước hoặc bằng to");
+        }
+        return PageResponse.of(auditLogs.search(actorUserId, code, from, to, ascending, page, size), page, size,
+                auditLogs.count(actorUserId, code, from, to));
     }
 
     // ---- dùng chung ----

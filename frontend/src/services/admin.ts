@@ -1,4 +1,4 @@
-// Gọi API quản trị (auth.yaml: Admin, Moderation, FamilyRoles; UC-AUTH-08, 09, 14). Kiểu sinh từ OpenAPI.
+// Gọi API quản trị (auth.yaml: Admin, Moderation, Audit, FamilyRoles; UC-AUTH-08, 09, 10, 14). Kiểu sinh từ OpenAPI.
 import { api } from '@/lib/api';
 import type { components } from './generated/auth';
 import type { components as Genealogy } from './generated/genealogy';
@@ -16,6 +16,7 @@ export type FamilyAccount = Schemas['FamilyAccount'];
 export type MembershipRequest = Schemas['AdminMembershipRequest'];
 export type BackupFile = Schemas['BackupFile'];
 export type RestoreResult = Schemas['RestoreResult'];
+export type AuditLog = Schemas['AuditLog'];
 
 export const PAGE_SIZE = 20;
 
@@ -38,6 +39,8 @@ export const adminApi = {
   createBackup: () => api.post<BackupFile>('/admin/backups'),
   restore: (backupId: string, confirmText: 'RESTORE') =>
     api.post<RestoreResult>('/admin/restores', { backupId, confirmText } satisfies Schemas['RestoreCreateRequest']),
+  auditLogs: (params: { actorUserId?: string; action?: string; from?: string; to?: string; page: number }) =>
+    api.list<AuditLog>('/admin/audit-logs', { ...params, size: PAGE_SIZE, sort: 'createdAt,desc' }),
 };
 
 /** UC-AUTH-14: trưởng họ (hoặc quản trị) phân công trưởng chi. */
