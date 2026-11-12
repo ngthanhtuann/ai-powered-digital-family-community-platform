@@ -15,7 +15,9 @@ import type { ComponentType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { EventsScreen } from '../screens/EventsScreen';
+import { FamilyTreeScreen } from '../screens/FamilyTreeScreen';
 import { FeedScreen } from '../screens/FeedScreen';
+import { RelationshipScreen } from '../screens/RelationshipScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { notificationsApi } from '../services/notifications';
@@ -106,6 +108,7 @@ const AiSearchWithFab = withAssistantFab(AiSearchScreen);
 const AiSourceDetailWithFab = withAssistantFab(AiSourceDetailScreen);
 const ProfileWithFab = withAssistantFab(ProfileScreen);
 const ChangePasswordWithFab = withAssistantFab(ChangePasswordScreen);
+const RelationshipWithFab = withAssistantFab(RelationshipScreen);
 
 function DrawerContent(props: DrawerContentComponentProps) {
   const { session, signOut } = useSession();
@@ -154,6 +157,17 @@ export function AppDrawer() {
       {/* Bảng tin, Sự kiện là danh sách cuộn: không gắn nút nổi Trợ lý AI để khỏi che bài cuối; mở AI từ menu. */}
       <Drawer.Screen name="Feed" component={FeedScreen} options={{ title: 'Bảng tin' }} />
       <Drawer.Screen name="Events" component={EventsScreen} options={{ title: 'Sự kiện' }} />
+      {/* Gia phả (SCRUM-90): cây là danh sách cuộn nên không gắn nút nổi AI, giống Bảng tin. */}
+      <Drawer.Screen
+        name="FamilyTree"
+        component={FamilyTreeScreen}
+        options={{ title: 'Cây gia phả' }}
+      />
+      <Drawer.Screen
+        name="Relationship"
+        component={RelationshipWithFab}
+        options={{ title: 'Tra cứu xưng hô' }}
+      />
       <Drawer.Screen name="AiChat" component={AiChatScreen} options={{ title: 'Trợ lý AI' }} />
       <Drawer.Screen name="AiSearch" component={AiSearchWithFab} options={{ title: 'Tìm kiếm' }} />
       <Drawer.Screen

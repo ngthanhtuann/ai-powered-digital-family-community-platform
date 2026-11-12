@@ -18,6 +18,9 @@ export type AppDrawerParamList = {
   Home: undefined;
   Feed: undefined;
   Events: undefined;
+  FamilyTree: undefined;
+  /** Mở từ thẻ chi tiết trên cây thì điền sẵn người thứ nhất. */
+  Relationship: { personAId?: string; personAName?: string } | undefined;
   AiChat: undefined;
   AiSearch: undefined;
   AiSourceDetail: {
