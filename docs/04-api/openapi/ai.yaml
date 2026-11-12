@@ -320,6 +320,10 @@ paths:
                         type: boolean
                       explanation:
                         type: string
+                      relation:
+                        type: string
+                        nullable: true
+                        description: Tên quan hệ do thuật toán gia phả tính (nguồn sự thật); null khi found = false.
                       path:
                         type: array
                         items:
@@ -332,6 +336,7 @@ paths:
                 data:
                   found: true
                   explanation: Theo dữ liệu gia phả, A là cháu của B qua đường quan hệ đã xác định.
+                  relation: cháu
                   path: []
         '400':
           $ref: '#/components/responses/ValidationError'

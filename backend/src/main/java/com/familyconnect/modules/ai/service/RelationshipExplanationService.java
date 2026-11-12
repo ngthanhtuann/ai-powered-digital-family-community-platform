@@ -6,9 +6,9 @@ import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.modules.ai.dto.RelationshipExplanationRequest;
 import com.familyconnect.modules.ai.dto.RelationshipExplanationResponse;
 import com.familyconnect.modules.auth.api.MembershipQuery;
+import com.familyconnect.modules.ai.dto.RelationshipExplanationResponse.PathPerson;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
-import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
-import com.familyconnect.modules.genealogy.dto.RelationshipResponse.PathPerson;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery.RelationshipResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -63,7 +63,7 @@ public class RelationshipExplanationService {
         membership.requireFamilyAccess(user.id(), familyA);
         limiter.check(user.id());
 
-        RelationshipResponse result = genealogy.relationship(request.personAId(), request.personBId());
+        RelationshipResult result = genealogy.relationship(request.personAId(), request.personBId());
         Set<UUID> minors = Set.copyOf(genealogy.findMinorPersonIds(familyA, LocalDate.now(clock)));
         List<PathPerson> safePath = result.path().stream()
                 .map(p -> new PathPerson(p.id(), minors.contains(p.id()) ? MINOR_LABEL : p.fullName()))
@@ -85,7 +85,7 @@ public class RelationshipExplanationService {
         }
     }
 
-    private static String prompt(RelationshipResponse result, List<PathPerson> safePath) {
+    private static String prompt(RelationshipResult result, List<PathPerson> safePath) {
         String path = safePath.stream().map(PathPerson::fullName).collect(Collectors.joining(" → "));
         return "Diễn đạt ngắn gọn bằng tiếng Việt kết quả quan hệ đã được thuật toán gia phả tính. "
                 + "Không suy luận, đổi tên quan hệ, thêm dữ kiện hoặc diễn giải lại thế hệ/hôn nhân. "

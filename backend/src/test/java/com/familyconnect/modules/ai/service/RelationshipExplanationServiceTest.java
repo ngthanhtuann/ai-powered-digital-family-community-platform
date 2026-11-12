@@ -4,8 +4,8 @@ import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.modules.ai.dto.RelationshipExplanationRequest;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery;
-import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
-import com.familyconnect.modules.genealogy.dto.RelationshipResponse.PathPerson;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery.PathStep;
+import com.familyconnect.modules.genealogy.api.GenealogyQuery.RelationshipResult;
 import org.junit.jupiter.api.Test;
 import java.time.Clock;
 import java.time.Instant;
@@ -37,9 +37,8 @@ class RelationshipExplanationServiceTest {
         for (int i = 0; i < 10; i++) {
             UUID a = UUID.randomUUID(), b = UUID.randomUUID();
             String relation = "relation-" + i;
-            when(genealogy.relationship(a, b)).thenReturn(new RelationshipResponse(true, relation,
-                    "algorithm description", null, 1, 2,
-                    List.of(new PathPerson(a, "Synthetic A"), new PathPerson(b, "Synthetic B"))));
+            when(genealogy.relationship(a, b)).thenReturn(new RelationshipResult(true, relation, 1, 2,
+                    List.of(new PathStep(a, "Synthetic A"), new PathStep(b, "Synthetic B"))));
             var response = service.explain(actor, new RelationshipExplanationRequest(a, b));
             assertEquals(relation, response.relation());
             assertEquals("Explanation grounded in the supplied algorithm result.", response.explanation());
@@ -54,8 +53,8 @@ class RelationshipExplanationServiceTest {
         UUID user = UUID.randomUUID(), family = UUID.randomUUID(), a = UUID.randomUUID(), minor = UUID.randomUUID(), b = UUID.randomUUID();
         when(genealogy.findPersonFamilyId(any())).thenReturn(java.util.Optional.of(family));
         when(genealogy.findMinorPersonIds(any(), any())).thenReturn(List.of(minor));
-        when(genealogy.relationship(a, b)).thenReturn(new RelationshipResponse(true, "cousin", "", null, 2, 2,
-                List.of(new PathPerson(a, "Adult"), new PathPerson(minor, "Child Secret Name"), new PathPerson(b, "Adult B"))));
+        when(genealogy.relationship(a, b)).thenReturn(new RelationshipResult(true, "cousin", 2, 2,
+                List.of(new PathStep(a, "Adult"), new PathStep(minor, "Child Secret Name"), new PathStep(b, "Adult B"))));
         when(model.isConfigured()).thenReturn(true);
         when(model.answer(anyString())).thenAnswer(call -> {
             String prompt = call.getArgument(0);
@@ -76,7 +75,7 @@ class RelationshipExplanationServiceTest {
         UUID family = UUID.randomUUID(), a = UUID.randomUUID(), b = UUID.randomUUID();
         when(genealogy.findPersonFamilyId(any())).thenReturn(java.util.Optional.of(family));
         when(genealogy.findMinorPersonIds(any(), any())).thenReturn(List.of());
-        when(genealogy.relationship(a, b)).thenReturn(new RelationshipResponse(false, null, "", null, null, null, List.of()));
+        when(genealogy.relationship(a, b)).thenReturn(new RelationshipResult(false, null, null, null, List.of()));
         var service = new RelationshipExplanationService(genealogy, mock(MembershipQuery.class), model,
                 mock(AiSearchRateLimiter.class), Clock.systemUTC(), true);
         var response = service.explain(new AuthenticatedUser(UUID.randomUUID(), List.of("MEMBER")),

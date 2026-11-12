@@ -450,6 +450,7 @@ export interface operations {
                      *       "data": {
                      *         "found": true,
                      *         "explanation": "Theo dữ liệu gia phả, A là cháu của B qua đường quan hệ đã xác định.",
+                     *         "relation": "cháu",
                      *         "path": []
                      *       }
                      *     }
@@ -460,6 +461,8 @@ export interface operations {
                         data: {
                             found: boolean;
                             explanation: string;
+                            /** @description Tên quan hệ do thuật toán gia phả tính (nguồn sự thật); null khi found = false. */
+                            relation?: string | null;
                             path?: {
                                 [key: string]: unknown;
                             }[];

@@ -40,8 +40,10 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     }
 
     @Override
-    public RelationshipResponse relationship(UUID personAId, UUID personBId) {
-        return kinshipService.relationship(personAId, personBId);
+    public RelationshipResult relationship(UUID personAId, UUID personBId) {
+        RelationshipResponse r = kinshipService.relationship(personAId, personBId);
+        return new RelationshipResult(r.supported(), r.relation(), r.stepsFromA(), r.stepsFromB(),
+                r.path().stream().map(p -> new PathStep(p.id(), p.fullName())).toList());
     }
 
     @Override

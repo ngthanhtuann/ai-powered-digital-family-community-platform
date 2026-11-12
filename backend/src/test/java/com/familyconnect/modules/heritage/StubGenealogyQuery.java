@@ -4,7 +4,6 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemographics;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
-import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
 
 import java.util.HashSet;
 import java.util.List;
@@ -16,8 +15,8 @@ import java.util.UUID;
 public final class StubGenealogyQuery implements GenealogyQuery {
 
     @Override
-    public RelationshipResponse relationship(UUID personAId, UUID personBId) {
-        return new RelationshipResponse(false, null, "", null, null, null, List.of());
+    public RelationshipResult relationship(UUID personAId, UUID personBId) {
+        return new RelationshipResult(false, null, null, null, List.of());
     }
 
     private final Set<PersonFamily> people = new HashSet<>();
