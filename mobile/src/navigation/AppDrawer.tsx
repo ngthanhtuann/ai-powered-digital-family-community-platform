@@ -6,9 +6,12 @@ import {
   DrawerItem,
   DrawerItemList,
   type DrawerContentComponentProps,
+  type DrawerNavigationProp,
 } from '@react-navigation/drawer';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import type { ComponentType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
 import { EventsScreen } from '../screens/EventsScreen';
@@ -16,6 +19,9 @@ import { FeedScreen } from '../screens/FeedScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { notificationsApi } from '../services/notifications';
+import { AiChatScreen } from '../screens/AiChatScreen';
+import { AiSearchScreen } from '../screens/AiSearchScreen';
+import { AiSourceDetailScreen } from '../screens/AiSourceDetailScreen';
 import { useSession } from '../session/SessionContext';
 import { colors, text } from '../theme';
 import type { AppDrawerParamList, RootStackParamList } from './types';
@@ -64,6 +70,43 @@ function NotificationBell({ onPress }: { onPress: () => void }) {
   );
 }
 
+function withAssistantFab<P extends object>(Screen: ComponentType<P>) {
+  return function ScreenWithAssistantFab(props: P) {
+    const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
+    return (
+      <View style={{ flex: 1 }}>
+        <Screen {...props} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Trợ lý AI"
+          onPress={() => navigation.navigate('AiChat')}
+          style={{
+            position: 'absolute',
+            right: 16,
+            bottom: 20,
+            minHeight: 48,
+            borderRadius: 24,
+            paddingHorizontal: 18,
+            justifyContent: 'center',
+            backgroundColor: colors.primary,
+            borderWidth: 1,
+            borderColor: colors.secondary,
+            elevation: 5,
+          }}
+        >
+          <Text style={[text.label, { color: colors.creamOnDark }]}>Trợ lý AI</Text>
+        </Pressable>
+      </View>
+    );
+  };
+}
+
+const HomeWithFab = withAssistantFab(HomeScreen);
+const AiSearchWithFab = withAssistantFab(AiSearchScreen);
+const AiSourceDetailWithFab = withAssistantFab(AiSourceDetailScreen);
+const ProfileWithFab = withAssistantFab(ProfileScreen);
+const ChangePasswordWithFab = withAssistantFab(ChangePasswordScreen);
+
 function DrawerContent(props: DrawerContentComponentProps) {
   const { session, signOut } = useSession();
   const familyName = session.status === 'signedIn' ? session.membership.familyName : null;
@@ -107,17 +150,25 @@ export function AppDrawer() {
         drawerInactiveTintColor: colors.creamOnDark,
       })}
     >
-      <Drawer.Screen name="Home" component={HomeScreen} options={{ title: 'Tổng quan' }} />
+      <Drawer.Screen name="Home" component={HomeWithFab} options={{ title: 'Tổng quan' }} />
+      {/* Bảng tin, Sự kiện là danh sách cuộn: không gắn nút nổi Trợ lý AI để khỏi che bài cuối; mở AI từ menu. */}
       <Drawer.Screen name="Feed" component={FeedScreen} options={{ title: 'Bảng tin' }} />
       <Drawer.Screen name="Events" component={EventsScreen} options={{ title: 'Sự kiện' }} />
+      <Drawer.Screen name="AiChat" component={AiChatScreen} options={{ title: 'Trợ lý AI' }} />
+      <Drawer.Screen name="AiSearch" component={AiSearchWithFab} options={{ title: 'Tìm kiếm' }} />
+      <Drawer.Screen
+        name="AiSourceDetail"
+        component={AiSourceDetailWithFab}
+        options={{ title: 'Chi tiết', drawerItemStyle: { display: 'none' } }}
+      />
       <Drawer.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileWithFab}
         options={{ title: 'Hồ sơ cá nhân' }}
       />
       <Drawer.Screen
         name="ChangePassword"
-        component={ChangePasswordScreen}
+        component={ChangePasswordWithFab}
         options={{ title: 'Đổi mật khẩu' }}
       />
     </Drawer.Navigator>
