@@ -7,6 +7,7 @@ import com.familyconnect.modules.auth.dto.AuthRequests;
 import com.familyconnect.modules.auth.dto.AuthResponses.LoginData;
 import com.familyconnect.modules.auth.dto.AuthResponses.TokenData;
 import com.familyconnect.modules.auth.service.AuthService;
+import com.familyconnect.modules.auth.service.RefreshRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,9 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshRateLimiter refreshRateLimiter;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RefreshRateLimiter refreshRateLimiter) {
         this.authService = authService;
+        this.refreshRateLimiter = refreshRateLimiter;
     }
 
     @PostMapping("/login")
@@ -37,7 +40,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @Operation(operationId = "refreshToken", summary = "Làm mới token (UC-AUTH-03)")
-    public ApiResponse<TokenData> refresh(@Valid @RequestBody AuthRequests.Refresh request) {
+    public ApiResponse<TokenData> refresh(@Valid @RequestBody AuthRequests.Refresh request, HttpServletRequest http) {
+        refreshRateLimiter.check(ClientIp.of(http));
         return ApiResponse.ok(authService.refresh(request));
     }
 

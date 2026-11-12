@@ -6,6 +6,7 @@ import com.familyconnect.modules.auth.api.ContentModerationPort.ContentType;
 import com.familyconnect.modules.auth.api.ContentModerationPort.ReportStatus;
 import com.familyconnect.modules.auth.dto.AdminDtos.AdminContentReport;
 import com.familyconnect.modules.auth.dto.AdminDtos.AdminUserData;
+import com.familyconnect.modules.auth.dto.AdminDtos.AuditLogData;
 import com.familyconnect.modules.auth.dto.AdminDtos.MembershipRequest;
 import com.familyconnect.modules.auth.dto.AdminDtos.GlobalRole;
 import com.familyconnect.modules.auth.dto.AdminDtos.PageResponse;
@@ -17,6 +18,7 @@ import com.familyconnect.modules.auth.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,9 +28,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/** Trang /admin: người dùng (UC-AUTH-08) và kiểm duyệt (UC-AUTH-09). Quyền SYSTEM_ADMIN kiểm ở AdminService. */
+/** Trang /admin: người dùng (UC-AUTH-08) và kiểm duyệt (UC-AUTH-09), nhật ký (UC-AUTH-10). Quyền SYSTEM_ADMIN kiểm ở AdminService. */
 @RestController
 @RequestMapping("/api/v1/admin")
 @Tag(name = "Admin")
@@ -93,5 +96,18 @@ public class AdminController {
     @Operation(operationId = "adminReviewContentReport", summary = "Xử lý báo cáo nội dung (UC-AUTH-09)")
     public ApiResponse<AdminContentReport> review(@PathVariable UUID id, @Valid @RequestBody ReviewRequest request) {
         return ApiResponse.ok(adminService.reviewReport(CurrentUser.require().id(), id, request.action()));
+    }
+
+    @GetMapping("/audit-logs")
+    @Operation(operationId = "adminListAuditLogs", summary = "Xem nhật ký kiểm toán (UC-AUTH-10)")
+    public PageResponse<AuditLogData> listAuditLogs(
+            @RequestParam(required = false) UUID actorUserId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        return adminService.listAuditLogs(CurrentUser.require().id(), actorUserId, action, from, to, page, size, sort);
     }
 }

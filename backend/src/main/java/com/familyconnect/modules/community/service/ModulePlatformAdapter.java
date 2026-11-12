@@ -122,6 +122,11 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
     }
 
     @Override
+    public void logContentSaved(boolean created, String contentType, UUID contentId, UUID familyId) {
+        auditLogger.log(created ? "CONTENT_CREATED" : "CONTENT_UPDATED", contentType, contentId, familyId, Map.of());
+    }
+
+    @Override
     public void postChanged(UUID postId, UUID familyId) {
         // Đọc ngay trong giao dịch, gọi AI sau khi commit (ai.md mục 6.1): lỗi AI không làm hỏng thao tác bài đăng.
         Runnable action = store.findPost(postId)

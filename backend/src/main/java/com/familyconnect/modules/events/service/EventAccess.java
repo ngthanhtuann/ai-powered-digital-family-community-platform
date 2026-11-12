@@ -105,6 +105,11 @@ public class EventAccess {
 
     public Map<UUID,String> names(Collection<UUID> userIds) { return users.getFullNames(userIds); }
 
+    /** SCRUM-57: tạo, sửa sự kiện ghi audit log như xóa. */
+    public void eventSaved(Event event, boolean created) {
+        audit.log(created ? "CONTENT_CREATED" : "CONTENT_UPDATED","EVENT",event.id(),event.familyId(),Map.of());
+    }
+
     public void eventDeleted(Event event, Actor actor) {
         audit.log("CONTENT_DELETED","EVENT",event.id(),event.familyId(),
                   Map.of("byOwner",event.createdBy().equals(actor.id())));

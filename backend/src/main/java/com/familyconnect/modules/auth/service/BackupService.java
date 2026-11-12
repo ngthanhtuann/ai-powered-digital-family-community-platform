@@ -39,6 +39,8 @@ public class BackupService {
     private static final Pattern BACKUP_ID = Pattern.compile("familyconnect-\\d{8}-\\d{6}");
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final String SCRIPTS = "/app/scripts/";
+    static final String SCHEMA_MISMATCH = "Bản sao lưu được tạo ở phiên bản cơ sở dữ liệu khác bản đang chạy nên "
+            + "không khôi phục được. Hãy chọn bản sao lưu tạo sau lần nâng cấp gần nhất.";
 
     private final UserRoleRepository roles;
     private final AuditLogger audit;
@@ -132,11 +134,7 @@ public class BackupService {
                 log.error("Tác vụ {} quá thời gian 15 phút", name);
                 throw new ApiException(ErrorCode.SERVER_001);
             }
-            if (process.exitValue() == 75) throw new ApiException(ErrorCode.ADM_003);
-            if (process.exitValue() != 0) {
-                log.error("Script {} thất bại, exit={}", name, process.exitValue());
-                throw new ApiException(ErrorCode.SERVER_001);
-            }
+            if (process.exitValue() != 0) throw scriptFailure(name, process.exitValue());
         } catch (IOException e) {
             log.error("Không thể khởi chạy script {}", name, e);
             throw new ApiException(ErrorCode.SERVER_001);
@@ -145,6 +143,17 @@ public class BackupService {
             Thread.currentThread().interrupt();
             throw new ApiException(ErrorCode.SERVER_001);
         }
+    }
+
+    /**
+     * Mã thoát của script thành lỗi API: 75 đang có tác vụ khác (ADM_003); restore.sh thoát 3 khi bản sao lưu khác
+     * phiên bản Flyway với DB đang chạy, script dừng trước pg_restore nên dữ liệu chưa bị đổi (UC-AUTH-11 2d).
+     */
+    static ApiException scriptFailure(String name, int exitCode) {
+        if (exitCode == 75) return new ApiException(ErrorCode.ADM_003);
+        if (exitCode == 3 && name.equals("restore.sh")) return new ApiException(ErrorCode.CONFLICT_001, SCHEMA_MISMATCH);
+        log.error("Script {} thất bại, exit={}", name, exitCode);
+        return new ApiException(ErrorCode.SERVER_001);
     }
 
     private void stopProcess(Process process) {

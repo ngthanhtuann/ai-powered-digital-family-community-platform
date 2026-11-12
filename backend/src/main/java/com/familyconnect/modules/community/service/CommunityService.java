@@ -141,6 +141,7 @@ public class CommunityService implements SummarySource {
         String content = nonBlank(input.content(),5000,"content");
         canPublish(user,family,input.branchId());
         Post created = store.insertPost(family,input.branchId(),content,input.type(),user.userId());
+        platform.logContentSaved(true,"POST",created.id(),family);
         platform.postChanged(created.id(),family);
         return asView(created,user);
     }
@@ -200,6 +201,7 @@ public class CommunityService implements SummarySource {
         UUID branch = input.branchSpecified() ? input.branchId() : post.branchId();
         canPublish(user,post.familyId(),branch);
         Post updated = store.updatePost(id,content,branch,user.userId());
+        platform.logContentSaved(false,"POST",id,post.familyId());
         platform.postChanged(id,post.familyId());
         return asView(updated,user);
     }
@@ -232,6 +234,7 @@ public class CommunityService implements SummarySource {
         Actor user = actor();
         Post post = readablePost(user,postId);
         Comment created = store.insertComment(postId,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        platform.logContentSaved(true,"COMMENT",created.id(),post.familyId());
         return commentViews(List.of(created),post,user).get(0);
     }
 
@@ -242,6 +245,7 @@ public class CommunityService implements SummarySource {
         Post post = readablePost(user,comment.postId());
         if (!comment.createdBy().equals(user.userId())) throw new ApiException(ErrorCode.PERM_001);
         Comment updated = store.updateComment(id,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        platform.logContentSaved(false,"COMMENT",id,post.familyId());
         return commentViews(List.of(updated),post,user).get(0);
     }
 
