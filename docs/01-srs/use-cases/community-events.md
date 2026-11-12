@@ -172,13 +172,13 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | Mục | Nội dung |
 |---|---|
 | Mã FR liên quan | FR-EVT-03 |
-| Actor | Xem danh sách: MEMBER đã xác minh có quyền xem sự kiện. Thêm, gỡ: MEMBER (người tạo sự kiện); BRANCH_ADMIN; SYSTEM_ADMIN |
-| Mô tả ngắn | Thành viên xem danh sách người tham dự của sự kiện mình được xem (`srs.md` Phụ lục A: "Phản hồi RSVP, xem người tham dự"); người tạo sự kiện và vai trò quản trị thêm, gỡ người tham dự. |
-| Tiền điều kiện | Sự kiện tồn tại; người dùng đã xác minh và có quyền xem sự kiện. Để thêm, gỡ: là người tạo sự kiện, BRANCH_ADMIN trong phạm vi quản lý hoặc SYSTEM_ADMIN. |
-| Luồng chính | 1. Thành viên có quyền xem sự kiện mở sự kiện.<br>2. Hệ thống hiển thị danh sách người tham dự và trạng thái RSVP; người dùng có thể lọc theo trạng thái.<br>3. Người tạo sự kiện, BRANCH_ADMIN trong phạm vi quản lý hoặc SYSTEM_ADMIN thêm người tham dự (chọn người dùng cùng gia đình) hoặc gỡ người tham dự.<br>4. Hệ thống kiểm tra quyền và cập nhật danh sách. |
-| Luồng thay thế / ngoại lệ | 2a. Không có người tham dự, hệ thống hiển thị danh sách trống.<br>3a. Người không phải người tạo sự kiện, BRANCH_ADMIN trong phạm vi hoặc SYSTEM_ADMIN thực hiện thêm, gỡ thì bị từ chối (403 `PERM_001`); việc xem danh sách không bị từ chối.<br>3b. Người được thêm không thuộc cùng gia đình hoặc không tồn tại: hệ thống trả 404 `NOT_FOUND_001`; đã có trong danh sách: 409 `CONFLICT_001`. |
-| Hậu điều kiện | Danh sách người tham dự được cập nhật theo thao tác hợp lệ. |
-| Quy tắc nghiệp vụ | BR-EVT-03 |
+| Actor | Xem danh sách: MEMBER đã xác minh có quyền xem sự kiện. Thêm/gỡ: MEMBER (người tạo sự kiện), BRANCH_ADMIN, SYSTEM_ADMIN. Ghi điểm danh: BRANCH_ADMIN, SYSTEM_ADMIN. |
+| Mô tả ngắn | Thành viên xem danh sách người tham dự của sự kiện mình được xem; người tạo sự kiện và vai trò quản trị thêm, gỡ người tham dự; quản trị viên ghi nhận điểm danh trong phạm vi. |
+| Tiền điều kiện | Sự kiện tồn tại; người dùng đã xác minh và có quyền xem sự kiện. Để thêm/gỡ: người tạo sự kiện, BRANCH_ADMIN trong phạm vi quản lý hoặc SYSTEM_ADMIN. Để ghi điểm danh: BRANCH_ADMIN trong phạm vi hoặc SYSTEM_ADMIN. |
+| Luồng chính | 1. Thành viên có quyền xem sự kiện mở sự kiện.<br>2. Hệ thống hiển thị danh sách người tham dự và trạng thái RSVP; người dùng có thể lọc theo trạng thái.<br>3. Người tạo sự kiện, BRANCH_ADMIN trong phạm vi quản lý hoặc SYSTEM_ADMIN thêm/gỡ người tham dự.<br>4. BRANCH_ADMIN trong phạm vi hoặc SYSTEM_ADMIN đánh dấu người tham dự có mặt hoặc hủy ghi nhận.<br>5. Hệ thống kiểm tra quyền, lưu trạng thái điểm danh và cập nhật danh sách. |
+| Luồng thay thế / ngoại lệ | 2a. Không có người tham dự, hệ thống hiển thị danh sách trống.<br>3a. Người không có quyền thực hiện thêm/gỡ hoặc ghi điểm danh thì bị từ chối (403 `PERM_001`); việc xem danh sách không bị từ chối.<br>3b. Người được thêm không thuộc cùng gia đình hoặc không tồn tại: hệ thống trả 404 `NOT_FOUND_001`; đã có trong danh sách: 409 `CONFLICT_001`. |
+| Hậu điều kiện | Danh sách RSVP và trạng thái điểm danh được cập nhật theo thao tác hợp lệ. |
+| Quy tắc nghiệp vụ | BR-EVT-03. Điểm danh ghi được cho mọi người trong danh sách tham dự (kể cả RSVP khác `GOING`, ví dụ người báo `MAYBE` nhưng vẫn đến); tỷ lệ điểm danh trong báo cáo chỉ tính trên nhóm RSVP `GOING` (BR-DSH-03). |
 
 ### UC-EVT-04: Thư viện ảnh sự kiện
 
@@ -222,7 +222,7 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | BR-COM-10 | Xóa bài, bình luận, reaction, thông báo hoặc media dùng xóa mềm khi tài nguyên có `deleted_at`; hành động xóa nội dung cần audit log theo cơ chế chung SCRUM-57/NFR-11. Quyền xóa media: người tải lên; ảnh bài đăng thêm người kiểm duyệt (BR-COM-05); `HERITAGE` thêm `BRANCH_ADMIN`, `SYSTEM_ADMIN`; `PERSON` thêm người quản lý hồ sơ (do module sở hữu quyết định qua `MediaOwnerPolicy`). Tệp đang được tài liệu lịch sử hoặc ảnh đại diện dùng không xóa được (409 `CONFLICT_001`). |
 | BR-EVT-01 | Chỉ MEMBER đã xác minh, `BRANCH_ADMIN` hoặc `SYSTEM_ADMIN` được tạo sự kiện. Người tạo, `BRANCH_ADMIN` trong phạm vi và `SYSTEM_ADMIN` được sửa/xóa sự kiện theo quyền tương ứng. |
 | BR-EVT-02 | RSVP chỉ nhận `GOING`, `NOT_GOING`, `MAYBE`; mỗi người dùng có tối đa một RSVP đang hoạt động cho một sự kiện. Không được RSVP sau khi sự kiện bắt đầu: trả HTTP 409 `EVT_001`. Sự kiện đã bị xóa mềm hoặc không tồn tại: trả HTTP 404 `NOT_FOUND_001`. |
-| BR-EVT-03 | Danh sách người tham dự có thể lọc theo trạng thái RSVP. Thêm/gỡ người tham dự chỉ do người tạo sự kiện hoặc vai trò quản trị có quyền trong phạm vi thực hiện. Người được thêm phải thuộc cùng `family_id` với sự kiện; thêm trùng `(event_id, user_id)` trả HTTP 409 `CONFLICT_001`. Nếu người dùng đã được thêm, RSVP của chính họ cập nhật cùng bản ghi `event_participant`. Thành viên đã xác minh có quyền xem sự kiện được xem danh sách người tham dự (`srs.md` Phụ lục A); danh sách chỉ gồm họ tên và trạng thái RSVP, không kèm thông tin liên hệ. Chi tiết sự kiện vẫn trả `myRsvpStatus` và `rsvpCounts`. |
+| BR-EVT-03 | Danh sách người tham dự có thể lọc theo trạng thái RSVP. Thêm/gỡ người tham dự chỉ do người tạo sự kiện hoặc vai trò quản trị có quyền trong phạm vi thực hiện. Người được thêm phải thuộc cùng `family_id` với sự kiện; thêm trùng `(event_id, user_id)` trả HTTP 409 `CONFLICT_001`. Nếu người dùng đã được thêm, RSVP của chính họ cập nhật cùng bản ghi `event_participant`. Thành viên đã xác minh có quyền xem sự kiện được xem danh sách người tham dự; danh sách chỉ gồm họ tên, RSVP và thời điểm điểm danh, không kèm thông tin liên hệ. Chỉ BRANCH_ADMIN trong phạm vi hoặc SYSTEM_ADMIN được ghi nhận/hủy điểm danh. |
 | BR-EVT-04 | `events` dùng media chung do module `community` sở hữu; truy cập ảnh sự kiện phải kiểm tra quyền sự kiện/gia đình. Không tạo bảng ảnh riêng cho events. |
 | BR-EVT-05 | Nhắc nhở chỉ hướng đến người đã RSVP `GOING` hoặc `MAYBE`; nhắc vào 24 giờ và 1 giờ trước `start_at` (đã chốt 9/10/2026). Mỗi mốc nhắc có loại riêng (`EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`) nên ràng buộc duy nhất `(user_id, ref_id, type)` khi có `ref_id` vừa chống gửi trùng vừa cho phép đủ 2 lần nhắc; nếu sau này đổi mốc nhắc thì đổi tên loại tương ứng. Kênh gửi: thông báo trong ứng dụng (bản ghi `notification`, web và mobile cùng đọc qua `GET /notifications`); push notification trên mobile là phần mở rộng, không thuộc phạm vi cam kết. Mỗi người nhận có một bản ghi `notification` riêng (bảng có `user_id` và `is_read` theo từng người). |
 | BR-COM-11 | Khi bài đăng được tạo/sửa/xóa, module thông báo cho module `ai` qua interface `AiGateway` để cập nhật embedding; không gọi REST nội bộ. |
@@ -378,6 +378,7 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 | event_id | UUID | NOT NULL, FK | Sự kiện |
 | user_id | UUID | NOT NULL | Người được ghi nhận tham dự (khác `created_by` khi người tạo sự kiện thêm hộ); tham chiếu `users(id)` của module auth, kiểm tra ở service, không FK chéo module |
 | rsvp_status | VARCHAR(20) | NOT NULL, CHECK | `GOING`, `NOT_GOING` hoặc `MAYBE`; mặc định `MAYBE` khi người tạo sự kiện thêm hộ |
+| attended_at | TIMESTAMPTZ | NULL | Thời điểm ghi nhận điểm danh thực tế; NULL nếu chưa có mặt/ chưa được ghi nhận |
 | created_by | UUID | NOT NULL | Người thực hiện thao tác tạo bản ghi |
 | updated_by | UUID | NULL | Người cập nhật |
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |
@@ -464,6 +465,7 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 | PUT | `/api/v1/events/{id}/rsvp` | Tạo/cập nhật RSVP | MEMBER đã xác minh |
 | GET | `/api/v1/events/{id}/participants` | Danh sách người tham dự, lọc RSVP | Thành viên có quyền xem sự kiện |
 | POST | `/api/v1/events/{id}/participants` | Thêm người tham dự | Người tạo hoặc quản trị có quyền |
+| PUT | `/api/v1/events/{id}/participants/{participantId}/attendance` | Ghi nhận/hủy điểm danh thực tế | BRANCH_ADMIN trong phạm vi; SYSTEM_ADMIN |
 | DELETE | `/api/v1/participants/{id}` | Gỡ bản ghi người tham dự theo ID | Người tạo hoặc quản trị có quyền |
 | GET | `/api/v1/events/{id}/media` | Danh sách ảnh sự kiện | Thành viên có quyền xem sự kiện |
 | POST | `/api/v1/events/{id}/media` | Tải ảnh lên thư viện sự kiện | Thành viên có quyền chia sẻ ảnh |

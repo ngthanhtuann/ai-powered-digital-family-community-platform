@@ -328,10 +328,13 @@ export interface paths {
         /**
          * Xuất báo cáo thống kê PDF (UC-DSH-03)
          * @description Vai trò: BRANCH_ADMIN (trong phạm vi chi của mình, hoặc cả gia đình nếu không có chi), SYSTEM_ADMIN. MEMBER gọi trả 403 PERM_001.
-         *     Ba loại báo cáo theo `srs.md` mục 7.2, dùng cùng số liệu với UC-DSH-01:
+         *     Ba loại báo cáo theo `srs.md` mục 7.2:
          *     `GENEALOGY` (FR-DSH-01, FR-DSH-04: tổng thành viên, theo thế hệ, giới tính, nghề nghiệp, nơi ở),
-         *     `COMMUNITY` (FR-DSH-02: bài đăng theo tuần), `EVENTS` (FR-DSH-03: sự kiện sắp tới).
-         *     Không in thông tin liên hệ, địa chỉ chi tiết; thống kê nghề nghiệp, nơi ở loại trẻ dưới 16 tuổi. Mỗi lần xuất ghi audit log (SCRUM-57).
+         *     `COMMUNITY` (FR-DSH-02: bài đăng, bình luận, reaction theo tuần trong khoảng ngày),
+         *     `EVENTS` (FR-DSH-03: số sự kiện, RSVP và điểm danh thực tế trong khoảng ngày). Gia phả là ảnh chụp hiện tại, không hồi cứu theo ngày.
+         *     Tỷ lệ điểm danh là số người RSVP GOING đã check-in chia cho tổng RSVP GOING; trạng thái điểm danh được quản trị viên sự kiện ghi nhận.
+         *     Không in thông tin liên hệ, địa chỉ chi tiết; thống kê nghề nghiệp, nơi ở loại trẻ dưới 16 tuổi.
+         *     Mỗi lần xuất ghi audit log (SCRUM-57).
          */
         get: operations["exportReportPdf"];
         put?: never;
@@ -1493,11 +1496,15 @@ export interface operations {
     };
     exportReportPdf: {
         parameters: {
-            query?: {
+            query: {
                 /** @description Gia đình cần thao tác. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: components["parameters"]["FamilyId"];
                 /** @description Chi họ cần xuất (tùy chọn, phải thuộc phạm vi của người dùng). */
                 branchId?: string;
+                /** @description Ngày bắt đầu, bao gồm cả ngày này; mốc ngày theo Asia/Ho_Chi_Minh. */
+                from: string;
+                /** @description Ngày kết thúc, bao gồm cả ngày này; phải bằng hoặc sau from và cách from tối đa 366 ngày (vượt quá trả VALID_001). */
+                to: string;
             };
             header?: never;
             path: {

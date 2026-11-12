@@ -71,6 +71,7 @@ public class EndpointRoles {
             Map.entry("PUT /events/{}/rsvp", SIGNED_IN),
             Map.entry("GET /events/{}/participants", SIGNED_IN),
             Map.entry("POST /events/{}/participants", SIGNED_IN),
+            Map.entry("PUT /events/{}/participants/{}/attendance", ADMINS),
             Map.entry("DELETE /participants/{}", SIGNED_IN),
             // Cộng đồng, tệp (community-events.yaml). Đăng NEWS chỉ trưởng chi: kiểm ở service.
             Map.entry("GET /posts", SIGNED_IN),
@@ -142,6 +143,7 @@ public class EndpointRoles {
             // Dashboard (heritage-directory-dashboard.yaml): chỉ quản trị viên gia đình/chi.
             Map.entry("GET /dashboard/statistics", ADMINS),
             Map.entry("GET /dashboard/reports/members", ADMINS),
+            Map.entry("GET /dashboard/reports/{}/pdf", ADMINS),
             // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
             Map.entry("GET /ai/search", SIGNED_IN),
             Map.entry("POST /ai/chat", SIGNED_IN),

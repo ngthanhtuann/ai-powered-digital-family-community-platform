@@ -214,12 +214,13 @@ Table event_participant {
   event_id uuid [not null, note: 'Sự kiện']
   user_id uuid [not null, note: 'Người tham dự (tài khoản); tham chiếu logic -> users, không có FK']
   rsvp_status varchar(20) [not null, note: 'GOING, NOT_GOING, MAYBE']
+  attended_at timestamptz [note: 'Thời điểm được ghi nhận điểm danh thực tế; null nếu chưa ghi nhận']
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
   updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Sự kiện (events) · TV3 PiLo257 · Người tham dự và RSVP · UNIQUE (event_id, user_id) WHERE deleted_at IS NULL.'
+  Note: 'Sự kiện (events) · TV3 PiLo257 · Người tham dự, RSVP và điểm danh · UNIQUE (event_id, user_id) WHERE deleted_at IS NULL.'
 }
 
 Table heritage_document {

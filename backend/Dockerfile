@@ -10,7 +10,7 @@ RUN mvn -B -q -DskipTests package
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 util-linux tar gzip \
-    curl \
+    curl fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/target/*.jar app.jar
 COPY scripts/backup.sh scripts/restore.sh /app/scripts/

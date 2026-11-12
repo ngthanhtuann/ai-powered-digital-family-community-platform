@@ -7,6 +7,7 @@ import com.familyconnect.modules.ai.api.AiGateway.SourceType;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
+import com.familyconnect.modules.community.api.CommunityQuery.WeeklyActivityCount;
 import com.familyconnect.modules.community.api.CommunityQuery.WeeklyPostCount;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
@@ -73,6 +74,18 @@ public class MediaService implements CommunityQuery {
                                                       OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
         return posts.countPostsByWeek(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
                 .map(item -> new WeeklyPostCount(item.weekStart(), item.postCount()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WeeklyActivityCount> getWeeklyActivityCounts(UUID familyId, boolean allBranches,
+                                                              List<UUID> branchIds,
+                                                              OffsetDateTime fromInclusive,
+                                                              OffsetDateTime toExclusive) {
+        return posts.countWeeklyActivity(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(item -> new WeeklyActivityCount(item.weekStart(), item.postCount(),
+                        item.commentCount(), item.reactionCount()))
                 .toList();
     }
 

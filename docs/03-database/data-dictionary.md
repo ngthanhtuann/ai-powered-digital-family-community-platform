@@ -412,7 +412,7 @@ Người sở hữu: **TV3 PiLo257**
 
 ### `event_participant`
 
-**Mục đích:** Người tham dự và RSVP.  **Người sở hữu:** TV3 PiLo257.  **Trạng thái:** Đầy đủ.
+**Mục đích:** Người tham dự, RSVP và điểm danh thực tế.  **Người sở hữu:** TV3 PiLo257.  **Trạng thái:** Đầy đủ.
 
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
 |---|---|---|---|
@@ -420,6 +420,7 @@ Người sở hữu: **TV3 PiLo257**
 | event_id | UUID | NOT NULL, FK | Sự kiện → `event.id` (FK, cùng module) |
 | user_id | UUID | NOT NULL | Người tham dự (tài khoản) → `users` (tham chiếu logic) |
 | rsvp_status | VARCHAR(20) | NOT NULL, CHECK | GOING, NOT_GOING, MAYBE |
+| attended_at | TIMESTAMPTZ | NULL | Thời điểm được BRANCH_ADMIN/SYSTEM_ADMIN ghi nhận có mặt |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | created_at | TIMESTAMPTZ | NOT NULL | Thời gian tạo |

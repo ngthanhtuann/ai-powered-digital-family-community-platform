@@ -21,7 +21,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { datedFileName, saveBlob } from '@/lib/download';
 import { getMyMembership, getMyProfile } from '@/services/auth';
-import { dashboardApi, type DashboardBranch, type DashboardStatistics } from '@/services/dashboard';
+import { dashboardApi, getManagedBranches, type DashboardStatistics } from '@/services/dashboard';
 import tailwindConfig from '../../../tailwind.config';
 
 // Recharts cần mã màu dạng chuỗi nên đọc thẳng token trong tailwind.config (design-system.md mục 6).
@@ -44,27 +44,6 @@ const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
   hour: '2-digit',
   minute: '2-digit',
 });
-
-function getManagedBranches(branches: DashboardBranch[], rootId: string): DashboardBranch[] {
-  const allowed = new Set([rootId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const branch of branches) {
-      if (
-        branch.id &&
-        branch.parentBranchId &&
-        allowed.has(branch.parentBranchId) &&
-        !allowed.has(branch.id)
-      ) {
-        allowed.add(branch.id);
-        changed = true;
-      }
-    }
-  }
-  return branches.filter((branch) => branch.id && allowed.has(branch.id));
-}
-
 function chartEmpty(data: DashboardStatistics | undefined, values: number[]) {
   return !data || values.every((value) => value === 0);
 }
@@ -160,18 +139,16 @@ export default function DashboardPage() {
         <p className="text-body text-text-secondary">
           Theo dõi thành viên, hoạt động cộng đồng và sự kiện trong phạm vi được quản lý.
         </p>
-        <Button
-          fullWidth={false}
-          loading={exporting}
-          disabled={!familyId}
-          onClick={exportMembers}
-        >
+        <Button fullWidth={false} loading={exporting} disabled={!familyId} onClick={exportMembers}>
           Xuất CSV thành viên
         </Button>
       </div>
 
       {exportError && (
-        <p role="alert" className="rounded-card border border-error bg-error-soft p-4 text-body text-error">
+        <p
+          role="alert"
+          className="rounded-card border border-error bg-error-soft p-4 text-body text-error"
+        >
           Không xuất được CSV: {exportError}
         </p>
       )}
