@@ -33,6 +33,7 @@ import java.util.UUID;
 public class OutstandingMemberService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String REMOVED_PERSON = "Thành viên không còn trong gia phả";
 
     private final OutstandingMemberRepository repository;
     private final GenealogyQuery genealogyQuery;
@@ -53,21 +54,8 @@ public class OutstandingMemberService {
     public ListResponse<OutstandingMemberData> list(UUID requestedFamilyId, int page, int size, String sort) {
         validatePage(page, size);
         UUID familyId = resolveFamily(requestedFamilyId);
-        MembershipView membership = membershipQuery.getMembership(CurrentUser.require().id());
         PageRequest pageable = pageRequest(page, size, sort);
-        if (membership.role() == EffectiveRole.BRANCH_ADMIN && membership.branchId() != null) {
-            List<UUID> branchIds = genealogyQuery.findBranchAndDescendants(familyId, membership.branchId());
-            List<OutstandingMember> scoped = branchIds.isEmpty() ? List.of()
-                    : repository.findAllByFamilyIdAndDeletedAtIsNull(familyId, pageable.getSort()).stream()
-                            .filter(member -> genealogyQuery.findDirectoryPerson(member.getPersonId())
-                                    .map(person -> branchIds.contains(person.branchId()))
-                                    .orElse(false))
-                            .toList();
-            int start = (int) Math.min(pageable.getOffset(), scoped.size());
-            int end = Math.min(start + size, scoped.size());
-            List<OutstandingMemberData> items = scoped.subList(start, end).stream().map(this::toData).toList();
-            return ListResponse.of(items, page, size, scoped.size());
-        }
+        // Xem là quyền chung của cả dòng họ (OpenAPI getOutstandingMembers); phạm vi chi chỉ áp cho thêm/sửa/xóa.
         Page<OutstandingMember> result = repository.findAllByFamilyIdAndDeletedAtIsNull(familyId, pageable);
         List<OutstandingMemberData> items = result.getContent().stream().map(this::toData).toList();
         return ListResponse.of(items, page, size, result.getTotalElements());
@@ -107,10 +95,7 @@ public class OutstandingMemberService {
     @Transactional
     public OutstandingMemberData update(UUID id, UpdateOutstandingMember request) {
         OutstandingMember member = find(id);
-        MembershipView membership = requireAdmin(member.getFamilyId());
-        DirectoryPerson person = genealogyQuery.findDirectoryPerson(member.getPersonId())
-                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
-        requirePersonManageScope(membership, person);
+        DirectoryPerson person = requireManageScope(member);
         if (request.achievement() == null && request.displayOrder() == null) {
             throw ApiException.invalidField("body", "Cần ít nhất một trường để cập nhật");
         }
@@ -123,16 +108,13 @@ public class OutstandingMemberService {
         OutstandingMember saved = repository.saveAndFlush(member);
         auditLogger.log("OUTSTANDING_MEMBER_UPDATED", "OUTSTANDING_MEMBER", saved.getId(),
                 saved.getFamilyId(), Map.of());
-        return toData(saved, person.fullName());
+        return toData(saved, person == null ? REMOVED_PERSON : person.fullName());
     }
 
     @Transactional
     public void delete(UUID id) {
         OutstandingMember member = find(id);
-        MembershipView membership = requireAdmin(member.getFamilyId());
-        DirectoryPerson person = genealogyQuery.findDirectoryPerson(member.getPersonId())
-                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
-        requirePersonManageScope(membership, person);
+        requireManageScope(member);
         UUID actorId = CurrentUser.require().id();
         member.delete(OffsetDateTime.now(clock), actorId);
         repository.saveAndFlush(member);
@@ -174,6 +156,21 @@ public class OutstandingMemberService {
         return membership;
     }
 
+    /**
+     * Quyền sửa/xóa một mục. Người đã bị xóa khỏi gia phả thì không còn chi để đối chiếu: trưởng họ và quản trị
+     * vẫn dọn được mục đó, trưởng chi nhận PERM_001. Trả null khi người không còn.
+     */
+    private DirectoryPerson requireManageScope(OutstandingMember member) {
+        MembershipView membership = requireAdmin(member.getFamilyId());
+        DirectoryPerson person = genealogyQuery.findDirectoryPerson(member.getPersonId()).orElse(null);
+        if (person != null) {
+            requirePersonManageScope(membership, person);
+        } else if (membership.role() != EffectiveRole.SYSTEM_ADMIN && membership.branchId() != null) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        return person;
+    }
+
     private void requirePersonManageScope(MembershipView membership, DirectoryPerson person) {
         if (membership.role() == EffectiveRole.SYSTEM_ADMIN || membership.branchId() == null) {
             return;
@@ -192,7 +189,7 @@ public class OutstandingMemberService {
     private OutstandingMemberData toData(OutstandingMember member) {
         String fullName = genealogyQuery.findDirectoryPerson(member.getPersonId())
                 .map(DirectoryPerson::fullName)
-                .orElse("Thành viên không còn trong gia phả");
+                .orElse(REMOVED_PERSON);
         return toData(member, fullName);
     }
 

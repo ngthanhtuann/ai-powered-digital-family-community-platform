@@ -55,11 +55,6 @@ public final class StubGenealogyQuery implements GenealogyQuery {
     }
 
     @Override
-    public List<UUID> findBranchAndDescendants(UUID familyId, UUID branchId) {
-        return List.of();
-    }
-
-    @Override
     public boolean familyExists(UUID familyId) {
         return people.stream().anyMatch(person -> person.familyId().equals(familyId));
     }

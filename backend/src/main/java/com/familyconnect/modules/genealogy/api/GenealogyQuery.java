@@ -21,8 +21,6 @@ public interface GenealogyQuery {
 
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);
 
-    List<UUID> findBranchAndDescendants(UUID familyId, UUID branchId);
-
     boolean familyExists(UUID familyId);
 
     DashboardDemographics getDashboardDemographics(UUID familyId, UUID branchId, LocalDate asOfDate);

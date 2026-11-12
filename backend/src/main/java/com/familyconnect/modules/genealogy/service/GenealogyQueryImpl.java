@@ -80,11 +80,6 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     }
 
     @Override
-    public List<UUID> findBranchAndDescendants(UUID familyId, UUID branchId) {
-        return branchRepository.findBranchAndDescendants(familyId, branchId);
-    }
-
-    @Override
     public boolean familyExists(UUID familyId) {
         return familyRepository.findByIdAndDeletedAtIsNull(familyId).isPresent();
     }
@@ -112,13 +107,15 @@ public class GenealogyQueryImpl implements GenealogyQuery {
             return Map.of();
         }
 
+        // Nạp cả gia đình một lần thay vì truy vấn từng người (trước đây 2 truy vấn mỗi người khi xuất CSV).
         CachedGraph graph = new CachedGraph(reference.getFamilyId());
+        personRepository.findAllByFamilyIdAndDeletedAtIsNull(reference.getFamilyId())
+                .forEach(person -> graph.people.put(person.getId(), toKinshipPerson(person)));
         KinshipCalculator calculator = new KinshipCalculator(graph);
         Map<UUID, String> labels = new HashMap<>();
         for (UUID personId : personIds) {
-            Person person = personRepository.findByIdAndDeletedAtIsNull(personId).orElse(null);
-            if (person == null || !reference.getFamilyId().equals(person.getFamilyId())) {
-                continue;
+            if (!graph.people.containsKey(personId)) {
+                continue; // đã xóa hoặc không cùng gia đình
             }
             KinshipCalculator.Result result = calculator.relationship(personId.toString(), referencePersonId.toString());
             if (result.supported()) {
@@ -137,6 +134,11 @@ public class GenealogyQueryImpl implements GenealogyQuery {
                 person.isDeceased(), person.getUserId(), person.getGender(), null);
     }
 
+    private static KinshipCalculator.Person toKinshipPerson(Person person) {
+        return new KinshipCalculator.Person(person.getId().toString(), person.getFullName(), person.getGender(),
+                person.getBirthDate(), person.getBirthYear() == null ? null : person.getBirthYear().intValue());
+    }
+
     private final class CachedGraph implements KinshipCalculator.Graph {
 
         private final UUID familyId;
@@ -151,13 +153,9 @@ public class GenealogyQueryImpl implements GenealogyQuery {
         @Override
         public KinshipCalculator.Person person(String id) {
             UUID personId = UUID.fromString(id);
-            return people.computeIfAbsent(personId, key -> {
-                Person person = personRepository.findByIdAndDeletedAtIsNull(key)
-                        .filter(value -> familyId.equals(value.getFamilyId()))
-                        .orElseThrow(() -> new IllegalStateException("Quan hệ gia phả tham chiếu thành viên không hợp lệ"));
-                return new KinshipCalculator.Person(key.toString(), person.getFullName(), person.getGender(),
-                        person.getBirthDate(), person.getBirthYear() == null ? null : person.getBirthYear().intValue());
-            });
+            return people.computeIfAbsent(personId, key -> toKinshipPerson(personRepository.findByIdAndDeletedAtIsNull(key)
+                    .filter(value -> familyId.equals(value.getFamilyId()))
+                    .orElseThrow(() -> new IllegalStateException("Quan hệ gia phả tham chiếu thành viên không hợp lệ"))));
         }
 
         @Override

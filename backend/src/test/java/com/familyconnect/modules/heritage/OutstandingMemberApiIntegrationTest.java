@@ -122,9 +122,9 @@ class OutstandingMemberApiIntegrationTest {
                         Map.of("personId", otherPersonId, "achievement", "Ngoài phạm vi chi"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("PERM_001"));
-        call(post("/api/v1/heritage/outstanding-members"), ownerToken,
+        UUID otherOutstandingId = UUID.fromString(data(call(post("/api/v1/heritage/outstanding-members"), ownerToken,
                         Map.of("personId", otherPersonId, "achievement", "Thành tích chi B"))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())).get("id").asText());
 
         String memberEmail = newUser();
         UUID memberId = userId(memberEmail);
@@ -157,5 +157,15 @@ class OutstandingMemberApiIntegrationTest {
         call(get("/api/v1/heritage/outstanding-members"), ownerToken, null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.meta.total").value(1));
+
+        // Người bị xóa khỏi gia phả: trưởng chi không còn chi để đối chiếu (PERM_001), trưởng họ vẫn dọn được mục.
+        jdbc.update("UPDATE person SET deleted_at = now() WHERE id = ?", otherPersonId);
+        call(get("/api/v1/heritage/outstanding-members"), ownerToken, null)
+                .andExpect(jsonPath("$.data[0].fullName").value("Thành viên không còn trong gia phả"));
+        call(delete("/api/v1/heritage/outstanding-members/" + otherOutstandingId), branchAdminToken, null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("PERM_001"));
+        call(delete("/api/v1/heritage/outstanding-members/" + otherOutstandingId), ownerToken, null)
+                .andExpect(status().isOk());
     }
 }
