@@ -10,10 +10,12 @@ RUN mvn -B -q -DskipTests package
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client-16 util-linux tar gzip \
-    fonts-dejavu-core \
+    curl fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/target/*.jar app.jar
 COPY scripts/backup.sh scripts/restore.sh /app/scripts/
 RUN chmod 750 /app/scripts/backup.sh /app/scripts/restore.sh
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD ["curl", "--fail", "--silent", "--show-error", "--output", "/dev/null", "http://127.0.0.1:8080/actuator/health"]
 ENTRYPOINT ["java", "-jar", "app.jar"]
