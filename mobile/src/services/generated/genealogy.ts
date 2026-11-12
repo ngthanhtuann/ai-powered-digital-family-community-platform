@@ -514,6 +514,11 @@ export interface components {
             hasMoreChildren?: boolean;
             /** @description Thế hệ theo genealogy.md mục 6.8 (đời 1 là tổ). Null với trẻ dưới 16 tuổi khi người xem là MEMBER */
             generation?: number | null;
+            /**
+             * Format: uuid
+             * @description Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)
+             */
+            avatarMediaId?: string | null;
         };
         TreeEdge: {
             id?: string;

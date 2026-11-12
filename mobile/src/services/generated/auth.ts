@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Làm mới token (UC-AUTH-03)
-         * @description Vai trò: công khai (`security: []`), xác thực bằng refresh token trong body. Mỗi refresh token chỉ dùng **một lần**: thành công thì cấp cặp token mới và vô hiệu token cũ (xoay vòng). Token không tồn tại, hết hạn hoặc đã bị thu hồi trả `401 AUTH_002`. Tài khoản bị khóa trả `403 AUTH_003`.
+         * @description Vai trò: công khai (`security: []`), xác thực bằng refresh token trong body. Mỗi refresh token chỉ dùng **một lần**: thành công thì cấp cặp token mới và vô hiệu token cũ (xoay vòng). Token không tồn tại, hết hạn hoặc đã bị thu hồi trả `401 AUTH_002`. Tài khoản bị khóa trả `403 AUTH_003`. Giới hạn mặc định 20 lần mỗi phút theo IP, vượt trả `429 RATE_001` kèm `Retry-After`.
          */
         post: operations["refreshToken"];
         delete?: never;
@@ -163,7 +163,7 @@ export interface paths {
         put?: never;
         /**
          * Gửi yêu cầu tham gia gia đình (UC-AUTH-06)
-         * @description Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` và người đã thuộc gia đình nhận `403 PERM_001`. Gia đình hoặc chi không tồn tại trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).
+         * @description Vai trò: thành viên **chưa xác minh** (`MEMBER` chưa thuộc gia đình nào). `SYSTEM_ADMIN` nhận `403 PERM_001` (BR-AUTH-08). `code` là mã gia đình (yêu cầu vào cả dòng họ) hoặc mã chi (yêu cầu vào chi đó, gia đình lấy theo chi; BR-AUTH-09). Mã không khớp gia đình hay chi nào trả `404 NOT_FOUND_001`. Đã có yêu cầu chờ duyệt hoặc đã là thành viên trả `409 AUTH_005`. Khi cấu hình `membership.approval_mode = AUTO` yêu cầu được duyệt ngay (trả `status = APPROVED`).
          */
         post: operations["createJoinRequest"];
         delete?: never;
@@ -191,9 +191,49 @@ export interface paths {
         head?: never;
         /**
          * Duyệt hoặc từ chối yêu cầu tham gia (UC-AUTH-07)
-         * @description Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.
+         * @description Vai trò: BRANCH_ADMIN (trong phạm vi), SYSTEM_ADMIN. `APPROVED`: người xin trở thành `MEMBER` đã xác minh của gia đình; có thể gửi `personId` để gắn tài khoản với hồ sơ thành viên có sẵn (module genealogy kiểm tra, lỗi trả theo mã `GEN_`) và `branchId` để đặt chi cho thành viên (chi phải thuộc gia đình, không thì `404`; trưởng chi chỉ đặt chi trong phạm vi mình, không thì `403 PERM_001`; bỏ trống thì giữ chi của yêu cầu). `REJECTED`: kèm lý do tùy chọn. Chỉ xử lý được yêu cầu `PENDING`, ngược lại `409 AUTH_006`. Yêu cầu ngoài phạm vi hoặc của gia đình khác trả `403 PERM_001`.
          */
         patch: operations["reviewJoinRequest"];
+        trace?: never;
+    };
+    "/families/{familyId}/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tài khoản đã xác minh trong dòng họ (UC-AUTH-14)
+         * @description Vai trò: trưởng họ của dòng họ (`BRANCH_ADMIN` không gán chi) hoặc SYSTEM_ADMIN; người khác `403 PERM_001`. Chỉ trả họ tên, vai trò, chi (không email, số điện thoại). Sắp xếp theo họ tên.
+         */
+        get: operations["listFamilyAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/families/{familyId}/accounts/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Bổ nhiệm hoặc thu quyền trưởng chi (UC-AUTH-14)
+         * @description Vai trò: trưởng họ của dòng họ hoặc SYSTEM_ADMIN (BR-AUTH-22). `BRANCH_ADMIN` kèm `branchId` là trưởng chi của chi đó (kèm chi con); `branchId` null là đồng quản lý cả dòng họ. `MEMBER` là thu quyền (`branchId` là chi của thành viên, chỉ để thông tin). Có hiệu lực ở request kế tiếp, ghi nhật ký `MEMBERSHIP_CHANGED`. Người không phải thành viên đã xác minh của dòng họ, hoặc chi không thuộc dòng họ: `404 NOT_FOUND_001`. Tự đổi vai trò của mình hoặc thu quyền trưởng họ cuối cùng: `409 ADM_001`.
+         */
+        put: operations["setFamilyAccountRole"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/users": {
@@ -250,7 +290,7 @@ export interface paths {
         get?: never;
         /**
          * Đổi vai trò toàn hệ thống (UC-AUTH-08)
-         * @description Vai trò: SYSTEM_ADMIN. Ghi đè danh sách vai trò toàn hệ thống (`MEMBER`, `SYSTEM_ADMIN`). Vai trò `BRANCH_ADMIN` không đặt ở đây mà qua `PUT /admin/users/{userId}/membership`. Không tự thu quyền của mình và không thu quyền quản trị viên cuối cùng (`409 ADM_001`).
+         * @description Vai trò: SYSTEM_ADMIN. Ghi đè danh sách vai trò toàn hệ thống (`MEMBER`, `SYSTEM_ADMIN`). Vai trò `BRANCH_ADMIN` không đặt ở đây mà qua `PUT /admin/users/{userId}/membership`. Không tự thu quyền của mình và không thu quyền quản trị viên cuối cùng (`409 ADM_001`). Không thêm `SYSTEM_ADMIN` cho người đang có yêu cầu `PENDING` hoặc `APPROVED` ở một gia đình (`400 VALID_001`, BR-AUTH-08).
          */
         put: operations["adminSetUserRoles"];
         post?: never;
@@ -289,7 +329,7 @@ export interface paths {
         };
         /**
          * Danh sách nội dung bị báo cáo (UC-AUTH-09)
-         * @description Vai trò: SYSTEM_ADMIN (kiểm duyệt toàn hệ thống, FR-ADM-02). Mặc định `status = PENDING`. Dữ liệu do module community cung cấp (nút "Báo cáo bài viết" thuộc community, SCRUM-50 bước 2).
+         * @description Vai trò: SYSTEM_ADMIN (kiểm duyệt toàn hệ thống, FR-ADM-02). Mặc định `status = PENDING`. Mỗi nội dung một dòng (báo cáo sớm nhất ở trạng thái đó), `reportCount` là số lượt báo cáo cùng trạng thái của nội dung; `total` đếm theo nội dung. Dữ liệu do module community cung cấp (nút "Báo cáo bài viết" thuộc community, SCRUM-50 bước 2).
          */
         get: operations["adminListContentReports"];
         put?: never;
@@ -315,7 +355,7 @@ export interface paths {
         head?: never;
         /**
          * Xử lý báo cáo nội dung (UC-AUTH-09)
-         * @description Vai trò: SYSTEM_ADMIN. `HIDE_CONTENT`: ẩn nội dung qua module community (đặt cột `hidden_at`; nội dung ẩn không hiện trên bảng tin) và ghi nhật ký `CONTENT_HIDDEN`. `DISMISS`: bỏ qua báo cáo. Báo cáo đã xử lý trả `409 ADM_002`.
+         * @description Vai trò: SYSTEM_ADMIN. Quyết định áp cho cả nội dung (BR-AUTH-15). `HIDE_CONTENT`: ẩn nội dung qua module community (đặt cột `hidden_at`; nội dung ẩn không hiện trên bảng tin), mọi báo cáo `PENDING` của nội dung thành `HIDDEN`, ghi nhật ký `CONTENT_HIDDEN`. `DISMISS`: mọi báo cáo `PENDING` của nội dung thành `DISMISSED`, ghi `REPORT_DISMISSED`. `RESTORE_CONTENT` (chỉ với báo cáo `HIDDEN`): nội dung hiện lại, các báo cáo `HIDDEN` của nội dung thành `DISMISSED`, ghi `CONTENT_RESTORED`. Báo cáo đã xử lý, hoặc khôi phục báo cáo không ở trạng thái `HIDDEN`, trả `409 ADM_002`.
          */
         patch: operations["adminReviewContentReport"];
         trace?: never;
@@ -375,7 +415,7 @@ export interface paths {
         put?: never;
         /**
          * Khôi phục từ bản sao lưu (UC-AUTH-11)
-         * @description Vai trò: SYSTEM_ADMIN. **Ghi đè dữ liệu hiện tại** bằng bản sao lưu nên bắt buộc `confirmText = "RESTORE"`. Chạy script khôi phục (`pg_restore` và giải nén tệp), trả `200` khi xong (không tạo tài nguyên mới nên không dùng 201). Bản sao lưu không tồn tại trả `404 NOT_FOUND_001`; đang có tác vụ khác trả `409 ADM_003`. Ghi nhật ký `RESTORE_COMPLETED`.
+         * @description Vai trò: SYSTEM_ADMIN. **Ghi đè dữ liệu hiện tại** bằng bản sao lưu nên bắt buộc `confirmText = "RESTORE"`. Chạy script khôi phục (`pg_restore` và giải nén tệp), trả `200` khi xong (không tạo tài nguyên mới nên không dùng 201). Bản sao lưu không tồn tại trả `404 NOT_FOUND_001`; đang có tác vụ khác trả `409 ADM_003`; bản sao lưu khác phiên bản migration với cơ sở dữ liệu đang chạy trả `409 CONFLICT_001` và không thay đổi dữ liệu. Ghi nhật ký `RESTORE_COMPLETED`.
          */
         post: operations["adminCreateRestore"];
         delete?: never;
@@ -573,6 +613,12 @@ export interface components {
         ContentReport: {
             /** Format: uuid */
             id: string;
+            /** @description Tên dòng họ của nội dung (null nếu dòng họ đã bị xóa). */
+            familyName: string | null;
+            /** @description Họ tên người đăng nội dung (null nếu tài khoản đã xóa). */
+            contentOwnerName: string | null;
+            /** @description Số lượt báo cáo cùng trạng thái của nội dung này (hàng đợi gộp theo nội dung, BR-AUTH-15). */
+            reportCount: number;
             targetType: components["schemas"]["ContentType"];
             /** Format: uuid */
             targetId: string;
@@ -702,14 +748,9 @@ export interface components {
         JoinRequestCreateRequest: {
             /**
              * Format: uuid
-             * @description Mã gia đình muốn tham gia. Trưởng chi cung cấp cho người thân (xem auth.md mục 8, câu 2).
+             * @description Mã gia đình hoặc mã chi do trưởng họ, trưởng chi hoặc người thân gửi (BR-AUTH-09, auth.md mục 8 câu 2).
              */
-            familyId: string;
-            /**
-             * Format: uuid
-             * @description Chi muốn tham gia; bỏ trống nếu không biết.
-             */
-            branchId?: string | null;
+            code: string;
             /** @description Lời nhắn giới thiệu bản thân cho trưởng chi. */
             message?: string | null;
         };
@@ -723,13 +764,18 @@ export interface components {
              * @description Chỉ dùng khi `APPROVED`: gắn tài khoản với hồ sơ thành viên (`person`) có sẵn của gia đình.
              */
             personId?: string | null;
+            /**
+             * Format: uuid
+             * @description Chỉ dùng khi `APPROVED`: chi của thành viên; bỏ trống thì giữ chi của yêu cầu.
+             */
+            branchId?: string | null;
         };
         ContentReportReviewRequest: {
             /**
-             * @description `HIDE_CONTENT`: ẩn nội dung bị báo cáo (đặt cột `hidden_at`, không xóa cứng). `DISMISS`: bỏ qua báo cáo.
+             * @description `HIDE_CONTENT`: ẩn nội dung bị báo cáo (đặt cột `hidden_at`, không xóa cứng). `DISMISS`: bỏ qua báo cáo. `RESTORE_CONTENT`: khôi phục nội dung đã ẩn nhầm (chỉ với báo cáo `HIDDEN`).
              * @enum {string}
              */
-            action: "HIDE_CONTENT" | "DISMISS";
+            action: "HIDE_CONTENT" | "DISMISS" | "RESTORE_CONTENT";
         };
         AdminUserStatusRequest: {
             status: components["schemas"]["UserStatus"];
@@ -739,6 +785,27 @@ export interface components {
         AdminUserRolesRequest: {
             /** @description Danh sách đầy đủ vai trò toàn hệ thống (ghi đè). Luôn phải có `MEMBER`. */
             roles: components["schemas"]["GlobalRole"][];
+        };
+        /** @description Tài khoản đã xác minh trong dòng họ (UC-AUTH-14). Không có email, số điện thoại. */
+        FamilyAccount: {
+            /** Format: uuid */
+            userId: string;
+            fullName: string;
+            role: components["schemas"]["MemberRole"];
+            /**
+             * Format: uuid
+             * @description Với `BRANCH_ADMIN`: chi quản lý (null là cả dòng họ, tức trưởng họ).
+             */
+            branchId: string | null;
+            branchName: string | null;
+        };
+        FamilyAccountRoleRequest: {
+            role: components["schemas"]["MemberRole"];
+            /**
+             * Format: uuid
+             * @description Với `BRANCH_ADMIN`: chi quản lý, null là cả dòng họ.
+             */
+            branchId?: string | null;
         };
         AdminMembershipRequest: {
             /** Format: uuid */
@@ -821,6 +888,17 @@ export interface components {
             /** @example true */
             success: boolean;
             data: components["schemas"]["ContentReport"][];
+            meta: components["schemas"]["PaginationMeta"];
+        };
+        FamilyAccountResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["FamilyAccount"];
+        };
+        FamilyAccountListResponse: {
+            /** @example true */
+            success: boolean;
+            data: components["schemas"]["FamilyAccount"][];
             meta: components["schemas"]["PaginationMeta"];
         };
         AdminUserListResponse: {
@@ -988,6 +1066,7 @@ export interface components {
         SortCreated: "createdAt,desc" | "createdAt,asc";
         Id: string;
         UserId: string;
+        FamilyIdPath: string;
         /** @description Khóa cấu hình, ví dụ `ai.chat.limit_per_hour`. */
         ConfigKey: string;
     };
@@ -1198,6 +1277,7 @@ export interface operations {
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["AccountLockedError"];
+            429: components["responses"]["TooManyRequestsError"];
             500: components["responses"]["InternalServerError"];
         };
     };
@@ -1473,8 +1553,7 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "familyId": "3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01",
-                 *       "branchId": "7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44",
+                 *       "code": "7a4d5c2e-1f08-4b93-a6d7-3e9f0c1b2a44",
                  *       "message": "Con gái ông Nguyễn Văn Bình, chi trưởng."
                  *     }
                  */
@@ -1664,10 +1743,136 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
+    listFamilyAccounts: {
+        parameters: {
+            query?: {
+                /** @description Số trang, bắt đầu từ 0. */
+                page?: components["parameters"]["Page"];
+                /** @description Số phần tử mỗi trang (tối đa 100, vượt thì 400 VALID_001). */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                familyId: components["parameters"]["FamilyIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": [
+                     *         {
+                     *           "userId": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
+                     *           "fullName": "Nguyễn Văn An",
+                     *           "role": "BRANCH_ADMIN",
+                     *           "branchId": null,
+                     *           "branchName": null
+                     *         },
+                     *         {
+                     *           "userId": "2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33",
+                     *           "fullName": "Nguyễn Văn Bình",
+                     *           "role": "MEMBER",
+                     *           "branchId": "7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+                     *           "branchName": "Chi trưởng"
+                     *         }
+                     *       ],
+                     *       "meta": {
+                     *         "page": 0,
+                     *         "size": 20,
+                     *         "total": 2
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FamilyAccountListResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    setFamilyAccountRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familyId: components["parameters"]["FamilyIdPath"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "role": "BRANCH_ADMIN",
+                 *       "branchId": "7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f"
+                 *     }
+                 */
+                "application/json": components["schemas"]["FamilyAccountRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Sau khi cập nhật */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "userId": "2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33",
+                     *         "fullName": "Nguyễn Văn Bình",
+                     *         "role": "BRANCH_ADMIN",
+                     *         "branchId": "7d1e2f30-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+                     *         "branchName": "Chi trưởng"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FamilyAccountResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
+            /** @description ADM_001: Không thể thu quyền của chính mình hay trưởng họ cuối cùng */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": false,
+                     *       "error": {
+                     *         "code": "ADM_001",
+                     *         "message": "Không thể khóa hoặc thu quyền của chính mình hay quản trị viên cuối cùng",
+                     *         "details": []
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            500: components["responses"]["InternalServerError"];
+        };
+    };
     adminListUsers: {
         parameters: {
             query?: {
-                /** @description Chứa trong họ tên hoặc email, không phân biệt hoa thường. */
+                /** @description Chứa trong họ tên hoặc email, không phân biệt hoa thường và dấu tiếng Việt ("nguyen" khớp "Nguyễn"). */
                 q?: string;
                 /** @description Lọc theo trạng thái tài khoản. */
                 status?: components["schemas"]["UserStatus"];
@@ -2075,9 +2280,12 @@ export interface operations {
                      *           "targetType": "POST",
                      *           "targetId": "550e8400-e29b-41d4-a716-446655440000",
                      *           "familyId": "3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01",
+                     *           "familyName": "Dòng họ Nguyễn",
                      *           "reporterId": "2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33",
                      *           "reason": "Bài đăng quảng cáo không liên quan.",
                      *           "contentSnippet": "Mua hàng giảm giá 50% tại...",
+                     *           "contentOwnerName": "Nguyễn Văn Bình",
+                     *           "reportCount": 3,
                      *           "status": "PENDING",
                      *           "createdAt": "2026-10-12T09:30:00+07:00",
                      *           "updatedAt": "2026-10-12T09:30:00+07:00"
@@ -2133,9 +2341,12 @@ export interface operations {
                      *         "targetType": "POST",
                      *         "targetId": "550e8400-e29b-41d4-a716-446655440000",
                      *         "familyId": "3f2a8c1e-0b7d-4e55-9a31-5d2c6b8e1a01",
+                     *         "familyName": "Dòng họ Nguyễn",
                      *         "reporterId": "2c7e9a10-5b3d-4f6a-8e21-7d9c0b1a2e33",
                      *         "reason": "Bài đăng quảng cáo không liên quan.",
                      *         "contentSnippet": "Mua hàng giảm giá 50% tại...",
+                     *         "contentOwnerName": "Nguyễn Văn Bình",
+                     *         "reportCount": 3,
                      *         "status": "HIDDEN",
                      *         "createdAt": "2026-10-12T09:30:00+07:00",
                      *         "updatedAt": "2026-10-12T09:30:00+07:00"
@@ -2376,22 +2587,12 @@ export interface operations {
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["ForbiddenError"];
             404: components["responses"]["NotFoundError"];
-            /** @description ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác */
+            /** @description ADM_003: Đang có tác vụ sao lưu hoặc khôi phục khác. CONFLICT_001: Bản sao lưu khác phiên bản cơ sở dữ liệu */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "success": false,
-                     *       "error": {
-                     *         "code": "ADM_003",
-                     *         "message": "Đang có tác vụ sao lưu hoặc khôi phục khác",
-                     *         "details": []
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
