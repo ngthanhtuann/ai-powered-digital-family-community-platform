@@ -50,7 +50,7 @@ Table person {
   created_at timestamptz [not null, note: 'Thời gian tạo']
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
-  Note: 'Gia phả (genealogy) · TV2 Trí · Thành viên (người) · Chỉ mục GIN trigram lower(full_name), lower(current_province) WHERE deleted_at IS NULL (SCRUM-61).'
+  Note: 'Gia phả (genealogy) · TV2 Trí · Thành viên (người) · Chỉ mục GIN trigram lower(current_province) WHERE deleted_at IS NULL (SCRUM-61); họ tên tìm không dấu bằng unaccent.'
 }
 
 Table parent_child {

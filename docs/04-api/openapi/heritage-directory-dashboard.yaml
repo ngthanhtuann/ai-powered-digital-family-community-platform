@@ -35,7 +35,7 @@ paths:
       summary: Danh bạ và tìm kiếm thành viên (UC-DIR-01)
       description: |
         Vai trò: MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN. Không truyền bộ lọc thì trả toàn bộ danh bạ (FR-DIR-01).
-        Có thể kết hợp `keyword` (tìm một phần họ tên), `job`, `location` và `generation`; các chuỗi tìm kiếm không phân biệt hoa thường.
+        Có thể kết hợp `keyword` (tìm một phần họ tên, không phân biệt hoa thường và dấu: "nguyen" khớp "Nguyễn"), `job`, `location` và `generation`; các chuỗi tìm kiếm không phân biệt hoa thường.
         `location` lọc theo tỉnh/thành (`person.current_province`), không phải nơi làm việc.
         `generation` do module genealogy cung cấp (đời 1 là tổ tiên gốc, mỗi cấp con +1).
         Không trả địa chỉ chi tiết. Trẻ dưới 16 tuổi chỉ có `fullName`, `relationship`, `birthYear`;
@@ -46,7 +46,7 @@ paths:
         - $ref: '#/components/parameters/FamilyId'
         - name: keyword
           in: query
-          description: Từ khóa tìm một phần họ tên thành viên (không phân biệt hoa thường).
+          description: Từ khóa tìm một phần họ tên thành viên (không phân biệt hoa thường và dấu tiếng Việt).
           schema: { type: string, maxLength: 100 }
         - name: job
           in: query
