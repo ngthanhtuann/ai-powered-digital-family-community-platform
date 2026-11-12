@@ -81,7 +81,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { label: 'Nhật ký kiểm toán', icon: 'history', roles: ['SYSTEM_ADMIN'] },
       { label: 'Sao lưu và khôi phục', icon: 'database', roles: ['SYSTEM_ADMIN'] },
-      { label: 'Cấu hình hệ thống', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Cấu hình hệ thống', href: '/admin#cau-hinh', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   {

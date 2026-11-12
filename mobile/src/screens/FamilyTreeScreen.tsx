@@ -1,23 +1,17 @@
 // UC-GEN-06 trên mobile (SCRUM-90): cây gia phả dạng danh sách theo đời, mở/thu nhánh, tải nhánh khi cần.
 // Chỉ xem; thêm, sửa thành viên và quan hệ làm trên web (mobile.md mục 2).
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
-import { useNavigation } from '@react-navigation/native';
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { EmptyPanel, ErrorPanel } from '../components/community-ui';
-import {
-  PersonAvatar,
-  PersonDetailSheet,
-  PersonPicker,
-  genderColor,
-} from '../components/genealogy-ui';
+import { PersonAvatar, genderColor } from '../components/genealogy-ui';
 import { Button, Loading } from '../components/ui';
-import type { AppDrawerParamList } from '../navigation/types';
+import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { genealogyApi, lifeSpan } from '../services/genealogy';
 import {
   mergeGraph,
-  relativesOf,
   spouseLabels,
   visibleRows,
   type Graph,
@@ -32,8 +26,12 @@ const INDENT = 16;
 /** Thụt lề tối đa để tên vẫn đọc được ở cỡ 360. */
 const MAX_INDENT_LEVEL = 6;
 
-export function FamilyTreeScreen() {
-  const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
+export function FamilyTreeScreen({
+  navigation: drawer,
+  route,
+}: DrawerScreenProps<AppDrawerParamList, 'FamilyTree'>) {
+  // Thông tin thành viên, Chọn thành viên là màn của stack gốc (không dùng Modal, SCRUM-90).
+  const stack = drawer.getParent<NativeStackNavigationProp<RootStackParamList>>();
   const { session } = useSession();
   const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
   const familyName = session.status === 'signedIn' ? session.membership.familyName : null;
@@ -42,8 +40,14 @@ export function FamilyTreeScreen() {
   const [branchRoots, setBranchRoots] = useState<string[]>([]);
   // Nhánh đang mở, gắn với gốc đang xem: đổi gốc thì quay về chỉ mở người gốc.
   const [open, setOpen] = useState<{ root?: string; ids: Set<string> }>({ ids: new Set() });
-  const [selected, setSelected] = useState<string | null>(null);
-  const [picking, setPicking] = useState(false);
+  // Gốc mới từ màn Chọn thành viên hoặc "Xem nhánh từ người này": áp dụng một lần cho mỗi lần chọn (theo `at`).
+  const [appliedRootAt, setAppliedRootAt] = useState<number | undefined>();
+  const rootParam = route.params?.root;
+  if (rootParam && rootParam.at !== appliedRootAt) {
+    setAppliedRootAt(rootParam.at);
+    setRootId(rootParam.id);
+    setBranchRoots([]);
+  }
 
   const first = useQuery({
     queryKey: ['tree', familyId, rootId ?? 'default'],
@@ -92,11 +96,11 @@ export function FamilyTreeScreen() {
     [graph, branchRoots, expanded, shownRoot],
   );
 
-  const changeRoot = (id: string | undefined) => {
-    setRootId(id);
+  const resetRoot = () => {
+    setRootId(undefined);
     setBranchRoots([]);
-    setSelected(null);
   };
+  const openPerson = (personId: string) => stack?.navigate('PersonDetail', { personId });
 
   if (!familyId) {
     return <EmptyPanel message="Bạn chưa thuộc gia đình nào nên chưa có cây gia phả." />;
@@ -113,14 +117,14 @@ export function FamilyTreeScreen() {
         ) : null}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        <Button title="Chọn người làm gốc" variant="secondary" onPress={() => setPicking(true)} />
-        {rootId ? (
-          <Button
-            title="Về gốc mặc định"
-            variant="secondary"
-            onPress={() => changeRoot(undefined)}
-          />
-        ) : null}
+        <Button
+          title="Chọn người làm gốc"
+          variant="secondary"
+          onPress={() =>
+            stack?.navigate('PersonPicker', { title: 'Chọn người làm gốc cây', target: 'treeRoot' })
+          }
+        />
+        {rootId ? <Button title="Về gốc mặc định" variant="secondary" onPress={resetRoot} /> : null}
         <Button title="Tra cứu xưng hô" onPress={() => drawer.navigate('Relationship')} />
       </View>
       <Legend />
@@ -149,30 +153,9 @@ export function FamilyTreeScreen() {
             expanded={expanded.has(item.id)}
             loading={loadingBranch.has(item.id)}
             onToggle={toggle}
-            onOpen={setSelected}
+            onOpen={openPerson}
           />
         )}
-      />
-      <PersonDetailSheet
-        personId={selected}
-        relatives={selected ? relativesOf(graph, selected) : []}
-        onClose={() => setSelected(null)}
-        onOpenPerson={setSelected}
-        onShowBranch={(id) => changeRoot(id)}
-        onLookup={(person) => {
-          setSelected(null);
-          drawer.navigate('Relationship', { personAId: person.id, personAName: person.fullName });
-        }}
-      />
-      <PersonPicker
-        visible={picking}
-        familyId={familyId}
-        title="Chọn người làm gốc cây"
-        onClose={() => setPicking(false)}
-        onPick={(person) => {
-          setPicking(false);
-          changeRoot(person.id);
-        }}
       />
     </View>
   );

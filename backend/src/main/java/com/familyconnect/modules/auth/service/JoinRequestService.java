@@ -6,6 +6,7 @@ import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.GenealogyPort;
 import com.familyconnect.modules.auth.api.MembershipView;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.modules.auth.dto.AdminDtos.PageResponse;
 import com.familyconnect.modules.auth.dto.JoinRequestDtos.CreateRequest;
 import com.familyconnect.modules.auth.dto.JoinRequestDtos.Decision;
@@ -40,20 +41,22 @@ public class JoinRequestService {
     private final UserRepository userRepository;
     private final ObjectProvider<GenealogyPort> genealogyPort;
     private final AuditLogger auditLogger;
+    private final SystemConfigQuery config;
     private final Clock clock;
 
     public JoinRequestService(MembershipService membershipService, MemberVerificationRepository verificationRepository,
                               UserRepository userRepository, ObjectProvider<GenealogyPort> genealogyPort,
-                              AuditLogger auditLogger, Clock clock) {
+                              AuditLogger auditLogger, SystemConfigQuery config, Clock clock) {
         this.membershipService = membershipService;
         this.verificationRepository = verificationRepository;
         this.userRepository = userRepository;
         this.genealogyPort = genealogyPort;
         this.auditLogger = auditLogger;
+        this.config = config;
         this.clock = clock;
     }
 
-    /** POST /join-requests. approval_mode luôn MANUAL cho tới khi có system_config (SCRUM-94). */
+    /** POST /join-requests. Cấu hình membership.approval_mode = AUTO thì duyệt ngay (UC-AUTH-06 4a, SCRUM-94). */
     @Transactional
     public JoinRequestData create(UUID userId, CreateRequest request) {
         if (membershipService.getMembership(userId).role() == EffectiveRole.SYSTEM_ADMIN) {
@@ -83,6 +86,12 @@ public class JoinRequestService {
             throw new ApiException(ErrorCode.AUTH_005);
         }
         auditLogger.log("JOIN_REQUESTED", "JOIN_REQUEST", mv.getId(), mv.getFamilyId(), Map.of());
+        if ("AUTO".equals(config.getString(SystemConfigQuery.MEMBERSHIP_APPROVAL_MODE))) {
+            // Không có người duyệt: reviewed_by để trống, nhật ký ghi rõ là duyệt tự động.
+            mv.approve(null, OffsetDateTime.now(clock));
+            verificationRepository.saveAndFlush(mv);
+            auditLogger.log("JOIN_APPROVED", "JOIN_REQUEST", mv.getId(), mv.getFamilyId(), Map.of("auto", true));
+        }
         return toData(mv);
     }
 

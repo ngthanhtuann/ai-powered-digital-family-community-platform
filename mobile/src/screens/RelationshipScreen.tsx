@@ -1,17 +1,17 @@
 // UC-GEN-07, 08 trên mobile (SCRUM-90): chọn hai người, gọi GET /relationships; giải thích bằng AI (UC-AI-04) khi cần.
 import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Share, Text, View } from 'react-native';
-import { PersonPicker, PersonSelect } from '../components/genealogy-ui';
+import { PersonSelect } from '../components/genealogy-ui';
 import { Button, Card, Notice, Screen } from '../components/ui';
-import type { AppDrawerParamList } from '../navigation/types';
+import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { genealogyApi } from '../services/genealogy';
 import { useSession } from '../session/SessionContext';
 import { colors, radius, text } from '../theme';
 
 type Picked = { id: string; name: string } | null;
-type Slot = 'A' | 'B';
 
 /** Bảng tra nhanh trên Figma "UC-GEN-07 Tra cứu cách xưng hô / 360": kiến thức chung, không phải dữ liệu gia đình. */
 const QUICK_TABLE: [string, string, string][] = [
@@ -21,6 +21,7 @@ const QUICK_TABLE: [string, string, string][] = [
 ];
 
 export function RelationshipScreen({
+  navigation,
   route,
 }: DrawerScreenProps<AppDrawerParamList, 'Relationship'>) {
   const { session } = useSession();
@@ -28,17 +29,20 @@ export function RelationshipScreen({
   const familyName = session.status === 'signedIn' ? session.membership.familyName : null;
   const [a, setA] = useState<Picked>(null);
   const [b, setB] = useState<Picked>(null);
-  const [picking, setPicking] = useState<Slot | null>(null);
+  // Chọn thành viên là màn của stack gốc (không dùng Modal, SCRUM-90); người được chọn trả về qua tham số.
+  const stack = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
 
-  // Mở từ thẻ chi tiết trên cây: điền sẵn người thứ nhất (chỉnh state khi tham số đổi, không dùng effect).
-  const presetId = route.params?.personAId;
-  const [appliedPreset, setAppliedPreset] = useState<string | undefined>();
-  if (presetId !== appliedPreset) {
-    setAppliedPreset(presetId);
-    if (presetId) {
-      setA({ id: presetId, name: route.params?.personAName ?? '' });
-      setB(null);
+  // Áp dụng mỗi lần chọn đúng một lần (theo `at`), chỉnh state khi tham số đổi, không dùng effect.
+  const pickA = route.params?.a;
+  const pickB = route.params?.b;
+  const [appliedAt, setAppliedAt] = useState<{ a?: number; b?: number }>({});
+  if ((pickA && pickA.at !== appliedAt.a) || (pickB && pickB.at !== appliedAt.b)) {
+    setAppliedAt({ a: pickA?.at ?? appliedAt.a, b: pickB?.at ?? appliedAt.b });
+    if (pickA && pickA.at !== appliedAt.a) {
+      setA({ id: pickA.id, name: pickA.name });
+      if (route.params?.clearB) setB(null);
     }
+    if (pickB && pickB.at !== appliedAt.b) setB({ id: pickB.id, name: pickB.name });
   }
 
   const ready = Boolean(a && b && a.id !== b.id);
@@ -81,8 +85,20 @@ export function RelationshipScreen({
       </View>
 
       <Card>
-        <PersonSelect label="Người thứ nhất" value={a?.name} onPress={() => setPicking('A')} />
-        <PersonSelect label="Người thứ hai" value={b?.name} onPress={() => setPicking('B')} />
+        <PersonSelect
+          label="Người thứ nhất"
+          value={a?.name}
+          onPress={() =>
+            stack?.navigate('PersonPicker', { title: 'Chọn người thứ nhất', target: 'relationA' })
+          }
+        />
+        <PersonSelect
+          label="Người thứ hai"
+          value={b?.name}
+          onPress={() =>
+            stack?.navigate('PersonPicker', { title: 'Chọn người thứ hai', target: 'relationB' })
+          }
+        />
         {a && b && a.id === b.id ? (
           <Notice variant="warning" title="Trùng người" message="Hãy chọn hai người khác nhau." />
         ) : null}
@@ -201,19 +217,6 @@ export function RelationshipScreen({
           )}
         </View>
       </Card>
-
-      <PersonPicker
-        visible={picking !== null}
-        familyId={familyId}
-        title={picking === 'B' ? 'Chọn người thứ hai' : 'Chọn người thứ nhất'}
-        onClose={() => setPicking(null)}
-        onPick={(person) => {
-          const picked = { id: person.id ?? '', name: person.fullName ?? '' };
-          if (picking === 'B') setB(picked);
-          else setA(picked);
-          setPicking(null);
-        }}
-      />
     </Screen>
   );
 }

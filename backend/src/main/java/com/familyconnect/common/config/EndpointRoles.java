@@ -113,6 +113,8 @@ public class EndpointRoles {
             Map.entry("GET /admin/backups", SYSTEM_ADMIN),
             Map.entry("POST /admin/restores", SYSTEM_ADMIN),
             Map.entry("GET /admin/audit-logs", SYSTEM_ADMIN),
+            Map.entry("GET /admin/configs", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/configs/{}", SYSTEM_ADMIN),
             // Trưởng họ bổ nhiệm trưởng chi (UC-AUTH-14): chỉ BRANCH_ADMIN không gán chi, kiểm ở FamilyAccountService.
             Map.entry("GET /families/{}/accounts", ADMINS),
             Map.entry("PUT /families/{}/accounts/{}", ADMINS),
