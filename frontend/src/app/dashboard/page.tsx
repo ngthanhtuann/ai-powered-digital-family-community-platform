@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Bar,
@@ -21,12 +21,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { datedFileName, saveBlob } from '@/lib/download';
 import { getMyMembership, getMyProfile } from '@/services/auth';
-import {
-  dashboardApi,
-  type DashboardBranch,
-  type DashboardReportType,
-  type DashboardStatistics,
-} from '@/services/dashboard';
+import { dashboardApi, getManagedBranches, type DashboardStatistics } from '@/services/dashboard';
 import tailwindConfig from '../../../tailwind.config';
 
 // Recharts cần mã màu dạng chuỗi nên đọc thẳng token trong tailwind.config (design-system.md mục 6).
@@ -49,34 +44,6 @@ const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
   hour: '2-digit',
   minute: '2-digit',
 });
-const toDateInputValue = (date: Date) =>
-  new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
-const initialReportFrom = () => {
-  const date = new Date();
-  date.setDate(date.getDate() - 29);
-  return toDateInputValue(date);
-};
-
-function getManagedBranches(branches: DashboardBranch[], rootId: string): DashboardBranch[] {
-  const allowed = new Set([rootId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const branch of branches) {
-      if (
-        branch.id &&
-        branch.parentBranchId &&
-        allowed.has(branch.parentBranchId) &&
-        !allowed.has(branch.id)
-      ) {
-        allowed.add(branch.id);
-        changed = true;
-      }
-    }
-  }
-  return branches.filter((branch) => branch.id && allowed.has(branch.id));
-}
-
 function chartEmpty(data: DashboardStatistics | undefined, values: number[]) {
   return !data || values.every((value) => value === 0);
 }
@@ -86,12 +53,6 @@ export default function DashboardPage() {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const [reportType, setReportType] = useState<DashboardReportType>('GENEALOGY');
-  const [reportFrom, setReportFrom] = useState(initialReportFrom);
-  const [reportTo, setReportTo] = useState(() => toDateInputValue(new Date()));
-  const [pdfAction, setPdfAction] = useState<'preview' | 'download' | null>(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
-  const [pdfError, setPdfError] = useState('');
   const membership = useQuery({ queryKey: ['app-shell-membership'], queryFn: getMyMembership });
   const profile = useQuery({ queryKey: ['app-shell-profile'], queryFn: getMyProfile });
   const isSystemAdmin = profile.data?.roles.includes('SYSTEM_ADMIN') ?? false;
@@ -120,15 +81,6 @@ export default function DashboardPage() {
     isBranchAdmin && membership.data?.branchId
       ? selectedBranch || membership.data.branchId
       : selectedBranch;
-  useEffect(() => {
-    setPdfPreviewUrl('');
-  }, [familyId, branchId, reportType, reportFrom, reportTo]);
-  useEffect(
-    () => () => {
-      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-    },
-    [pdfPreviewUrl],
-  );
   const statistics = useQuery({
     queryKey: ['dashboard-statistics', familyId, branchId],
     queryFn: () =>
@@ -180,31 +132,6 @@ export default function DashboardPage() {
       setExporting(false);
     }
   }
-
-  async function handlePdf(action: 'preview' | 'download') {
-    setPdfAction(action);
-    setPdfError('');
-    try {
-      const blob = await dashboardApi.exportPdf({
-        reportType,
-        ...(isSystemAdmin ? { familyId } : {}),
-        ...(branchId ? { branchId } : {}),
-        from: reportFrom,
-        to: reportTo,
-      });
-      if (action === 'preview') {
-        setPdfPreviewUrl(URL.createObjectURL(blob));
-      } else {
-        saveBlob(blob, datedFileName(`report-${reportType.toLowerCase()}`, 'pdf'));
-      }
-    } catch (error) {
-      setPdfError(error instanceof Error ? error.message : 'Không xuất được PDF.');
-    } finally {
-      setPdfAction(null);
-    }
-  }
-
-  const invalidReportRange = !reportFrom || !reportTo || reportFrom > reportTo;
 
   return (
     <div className="space-y-5">
@@ -266,85 +193,6 @@ export default function DashboardPage() {
             </select>
           </label>
         </div>
-      </Card>
-
-      <Card
-        title="Báo cáo PDF"
-        description="Chọn loại báo cáo và khoảng ngày. Báo cáo gia phả dùng ảnh chụp hiện tại; khoảng ngày áp dụng cho báo cáo cộng đồng và sự kiện."
-      >
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="flex flex-col gap-2 text-label">
-            Loại báo cáo
-            <select
-              className={selectClass}
-              value={reportType}
-              onChange={(event) => setReportType(event.target.value as DashboardReportType)}
-            >
-              <option value="GENEALOGY">Gia phả</option>
-              <option value="COMMUNITY">Hoạt động cộng đồng</option>
-              <option value="EVENTS">Sự kiện</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-2 text-label">
-            Từ ngày
-            <input
-              className={selectClass}
-              type="date"
-              value={reportFrom}
-              max={reportTo || undefined}
-              onChange={(event) => setReportFrom(event.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-label">
-            Đến ngày
-            <input
-              className={selectClass}
-              type="date"
-              value={reportTo}
-              min={reportFrom || undefined}
-              onChange={(event) => setReportTo(event.target.value)}
-            />
-          </label>
-          <div className="flex flex-col justify-end gap-2 sm:flex-row">
-            <Button
-              fullWidth={false}
-              variant="secondary"
-              loading={pdfAction === 'preview'}
-              disabled={!familyId || invalidReportRange || pdfAction !== null}
-              onClick={() => handlePdf('preview')}
-            >
-              Xem trước PDF
-            </Button>
-            <Button
-              fullWidth={false}
-              loading={pdfAction === 'download'}
-              disabled={!familyId || invalidReportRange || pdfAction !== null}
-              onClick={() => handlePdf('download')}
-            >
-              Tải PDF
-            </Button>
-          </div>
-        </div>
-        {invalidReportRange && (
-          <p role="alert" className="mt-3 text-caption text-error">
-            Vui lòng chọn khoảng ngày hợp lệ.
-          </p>
-        )}
-        {pdfError && (
-          <p
-            role="alert"
-            className="mt-3 rounded-card border border-error bg-error-soft p-4 text-body text-error"
-          >
-            Không xuất được PDF: {pdfError}
-          </p>
-        )}
-        {pdfPreviewUrl && (
-          <iframe
-            className="mt-5 h-[70vh] w-full rounded-control border border-border"
-            src={pdfPreviewUrl}
-            title="Xem trước báo cáo PDF"
-          />
-        )}
       </Card>
 
       {errors.map((error) => (

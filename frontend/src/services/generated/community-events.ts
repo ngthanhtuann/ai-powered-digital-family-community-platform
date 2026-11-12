@@ -405,7 +405,7 @@ export interface paths {
         };
         /**
          * Danh sách người tham dự
-         * @description Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch theo người dùng đăng nhập. Mọi thành viên đã xác minh có quyền xem sự kiện đều xem được danh sách (srs.md Phụ lục A); chỉ trả họ tên và trạng thái RSVP, không kèm thông tin liên hệ. Thêm, gỡ người tham dự chỉ dành cho người tạo sự kiện, BRANCH_ADMIN trong phạm vi và SYSTEM_ADMIN.
+         * @description Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch theo người dùng đăng nhập. Mọi thành viên đã xác minh có quyền xem sự kiện đều xem được danh sách (srs.md Phụ lục A); chỉ trả họ tên, trạng thái RSVP và thời điểm điểm danh, không kèm thông tin liên hệ. Thêm, gỡ người tham dự chỉ dành cho người tạo sự kiện, BRANCH_ADMIN trong phạm vi và SYSTEM_ADMIN.
          */
         get: operations["listEventParticipants"];
         put?: never;
@@ -414,6 +414,26 @@ export interface paths {
          * @description Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch theo người dùng đăng nhập.
          */
         post: operations["addEventParticipant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{id}/participants/{participantId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ghi nhận hoặc hủy điểm danh người tham dự
+         * @description Chỉ BRANCH_ADMIN trong phạm vi chi/gia đình và SYSTEM_ADMIN được ghi nhận hoặc hủy điểm danh. Tỷ lệ trong báo cáo tính số người RSVP GOING đã điểm danh chia cho tổng RSVP GOING.
+         */
+        put: operations["updateEventParticipantAttendance"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -774,6 +794,11 @@ export interface components {
             rsvpStatus: "GOING" | "NOT_GOING" | "MAYBE";
             /** @example Nguyễn Văn A */
             displayName?: string;
+            /**
+             * Format: date-time
+             * @description Thời điểm điểm danh thực tế; null nếu chưa ghi nhận có mặt.
+             */
+            attendedAt: string | null;
         };
         Notification: {
             /**
@@ -963,6 +988,10 @@ export interface components {
              * @enum {string}
              */
             rsvpStatus: "GOING" | "NOT_GOING" | "MAYBE";
+        };
+        AttendanceRequest: {
+            /** @description true để ghi nhận có mặt, false để hủy ghi nhận. */
+            attended: boolean;
         };
         MarkReadRequest: {
             /**
@@ -2919,7 +2948,8 @@ export interface operations {
                      *           "eventId": "550e8400-e29b-41d4-a716-446655440000",
                      *           "userId": "550e8400-e29b-41d4-a716-446655440000",
                      *           "rsvpStatus": "GOING",
-                     *           "displayName": "Nguyễn Văn A"
+                     *           "displayName": "Nguyễn Văn A",
+                     *           "attendedAt": null
                      *         }
                      *       ],
                      *       "meta": {
@@ -2976,7 +3006,8 @@ export interface operations {
                      *         "eventId": "550e8400-e29b-41d4-a716-446655440000",
                      *         "userId": "550e8400-e29b-41d4-a716-446655440000",
                      *         "rsvpStatus": "GOING",
-                     *         "displayName": "Nguyễn Văn A"
+                     *         "displayName": "Nguyễn Văn A",
+                     *         "attendedAt": null
                      *       }
                      *     }
                      */
@@ -2988,6 +3019,44 @@ export interface operations {
             403: components["responses"]["PermissionError"];
             404: components["responses"]["NotFoundError"];
             409: components["responses"]["DuplicateError"];
+        };
+    };
+    updateEventParticipantAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID của tài nguyên */
+                id: components["parameters"]["Id"];
+                /** @description UUID của người tham dự */
+                participantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "attended": true
+                 *     }
+                 */
+                "application/json": components["schemas"]["AttendanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Trạng thái điểm danh được cập nhật. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParticipantResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["AuthError"];
+            403: components["responses"]["PermissionError"];
+            404: components["responses"]["NotFoundError"];
         };
     };
     listEventMedia: {

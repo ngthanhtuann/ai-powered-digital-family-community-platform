@@ -14,9 +14,9 @@ public interface EventStore {
                  OffsetDateTime startAt, OffsetDateTime endAt, String location,
                  UUID createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     record Participant(UUID id, UUID eventId, UUID userId, RsvpStatus status,
-                       OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
+                       OffsetDateTime createdAt, OffsetDateTime updatedAt, OffsetDateTime attendedAt) {}
     record ReportEvent(UUID id, String title, OffsetDateTime startAt,
-                       long going, long notGoing, long maybe) {}
+                       long going, long notGoing, long maybe, long attended, long goingAttended) {}
     record Page<T>(List<T> items, long total) {}
 
     Event insertEvent(UUID family, UUID branch, String title, String description,
@@ -36,6 +36,7 @@ public interface EventStore {
 
     Participant upsertRsvp(UUID eventId, UUID userId, RsvpStatus status, UUID actor);
     Participant insertParticipant(UUID eventId, UUID userId, RsvpStatus status, UUID actor);
+    Participant updateAttendance(UUID participantId, boolean attended, UUID actor);
     Optional<Participant> findParticipant(UUID id);
     Page<Participant> participants(UUID eventId, RsvpStatus status, int page, int size, String order);
     void deleteParticipant(UUID id, UUID actor);

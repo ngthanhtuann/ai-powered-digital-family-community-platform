@@ -723,8 +723,8 @@ paths:
         Ba loại báo cáo theo `srs.md` mục 7.2:
         `GENEALOGY` (FR-DSH-01, FR-DSH-04: tổng thành viên, theo thế hệ, giới tính, nghề nghiệp, nơi ở),
         `COMMUNITY` (FR-DSH-02: bài đăng, bình luận, reaction theo tuần trong khoảng ngày),
-        `EVENTS` (FR-DSH-03: số sự kiện và RSVP trong khoảng ngày). Gia phả là ảnh chụp hiện tại, không hồi cứu theo ngày.
-        Sự kiện chỉ lưu RSVP, không có điểm danh thực tế; tỷ lệ trong PDF là GOING / tổng RSVP, không phải tỷ lệ check-in.
+        `EVENTS` (FR-DSH-03: số sự kiện, RSVP và điểm danh thực tế trong khoảng ngày). Gia phả là ảnh chụp hiện tại, không hồi cứu theo ngày.
+        Tỷ lệ điểm danh là số người RSVP GOING đã check-in chia cho tổng RSVP GOING; trạng thái điểm danh được quản trị viên sự kiện ghi nhận.
         Không in thông tin liên hệ, địa chỉ chi tiết; thống kê nghề nghiệp, nơi ở loại trẻ dưới 16 tuổi.
         Mỗi lần xuất ghi audit log (SCRUM-57).
       operationId: exportReportPdf

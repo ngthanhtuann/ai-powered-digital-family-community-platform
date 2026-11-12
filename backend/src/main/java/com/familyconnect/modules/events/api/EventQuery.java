@@ -17,6 +17,6 @@ public interface EventQuery {
     }
 
     record ReportEvent(UUID id, String title, OffsetDateTime startAt,
-                       long going, long notGoing, long maybe) {
+                       long going, long notGoing, long maybe, long attended, long goingAttended) {
     }
 }

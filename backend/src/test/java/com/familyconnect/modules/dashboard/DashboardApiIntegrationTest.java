@@ -325,12 +325,29 @@ class DashboardApiIntegrationTest {
                 """, UUID.class, familyId, branchA, "Sự kiện tiếng Việt A", activityAt, ownerId);
         jdbc.update("""
                 INSERT INTO event_participant(event_id,user_id,rsvp_status,created_by)
-                VALUES (?,?,'GOING',?), (?,?,'NOT_GOING',?)
-                """, eventA, ownerId, ownerId, eventA, guestId, guestId);
-        jdbc.update("""
+                VALUES (?,?,'GOING',?), (?,?,'GOING',?), (?,?,'NOT_GOING',?)
+                """, eventA, ownerId, ownerId, eventA, memberId, memberId, eventA, guestId, guestId);
+        UUID ownerParticipantId = jdbc.queryForObject("""
+                SELECT id FROM event_participant WHERE event_id=? AND user_id=?
+                """, UUID.class, eventA, ownerId);
+        call(put("/api/v1/events/" + eventA + "/participants/" + ownerParticipantId + "/attendance"),
+                ownerToken, Map.of("attended", true))
+                .andExpect(status().isOk());
+        UUID eventOutsideScope = jdbc.queryForObject("""
                 INSERT INTO event(family_id,branch_id,title,start_at,created_by)
-                VALUES (?,?,?,?,?)
-                """, familyId, branchB, "Sự kiện ngoài phạm vi", activityAt, ownerId);
+                VALUES (?,?,?,?,?) RETURNING id
+                """, UUID.class, familyId, branchB, "Sự kiện ngoài phạm vi", activityAt, ownerId);
+        UUID familyWideEvent = jdbc.queryForObject("""
+                INSERT INTO event(family_id,title,start_at,created_by)
+                VALUES (?,?,?,?) RETURNING id
+                """, UUID.class, familyId, "Sự kiện toàn gia đình", activityAt, ownerId);
+        UUID nonexistentParticipant = UUID.randomUUID();
+        call(put("/api/v1/events/" + eventOutsideScope + "/participants/"
+                        + nonexistentParticipant + "/attendance"),
+                branchAdminToken, Map.of("attended", true)).andExpect(status().isForbidden());
+        call(put("/api/v1/events/" + familyWideEvent + "/participants/"
+                        + nonexistentParticipant + "/attendance"),
+                branchAdminToken, Map.of("attended", true)).andExpect(status().isForbidden());
 
         String query = "?familyId=" + familyId + "&from=" + from + "&to=" + today;
         var genealogy = call(get("/api/v1/dashboard/reports/GENEALOGY/pdf" + query), ownerToken, null)
@@ -358,7 +375,8 @@ class DashboardApiIntegrationTest {
         String eventText = pdfText(events);
         assertTrue(eventText.contains("Sự kiện tiếng Việt A"));
         assertTrue(eventText.contains("50.0%"));
-        assertTrue(eventText.contains("Tỷ lệ xác nhận tham dự"));
+        assertTrue(eventText.contains("Tỷ lệ điểm danh trong nhóm GOING"));
+        assertTrue(eventText.contains("Tổng số lượt điểm danh thực tế"));
         assertFalse(eventText.contains("DIA_CHI_KHONG_DUOC_XUAT"));
 
         var branchEvents = call(get("/api/v1/dashboard/reports/EVENTS/pdf" + query),

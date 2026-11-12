@@ -269,24 +269,26 @@ public class DashboardService {
         List<ReportEvent> events = eventQuery.getReportEvents(familyId, branchId == null,
                 demographics.branchIds(), from, to);
         long going = events.stream().mapToLong(ReportEvent::going).sum();
-        long notGoing = events.stream().mapToLong(ReportEvent::notGoing).sum();
-        long maybe = events.stream().mapToLong(ReportEvent::maybe).sum();
-        long responses = going + notGoing + maybe;
-        String attendanceRate = responses == 0 ? "0%" : String.format(Locale.ROOT, "%.1f%%", going * 100.0 / responses);
+        long attended = events.stream().mapToLong(ReportEvent::attended).sum();
+        long goingAttended = events.stream().mapToLong(ReportEvent::goingAttended).sum();
+        String attendanceRate = going == 0 ? "N/A"
+                : String.format(Locale.ROOT, "%.1f%%", goingAttended * 100.0 / going);
         List<List<String>> eventRows = events.stream().map(event -> List.of(
                 event.title(), event.startAt().atZoneSameInstant(FAMILY_TIME_ZONE)
                         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                Long.toString(event.going()), Long.toString(event.notGoing()), Long.toString(event.maybe())))
+                Long.toString(event.going()), Long.toString(event.notGoing()), Long.toString(event.maybe()),
+                Long.toString(event.attended()), Long.toString(event.goingAttended())))
                 .toList();
         return List.of(
                 section("Tổng quan sự kiện", List.of("Chỉ số", "Giá trị"), List.of(
                         List.of("Số sự kiện trong khoảng", Integer.toString(events.size())),
-                        List.of("Đồng ý tham dự (GOING)", Long.toString(going)),
-                        List.of("Từ chối tham dự (NOT_GOING)", Long.toString(notGoing)),
-                        List.of("Chưa chắc tham dự (MAYBE)", Long.toString(maybe)),
-                        List.of("Tỷ lệ xác nhận tham dự (GOING / tổng RSVP)", attendanceRate)), false),
+                        List.of("Tổng số lượt điểm danh thực tế", Long.toString(attended)),
+                        List.of("GOING RSVP có mặt", Long.toString(goingAttended)),
+                        List.of("GOING RSVP", Long.toString(going)),
+                        List.of("Tỷ lệ điểm danh trong nhóm GOING", attendanceRate)), false),
                 section("Sự kiện và phản hồi RSVP", List.of(
-                                "Sự kiện", "Thời gian", "GOING", "NOT_GOING", "MAYBE"),
+                                "Sự kiện", "Thời gian", "GOING", "NOT_GOING", "MAYBE",
+                                "Đã điểm danh", "GOING có mặt"),
                         eventRows, false));
     }
 

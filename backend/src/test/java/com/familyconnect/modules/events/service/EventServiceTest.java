@@ -100,7 +100,7 @@ class EventServiceTest {
         verified();
         when(store.findEvent(EVENT_ID)).thenReturn(Optional.of(event(USER,NOW.plusDays(1))));
         UUID participantId = UUID.fromString("40000000-0000-0000-0000-000000000001");
-        Participant saved = new Participant(participantId,EVENT_ID,USER,RsvpStatus.GOING,NOW,NOW);
+        Participant saved = new Participant(participantId,EVENT_ID,USER,RsvpStatus.GOING,NOW,NOW,null);
         when(store.upsertRsvp(EVENT_ID,USER,RsvpStatus.GOING,USER)).thenReturn(saved);
         when(users.getFullNames(any())).thenReturn(Map.of(USER,"Nguyễn Văn A"));
         when(store.myStatuses(List.of(EVENT_ID),USER)).thenReturn(Map.of(EVENT_ID,RsvpStatus.GOING));

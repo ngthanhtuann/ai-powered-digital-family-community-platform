@@ -20,6 +20,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -172,6 +173,16 @@ class EventApiIntegrationTest {
 
         UUID participant = id(call(post("/api/v1/events/" + eventId + "/participants"), creator,
                 Map.of("userId", other[1].toString())).andExpect(status().isCreated()));
+        call(put("/api/v1/events/" + eventId + "/participants/" + participant + "/attendance"),
+                creator, Map.of("attended", true))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PERM_001"));
+        call(put("/api/v1/events/" + eventId + "/participants/" + participant + "/attendance"),
+                owner, Map.of("attended", true))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.attendedAt").isNotEmpty());
+        call(get("/api/v1/events/" + eventId + "/participants"), (String) other[0], null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].attendedAt").value(nullValue()));
         call(delete("/api/v1/participants/" + participant), creator, null)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
         // Đã gỡ (xóa mềm) thì thêm lại được, nhờ chỉ mục duy nhất có điều kiện deleted_at IS NULL.

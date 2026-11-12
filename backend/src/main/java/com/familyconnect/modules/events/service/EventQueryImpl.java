@@ -32,7 +32,7 @@ public class EventQueryImpl implements EventQuery {
                                              OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
         return eventStore.reportEvents(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
                 .map(event -> new ReportEvent(event.id(), event.title(), event.startAt(),
-                        event.going(), event.notGoing(), event.maybe()))
+                        event.going(), event.notGoing(), event.maybe(), event.attended(), event.goingAttended()))
                 .toList();
     }
 }

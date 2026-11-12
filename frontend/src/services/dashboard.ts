@@ -10,6 +10,26 @@ export type DashboardFamily = GenealogySchemas['Family'];
 export type DashboardBranch = GenealogySchemas['Branch'];
 export type DashboardReportType = 'GENEALOGY' | 'COMMUNITY' | 'EVENTS';
 
+export function getManagedBranches(branches: DashboardBranch[], rootId: string): DashboardBranch[] {
+  const allowed = new Set([rootId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const branch of branches) {
+      if (
+        branch.id &&
+        branch.parentBranchId &&
+        allowed.has(branch.parentBranchId) &&
+        !allowed.has(branch.id)
+      ) {
+        allowed.add(branch.id);
+        changed = true;
+      }
+    }
+  }
+  return branches.filter((branch) => branch.id && allowed.has(branch.id));
+}
+
 async function allPages<T>(url: string, params: Record<string, unknown> = {}): Promise<T[]> {
   const pageSize = 100;
   const items: T[] = [];

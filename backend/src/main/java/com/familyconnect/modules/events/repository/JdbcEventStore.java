@@ -20,7 +20,8 @@ import java.util.UUID;
 public class JdbcEventStore implements EventStore {
     private static final String EVENT_COLUMNS = "id, family_id, branch_id, title, description, " +
         "start_at, end_at, location, created_by, created_at, updated_at";
-    private static final String PARTICIPANT_COLUMNS = "id, event_id, user_id, rsvp_status, created_at, updated_at";
+    private static final String PARTICIPANT_COLUMNS =
+            "id, event_id, user_id, rsvp_status, created_at, updated_at, attended_at";
     private static UUID id(ResultSet r, String field) throws SQLException { return r.getObject(field, UUID.class); }
     private static OffsetDateTime at(ResultSet r, String field) throws SQLException {
         return r.getObject(field, OffsetDateTime.class);
@@ -31,7 +32,8 @@ public class JdbcEventStore implements EventStore {
             id(r,"created_by"),at(r,"created_at"),at(r,"updated_at"));
     private static final RowMapper<Participant> PARTICIPANT_MAPPER = (r,n) ->
         new Participant(id(r,"id"),id(r,"event_id"),id(r,"user_id"),
-            RsvpStatus.valueOf(r.getString("rsvp_status")),at(r,"created_at"),at(r,"updated_at"));
+            RsvpStatus.valueOf(r.getString("rsvp_status")),at(r,"created_at"),at(r,"updated_at"),
+            at(r,"attended_at"));
 
     private final NamedParameterJdbcTemplate jdbc;
     public JdbcEventStore(NamedParameterJdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -112,14 +114,18 @@ public class JdbcEventStore implements EventStore {
                 SELECT e.id, e.title, e.start_at,
                        COUNT(*) FILTER (WHERE p.rsvp_status='GOING') AS going,
                        COUNT(*) FILTER (WHERE p.rsvp_status='NOT_GOING') AS not_going,
-                       COUNT(*) FILTER (WHERE p.rsvp_status='MAYBE') AS maybe
+                       COUNT(*) FILTER (WHERE p.rsvp_status='MAYBE') AS maybe,
+                       COUNT(*) FILTER (WHERE p.attended_at IS NOT NULL) AS attended,
+                       COUNT(*) FILTER (WHERE p.rsvp_status='GOING' AND p.attended_at IS NOT NULL)
+                           AS going_attended
                 FROM event e
                 LEFT JOIN event_participant p ON p.event_id=e.id AND p.deleted_at IS NULL
                 """ + where + """
                 GROUP BY e.id, e.title, e.start_at
                 ORDER BY e.start_at, e.id
                 """, args, (rs,n) -> new ReportEvent(id(rs,"id"),rs.getString("title"),
-                at(rs,"start_at"),rs.getLong("going"),rs.getLong("not_going"),rs.getLong("maybe")));
+                at(rs,"start_at"),rs.getLong("going"),rs.getLong("not_going"),rs.getLong("maybe"),
+                rs.getLong("attended"),rs.getLong("going_attended")));
     }
 
     @Override public Event updateEvent(UUID id, UUID branch, String title, String description,
@@ -148,6 +154,14 @@ public class JdbcEventStore implements EventStore {
         return jdbc.queryForObject("INSERT INTO event_participant(event_id,user_id,rsvp_status,created_by) " +
             "VALUES (:event,:user,:status,:actor) RETURNING " + PARTICIPANT_COLUMNS,
             p("event",eventId,"user",userId,"status",status.name(),"actor",actor),PARTICIPANT_MAPPER);
+    }
+
+    @Override public Participant updateAttendance(UUID participantId, boolean attended, UUID actor) {
+        return jdbc.queryForObject("UPDATE event_participant SET attended_at=" +
+                "CASE WHEN :attended THEN COALESCE(attended_at,now()) ELSE NULL END," +
+                "updated_by=:actor,updated_at=now() WHERE id=:id AND deleted_at IS NULL RETURNING " +
+                PARTICIPANT_COLUMNS,
+            p("id",participantId,"attended",attended,"actor",actor),PARTICIPANT_MAPPER);
     }
 
     @Override public Optional<Participant> findParticipant(UUID id) {

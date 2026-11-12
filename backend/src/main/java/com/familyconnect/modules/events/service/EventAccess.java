@@ -10,6 +10,7 @@ import com.familyconnect.modules.auth.api.GenealogyPort;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.UserDirectory;
 import com.familyconnect.modules.events.repository.EventStore.Event;
+import com.familyconnect.modules.events.repository.EventStore.Participant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -98,6 +99,18 @@ public class EventAccess {
         }
     }
 
+    public void requireAttendanceManager(Actor actor, Event event) {
+        if (actor.role() != EffectiveRole.BRANCH_ADMIN && actor.role() != EffectiveRole.SYSTEM_ADMIN) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        if (actor.role() == EffectiveRole.BRANCH_ADMIN && actor.branchId() != null
+                && (event.branchId() == null
+                    || !within(event.familyId(),event.branchId(),actor.branchId()))) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        requireRead(actor,event.familyId(),event.branchId());
+    }
+
     public void requireFamilyUser(UUID userId, UUID familyId) {
         var m = membership.getMembership(userId);
         if (!m.verified() || !familyId.equals(m.familyId())) throw new ApiException(ErrorCode.NOT_FOUND_001);
@@ -113,6 +126,11 @@ public class EventAccess {
     public void eventDeleted(Event event, Actor actor) {
         audit.log("CONTENT_DELETED","EVENT",event.id(),event.familyId(),
                   Map.of("byOwner",event.createdBy().equals(actor.id())));
+    }
+
+    public void attendanceRecorded(Event event, Participant participant, boolean attended) {
+        audit.log("EVENT_ATTENDANCE_RECORDED","EVENT",event.id(),event.familyId(),
+                Map.of("participantId",participant.id().toString(),"attended",attended));
     }
 
     /** BR-EVT-06: chỉ cập nhật AI sau khi giao dịch sự kiện đã commit. */
