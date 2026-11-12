@@ -123,7 +123,8 @@ async function main() {
     String(feed.status));
 
   const event = await call('POST', '/events', { token: tA, body: {
-    title: 'Sự kiện hồi quy', startAt: '2026-12-31T08:00:00+07:00', location: 'Nhà thờ họ', branchId: null } });
+    // Ngày tính theo lúc chạy: sự kiện đã bắt đầu thì RSVP bị từ chối (EVT_001), ngày cố định sẽ hỏng về sau.
+    title: 'Sự kiện hồi quy', startAt: new Date(Date.now() + 30 * 86400000).toISOString(), location: 'Nhà thờ họ', branchId: null } });
   expect('FLOW-13', 'FLOW', 'Trưởng họ tạo sự kiện', event, 201);
   expect('FLOW-14', 'FLOW', 'Thành viên RSVP', await call('PUT', `/events/${event.data?.id}/rsvp`, { token: tM, body: { rsvpStatus: 'GOING' } }), 200);
   expect('EVT-01', 'FILE', 'Tải ảnh vào thư viện sự kiện (FR-EVT-04)',
@@ -170,9 +171,13 @@ async function main() {
   expect('IDOR-04', 'IDOR', 'B tải ảnh của A: 403 PERM_001', await call('GET', `/media/${photo.data?.id}/content`, { token: tB }), 403, 'PERM_001');
   expect('IDOR-05', 'IDOR', 'B tra quan hệ người của A: 403 PERM_001',
     await call('GET', `/relationships?personA=${child.data?.id}&personB=${personM.data?.id}`, { token: tB }), 403, 'PERM_001');
+  // B có bài riêng để danh sách không rỗng: ca chỉ đạt khi B thấy bài của B mà không thấy bài nào của A.
+  const postB = await call('POST', '/posts', { token: tB, body: { content: 'Bài của gia đình B', type: 'POST', branchId: null } });
   const listB = await call('GET', '/posts?page=0&size=100', { token: tB });
-  record('IDOR-06', 'IDOR', 'Bảng tin của B không có bài của A', listB.status === 200 && !(listB.json?.data ?? []).some((p) => p.familyId === fA),
-    String(listB.status));
+  const itemsB = listB.json?.data ?? [];
+  record('IDOR-06', 'IDOR', 'Bảng tin của B có bài của B, không có bài của A',
+    listB.status === 200 && itemsB.some((p) => p.id === postB.data?.id) && !itemsB.some((p) => p.familyId === fA || p.id === post.data?.id),
+    `${listB.status} ${itemsB.length} bài`);
   const crossLink = await call('POST', `/persons/${child.data?.id}/parents`, { token: tB, body: { parentId: personM.data?.id, parentRole: 'MOTHER' } });
   record('INT-01', 'INT', 'B gắn quan hệ cho người của A: bị từ chối', crossLink.status === 403 || crossLink.status === 404,
     `${crossLink.status} ${crossLink.code ?? ''}`);
