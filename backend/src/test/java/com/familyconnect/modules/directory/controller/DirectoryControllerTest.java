@@ -43,7 +43,7 @@ class DirectoryControllerTest {
 
     @Test
     void searchMembersReturnsPagedResponse() throws Exception {
-        when(directoryService.searchMembers(null, null, null, null, 0, 20, "createdAt,desc"))
+        when(directoryService.searchMembers(null, null, null, null, null, 0, 20, "createdAt,desc"))
                 .thenReturn(ListResponse.of(List.of(
                         new PersonSearchResult(PERSON_ID, "Thành viên", null, 1990, 1, null, null)),
                         0, 20, 1));
@@ -53,6 +53,24 @@ class DirectoryControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].id").value(PERSON_ID.toString()))
                 .andExpect(jsonPath("$.meta.total").value(1));
+    }
+
+    @Test
+    void searchMembersPassesCombinedFilters() throws Exception {
+        when(directoryService.searchMembers(null, "Nguyễn", "Kỹ sư", "Hà Nội", 2,
+                1, 10, "fullName,asc"))
+                .thenReturn(ListResponse.of(List.of(), 1, 10, 0));
+
+        mockMvc.perform(get("/api/v1/directory/members")
+                        .queryParam("keyword", "Nguyễn")
+                        .queryParam("job", "Kỹ sư")
+                        .queryParam("location", "Hà Nội")
+                        .queryParam("generation", "2")
+                        .queryParam("page", "1")
+                        .queryParam("size", "10")
+                        .queryParam("sort", "fullName,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.meta.page").value(1));
     }
 
     @Test

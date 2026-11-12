@@ -10,7 +10,12 @@ public interface DirectoryQuery {
     /** Chức danh trong hồ sơ nghề nghiệp đang hoạt động; rỗng nếu chưa có. Gia phả dùng để dựng chunk PERSON cho AI. */
     Optional<String> findJobTitle(UUID personId);
 
+    List<ProfessionDetails> findProfessionDetails(List<UUID> personIds);
+
     List<ProfessionStatistic> getProfessionStatistics(List<UUID> personIds);
+
+    record ProfessionDetails(UUID personId, String jobTitle, String workLocation) {
+    }
 
     record ProfessionStatistic(String jobTitle, long count) {
     }

@@ -1,6 +1,7 @@
 package com.familyconnect.modules.directory.service;
 
 import com.familyconnect.modules.directory.api.DirectoryQuery;
+import com.familyconnect.modules.directory.api.DirectoryQuery.ProfessionDetails;
 import com.familyconnect.modules.directory.api.DirectoryQuery.ProfessionStatistic;
 import com.familyconnect.modules.directory.entity.ProfessionProfile;
 import com.familyconnect.modules.directory.repository.ProfessionProfileRepository;
@@ -24,6 +25,17 @@ public class DirectoryQueryImpl implements DirectoryQuery {
     @Override
     public Optional<String> findJobTitle(UUID personId) {
         return professionRepository.findByPersonIdAndDeletedAtIsNull(personId).map(ProfessionProfile::getJobTitle);
+    }
+
+    @Override
+    public List<ProfessionDetails> findProfessionDetails(List<UUID> personIds) {
+        if (personIds.isEmpty()) {
+            return List.of();
+        }
+        return professionRepository.findAllByPersonIdInAndDeletedAtIsNull(personIds).stream()
+                .map(profile -> new ProfessionDetails(profile.getPersonId(), profile.getJobTitle(),
+                        profile.getWorkLocation()))
+                .toList();
     }
 
     @Override

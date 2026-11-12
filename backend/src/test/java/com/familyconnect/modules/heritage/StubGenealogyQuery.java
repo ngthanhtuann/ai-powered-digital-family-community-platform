@@ -8,6 +8,7 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import java.util.HashSet;
 import java.util.List;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -70,10 +71,16 @@ public final class StubGenealogyQuery implements GenealogyQuery {
     }
 
     @Override
-    public DirectoryPage searchDirectoryPeople(UUID familyId, String location, Integer generation, LocalDate asOfDate,
+    public DirectoryPage searchDirectoryPeople(UUID familyId, String keyword, String location,
+                                               Integer generation, LocalDate asOfDate,
                                                Set<UUID> personIds, boolean excludeChildren,
                                                String sortField, boolean ascending, int page, int size) {
         return new DirectoryPage(List.of(), 0);
+    }
+
+    @Override
+    public Map<UUID, String> relationshipLabels(UUID referencePersonId, List<UUID> personIds) {
+        return Map.of();
     }
 
     private record PersonFamily(UUID personId, UUID familyId) {

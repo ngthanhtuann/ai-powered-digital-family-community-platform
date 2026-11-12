@@ -43,7 +43,8 @@ public enum ErrorCode {
     GEN_011(HttpStatus.CONFLICT, "Người đã mất không thêm hôn nhân mới"),
     GEN_012(HttpStatus.CONFLICT, "Người dưới 16 tuổi không có tài khoản đăng nhập riêng"),
     GEN_013(HttpStatus.CONFLICT, "Bạn đã thuộc một gia đình"),
-    GEN_014(HttpStatus.CONFLICT, "Hồ sơ không thuộc gia đình của tài khoản cần gắn");
+    GEN_014(HttpStatus.CONFLICT, "Hồ sơ không thuộc gia đình của tài khoản cần gắn"),
+    HER_001(HttpStatus.CONFLICT, "Thành viên đã có trong danh sách người tiêu biểu");
 
     private final HttpStatus status;
     private final String defaultMessage;
