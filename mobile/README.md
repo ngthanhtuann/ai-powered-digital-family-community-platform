@@ -32,6 +32,32 @@ npm start                   # mở Expo, quét QR bằng Expo Go
 
 Backend chạy bằng Docker ở thư mục gốc: `docker compose up -d`. App native không bị CORS chặn; chỉ cần điện thoại truy cập được cổng 8080 của máy (mở tường lửa nếu cần).
 
+## Đóng gói và cài APK Android ([7-08])
+
+Địa chỉ backend được **gắn vào APK lúc build** (`EXPO_PUBLIC_API_BASE_URL`), nên đổi máy chủ hoặc IP thì phải build lại. Địa chỉ nằm ở profile `preview` của `eas.json`; sửa ở đó trước khi build.
+
+**Cách 1 (khuyên dùng): EAS Build trên cloud của Expo.** Không cần Android SDK, không tốn RAM máy. Project gắn với tài khoản Expo `thajnktuaans` (`app.json`: `owner`, `extra.eas.projectId`); người khác build cần được mời vào project trên expo.dev.
+
+```powershell
+cd mobile
+npx eas-cli login --device --non-interactive   # mở link, xác nhận trên trình duyệt
+npx eas-cli build --platform android --profile preview
+# Xong (khoảng 15-20 phút): EAS in link tải APK; trang build trên expo.dev cũng có nút tải
+```
+
+- Package `vn.familyconnect.app`. Keystore do EAS tạo và giữ trên máy chủ Expo (ký cùng một khóa cho mọi bản build sau).
+- **Không build được tại máy Windows** bằng `gradlew assembleRelease`: biên dịch C++ của React Native (`react-native-worklets`, `react-native-gesture-handler`) tạo đường dẫn dài hơn 260 ký tự, kể cả khi đặt dự án ở `C:\` (đã thử ngày 12/11/2026). Build tại máy chỉ chạy được trên macOS hoặc Linux.
+- `plugins/with-cleartext-traffic.js` chỉ cho phép HTTP khi URL backend là `http://` (demo trong mạng LAN). Triển khai thật nên dùng `https://`, khi đó plugin không bật HTTP.
+
+**Cài lên điện thoại Android:**
+
+1. Chép tệp APK vào điện thoại (cáp USB, Zalo, Google Drive...), mở tệp và cho phép "Cài ứng dụng không rõ nguồn gốc" khi được hỏi.
+2. Điện thoại và máy chạy backend **cùng mạng Wi-Fi**; trên máy chạy backend mở cổng 8080 ở tường lửa Windows.
+3. Mở app, đăng nhập bằng tài khoản có sẵn (dữ liệu demo: `docker/seed-demo.ps1`).
+4. Giả lập Android Studio: kéo thả APK vào cửa sổ giả lập, hoặc `adb install <tệp>.apk`. Giả lập dùng được địa chỉ IP LAN của máy như điện thoại thật.
+
+**iOS:** chưa có tài khoản Apple Developer nên không có bản cài; chạy bằng Expo Go theo mục "Cài và chạy" ở trên.
+
 ## Lệnh
 
 | Lệnh                | Việc                                                                            |
