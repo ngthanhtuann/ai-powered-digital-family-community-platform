@@ -7,6 +7,7 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import com.familyconnect.modules.genealogy.entity.Marriage;
 import com.familyconnect.modules.genealogy.repository.DashboardDemographicsRepository;
 import com.familyconnect.modules.genealogy.entity.Person;
+import com.familyconnect.modules.genealogy.dto.RelationshipResponse;
 import com.familyconnect.modules.genealogy.repository.BranchRepository;
 import com.familyconnect.modules.genealogy.repository.FamilyRepository;
 import com.familyconnect.modules.genealogy.repository.MarriageRepository;
@@ -31,20 +32,29 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     private final BranchRepository branchRepository;
     private final FamilyRepository familyRepository;
     private final DashboardDemographicsRepository dashboardRepository;
+    private final KinshipService kinshipService;
     private final ParentChildRepository parentChildRepository;
     private final MarriageRepository marriageRepository;
 
     public GenealogyQueryImpl(PersonRepository personRepository, BranchRepository branchRepository,
                               FamilyRepository familyRepository,
-                              DashboardDemographicsRepository dashboardRepository,
+                              DashboardDemographicsRepository dashboardRepository, KinshipService kinshipService,
                               ParentChildRepository parentChildRepository,
                               MarriageRepository marriageRepository) {
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
         this.familyRepository = familyRepository;
         this.dashboardRepository = dashboardRepository;
+        this.kinshipService = kinshipService;
         this.parentChildRepository = parentChildRepository;
         this.marriageRepository = marriageRepository;
+    }
+
+    @Override
+    public RelationshipResult relationship(UUID personAId, UUID personBId) {
+        RelationshipResponse r = kinshipService.relationship(personAId, personBId);
+        return new RelationshipResult(r.supported(), r.relation(), r.stepsFromA(), r.stepsFromB(),
+                r.path().stream().map(p -> new PathStep(p.id(), p.fullName())).toList());
     }
 
     @Override

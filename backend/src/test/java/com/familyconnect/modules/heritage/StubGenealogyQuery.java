@@ -15,6 +15,11 @@ import java.util.UUID;
 
 public final class StubGenealogyQuery implements GenealogyQuery {
 
+    @Override
+    public RelationshipResult relationship(UUID personAId, UUID personBId) {
+        return new RelationshipResult(false, null, null, null, List.of());
+    }
+
     private final Set<PersonFamily> people = new HashSet<>();
 
     public void add(UUID personId, UUID familyId) {
