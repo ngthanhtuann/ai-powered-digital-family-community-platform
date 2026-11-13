@@ -15,8 +15,8 @@ public class ChatLanguageModel {
     private final String apiKey;
     private final String model;
     public ChatLanguageModel(@Value("${gemini.api-key:}") String apiKey,
-                             @Value("${gemini.chat-model:gemini-2.5-flash}") String model,
-                             @Value("${ai.chat.timeout_ms:30000}") int timeoutMs) {
+                             @Value("${gemini.chat-model:gemini-3.5-flash-lite}") String model,
+                             @Value("${ai.chat.timeout_ms:90000}") int timeoutMs) {
         this.apiKey = apiKey; this.model = model;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Math.min(5000, timeoutMs));
@@ -30,7 +30,9 @@ public class ChatLanguageModel {
         JsonNode response = client.post().uri("/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))),
-                        "generationConfig", Map.of("temperature", 0.1, "maxOutputTokens", 700)))
+                        "generationConfig", Map.of(
+                                "maxOutputTokens", 700,
+                                "thinkingConfig", Map.of("thinkingLevel", "low"))))
                 .retrieve().body(JsonNode.class);
         String text = response == null ? "" : response.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
         if (text.isBlank()) throw new IllegalStateException("Empty model response");

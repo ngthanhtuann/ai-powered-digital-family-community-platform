@@ -139,7 +139,10 @@ public class EventAccess {
             try {
                 if (deleted) ai.removeSource(AiGateway.SourceType.EVENT,event.id());
                 else ai.upsertSource(AiGateway.SourceType.EVENT,event.id(),event.familyId(),event.branchId(),
-                    event.title() + " " + (event.description() == null ? "" : event.description()));
+                    event.title() + " " + (event.description() == null ? "" : event.description())
+                        + " Bắt đầu: " + event.startAt()
+                        + (event.endAt() == null ? "" : " Kết thúc: " + event.endAt())
+                        + (event.location() == null ? "" : " Địa điểm: " + event.location()));
             } catch (RuntimeException ex) { log.warn("Không cập nhật được AI cho sự kiện {}",event.id(),ex); }
         };
         if (!TransactionSynchronizationManager.isSynchronizationActive()) { work.run(); return; }

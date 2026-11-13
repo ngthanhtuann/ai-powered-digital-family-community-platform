@@ -75,13 +75,13 @@ springdoc:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   embedding-model: gemini-embedding-001
-  chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+  chat-model: ${GEMINI_CHAT_MODEL:gemini-3.5-flash-lite}
 
 ai:
   chat:
     # Giới hạn câu hỏi mỗi giờ đọc từ system_config (ai.chat.limit_per_hour, đổi ở trang Cấu hình hệ thống; SCRUM-94).
-    top_k: 5
-    minimum_score: 0.55
+    top_k: ${AI_CHAT_TOP_K:10}
+    minimum_score: ${AI_CHAT_MINIMUM_SCORE:0.50}
     retention_days: 30
-    timeout_ms: ${AI_CHAT_TIMEOUT_MS:30000}
+    timeout_ms: ${AI_CHAT_TIMEOUT_MS:90000}
     enabled: ${AI_CHAT_ENABLED:true}
