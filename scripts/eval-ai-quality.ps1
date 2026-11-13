@@ -85,7 +85,6 @@ for ($i = 0; $i -lt $cases.Count; $i++) {
     $apiError = $null
     try {
         $chatBody = @{ question=$case.Q }
-        if ($account -eq 'phuc') { $chatBody.familyId = '4d8b9812-879b-4f02-b205-a4123c5302fc' }
         $response = Call-Api POST '/ai/chat' $chatBody $tokens[$account]
         $answer = Repair-ResponseText ([string]$response.data.answer)
         $sources = @($response.data.sources)

@@ -69,7 +69,7 @@ class EventServiceTest {
             saved.startAt(),null,"Nhà văn hóa",null));
         assertThat(result.id()).isEqualTo(EVENT_ID);
         verify(ai).upsertSource(AiGateway.SourceType.EVENT,EVENT_ID,FAMILY,null,
-            "Họp mặt gia đình Buổi gặp mặt thường niên");
+            "Họp mặt gia đình Buổi gặp mặt thường niên Bắt đầu: " + saved.startAt() + " Địa điểm: Nhà văn hóa");
     }
 
     @Test void unverifiedCannotCreateEvent() {

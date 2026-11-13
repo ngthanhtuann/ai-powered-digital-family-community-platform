@@ -46,7 +46,7 @@ class AiChatGroundingTest {
         when(embeddings.isConfigured()).thenReturn(true); when(embeddings.createEmbedding(anyString())).thenReturn(new float[768]);
         when(model.isConfigured()).thenReturn(true); when(model.answer(anyString())).thenAnswer(call -> {
             String prompt = call.getArgument(0);
-            assertTrue(prompt.contains("Chỉ trả lời dựa trên NGỮ CẢNH"));
+            assertTrue(prompt.contains("Chỉ dùng dữ kiện trực tiếp có trong NGỮ CẢNH"));
             assertTrue(prompt.contains("Hồ sơ giả: Nguyễn An sinh năm 1950."));
             return "Theo hồ sơ giả, Nguyễn An sinh năm 1950.";
         });
@@ -118,7 +118,7 @@ class AiChatGroundingTest {
         verify(model).answer(prompt.capture());
         assertTrue(prompt.getValue().contains(FACTS.get(q.fact())), "thiếu đoạn trả lời được");
         assertFalse(prompt.getValue().contains(unrelated), "đoạn điểm thấp không được vào prompt");
-        assertTrue(prompt.getValue().contains("Không bịa tên, ngày tháng"));
+        assertTrue(prompt.getValue().contains("Không bịa hoặc tự điền tên, ngày tháng"));
         assertTrue(prompt.getValue().contains("QUESTION:\n" + q.text()));
         assertEquals(List.of(relevantId), response.sources().stream().map(src -> src.sourceId()).toList());
     }
