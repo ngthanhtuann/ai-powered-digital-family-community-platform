@@ -22,7 +22,7 @@ $cases = @(
     @{ Group='Thực tế'; Q='Anh Quang làm nghề gì?'; Mode='Contains'; Terms=@('Lập trình viên') },
     @{ Group='Thực tế'; Q='Cụ Lộc sinh năm nào?'; Mode='Contains'; Terms=@('1955') },
     @{ Group='Thực tế'; Q='Họp Chi 2 tổng kết năm tổ chức ở đâu?'; Mode='Contains'; Terms=@('Nhà chú Hùng','Hà Nội') },
-    @{ Group='Thực tế'; Q='Giỗ Tổ họ Nguyễn năm 2026 diễn ra khi nào?'; Mode='Contains'; Terms=@('2026','20') },
+    @{ Group='Thực tế'; Q='Giỗ Tổ họ Nguyễn năm 2026 diễn ra khi nào?'; Mode='Contains'; Terms=@('20/12/2026') },
     @{ Group='Thực tế'; Q='Giỗ Tổ họ Nguyễn tổ chức ở đâu?'; Mode='Contains'; Terms=@('Nhà thờ họ Nguyễn','Nam Định') },
     @{ Group='Thực tế'; Q='Sự kiện giỗ Tổ tưởng niệm ai?'; Mode='Contains'; Terms=@('Nguyễn Văn Tổ') },
     @{ Group='Thực tế'; Q='Chi 2 góp quỹ khuyến học hạn cuối ngày nào?'; Mode='Contains'; Terms=@('30/11') },

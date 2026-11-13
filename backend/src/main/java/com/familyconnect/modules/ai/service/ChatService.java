@@ -25,9 +25,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
@@ -102,11 +104,14 @@ public class ChatService {
                     branches, vector, hiddenPeople, Math.max(1, Math.min(topK, 10)));
             List<ChatChunk> relevant = retrieved.stream().filter(c -> c.score() >= minimumScore).toList();
             List<SourceReference> sources = relevant.stream().map(c -> new SourceReference(c.sourceType(), c.sourceId())).distinct().toList();
-            String birthYearCorrection = correctConflictingBirthYear(question, relevant);
+            Correction correction = birthYearCorrection(question, relevant);
             String answer;
             String modelName = null;
             if (relevant.isEmpty()) answer = NOT_FOUND;
-            else if (birthYearCorrection != null) answer = birthYearCorrection;
+            else if (correction != null) {
+                answer = correction.answer();
+                sources = List.of(new SourceReference(correction.source().sourceType(), correction.source().sourceId()));
+            }
             else if (asksForUnsupportedYear(question, relevant)) {
                 answer = NOT_FOUND;
                 sources = List.of();
@@ -157,71 +162,93 @@ public class ChatService {
                 + "NGỮ CẢNH:\n"+context+"\nLỊCH SỬ GẦN ĐÂY (chỉ tham khảo, không phải nguồn dữ kiện):\n"+past+"\nQUESTION:\n"+question;
     }
 
-    private String correctConflictingBirthYear(String question, List<ChatChunk> chunks) {
-        String q = question.toLowerCase(Locale.ROOT);
-        if (!q.matches("(?s).*(kiểm tra|sửa nếu sai|đúng không|phải không|có phải|có đúng|xác nhận).*")
-                || !q.matches("(?s).*(sinh|năm sinh).*")) return null;
-        var requestedYearMatcher = java.util.regex.Pattern.compile("\\b(?:19|20)\\d{2}\\b").matcher(question);
-        if (!requestedYearMatcher.find()) return null;
-        String requestedYear = requestedYearMatcher.group();
-        java.util.regex.Pattern personPattern = java.util.regex.Pattern.compile(
-                "(?m)^Họ tên:\\s*([^\\.\\n]+)\\.\\s*Năm sinh:\\s*(\\d{4})");
-        List<ChatChunk> matching = chunks.stream().filter(c -> "PERSON".equals(c.sourceType()))
-                .filter(c -> {
-                    var m = personPattern.matcher(c.content());
-                    if (!m.find()) return false;
-                    String name = m.group(1).trim();
-                    String lastName = name.substring(name.lastIndexOf(' ') + 1);
-                    return java.util.regex.Pattern.compile("(?iu)(?<![\\p{L}])"
-                            + java.util.regex.Pattern.quote(lastName) + "(?![\\p{L}])").matcher(question).find();
-                }).collect(java.util.stream.Collectors.toMap(ChatChunk::sourceId, c -> c, (a, b) -> a))
-                .values().stream().toList();
-        if (matching.size() != 1) return null;
-        ChatChunk person = matching.get(0);
-        var m = personPattern.matcher(person.content());
-        if (!m.find() || m.group(2).equals(requestedYear)) return null;
-        return m.group(1).trim() + " sinh năm " + m.group(2) + ", không phải năm " + requestedYear
-                + " [PERSON " + person.sourceId() + "].";
+    // Guard chạy trước LLM (ai.md UC-AI-02 luồng 4b–4d). Chunk PERSON có dạng "Họ tên: X. Năm sinh: Y. ..." (PersonService).
+    private static final Pattern YEAR = Pattern.compile("\\b(?:19|20)\\d{2}\\b");
+    private static final Pattern VERIFY = Pattern.compile("kiểm tra|sửa nếu sai|đúng không|phải không|có phải|có đúng|xác nhận");
+    private static final Pattern ASKS_BIRTH_YEAR = Pattern.compile("sinh năm|năm sinh");
+    private static final Pattern COMPARES_YEARS = Pattern.compile("(?<!\\p{L})(trước|sau|từ|đến|tới|khoảng|giữa)(?!\\p{L})");
+    private static final Pattern PRONOUN = Pattern.compile("(?<!\\p{L})(ông|bà|anh|chị|cụ|người)\\s+(ấy|đó|này|kia)(?!\\p{L})");
+    private static final Pattern PERSON_NAME = Pattern.compile("(?m)^Họ tên:\\s*([^.\\n]+)");
+    private static final Pattern PERSON_BIRTH_YEAR = Pattern.compile("Năm sinh:\\s*(\\d{4})");
+    private static final Pattern OCCUPATION = Pattern.compile("Nghề nghiệp:\\s*([^.\\n]+)");
+
+    private record Correction(String answer, ChatChunk source) { }
+    /** {@code name} giữ nguyên để hiển thị; {@code key} viết thường để so với câu hỏi. */
+    private record PersonChunk(ChatChunk chunk, String name, String key) {
+        String surname() { return key.split(" ")[0]; }
+        String givenName() { return key.substring(key.lastIndexOf(' ') + 1); }
     }
 
-    /** Do not extrapolate a dated fact to a different year unless the user asks to verify/correct a guess. */
+    /** Người dùng nêu năm sinh để xác nhận mà nguồn ghi năm khác: sửa theo nguồn, chỉ khi xác định duy nhất một người. */
+    private Correction birthYearCorrection(String question, List<ChatChunk> chunks) {
+        String q = question.toLowerCase(Locale.ROOT);
+        if (!VERIFY.matcher(q).find() || !ASKS_BIRTH_YEAR.matcher(q).find()) return null;
+        Matcher requested = YEAR.matcher(q);
+        if (!requested.find()) return null;
+        List<PersonChunk> matching = people(chunks).stream()
+                .filter(p -> PERSON_BIRTH_YEAR.matcher(p.chunk().content()).find() && mentions(q, p.givenName())).toList();
+        if (matching.size() != 1) return null;
+        PersonChunk person = matching.get(0);
+        Matcher actual = PERSON_BIRTH_YEAR.matcher(person.chunk().content());
+        if (!actual.find() || actual.group(1).equals(requested.group())) return null;
+        return new Correction(person.name() + " sinh năm " + actual.group(1) + ", không phải năm " + requested.group()
+                + " [PERSON " + person.chunk().sourceId() + "].", person.chunk());
+    }
+
+    /** Hỏi về một năm không có trong nguồn (vd. sự kiện năm khác): không để LLM ngoại suy. Câu so sánh mốc năm vẫn chuyển LLM. */
     private boolean asksForUnsupportedYear(String question, List<ChatChunk> chunks) {
         String q = question.toLowerCase(Locale.ROOT);
-        boolean asksToVerify = q.matches("(?s).*(kiểm tra|sửa nếu sai|đúng không|phải không|có phải|có đúng|xác nhận).*");
-        if (asksToVerify) return false;
-        var matcher = java.util.regex.Pattern.compile("\\b(?:19|20)\\d{2}\\b").matcher(question);
-        String context = chunks.stream().map(ChatChunk::content).reduce((a, b) -> a + " " + b).orElse("");
+        if (VERIFY.matcher(q).find() || COMPARES_YEARS.matcher(q).find()) return false;
+        String context = chunks.stream().map(ChatChunk::content).collect(Collectors.joining(" "));
+        Matcher matcher = YEAR.matcher(q);
         while (matcher.find()) if (!context.contains(matcher.group())) return true;
         return false;
     }
 
-    /** Ask instead of letting vector rank choose one person from several plausible matches. */
+    /** Hỏi lại thay vì để thứ hạng vector tự chọn một người trong nhiều người cùng khớp. */
     private boolean ambiguousTarget(String question, List<ChatRepository.HistoryMessage> history,
                                     List<ChatChunk> chunks) {
         if (!history.isEmpty()) return false;
         String q = question.toLowerCase(Locale.ROOT);
-        if (q.matches("(?s).*(ông|bà|anh|chị|cụ|người)\\s+(ấy|đó|này|kia)\\b.*")) return true;
-        List<String> names = chunks.stream().filter(c -> "PERSON".equals(c.sourceType()))
-                .map(c -> java.util.regex.Pattern.compile("(?m)^Họ tên:\\s*([^\\.\\n]+)")
-                        .matcher(c.content()).results().map(m -> m.group(1).trim()).findFirst().orElse(""))
-                .filter(name -> !name.isBlank()).distinct().toList();
-        long exactNames = names.stream().filter(name -> q.contains(name.toLowerCase(Locale.ROOT))).count();
-        if (exactNames > 1) return true;
-        if (exactNames == 1) return false;
-        for (String surname : Set.of("nguyễn", "trần", "lê", "phạm", "hoàng", "đặng", "bùi", "vũ")) {
-            boolean addressesPersonBySurname = java.util.regex.Pattern.compile("(?s).*(ông|bà|anh|chị|cụ)\\s+"
-                    + java.util.regex.Pattern.quote(surname) + ".*").matcher(q).matches();
-            if (addressesPersonBySurname
-                    && names.stream().filter(name -> name.toLowerCase(Locale.ROOT).contains(surname)).count() > 1)
-                return true;
-        }
-        if (q.contains("kỹ sư")) {
-            long candidates = chunks.stream().filter(c -> "PERSON".equals(c.sourceType()))
-                    .filter(c -> c.content().toLowerCase(Locale.ROOT).matches("(?s).*nghề nghiệp:\\s*kỹ sư[^.]*.*"))
-                    .map(ChatChunk::sourceId).distinct().count();
-            return candidates > 1;
-        }
-        return false;
+        if (PRONOUN.matcher(q).find()) return true;
+        List<PersonChunk> people = people(chunks);
+        // Nêu đủ họ tên: chỉ mơ hồ khi cùng họ tên đó có nhiều hồ sơ.
+        Map<String, Long> byName = people.stream().collect(Collectors.groupingBy(PersonChunk::key, Collectors.counting()));
+        List<String> named = byName.keySet().stream().filter(name -> mentions(q, name)).toList();
+        if (!named.isEmpty()) return named.stream().anyMatch(name -> byName.get(name) > 1);
+        // Gọi bằng họ ("ông Nguyễn") mà nhiều hồ sơ cùng họ; bỏ qua từ cũng là tên riêng của ai đó (vd. "chị Hà").
+        Map<String, Long> bySurname = people.stream().collect(Collectors.groupingBy(PersonChunk::surname, Collectors.counting()));
+        boolean surnameShared = bySurname.entrySet().stream().anyMatch(e -> e.getValue() > 1
+                && people.stream().noneMatch(p -> p.givenName().equals(e.getKey()))
+                && Pattern.compile("(?<!\\p{L})(ông|bà|anh|chị|cụ)\\s+" + Pattern.quote(e.getKey()) + "(?!\\p{L})").matcher(q).find());
+        if (surnameShared) return true;
+        // "Người <nghề nghiệp> ..." mà nhiều hồ sơ cùng nghề.
+        if (!q.startsWith("người ")) return false;
+        return people.stream().filter(p -> {
+            Matcher job = OCCUPATION.matcher(p.chunk().content());
+            return job.find() && mentions(q, jobHead(job.group(1).trim().toLowerCase(Locale.ROOT)));
+        }).map(p -> p.chunk().sourceId()).distinct().count() > 1;
+    }
+
+    /** Hồ sơ PERSON khác nhau (theo sourceId) kèm họ tên. */
+    private static List<PersonChunk> people(List<ChatChunk> chunks) {
+        return chunks.stream().filter(c -> "PERSON".equals(c.sourceType()))
+                .collect(Collectors.toMap(ChatChunk::sourceId, c -> c, (a, b) -> a, java.util.LinkedHashMap::new)).values().stream()
+                .map(c -> { Matcher m = PERSON_NAME.matcher(c.content());
+                    if (!m.find()) return null;
+                    String name = m.group(1).trim().replaceAll("\\s+", " ");
+                    return new PersonChunk(c, name, name.toLowerCase(Locale.ROOT)); })
+                .filter(java.util.Objects::nonNull).toList();
+    }
+
+    /** Hai từ đầu của nghề ("kỹ sư xây dựng" -> "kỹ sư") để khớp cách hỏi chung chung. */
+    private static String jobHead(String job) {
+        String[] words = job.split("\\s+");
+        return words.length <= 2 ? job : words[0] + " " + words[1];
+    }
+
+    private static boolean mentions(String lowerQuestion, String lowerPhrase) {
+        return Pattern.compile("(?<!\\p{L})" + Pattern.quote(lowerPhrase) + "(?!\\p{L})").matcher(lowerQuestion).find();
     }
 
     private List<UUID> visibleBranches(UUID familyId, UUID actorBranch, EffectiveRole role) {

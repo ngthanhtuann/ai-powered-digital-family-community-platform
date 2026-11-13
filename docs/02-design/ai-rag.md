@@ -81,7 +81,7 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 ### 5.1. Khi không có câu trả lời
 - Không có kết quả truy xuất hoặc tất cả kết quả thấp hơn ngưỡng: trả `Không tìm thấy thông tin.`; không gọi LLM.
 - Có kết quả nhưng không chứa dữ kiện trả lời câu hỏi: prompt yêu cầu trả đúng câu trên; kiểm thử kết quả trước khi coi tính năng đạt.
-- Chat RAG hiện dùng `top_k=10` và `minimum_score=0.50` (`AI_CHAT_TOP_K`, `AI_CHAT_MINIMUM_SCORE`). SCRUM-69 đo được 40/40 câu đúng và 0 trường hợp bịa trong 20 câu ngoài dữ liệu/đánh lừa; guard backend hỏi lại khi nhiều hồ sơ khớp và từ chối năm không có trong ngữ cảnh. Báo cáo và đáp án từng câu ở `docs/06-test/ai-quality-scrum-69.md` và `ai-quality-scrum-69-results.json`.
+- Chat RAG hiện dùng `top_k=10` và `minimum_score=0.50` (`AI_CHAT_TOP_K`, `AI_CHAT_MINIMUM_SCORE`). Guard backend chạy trước LLM theo `ai.md` UC-AI-02 luồng 4b–4d: từ chối năm không có trong ngữ cảnh, hỏi lại khi nhiều hồ sơ khớp, sửa năm sinh sai theo hồ sơ. SCRUM-69 đo được 40/40 câu đúng với bản guard đầu tiên; guard đã được tổng quát hóa sau review và cần đo lại. Báo cáo và đáp án từng câu ở `docs/06-test/ai-quality-scrum-69.md` và `ai-quality-scrum-69-results.json`.
 - Không dùng ngưỡng tương đồng làm bằng chứng duy nhất rằng câu trả lời đúng. Điểm cao không bảo đảm nội dung có đủ dữ kiện; cần đánh giá trên bộ câu hỏi và đáp án kỳ vọng.
 - Ngưỡng `0.88` là giá trị thử nghiệm ban đầu từ spike, chưa phải ngưỡng tối ưu. Cần lưu lại truy vấn, top score, kết quả mong đợi và quyết định đúng/sai trên bộ test.
 - Semantic search dùng ngưỡng cosine tối thiểu `0.88`, gom nhiều chunk về một nguồn theo điểm cao nhất, phân trang `page` bắt đầu từ 0 và `size` tối đa 100. Bộ 15 truy vấn giả và bảng đo ở `docs/decisions/semantic-search-evaluation.md` cần chạy lại khi có dữ liệu đã index và khóa Gemini.
@@ -91,7 +91,7 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 - Rate limit theo tài khoản/người dùng và khoảng thời gian cấu hình. Khi vượt giới hạn, trả HTTP 429 `RATE_001`.
 - Rate limit chat: 20 câu/giờ/người dùng (`conventions.md` mục 7.1, khóa cấu hình `ai.chat.limit_per_hour`).
 - Rate limit tìm kiếm: 30 lượt/giờ/người dùng (`ai.search.limit_per_hour`), cửa sổ trượt; `Retry-After` là số giây tới khi lượt cũ nhất hết hạn. Bộ đếm nằm trong bộ nhớ từng bản backend (giống giới hạn đăng nhập), nên với 2 bản theo NFR-10 hạn mức thực tế tối đa khoảng 60 lượt/giờ. Đây là hạn chế đã biết, ghi trong báo cáo; muốn chính xác thì dùng bộ đếm chung trong PostgreSQL.
-- Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn. Timeout chat hiện mặc định 90 giây qua `AI_CHAT_TIMEOUT_MS`; mức này được đặt khi dùng `gemini-3.5-flash-lite` trong SCRUM-69. Đo lại khi đổi model hoặc môi trường.
+- Timeout, quota hết hoặc nhà cung cấp không khả dụng: trả HTTP 503 `AI_001`; không tự tạo câu trả lời dự phòng không có nguồn. Timeout chat mặc định 30 giây theo BR-AI-11, cấu hình qua `AI_CHAT_TIMEOUT_MS`. `thinkingLevel=low` chỉ gửi cho model `gemini-3*`; model khác dùng `temperature=0.1`.
 - Lỗi đầu vào không hợp lệ: HTTP 400, mã `VALID_001` theo `conventions.md`.
 - Quản trị tắt tính năng (`ai.search.enabled`, `ai.chat.enabled`, `ai.summary.enabled`): HTTP 409, mã `AI_002`.
 - `ai_summary_cache` chỉ dùng khi `family_id`, nguồn, hash phiên bản, quyền truy cập và tham số tóm tắt khớp; cache hết hạn hoặc nguồn đổi thì không sử dụng.

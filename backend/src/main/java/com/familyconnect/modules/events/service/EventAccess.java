@@ -18,6 +18,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +29,9 @@ import java.util.UUID;
 @Component
 public class EventAccess {
     private static final Logger log = LoggerFactory.getLogger(EventAccess.class);
+    // DB trả TIMESTAMPTZ ở UTC; chunk AI phải ghi giờ Việt Nam để chatbot không lệch giờ/ngày.
+    private static final ZoneId FAMILY_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter AI_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private final MembershipQuery membership;
     private final ObjectProvider<GenealogyPort> genealogy;
     private final UserDirectory users;
@@ -133,6 +139,10 @@ public class EventAccess {
                 Map.of("participantId",participant.id().toString(),"attended",attended));
     }
 
+    static String localTime(OffsetDateTime time) {
+        return time.atZoneSameInstant(FAMILY_TIME_ZONE).format(AI_TIME);
+    }
+
     /** BR-EVT-06: chỉ cập nhật AI sau khi giao dịch sự kiện đã commit. */
     public void eventChanged(Event event, boolean deleted) {
         Runnable work = () -> {
@@ -140,8 +150,8 @@ public class EventAccess {
                 if (deleted) ai.removeSource(AiGateway.SourceType.EVENT,event.id());
                 else ai.upsertSource(AiGateway.SourceType.EVENT,event.id(),event.familyId(),event.branchId(),
                     event.title() + " " + (event.description() == null ? "" : event.description())
-                        + " Bắt đầu: " + event.startAt()
-                        + (event.endAt() == null ? "" : " Kết thúc: " + event.endAt())
+                        + " Bắt đầu: " + localTime(event.startAt())
+                        + (event.endAt() == null ? "" : " Kết thúc: " + localTime(event.endAt()))
                         + (event.location() == null ? "" : " Địa điểm: " + event.location()));
             } catch (RuntimeException ex) { log.warn("Không cập nhật được AI cho sự kiện {}",event.id(),ex); }
         };
