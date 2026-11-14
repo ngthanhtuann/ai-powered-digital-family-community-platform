@@ -34,11 +34,16 @@ public class AiSearchRateLimiter {
         this.clock = clock;
     }
 
-    public synchronized void check(UUID userId) {
+    public void check(UUID userId) {
         if (sharedRateLimits) {
             sharedStore.checkSliding("SEARCH", userId.toString(), limit, 3600);
             return;
         }
+        checkLocal(userId);
+    }
+
+    /** Bộ đếm trong JVM (một backend); nhánh dùng chung ở trên không cần khóa JVM vì PostgreSQL đã khóa theo chủ thể. */
+    private synchronized void checkLocal(UUID userId) {
         Instant now = clock.instant();
         Instant cutoff = now.minus(Duration.ofHours(1));
         requests.values().forEach(history -> {

@@ -2,6 +2,7 @@ package com.familyconnect.common.ha;
 
 import com.familyconnect.common.exception.ApiException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +19,7 @@ import java.util.HexFormat;
 /**
  * SCRUM-96: bộ đếm RATE_001 dùng chung trong PostgreSQL.
  * REQUIRES_NEW đảm bảo lượt gọi được lưu dù transaction đăng nhập thất bại.
- * Dữ liệu chủ thể được băm SHA-256, không lưu IP/email ở dạng rõ.
+ * Chủ thể (IP, email, userId) được băm SHA-256 không salt: không lưu dạng rõ nhưng IP vẫn dò ngược được nếu đọc được DB.
  */
 @Component
 public class SharedRateLimitStore {
@@ -76,6 +77,16 @@ public class SharedRateLimitStore {
         }
         jdbc.update("INSERT INTO ha_rate_limit_sliding(scope,subject_hash,called_at) VALUES(?,?,?)",
                 scope, hashed, now);
+    }
+
+    /** Dòng đếm cũ hơn 1 ngày không còn ảnh hưởng cửa sổ nào (dài nhất 1 giờ); xóa để bảng không phình. */
+    static final Duration RETENTION = Duration.ofDays(1);
+
+    @Scheduled(fixedDelay = 3_600_000)
+    public void purgeExpired() {
+        OffsetDateTime cutoff = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).minus(RETENTION);
+        jdbc.update("DELETE FROM ha_rate_limit_fixed WHERE window_started_at < ?", cutoff);
+        jdbc.update("DELETE FROM ha_rate_limit_sliding WHERE called_at < ?", cutoff);
     }
 
     private record FixedWindow(OffsetDateTime start, int count) {}

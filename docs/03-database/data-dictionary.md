@@ -1,6 +1,6 @@
 # Từ điển dữ liệu
 
-> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.4 (khớp ERD v0.5, 30 bảng)
+> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.5 (khớp ERD v0.7, 32 bảng; thêm 2 bảng `ha_rate_limit_*` của SCRUM-96)
 > Nguồn: `genealogy.md` (TV2, bản 14/10), `community-events.md` (TV3, đã merge, có `content_report`), `heritage-directory-dashboard.md` (TV4), `auth.md` mục 5 (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` mục 5 (TV5, đã merge PR #35).
 > Mỗi bảng một khối. Quy ước: khóa chính UUID; `TIMESTAMPTZ`; xóa mềm `deleted_at`; khóa ngoại chỉ trong cùng module; cột "tham chiếu logic" chỉ lưu UUID có index, service kiểm tra.
 
@@ -138,6 +138,32 @@ Người sở hữu: **TV1 Tuấn**
 | created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+
+### `ha_rate_limit_fixed`
+
+**Mục đích:** Bộ đếm `RATE_001` cửa sổ cố định (đăng nhập, refresh) dùng chung giữa các backend khi bật HA (`HA_SHARED_RATE_LIMITS=true`). Hạ tầng dùng chung (SCRUM-96, migration V22), xếp vào nhóm auth vì phục vụ giới hạn đăng nhập/refresh; AI cũng dùng qua `SharedRateLimitStore`.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| scope | VARCHAR(32) | PK (scope, subject_hash) | Loại giới hạn: `LOGIN`, `REFRESH` |
+| subject_hash | VARCHAR(64) | PK (scope, subject_hash) | SHA-256 hex của chủ thể (IP, hoặc IP và email); không lưu dạng rõ |
+| window_started_at | TIMESTAMPTZ | NOT NULL | Thời điểm bắt đầu cửa sổ hiện tại |
+| request_count | INTEGER | NOT NULL | Số lượt trong cửa sổ |
+
+**Ràng buộc bổ sung:** Ngoại lệ quy ước: bảng đếm kỹ thuật, không có `id`, `created_at`, `updated_at`, `deleted_at`, `created_by`, `updated_by`; xóa cứng dòng cũ hơn 1 ngày bằng tác vụ mỗi giờ.
+
+### `ha_rate_limit_sliding`
+
+**Mục đích:** Bộ đếm `RATE_001` cửa sổ trượt 1 giờ (AI chat, tìm kiếm, tóm tắt) dùng chung giữa các backend khi bật HA. Hạ tầng dùng chung (SCRUM-96, migration V22), xếp vào nhóm auth vì phục vụ giới hạn đăng nhập/refresh; AI cũng dùng qua `SharedRateLimitStore`.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | BIGSERIAL | PK | Khóa chính |
+| scope | VARCHAR(32) | NOT NULL | Loại giới hạn: `CHAT`, `SEARCH`, `SUMMARY` |
+| subject_hash | VARCHAR(64) | NOT NULL | SHA-256 hex của `userId` |
+| called_at | TIMESTAMPTZ | NOT NULL | Thời điểm gọi |
+
+**Ràng buộc bổ sung:** Ngoại lệ quy ước như `ha_rate_limit_fixed` (khóa `BIGSERIAL`, chỉ thêm và xóa cứng). Chỉ mục `idx_ha_rate_limit_subject_time` (scope, subject_hash, called_at). Ghi tuần tự theo chủ thể bằng `pg_advisory_xact_lock`.
 
 ## Gia phả (genealogy)
 

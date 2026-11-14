@@ -1,6 +1,6 @@
 # SCRUM-96 [7-11] – High Availability cơ bản
 
-**Người thực hiện:** TV3. **Reviewer:** TV1. **Trạng thái:** Chờ chạy kiểm thử thực tế.
+**Người thực hiện:** TV3. **Reviewer:** TV1. **Trạng thái:** Đã chạy các ca khởi động, failover, rate limit chung và tự phục hồi (TV1 test chéo 14/11/2026, commit `71e0b35`); các ca còn ghi "Chưa đo" chưa chạy.
 
 ## Phạm vi triển khai
 
@@ -9,7 +9,7 @@
 - Mọi dịch vụ trong HA có `restart: unless-stopped` và healthcheck. Backend đợi DB healthy; Nginx đợi hai backend healthy lúc khởi động; frontend đợi Nginx healthy.
 - Hai backend cùng dùng volume PostgreSQL `pgdata`, media `uploads`, và backup `backups`.
 - Access token JWT stateless; refresh token trong DB. Backend-secondary đợi primary healthy trước khi khởi động; Flyway dùng khóa migration của PostgreSQL để an toàn khi triển khai lại.
-- Rate limit của login, refresh, AI chat/search/summary được kiểm soát chung qua các bảng migration `V22__ha_shared_rate_limits.sql` (mã `RATE_001` giữ nguyên). Cache thống kê dashboard và cấu hình hệ thống trong JVM được tắt trong chế độ HA; cache AI summary đã ở PostgreSQL.
+- Rate limit của login, refresh, AI chat/search/summary được kiểm soát chung qua các bảng migration `V22__ha_shared_rate_limits.sql` (mã `RATE_001` giữ nguyên). Chủ thể (IP, email, userId) băm SHA-256 không salt: không lưu dạng rõ nhưng địa chỉ IP vẫn dò ngược được nếu đọc được DB. Tác vụ mỗi giờ xóa dòng đếm cũ hơn 1 ngày để bảng không phình. Cache thống kê dashboard và cấu hình hệ thống trong JVM được tắt trong chế độ HA; cache AI summary đã ở PostgreSQL.
 - Chỉ `backend-primary` chạy `EventReminderScheduler`; ràng buộc UNIQUE thông báo trong PostgreSQL giữ chống trùng. Nếu primary ngừng lâu, job chạy bù khi primary phục hồi và sự kiện chưa bắt đầu.
 - Gemini lỗi/timeout: API phải trả `AI_001` (503) và backend vẫn healthy, cần đo kiểm thực tế. Nginx không tự retry HTTP 503 để tránh gọi AI lặp lại.
 - Backup gồm `pg_dump` (cả `vector`) và `uploads`; script backup/restore đã dùng `flock` trên volume `backups` chung. Sau Flyway V22 cần tạo bản backup tương ứng V22: restore V21 vào DB V22 bị chặn theo chính sách phiên bản migration. KHÔNG restore dữ liệu thật trong lúc 2 backend đang nhận request.
@@ -30,16 +30,16 @@ LƯU Ý: trước khi chuyển từ Compose thường sang Compose HA, dừng Co
 
 ## Checklist và kết quả cần ghi
 
-**Chưa chạy:** các kết quả bên dưới là ô ghi nhận, không phải số liệu đo đã đạt. Test tích hợp `SharedRateLimitStoreIntegrationTest` kiểm tra hai cửa sổ giới hạn qua PostgreSQL khi chạy `mvn verify`.
+Môi trường đo 14/11/2026: stack HA riêng (`docker compose -p fcha`, cổng 18080, database trống, mật khẩu và `JWT_SECRET` giả), không dùng dữ liệu demo. Test tích hợp `SharedRateLimitStoreIntegrationTest` (chạy trong `mvn verify`) kiểm tra cửa sổ cố định, cửa sổ trượt, hai store chung hạn mức, băm chủ thể và tác vụ dọn dòng cũ trên PostgreSQL thật.
 
 | Ca kiểm thử | Cách chạy | Tiêu chí | Kết quả thực tế | Thời gian phục hồi |
 |---|---|---|---|---|
-| Khởi động | `docker compose -f docker-compose.ha.yml ps` | 5 dịch vụ healthy (DB, 2 BE, nginx, FE) | Chưa đo | Chưa đo |
-| Round-robin/failover | Gọi lặp API `/actuator/health` qua Nginx; `docker compose -f docker-compose.ha.yml stop backend-secondary`; gọi tiếp 30 lần | Không có request lỗi khi 1 backend dừng | Chưa đo | Chưa đo |
-| Tự phục hồi khi process chết | Trong backend-primary: `kill -9 1` bằng `docker compose exec`; quan sát `docker compose ps`, health và `docker inspect` | Container tự restart, trở về healthy | Chưa đo | Chưa đo |
+| Khởi động | `docker compose -f docker-compose.ha.yml ps` | 5 dịch vụ healthy (DB, 2 BE, nginx, FE) | Đạt với DB, 2 backend, nginx (frontend không dựng trong lần đo) | Không áp dụng |
+| Round-robin/failover | Gọi lặp API `/actuator/health` qua Nginx; `docker compose -f docker-compose.ha.yml stop backend-secondary`; gọi tiếp 30 lần | Không có request lỗi khi 1 backend dừng | Đạt: 30/30 HTTP 200 khi đủ 2 backend; 30/30 HTTP 200 sau khi dừng `backend-secondary` | Không gián đoạn |
+| Tự phục hồi khi process chết | Kill tiến trình Java của `backend-primary` từ phía host (xem lệnh dưới); quan sát `docker inspect` | Container tự restart, trở về healthy | Đạt: `RestartCount` 0 → 1; 14/14 request API trong lúc primary chết đều được secondary trả lời | Primary healthy lại sau khoảng 29 giây |
 | Volume | Tạo marker test trong DB và trong `uploads`; `docker compose -f docker-compose.ha.yml down` (KHÔNG `-v`), `up -d`; đọc lại marker | Marker không mất | Chưa đo | Chưa đo |
 | Backup/Restore | Tạo backup qua UI/API, restore vào DB kiểm thử theo `docs/07-deploy/backup-restore.md` | Có bảng `vector` và media tương ứng; không chạm DB thật | Chưa đo | Chưa đo |
-| Rate limit | Gọi login/refresh hoặc AI thử vượt hạn mức, xen kẽ hai backend | Tổng lượt dùng chung, HTTP 429 `RATE_001` | Chưa đo | Chưa đo |
+| Rate limit | Gọi login/refresh hoặc AI thử vượt hạn mức, xen kẽ hai backend | Tổng lượt dùng chung, HTTP 429 `RATE_001` | Đạt: 5 lần đăng nhập sai trả 401, lần 6, 7 trả 429; dừng primary rồi gọi tiếp qua secondary vẫn 429 (bộ đếm chung) | Không áp dụng |
 | Reminder | Tạo sự kiện thử nghiệm, kiểm tra thông báo đúng số lần | Không trùng 1h/24h | Chưa đo | Chưa đo |
 | AI lỗi | Thử với Gemini timeout/không cấu hình khóa trên dữ liệu giả | 503 `AI_001`, các API khác vẫn chạy | Chưa đo | Chưa đo |
 
@@ -55,11 +55,14 @@ docker compose -f docker-compose.ha.yml stop backend-secondary
 1..30 | ForEach-Object { try { (Invoke-WebRequest -UseBasicParsing 'http://localhost:8080/actuator/health' -TimeoutSec 5).StatusCode } catch { 'FAILED' } }
 docker compose -f docker-compose.ha.yml start backend-secondary
 
-# Mô phỏng JVM PID1 crash (restart policy kích hoạt do tiến trình chết)
+# Mô phỏng JVM crash (restart policy kích hoạt do tiến trình chết)
 # Chỉ chạy trên stack TEST, KHÔNG chạy với dữ liệu sản xuất.
+# Không dùng `exec ... kill -9 1`: kernel bỏ qua tín hiệu gửi tới PID 1 từ bên trong container, tiến trình không chết.
+$id = docker compose -f docker-compose.ha.yml ps -q backend-primary
+$hostPid = docker inspect -f '{{.State.Pid}}' $id
 $before = [DateTimeOffset]::UtcNow
-docker compose -f docker-compose.ha.yml exec -T backend-primary sh -c 'kill -9 1'
-docker compose -f docker-compose.ha.yml ps
+docker run --rm --privileged --pid=host alpine:3.20 kill -9 $hostPid
+docker inspect -f '{{.RestartCount}} {{.State.Health.Status}}' $id
 # Đợi đến khi primary healthy; ghi thời gian phục hồi = UtcNow - $before.
 ```
 

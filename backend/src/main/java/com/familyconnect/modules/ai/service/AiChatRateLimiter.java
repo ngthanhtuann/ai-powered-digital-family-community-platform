@@ -27,12 +27,17 @@ public class AiChatRateLimiter {
     public AiChatRateLimiter(SystemConfigQuery config, Clock clock) {
         this.config = config; this.clock = clock;
     }
-    public synchronized void check(UUID userId) {
+    public void check(UUID userId) {
         if (sharedRateLimits) {
             sharedStore.checkSliding("CHAT", userId.toString(),
                     config.getInt(SystemConfigQuery.AI_CHAT_LIMIT_PER_HOUR), 3600);
             return;
         }
+        checkLocal(userId);
+    }
+
+    /** Bộ đếm trong JVM (một backend); nhánh dùng chung ở trên không cần khóa JVM vì PostgreSQL đã khóa theo chủ thể. */
+    private synchronized void checkLocal(UUID userId) {
         int limit = config.getInt(SystemConfigQuery.AI_CHAT_LIMIT_PER_HOUR);
         Instant now = clock.instant(), cutoff = now.minus(Duration.ofHours(1));
         calls.values().forEach(q -> { while (!q.isEmpty() && !q.peekFirst().isAfter(cutoff)) q.removeFirst(); });

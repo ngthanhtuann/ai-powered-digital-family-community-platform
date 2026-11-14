@@ -1,7 +1,7 @@
 # ERD tổng hợp và quy ước đặt tên CSDL
 
 > **Người viết:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03)
-> **Phiên bản:** v0.6 (26/10/2026): chỉ vẽ lại sơ đồ (một sơ đồ tổng quan, một ERD tổng hợp rút gọn và 5 ERD theo module, ký hiệu chân chim, đen trắng, đủ cột theo `data-dictionary.md`); không đổi bảng, cột, khóa hay ràng buộc. Bản trước: v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
+> **Phiên bản:** v0.7 (14/11/2026): thêm 2 bảng kỹ thuật `ha_rate_limit_fixed`, `ha_rate_limit_sliding` (SCRUM-96, migration V22) vào nhóm auth, cập nhật `erd.dbml`, `erd.dot`, `data-dictionary.md` và mục 1, 2; **các ảnh sơ đồ (draw.io, svg) chưa vẽ lại**, tổng số bảng là 32. Bản trước: v0.6 (26/10/2026): chỉ vẽ lại sơ đồ (một sơ đồ tổng quan, một ERD tổng hợp rút gọn và 5 ERD theo module, ký hiệu chân chim, đen trắng, đủ cột theo `data-dictionary.md`); không đổi bảng, cột, khóa hay ràng buộc. Bản trước: v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
 > **Nguồn:** `genealogy.md` (TV2), `community-events.md` (TV3), `heritage-directory-dashboard.md` (TV4), `auth.md` (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` (TV5, đã merge PR #35), quy ước ở `architecture.md` mục 7 và cập nhật của TV1 ngày 09/10/2026. Tất cả đối chiếu trên nhánh `develop` ngày 18/10/2026.
 > **Sản phẩm kèm theo:** ảnh tổng quan `../images/erd.png` và `../images/erd.svg`; ERD tổng hợp rút gọn `../images/erd-full.drawio.png` và `../images/erd-full.svg`; 5 ảnh ERD theo module `../images/erd-<module>.drawio.png` (xuất từ draw.io, kèm dữ liệu sơ đồ để mở lại sửa); file nguồn `erd.dbml` (dán vào dbdiagram.io) cùng thư mục với file này; `erd.dot` (Graphviz) là nguồn của ảnh v0.5, không còn dùng để sinh ảnh; `data-dictionary.md` (từ điển dữ liệu 30 bảng). Mỗi lần sửa thì ghi đè các file này và tăng số phiên bản ở dòng trên, không tạo file ảnh mới.
 ---
@@ -19,7 +19,7 @@
 | Bảng AI | Tiền tố `ai_`, schema `public`. Module khác không có khóa ngoại hay join tới `ai_*` |
 | Bảng media | Thuộc community; heritage và events dùng chung (`owner_type`: `POST`, `EVENT`, `HERITAGE`, `PERSON`) |
 | Cột người thực hiện | `created_by`, `updated_by`, `reviewed_by`, `actor_user_id` luôn là UUID thường, **không FK**, kể cả khi trỏ tới `users` trong cùng module (`architecture.md` quyết định 4, `auth.md` mục 5). Không vẽ trên sơ đồ |
-| Ngoại lệ cột chuẩn | `audit_log` là bảng chỉ thêm: chỉ có `id`, `created_at` (không `updated_at`, `deleted_at`; người thực hiện ở `actor_user_id`). `role`, `user_role`, `refresh_token` là bảng danh mục hoặc bảng kỹ thuật: không có `created_by`, `updated_by` (`auth.md` mục 5.1) |
+| Ngoại lệ cột chuẩn | `ha_rate_limit_fixed`, `ha_rate_limit_sliding` (SCRUM-96) là bộ đếm kỹ thuật: không có cột chuẩn, không xóa mềm, xóa cứng dòng cũ hơn 1 ngày. `audit_log` là bảng chỉ thêm: chỉ có `id`, `created_at` (không `updated_at`, `deleted_at`; người thực hiện ở `actor_user_id`). `role`, `user_role`, `refresh_token` là bảng danh mục hoặc bảng kỹ thuật: không có `created_by`, `updated_by` (`auth.md` mục 5.1) |
 | `created_by` được NULL | Khi bản ghi do hệ thống, tác vụ nền hoặc người chưa đăng nhập tạo: `notification`, 4 bảng `ai_*`, `users` (tự đăng ký), `member_verification`, `system_config` |
 | `UNIQUE` với xóa mềm | Thêm `WHERE deleted_at IS NULL` |
 | Sau khi đóng băng | Chỉ qua **Flyway migration** và báo cả nhóm |
@@ -36,6 +36,8 @@
 | Auth và quản trị (auth, admin) | TV1 Tuấn | `member_verification` | Đầy đủ |
 | Auth và quản trị (auth, admin) | TV1 Tuấn | `audit_log` | Đầy đủ |
 | Auth và quản trị (auth, admin) | TV1 Tuấn | `system_config` | Đầy đủ |
+| Auth và quản trị (auth, admin) | TV1 Tuấn | `ha_rate_limit_fixed` (hạ tầng HA, SCRUM-96) | Đầy đủ |
+| Auth và quản trị (auth, admin) | TV1 Tuấn | `ha_rate_limit_sliding` (hạ tầng HA, SCRUM-96) | Đầy đủ |
 | Gia phả (genealogy) | TV2 Trí | `family` | Đầy đủ |
 | Gia phả (genealogy) | TV2 Trí | `branch` | Đầy đủ |
 | Gia phả (genealogy) | TV2 Trí | `person` | Đầy đủ |

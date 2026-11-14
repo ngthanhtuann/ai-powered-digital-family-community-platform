@@ -25,11 +25,16 @@ public class SummaryRateLimiter {
     public SummaryRateLimiter(@Value("${ai.summary.limit_per_hour:10}") int limit, Clock clock) {
         this.limit = limit; this.clock = clock;
     }
-    public synchronized void check(UUID userId) {
+    public void check(UUID userId) {
         if (sharedRateLimits) {
             sharedStore.checkSliding("SUMMARY", userId.toString(), limit, 3600);
             return;
         }
+        checkLocal(userId);
+    }
+
+    /** Bộ đếm trong JVM (một backend); nhánh dùng chung ở trên không cần khóa JVM vì PostgreSQL đã khóa theo chủ thể. */
+    private synchronized void checkLocal(UUID userId) {
         Instant now = clock.instant(), cutoff = now.minus(Duration.ofHours(1));
         ArrayDeque<Instant> history = calls.computeIfAbsent(userId, ignored -> new ArrayDeque<>());
         while (!history.isEmpty() && !history.peekFirst().isAfter(cutoff)) history.removeFirst();
