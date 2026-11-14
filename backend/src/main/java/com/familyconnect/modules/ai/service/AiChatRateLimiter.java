@@ -3,6 +3,9 @@ package com.familyconnect.modules.ai.service;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.familyconnect.common.ha.SharedRateLimitStore;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -16,11 +19,25 @@ public class AiChatRateLimiter {
     private final SystemConfigQuery config;
     private final Clock clock;
     private final Map<UUID, ArrayDeque<Instant>> calls = new HashMap<>();
+    @Autowired
+    private SharedRateLimitStore sharedStore;
+    @Value("${app.ha.shared-rate-limits:false}")
+    private boolean sharedRateLimits;
     /** Giới hạn đọc từ cấu hình hệ thống ai.chat.limit_per_hour mỗi lần gọi (SCRUM-94, UC-AUTH-12). */
     public AiChatRateLimiter(SystemConfigQuery config, Clock clock) {
         this.config = config; this.clock = clock;
     }
-    public synchronized void check(UUID userId) {
+    public void check(UUID userId) {
+        if (sharedRateLimits) {
+            sharedStore.checkSliding("CHAT", userId.toString(),
+                    config.getInt(SystemConfigQuery.AI_CHAT_LIMIT_PER_HOUR), 3600);
+            return;
+        }
+        checkLocal(userId);
+    }
+
+    /** Bộ đếm trong JVM (một backend); nhánh dùng chung ở trên không cần khóa JVM vì PostgreSQL đã khóa theo chủ thể. */
+    private synchronized void checkLocal(UUID userId) {
         int limit = config.getInt(SystemConfigQuery.AI_CHAT_LIMIT_PER_HOUR);
         Instant now = clock.instant(), cutoff = now.minus(Duration.ofHours(1));
         calls.values().forEach(q -> { while (!q.isEmpty() && !q.peekFirst().isAfter(cutoff)) q.removeFirst(); });

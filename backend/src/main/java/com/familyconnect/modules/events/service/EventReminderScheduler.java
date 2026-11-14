@@ -8,6 +8,7 @@ import com.familyconnect.modules.events.repository.JdbcReminderStore.Candidate;
 import com.familyconnect.modules.events.service.EventAccess.Actor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ import java.time.Instant;
 
 /** [5-04] BR-EVT-05: in-app reminders, dùng UTC; khóa unique trong notification chống gửi trùng. */
 @Component
+@ConditionalOnProperty(name = "app.events.reminder-enabled", havingValue = "true", matchIfMissing = true)
 public class EventReminderScheduler {
     private static final Logger log = LoggerFactory.getLogger(EventReminderScheduler.class);
     private final JdbcReminderStore events;

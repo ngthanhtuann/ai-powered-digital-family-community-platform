@@ -4,6 +4,10 @@
 
 Hướng dẫn sao lưu/khôi phục dành cho SCRUM-86: [backup-restore.md](backup-restore.md).
 
+Chế độ High Availability hai backend + Nginx được thực hiện riêng trong
+`docker-compose.ha.yml` (SCRUM-96). Báo cáo kiểm thử, giới hạn và cách chạy:
+[high-availability-7-11.md](../06-test/high-availability-7-11.md).
+
 ## Healthcheck và thứ tự khởi động (SCRUM-68)
 
 Compose chỉ khởi chạy backend sau khi PostgreSQL khỏe; frontend chờ backend khỏe. Docker kiểm tra PostgreSQL bằng `pg_isready`, backend qua `/actuator/health` và frontend qua HTTP trên cổng 3000. Xem trạng thái bằng:
