@@ -1,6 +1,6 @@
 # SCRUM-96 [7-11] – High Availability cơ bản
 
-**Người thực hiện:** TV3. **Reviewer:** TV1. **Trạng thái:** Đã chạy các ca khởi động, failover, rate limit chung và tự phục hồi (TV1 test chéo 14/11/2026, commit `71e0b35`); các ca còn ghi "Chưa đo" chưa chạy.
+**Người thực hiện:** TV3. **Reviewer:** TV1. **Trạng thái:** Đã chạy đủ 8 ca kiểm thử (TV1 test chéo 14/11/2026: ca khởi động thiếu FE, failover, tự phục hồi, rate limit ở commit `71e0b35`; khởi động đủ 5 dịch vụ, volume, backup/restore, reminder, AI lỗi ở commit `efbf139` với dữ liệu demo giả nạp bằng `docker/seed-demo.ps1` qua Nginx).
 
 ## Phạm vi triển khai
 
@@ -34,14 +34,14 @@ Môi trường đo 14/11/2026: stack HA riêng (`docker compose -p fcha`, cổng
 
 | Ca kiểm thử | Cách chạy | Tiêu chí | Kết quả thực tế | Thời gian phục hồi |
 |---|---|---|---|---|
-| Khởi động | `docker compose -f docker-compose.ha.yml ps` | 5 dịch vụ healthy (DB, 2 BE, nginx, FE) | Đạt với DB, 2 backend, nginx (frontend không dựng trong lần đo) | Không áp dụng |
+| Khởi động | `docker compose -f docker-compose.ha.yml ps` | 5 dịch vụ healthy (DB, 2 BE, nginx, FE) | Đạt: DB, 2 backend, Nginx, frontend đều healthy (lần đo `efbf139`); `seed-demo.ps1` chạy trọn qua Nginx, ghi xen kẽ hai backend | Không áp dụng |
 | Round-robin/failover | Gọi lặp API `/actuator/health` qua Nginx; `docker compose -f docker-compose.ha.yml stop backend-secondary`; gọi tiếp 30 lần | Không có request lỗi khi 1 backend dừng | Đạt: 30/30 HTTP 200 khi đủ 2 backend; 30/30 HTTP 200 sau khi dừng `backend-secondary` | Không gián đoạn |
 | Tự phục hồi khi process chết | Kill tiến trình Java của `backend-primary` từ phía host (xem lệnh dưới); quan sát `docker inspect` | Container tự restart, trở về healthy | Đạt: `RestartCount` 0 → 1; 14/14 request API trong lúc primary chết đều được secondary trả lời | Primary healthy lại sau khoảng 29 giây |
-| Volume | Tạo marker test trong DB và trong `uploads`; `docker compose -f docker-compose.ha.yml down` (KHÔNG `-v`), `up -d`; đọc lại marker | Marker không mất | Chưa đo | Chưa đo |
-| Backup/Restore | Tạo backup qua UI/API, restore vào DB kiểm thử theo `docs/07-deploy/backup-restore.md` | Có bảng `vector` và media tương ứng; không chạm DB thật | Chưa đo | Chưa đo |
+| Volume | Tạo marker test trong DB và trong `uploads`; `docker compose -f docker-compose.ha.yml down` (KHÔNG `-v`), `up -d`; đọc lại marker | Marker không mất | Đạt: trước và sau `down`/`up` đều 53 người, 6 bài đăng, 11 thông báo; file marker trong `uploads` ghi từ primary, đọc lại được từ secondary; access token cũ vẫn dùng được (HTTP 200) | Cả stack healthy lại trong khoảng 1 phút |
+| Backup/Restore | Tạo backup qua UI/API, restore vào DB kiểm thử theo `docs/07-deploy/backup-restore.md` | Có bảng `vector` và media tương ứng; không chạm DB thật | Đạt trên stack thử: backup qua API (1 giây) gồm `database.dump` và `media/`; bài đăng tạo sau backup biến mất sau restore (HTTP 200), còn 53 người, có bảng `ai_embedding_chunk`, Flyway V22; refresh token cũ bị thu hồi (401); API qua cả hai backend vẫn 200 | Restore khoảng 1 giây (dữ liệu demo nhỏ) |
 | Rate limit | Gọi login/refresh hoặc AI thử vượt hạn mức, xen kẽ hai backend | Tổng lượt dùng chung, HTTP 429 `RATE_001` | Đạt: 5 lần đăng nhập sai trả 401, lần 6, 7 trả 429; dừng primary rồi gọi tiếp qua secondary vẫn 429 (bộ đếm chung) | Không áp dụng |
-| Reminder | Tạo sự kiện thử nghiệm, kiểm tra thông báo đúng số lần | Không trùng 1h/24h | Chưa đo | Chưa đo |
-| AI lỗi | Thử với Gemini timeout/không cấu hình khóa trên dữ liệu giả | 503 `AI_001`, các API khác vẫn chạy | Chưa đo | Chưa đo |
+| Reminder | Tạo sự kiện thử nghiệm, kiểm tra thông báo đúng số lần | Không trùng 1h/24h | Đạt: sự kiện bắt đầu sau 50 phút, 2 người GOING nhận đúng 1 nhắc 1h và 1 nhắc 24h mỗi người, chu kỳ sau không tạo thêm. Dừng primary: sự kiện mới không có nhắc nào trong 100 giây (secondary không chạy job, đúng giới hạn 3); primary chạy lại thì gửi bù đủ 1h và 24h | Nhắc bù gửi trong khoảng 90 giây sau khi primary chạy lại |
+| AI lỗi | Thử với Gemini timeout/không cấu hình khóa trên dữ liệu giả | 503 `AI_001`, các API khác vẫn chạy | Đạt: không cấu hình `GEMINI_API_KEY`, `/ai/chat` trả 503 `AI_001`; `/events` và `/actuator/health` vẫn 200. Chưa thử trường hợp Gemini timeout | Không áp dụng |
 
 ### Lệnh kiểm thử thủ công (PowerShell)
 
