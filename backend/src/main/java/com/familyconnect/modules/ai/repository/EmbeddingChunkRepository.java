@@ -99,6 +99,65 @@ public class EmbeddingChunkRepository {
     public record ChatChunk(String sourceType, UUID sourceId, String content, double score) { }
 
     /**
+     * Vector ngữ cảnh = trung bình embedding đã lưu của nguồn, chỉ khi người gọi được xem nguồn đó
+     * (cùng gia đình, chi được xem, không phải hồ sơ trẻ em bị ẩn). Null nếu không xem được hoặc chưa có chỉ mục.
+     */
+    public String findVisibleSourceVector(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
+                                          List<UUID> excludedPersonIds, String sourceType, UUID sourceId) {
+        List<Object> args = new ArrayList<>();
+        args.add(familyId);
+        String scope = visibleScope(allBranches, visibleBranches, excludedPersonIds, args);
+        args.add(sourceType);
+        args.add(sourceId);
+        return jdbcTemplate.queryForObject("""
+                SELECT CAST(AVG(c.embedding) AS text) FROM ai_embedding_chunk c
+                WHERE c.family_id = ? AND c.deleted_at IS NULL
+                """ + scope + """
+                  AND c.source_type = ? AND c.source_id = ?
+                """, String.class, args.toArray());
+    }
+
+    /** Nguồn gần nhất với vector ngữ cảnh, cùng phạm vi quyền như tìm kiếm (BR-AI-02, BR-AI-13); bỏ chính nguồn đang xem. */
+    public List<Recommendation> recommendations(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
+                                                List<UUID> excludedPersonIds, String contextType, UUID contextId,
+                                                String contextVector, int limit) {
+        List<Object> args = new ArrayList<>();
+        args.add(contextVector);
+        args.add(familyId);
+        String scope = visibleScope(allBranches, visibleBranches, excludedPersonIds, args);
+        args.add(contextType);
+        args.add(contextId);
+        args.add(limit);
+        return jdbcTemplate.query("""
+                WITH ranked AS (
+                    SELECT c.source_type, c.source_id, c.content,
+                           1 - (c.embedding <=> CAST(? AS vector)) AS score
+                    FROM ai_embedding_chunk c
+                    WHERE c.family_id = ? AND c.deleted_at IS NULL
+                """ + scope + """
+                      AND NOT (c.source_type = ? AND c.source_id = ?)
+                ), best AS (
+                    SELECT DISTINCT ON (source_type, source_id) source_type, source_id, content, score
+                    FROM ranked ORDER BY source_type, source_id, score DESC
+                )
+                SELECT source_type, source_id, content, score FROM best
+                ORDER BY score DESC, source_type, source_id LIMIT ?
+                """, (rs, rowNum) -> {
+            String type = rs.getString("source_type");
+            String content = rs.getString("content");
+            UUID id = rs.getObject("source_id", UUID.class);
+            String title = content.lines().findFirst().orElse("Nội dung gia đình");
+            if ("PERSON".equals(type) && title.startsWith("Họ tên: ")) title = title.substring(8).replaceFirst("\\.$", "");
+            if (title.length() > 90) title = title.substring(0, 87) + "…";
+            String snippet = content.length() > 240 ? content.substring(0, 237) + "…" : content;
+            return new Recommendation(type, id, title, snippet, rs.getDouble("score"), path(type, id));
+        }, args.toArray());
+    }
+
+    public record Recommendation(String sourceType, UUID sourceId, String title, String snippet,
+                                 double score, String path) { }
+
+    /**
      * Tìm trong family_id và các chi được xem trước khi xếp hạng (BR-AI-02, BR-AI-13).
      * {@code allBranches} = true với SYSTEM_ADMIN và trưởng chi toàn gia đình; còn lại chỉ chunk toàn gia đình
      * (branch_id NULL) hoặc thuộc {@code visibleBranches}.
@@ -175,6 +234,19 @@ public class EmbeddingChunkRepository {
         args.addAll(visibleBranches);
         return "  AND (c.branch_id IS NULL OR c.branch_id IN ("
                 + String.join(",", Collections.nCopies(visibleBranches.size(), "?")) + "))\n";
+    }
+
+    /** Phạm vi chi + ẩn hồ sơ trẻ em; thêm tham số vào {@code args} theo đúng thứ tự dấu ?. */
+    private static String visibleScope(boolean allBranches, List<UUID> visibleBranches,
+                                       List<UUID> excludedPersonIds, List<Object> args) {
+        String branch = branchFilter(allBranches, visibleBranches, args);
+        args.add(jsonIds(excludedPersonIds));
+        return branch + """
+                  AND NOT (c.source_type = 'PERSON' AND EXISTS (
+                      SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
+                      WHERE hidden.id::uuid = c.source_id
+                  ))
+                """;
     }
 
     private static String jsonIds(List<UUID> ids) {

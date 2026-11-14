@@ -88,7 +88,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Gợi ý thành viên hoặc tài nguyên liên quan */
+        /**
+         * Gợi ý thành viên hoặc tài nguyên liên quan
+         * @description Dùng vector embedding đã lưu của nguồn đang xem (trung bình các chunk), không gọi Gemini nên không tính hạn mức. Nguồn chưa có trong chỉ mục trả 404.
+         */
         get: operations["getRecommendations"];
         put?: never;
         post?: never;
@@ -561,11 +564,11 @@ export interface operations {
     };
     getRecommendations: {
         parameters: {
-            query?: {
-                contextType?: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT";
-                contextId?: string;
+            query: {
+                contextType: "PERSON" | "POST" | "STORY" | "DOCUMENT" | "EVENT" | "PHOTO";
+                contextId: string;
                 limit?: number;
-                /** @description Gia đình cần gợi ý khi không truyền contextId. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
+                /** @description Gia đình của nguồn đang xem. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001 (conventions.md mục 6.2). */
                 familyId?: string;
             };
             header?: never;
@@ -589,7 +592,10 @@ export interface operations {
                      *             "sourceType": "PERSON",
                      *             "sourceId": "4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011",
                      *             "title": "Nguyễn Văn An",
-                     *             "reason": "Có liên quan đến hồ sơ gia phả đang xem."
+                     *             "reason": "Nội dung gần với hồ sơ đang xem.",
+                     *             "snippet": "Họ tên: Nguyễn Văn An. Nghề nghiệp: giáo viên.",
+                     *             "score": 0.91,
+                     *             "path": "/persons/4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011"
                      *           }
                      *         ]
                      *       }
@@ -605,6 +611,10 @@ export interface operations {
                                 sourceId: string;
                                 title?: string;
                                 reason?: string;
+                                snippet?: string;
+                                /** Format: double */
+                                score?: number;
+                                path?: string;
                             }[];
                         };
                         meta?: components["schemas"]["ResponseMeta"];
@@ -613,7 +623,7 @@ export interface operations {
             };
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthorized"];
-            /** @description Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002). */
+            /** @description Nguồn thuộc gia đình khác, ngoài phạm vi chi được xem hoặc là hồ sơ trẻ em bị ẩn (PERM_001); tài khoản chưa xác minh (PERM_002). */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -623,8 +633,7 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            429: components["responses"]["RateLimited"];
-            503: components["responses"]["AIUnavailable"];
+            409: components["responses"]["FeatureDisabled"];
         };
     };
 }

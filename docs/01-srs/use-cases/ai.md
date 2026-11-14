@@ -94,10 +94,10 @@ Tài khoản chưa xác minh không được sử dụng AI: trả HTTP `403`, m
 | Actor | Thành viên đã xác minh; trưởng chi; quản trị hệ thống |
 | Mô tả ngắn | Đề xuất thành viên hoặc tài nguyên liên quan dựa trên nội dung và ngữ cảnh được phép truy cập. |
 | Tiền điều kiện | Đã đăng nhập và xác minh; có quyền xem phạm vi dữ liệu đề xuất. |
-| Dữ liệu đầu vào | `contextType` và `contextId` tùy chọn; `limit`; bộ lọc loại tài nguyên tùy chọn. |
+| Dữ liệu đầu vào | `contextType` (PERSON, POST, STORY, DOCUMENT, EVENT, PHOTO) và `contextId` bắt buộc; `limit` 1–10, mặc định 5; `familyId` theo `conventions.md` mục 6.2. |
 | Nguồn tri thức | Chỉ mục embedding và dữ liệu thành viên/tài nguyên lấy qua interface module sở hữu; luôn lọc theo `family_id` và quyền xem. |
-| Luồng chính | 1. Người dùng mở một hồ sơ/tài nguyên hoặc yêu cầu gợi ý. 2. Hệ thống kiểm tra quyền và hạn mức. 3. Tạo truy vấn từ ngữ cảnh được phép. 4. Tìm top-k ứng viên trong phạm vi `family_id` và các chi được xem (BR-AI-13), loại bỏ bản ghi bị xóa, bản ghi người dùng không có quyền xem và nội dung nhạy cảm. 5. Xếp hạng và trả danh sách kèm lý do ngắn dựa trên dữ kiện có thật. |
-| Luồng thay thế / ngoại lệ | 1a. `contextId` không tồn tại: 404 `NOT_FOUND_001`; thuộc gia đình khác: 403 `PERM_001`. 2a. Chưa xác minh: 403 `PERM_002`. 2b. Quá hạn mức: 429 `RATE_001`. 4a. Không có ứng viên phù hợp: trả danh sách rỗng. 5a. Không đủ dữ kiện để giải thích lý do: chỉ trả tài nguyên, không tự tạo lý do. 4b. Lỗi dịch vụ: 503 `AI_001`. |
+| Luồng chính | 1. Người dùng mở một hồ sơ/tài nguyên hoặc yêu cầu gợi ý. 2. Hệ thống kiểm tra quyền và cấu hình `ai.search.enabled`. 3. Lấy vector ngữ cảnh là trung bình embedding đã lưu của nguồn (chỉ khi người dùng được xem nguồn đó); không gọi Gemini nên không tính hạn mức. 4. Tìm top-k ứng viên trong phạm vi `family_id` và các chi được xem (BR-AI-13), loại bỏ bản ghi bị xóa, bản ghi người dùng không có quyền xem và nội dung nhạy cảm. 5. Xếp hạng theo độ tương đồng, bỏ chính nguồn đang xem, trả tối đa `limit` mục kèm lý do ngắn dựa trên dữ kiện có thật (độ gần nội dung). |
+| Luồng thay thế / ngoại lệ | 1a. `contextType` hoặc `limit` sai: 400 `VALID_001`. 1b. `contextId` không tồn tại hoặc chưa có trong chỉ mục: 404 `NOT_FOUND_001`; thuộc gia đình khác, ngoài phạm vi chi được xem hoặc là hồ sơ trẻ em bị ẩn: 403 `PERM_001`. 1c. Quản trị tắt tìm kiếm AI (`ai.search.enabled = false`): 409 `AI_002`. 2a. Chưa xác minh: 403 `PERM_002`. 4a. Không có ứng viên phù hợp: trả danh sách rỗng. 5a. Không đủ dữ kiện để giải thích lý do: chỉ trả tài nguyên, không tự tạo lý do. |
 | Hậu điều kiện | Không thay đổi dữ liệu nguồn; mọi gợi ý đều nằm trong phạm vi được phép xem. |
 | Quy tắc nghiệp vụ | BR-AI-01, BR-AI-02, BR-AI-03, BR-AI-05, BR-AI-10 |
 
