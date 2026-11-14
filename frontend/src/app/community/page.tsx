@@ -453,7 +453,7 @@ export default function CommunityPage() {
               <p className="break-words text-error">{errorText(families.error)}</p>
               <Button variant="secondary" fullWidth={false} onClick={() => void families.refetch()}>Thử lại</Button>
             </div>
-          )}}
+          )}
           {families.data?.length === 0 && <p className="mt-1 text-text-secondary">Chưa có gia đình nào.</p>}
         </div>
       )}
