@@ -7,7 +7,7 @@ import { announcementsApi, type Announcement } from '@/services/community/announ
 import { communityApi } from '@/services/community/posts';
 
 const inputClass =
-  'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body';
+  'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body';
 
 function AnnouncementCard({
   item,
@@ -45,21 +45,21 @@ function AnnouncementCard({
     },
   });
   return (
-    <article className="space-y-2 rounded-card border border-border bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <article className="min-w-0 space-y-2 rounded-card border border-border bg-surface p-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {item.isPinned && (
           <span className="rounded-full bg-surface-muted px-2 py-1 text-caption font-semibold">
             📌 Đã ghim
           </span>
         )}
-        <h3 className="font-semibold">{item.title}</h3>
+        <h3 className="min-w-0 break-words font-semibold">{item.title}</h3>
       </div>
       <p className="whitespace-pre-wrap break-words">{item.content}</p>
       <p className="text-caption text-text-secondary">
         {new Date(item.createdAt).toLocaleString('vi-VN')}
       </p>
       {canManage && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" fullWidth={false} onClick={() => setEditing(!editing)}>
             Sửa / ghim
           </Button>
@@ -252,9 +252,10 @@ export function Announcements({
       )}
       {query.isPending && <p>Đang tải thông báo...</p>}
       {query.isError && (
-        <p role="alert" className="text-error">
-          Không tải được thông báo.
-        </p>
+        <div role="alert" className="space-y-2">
+          <p className="text-error">Không tải được thông báo.</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
       )}
       {items.map((item) => (
         <AnnouncementCard key={item.id} item={item} canManage={canManage} canReport={canReport} />
