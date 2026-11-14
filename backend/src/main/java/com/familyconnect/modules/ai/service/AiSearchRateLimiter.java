@@ -3,6 +3,8 @@ package com.familyconnect.modules.ai.service;
 import com.familyconnect.common.exception.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.familyconnect.common.ha.SharedRateLimitStore;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -22,6 +24,10 @@ public class AiSearchRateLimiter {
     private final int limit;
     private final Clock clock;
     private final Map<UUID, ArrayDeque<Instant>> requests = new HashMap<>();
+    @Autowired
+    private SharedRateLimitStore sharedStore;
+    @Value("${app.ha.shared-rate-limits:false}")
+    private boolean sharedRateLimits;
 
     public AiSearchRateLimiter(@Value("${ai.search.limit_per_hour:30}") int limit, Clock clock) {
         this.limit = limit;
@@ -29,6 +35,10 @@ public class AiSearchRateLimiter {
     }
 
     public synchronized void check(UUID userId) {
+        if (sharedRateLimits) {
+            sharedStore.checkSliding("SEARCH", userId.toString(), limit, 3600);
+            return;
+        }
         Instant now = clock.instant();
         Instant cutoff = now.minus(Duration.ofHours(1));
         requests.values().forEach(history -> {

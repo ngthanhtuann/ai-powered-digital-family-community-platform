@@ -28,6 +28,7 @@ import com.familyconnect.modules.genealogy.api.GenealogyQuery.DashboardDemograph
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +68,8 @@ public class DashboardService {
     private final ObjectProvider<GenealogyPort> genealogyPort;
     private final Clock clock;
     private final Map<CacheKey, CacheEntry> cache = new LinkedHashMap<>(16, 0.75f, true);
+    @Value("${app.ha.local-cache-enabled:true}")
+    private boolean localCacheEnabled = true;
 
     public DashboardService(GenealogyQuery genealogyQuery, DirectoryQuery directoryQuery,
                             CommunityQuery communityQuery, EventQuery eventQuery,
@@ -92,12 +95,12 @@ public class DashboardService {
         UUID familyId = resolveFamilyId(actorId, requestedFamilyId, membership);
         UUID branchId = resolveBranchId(familyId, requestedBranchId, membership);
         CacheKey key = new CacheKey(familyId, branchId);
-        DashboardStatisticsData cached = getCached(key);
-        if (cached != null) {
-            return cached;
+        if (localCacheEnabled) {
+            DashboardStatisticsData cached = getCached(key);
+            if (cached != null) return cached;
         }
         DashboardStatisticsData result = loadStatistics(familyId, branchId);
-        putCached(key, result);
+        if (localCacheEnabled) putCached(key, result);
         return result;
     }
 
