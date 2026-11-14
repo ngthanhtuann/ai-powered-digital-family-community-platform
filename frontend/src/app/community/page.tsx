@@ -14,6 +14,7 @@ import { Announcements } from '@/components/community/Announcements';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 import { branchesOf } from '@/services/admin';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
+import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
@@ -275,6 +276,7 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
       {!editing && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
+      {!editing && <RecommendationsPanel contextType="POST" contextId={post.id} />}
       <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (

@@ -98,6 +98,52 @@ public class EmbeddingChunkRepository {
 
     public record ChatChunk(String sourceType, UUID sourceId, String content, double score) { }
 
+    public String findSourceContent(UUID familyId, String sourceType, UUID sourceId) {
+        List<String> parts = jdbcTemplate.queryForList("""
+                SELECT content FROM ai_embedding_chunk WHERE family_id = ? AND source_type = ?
+                  AND source_id = ? AND deleted_at IS NULL ORDER BY chunk_no
+                """, String.class, familyId, sourceType, sourceId);
+        return String.join("\n", parts);
+    }
+
+    /** Similar sources for a detail page, scoped to the caller's family and visible branches. */
+    public List<SemanticSearchResult> recommendations(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
+                                                       List<UUID> excludedPersonIds, UUID contextId,
+                                                       float[] embedding, int limit) {
+        List<Object> args = new ArrayList<>();
+        args.add(Arrays.toString(embedding)); args.add(familyId);
+        String branchFilter = branchFilter(allBranches, visibleBranches, args);
+        args.add(jsonIds(excludedPersonIds)); args.add(contextId);
+        args.add(Arrays.toString(embedding)); args.add(limit);
+        return jdbcTemplate.query("""
+                WITH ranked AS (
+                    SELECT c.source_type, c.source_id, c.content,
+                           1 - (c.embedding <=> CAST(? AS vector)) AS score
+                    FROM ai_embedding_chunk c
+                    WHERE c.family_id = ? AND c.deleted_at IS NULL
+                """ + branchFilter + """
+                      AND NOT (c.source_type = 'PERSON' AND EXISTS (
+                          SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
+                          WHERE hidden.id::uuid = c.source_id
+                      ))
+                      AND c.source_id <> ?
+                ), best AS (
+                    SELECT DISTINCT ON (source_type, source_id) source_type, source_id, content, score
+                    FROM ranked ORDER BY source_type, source_id, score DESC
+                )
+                SELECT source_type, source_id, content, score FROM best
+                ORDER BY score DESC, source_type, source_id LIMIT ?
+                """, (rs, rowNum) -> {
+            String type = rs.getString("source_type"), content = rs.getString("content");
+            UUID id = rs.getObject("source_id", UUID.class);
+            String title = content.lines().findFirst().orElse("Nội dung gia đình");
+            if ("PERSON".equals(type) && title.startsWith("Họ tên: ")) title = title.substring(8).replaceFirst("\\.$", "");
+            if (title.length() > 90) title = title.substring(0, 87) + "…";
+            return new SemanticSearchResult(type, id, title, content.length() > 240 ? content.substring(0, 237) + "…" : content,
+                    rs.getDouble("score"), path(type, id));
+        }, args.toArray());
+    }
+
     /**
      * Tìm trong family_id và các chi được xem trước khi xếp hạng (BR-AI-02, BR-AI-13).
      * {@code allBranches} = true với SYSTEM_ADMIN và trưởng chi toàn gia đình; còn lại chỉ chunk toàn gia đình
