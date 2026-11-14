@@ -490,10 +490,14 @@ paths:
       - MEMBER
       - BRANCH_ADMIN
       - SYSTEM_ADMIN
+      description: 'Dùng vector embedding đã lưu của nguồn đang xem (trung bình các chunk), không gọi Gemini nên
+        không tính hạn mức. Nguồn chưa có trong chỉ mục trả 404.
+
+        '
       parameters:
       - in: query
         name: contextType
-        required: false
+        required: true
         schema:
           type: string
           enum:
@@ -502,9 +506,10 @@ paths:
           - STORY
           - DOCUMENT
           - EVENT
+          - PHOTO
       - in: query
         name: contextId
-        required: false
+        required: true
         schema:
           type: string
           format: uuid
@@ -519,7 +524,7 @@ paths:
       - in: query
         name: familyId
         required: false
-        description: 'Gia đình cần gợi ý khi không truyền contextId. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu
+        description: 'Gia đình của nguồn đang xem. Bắt buộc khi người gọi là SYSTEM_ADMIN (thiếu
           thì 400 VALID_001). Vai trò khác không cần truyền; nếu truyền khác gia đình của mình thì 403 PERM_001
           (conventions.md mục 6.2).
 
@@ -580,13 +585,16 @@ paths:
                   - sourceType: PERSON
                     sourceId: 4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
                     title: Nguyễn Văn An
-                    reason: Có liên quan đến hồ sơ gia phả đang xem.
+                    reason: Nội dung gần với hồ sơ đang xem.
+                    snippet: 'Họ tên: Nguyễn Văn An. Nghề nghiệp: giáo viên.'
+                    score: 0.91
+                    path: /persons/4f9e3a8e-9e9a-4bb8-b2d1-1e2e2b7a0011
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Không đủ quyền truy cập dữ liệu gia đình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002).
+          description: Nguồn thuộc gia đình khác, ngoài phạm vi chi được xem hoặc là hồ sơ trẻ em bị ẩn (PERM_001); tài khoản chưa xác minh (PERM_002).
           content:
             application/json:
               schema:
@@ -610,10 +618,8 @@ paths:
                       details: []
         '404':
           $ref: '#/components/responses/NotFound'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '503':
-          $ref: '#/components/responses/AIUnavailable'
+        '409':
+          $ref: '#/components/responses/FeatureDisabled'
 components:
   securitySchemes:
     bearerAuth:

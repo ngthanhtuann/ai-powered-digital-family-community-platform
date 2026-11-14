@@ -15,28 +15,33 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+/**
+ * UC-AI-05: gợi ý dựa trên embedding đã lưu của nguồn đang xem, không gọi Gemini
+ * nên không tốn hạn mức và vẫn chạy khi chưa cấu hình khóa.
+ */
 @Service
 public class RecommendationService {
-    private static final List<String> TYPES = List.of("PERSON", "POST", "STORY", "DOCUMENT", "EVENT", "PHOTO");
-    private final EmbeddingPipelineService embeddings;
+    private static final Map<String, String> LABELS = Map.of("PERSON", "hồ sơ", "POST", "bài đăng",
+            "STORY", "câu chuyện", "DOCUMENT", "tài liệu", "EVENT", "sự kiện", "PHOTO", "ảnh");
     private final EmbeddingChunkRepository repository;
     private final MembershipQuery memberships;
     private final GenealogyQuery genealogy;
     private final SystemConfigQuery config;
     private final Clock clock;
 
-    public RecommendationService(EmbeddingPipelineService embeddings, EmbeddingChunkRepository repository,
-                                 MembershipQuery memberships, GenealogyQuery genealogy,
-                                 SystemConfigQuery config, Clock clock) {
-        this.embeddings = embeddings; this.repository = repository; this.memberships = memberships;
+    public RecommendationService(EmbeddingChunkRepository repository, MembershipQuery memberships,
+                                 GenealogyQuery genealogy, SystemConfigQuery config, Clock clock) {
+        this.repository = repository; this.memberships = memberships;
         this.genealogy = genealogy; this.config = config; this.clock = clock;
     }
 
     public RecommendationResponse recommend(AuthenticatedUser user, String type, UUID id, UUID requestedFamily,
                                             int limit) {
-        if (type == null || !TYPES.contains(type) || limit < 1 || limit > 10) throw new ApiException(ErrorCode.VALID_001);
+        if (type == null || !LABELS.containsKey(type)) throw ApiException.invalidField("contextType", "Loại ngữ cảnh không hợp lệ.");
+        if (limit < 1 || limit > 10) throw ApiException.invalidField("limit", "Từ 1 đến 10.");
         UUID familyId, branchId = null;
         EffectiveRole role;
         if (user.isSystemAdmin()) {
@@ -51,21 +56,26 @@ public class RecommendationService {
             memberships.requireFamilyAccess(user.id(), familyId);
         }
         if (!config.getBoolean(SystemConfigQuery.AI_SEARCH_ENABLED)) throw new ApiException(ErrorCode.AI_002);
-        if (!embeddings.isConfigured()) throw new ApiException(ErrorCode.AI_001);
-        try {
-            String context = repository.findSourceContent(familyId, type, id);
-            if (context.isBlank()) throw new ApiException(ErrorCode.NOT_FOUND_001);
-            boolean allBranches = role == EffectiveRole.SYSTEM_ADMIN || (role == EffectiveRole.BRANCH_ADMIN && branchId == null);
-            UUID actorBranch = branchId;
-            EffectiveRole actorRole = role;
-            List<UUID> visible = allBranches || actorBranch == null ? List.of() : repository.findBranchIds(familyId).stream()
-                    .filter(b -> genealogy.isBranchWithin(familyId, actorBranch, b)
-                            || (actorRole == EffectiveRole.BRANCH_ADMIN && genealogy.isBranchWithin(familyId, b, actorBranch))).toList();
-            List<UUID> minors = role == EffectiveRole.MEMBER
-                    ? genealogy.findMinorPersonIds(familyId, LocalDate.now(clock)) : List.of();
-            return new RecommendationResponse(repository.recommendations(familyId, allBranches, visible, minors,
-                    id, embeddings.createEmbedding(context.substring(0, Math.min(context.length(), 8000))), limit));
-        } catch (ApiException ex) { throw ex; }
-        catch (RuntimeException ex) { throw new ApiException(ErrorCode.AI_001); }
+
+        boolean allBranches = role == EffectiveRole.SYSTEM_ADMIN || (role == EffectiveRole.BRANCH_ADMIN && branchId == null);
+        UUID actorBranch = branchId;
+        EffectiveRole actorRole = role;
+        List<UUID> visible = allBranches || actorBranch == null ? List.of() : repository.findBranchIds(familyId).stream()
+                .filter(b -> genealogy.isBranchWithin(familyId, actorBranch, b)
+                        || (actorRole == EffectiveRole.BRANCH_ADMIN && genealogy.isBranchWithin(familyId, b, actorBranch))).toList();
+        List<UUID> minors = role == EffectiveRole.MEMBER
+                ? genealogy.findMinorPersonIds(familyId, LocalDate.now(clock)) : List.of();
+
+        String vector = repository.findVisibleSourceVector(familyId, allBranches, visible, minors, type, id);
+        if (vector == null) {
+            // Có trong chỉ mục nhưng ngoài phạm vi xem (gia đình/chi khác, hồ sơ trẻ em bị ẩn) → 403; không có → 404.
+            throw new ApiException(repository.countActiveBySource(type, id) > 0 ? ErrorCode.PERM_001 : ErrorCode.NOT_FOUND_001);
+        }
+        String reason = "Nội dung gần với " + LABELS.get(type) + " đang xem.";
+        return new RecommendationResponse(repository.recommendations(familyId, allBranches, visible, minors, type, id,
+                        vector, limit).stream()
+                .map(r -> new RecommendationResponse.Item(r.sourceType(), r.sourceId(), r.title(), reason,
+                        r.snippet(), r.score(), r.path()))
+                .toList());
     }
 }

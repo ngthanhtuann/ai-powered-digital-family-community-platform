@@ -276,7 +276,7 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
       {!editing && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
-      {!editing && <RecommendationsPanel contextType="POST" contextId={post.id} />}
+      {!editing && <RecommendationsPanel contextType="POST" contextId={post.id} deferred />}
       <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
