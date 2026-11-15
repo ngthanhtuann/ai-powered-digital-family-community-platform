@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import com.familyconnect.common.util.FamilyTime;
 
 /** Đăng ký, đăng nhập, làm mới token, đăng xuất, đổi mật khẩu (UC-AUTH-01 đến 04). */
 @Service
@@ -36,7 +37,7 @@ public class AuthService {
 
     static final int MIN_AGE = 16;
     /** Ngày sinh tính theo giờ Việt Nam để "đủ 16 tuổi" khớp với lịch người dùng. */
-    private static final ZoneId APP_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId APP_ZONE = FamilyTime.ZONE;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

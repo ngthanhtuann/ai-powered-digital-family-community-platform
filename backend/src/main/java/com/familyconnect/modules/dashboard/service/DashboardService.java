@@ -48,11 +48,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.familyconnect.common.util.FamilyTime;
 
 @Service
 public class DashboardService {
 
-    private static final ZoneId FAMILY_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId FAMILY_TIME_ZONE = FamilyTime.ZONE;
     private static final long CACHE_TTL_NANOS = 30_000_000_000L;
     private static final int CACHE_CAPACITY = 256;
     private static final int UPCOMING_EVENT_LIMIT = 5;

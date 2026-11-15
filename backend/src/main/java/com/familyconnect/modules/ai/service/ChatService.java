@@ -26,9 +26,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ChatService {
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private static final String NOT_FOUND = "Không tìm thấy thông tin.";
     private final EmbeddingPipelineService embeddings;
     private final ChatLanguageModel model;
@@ -122,7 +125,11 @@ public class ChatService {
             UUID messageId = chats.saveExchange(sessionId, user.id(), question, answer, sources, modelName, latency);
             return new ChatResponse(finalSessionId, messageId, answer, sources, latency);
         } catch (ApiException ex) { throw ex; }
-        catch (RuntimeException ex) { throw new ApiException(ErrorCode.AI_001); }
+        catch (RuntimeException ex) {
+            // Ghi nguyên nhân (vd. Gemini 404, timeout) để chẩn đoán; không ghi câu hỏi của người dùng.
+            log.warn("Chat AI lỗi, trả AI_001", ex);
+            throw new ApiException(ErrorCode.AI_001);
+        }
     }
 
     /** Hết {@code ai.chat.retention_days} ngày thì xóa mềm lịch sử (ai.md mục 5.3). */

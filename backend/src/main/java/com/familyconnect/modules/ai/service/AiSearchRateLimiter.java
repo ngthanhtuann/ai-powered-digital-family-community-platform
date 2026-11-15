@@ -16,8 +16,8 @@ import java.util.UUID;
 
 /**
  * Giới hạn tìm kiếm theo người dùng, cửa sổ trượt 1 giờ (conventions.md mục 7.1).
- * shortcut: bộ đếm nằm trong bộ nhớ từng bản backend, giống LoginRateLimiter; với 2 bản (NFR-10) hạn mức
- * thực tế gấp đôi. Chuyển sang bộ đếm dùng chung (bảng PostgreSQL) nếu cần giới hạn chính xác trên nhiều bản.
+ * Chạy 1 bản: đếm trong bộ nhớ. Chạy 2 bản ({@code app.ha.shared-rate-limits=true}, SCRUM-96): đếm chung qua
+ * {@link SharedRateLimitStore} (bảng PostgreSQL), hạn mức không bị gấp đôi.
  */
 @Component
 public class AiSearchRateLimiter {
