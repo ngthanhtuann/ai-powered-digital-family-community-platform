@@ -92,7 +92,8 @@ class RecommendationApiIntegrationTest {
                 insert into ai_embedding_chunk(family_id, branch_id, source_type, source_id, chunk_no, content,
                                                embedding, content_hash)
                 values (?, ?, ?, ?, 0, ?, CAST(? AS vector), 'hash')
-                """, familyId, branchId, type, id, "Nội dung " + type, vector(first));
+                """, familyId, branchId, type, id,
+                "PERSON".equals(type) ? "Họ tên: Bé Na. Năm sinh: 2018." : "Nội dung " + type, vector(first));
         return id;
     }
 
@@ -144,6 +145,9 @@ class RecommendationApiIntegrationTest {
         // Người tạo gia đình (trưởng chi toàn gia đình) thấy mọi chi và cả hồ sơ trẻ em.
         assertThat(ids(recommend(owner, "POST", context))).contains(closest, farther, siblingPost, minor)
                 .doesNotContain(context, otherFamilyPost);
+        // Tiêu đề hồ sơ chỉ lấy tên, không kèm năm sinh.
+        recommend(owner, "POST", context)
+                .andExpect(jsonPath("$.data.recommendations[?(@.sourceType == 'PERSON')].title").value("Bé Na"));
 
         // Nguồn ngoài quyền xem (chi khác, trẻ em bị ẩn, gia đình khác) và nguồn không có đều 404, không lộ sự tồn tại.
         recommend(childMember, "POST", siblingPost).andExpect(status().isNotFound())

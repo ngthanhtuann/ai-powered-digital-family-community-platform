@@ -147,7 +147,8 @@ public class EmbeddingChunkRepository {
             String content = rs.getString("content");
             UUID id = rs.getObject("source_id", UUID.class);
             String title = content.lines().findFirst().orElse("Nội dung gia đình");
-            if ("PERSON".equals(type) && title.startsWith("Họ tên: ")) title = title.substring(8).replaceFirst("\\.$", "");
+            // Nội dung hồ sơ là "Họ tên: X. Năm sinh: ..." trên một dòng: tiêu đề chỉ lấy tên.
+            if ("PERSON".equals(type) && title.startsWith("Họ tên: ")) title = title.substring(8).split("\\.", 2)[0];
             if (title.length() > 90) title = title.substring(0, 87) + "…";
             String snippet = content.length() > 240 ? content.substring(0, 237) + "…" : content;
             return new Recommendation(type, id, title, snippet, rs.getDouble("score"), path(type, id));
