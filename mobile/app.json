@@ -42,7 +42,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#F5F0E8"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "scheme": "familyconnect",
     "extra": {
