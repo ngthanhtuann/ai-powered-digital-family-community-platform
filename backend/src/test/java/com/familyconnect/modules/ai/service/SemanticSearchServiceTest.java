@@ -46,6 +46,23 @@ class SemanticSearchServiceTest {
     }
 
     @Test
+    @org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
+    void providerFailureReturnsAi001AndLogsCauseWithoutQuery(org.springframework.boot.test.system.CapturedOutput output) {
+        UUID userId = UUID.randomUUID();
+        UUID familyId = UUID.randomUUID();
+        when(membership.getMembership(userId)).thenReturn(new MembershipView(userId, familyId, null, EffectiveRole.MEMBER, true));
+        when(embedding.isConfigured()).thenReturn(true);
+        when(embedding.createEmbedding(anyString())).thenThrow(new IllegalStateException("Gemini 404 model not found"));
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.search(
+                new AuthenticatedUser(userId, List.of("MEMBER")), "câu hỏi riêng tư", null, 0, 10));
+
+        assertEquals(com.familyconnect.common.exception.ErrorCode.AI_001, ex.code());
+        assertTrue(output.getOut().contains("Gemini 404 model not found"), "phải ghi nguyên nhân để chẩn đoán");
+        assertFalse(output.getOut().contains("câu hỏi riêng tư"), "không ghi câu truy vấn của người dùng");
+    }
+
+    @Test
     void searchScopesRetrievalToCallersFamilyAndHidesMinorsForMember() {
         UUID userId = UUID.randomUUID();
         UUID familyId = UUID.randomUUID();

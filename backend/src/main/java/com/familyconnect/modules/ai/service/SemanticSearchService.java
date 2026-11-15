@@ -13,10 +13,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-AI-01 tìm kiếm ngữ nghĩa: lọc family_id, phạm vi chi (BR-AI-13) và trẻ dưới 16 tuổi trước khi xếp hạng. */
 @Service
 public class SemanticSearchService {
+    private static final Logger log = LoggerFactory.getLogger(SemanticSearchService.class);
     private final EmbeddingPipelineService embeddingPipeline;
     private final EmbeddingChunkRepository repository;
     private final AiScopeResolver scopes;
@@ -63,6 +66,8 @@ public class SemanticSearchService {
         } catch (ApiException ex) {
             throw ex;
         } catch (RuntimeException ex) {
+            // Ghi nguyên nhân (vd. Gemini 404, timeout) để chẩn đoán; không ghi câu truy vấn của người dùng.
+            log.warn("Tìm kiếm ngữ nghĩa lỗi, trả AI_001", ex);
             throw new ApiException(ErrorCode.AI_001);
         }
     }

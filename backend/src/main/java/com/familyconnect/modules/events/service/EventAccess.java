@@ -23,13 +23,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
+import com.familyconnect.common.util.FamilyTime;
 
 /** Quyền sự kiện theo BR-COM-03, BR-EVT-01..03; đọc module khác qua interface Java. */
 @Component
 public class EventAccess {
     private static final Logger log = LoggerFactory.getLogger(EventAccess.class);
     // DB trả TIMESTAMPTZ ở UTC; chunk AI phải ghi giờ Việt Nam để chatbot không lệch giờ/ngày.
-    private static final ZoneId FAMILY_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final ZoneId FAMILY_TIME_ZONE = FamilyTime.ZONE;
     private static final DateTimeFormatter AI_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private final MembershipQuery membership;
     private final ObjectProvider<GenealogyPort> genealogy;

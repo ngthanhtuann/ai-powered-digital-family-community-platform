@@ -12,8 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Giới hạn đăng nhập N lần mỗi phút theo cặp (IP, email) (BR-AUTH-04, conventions.md mục 7.1).
- * Cửa sổ cố định 60 giây, lưu trong bộ nhớ của từng bản backend: chạy 2 bản sau Nginx thì giới hạn
- * thực tế gấp đôi (đã ghi ở BR-AUTH-04).
+ * Cửa sổ cố định 60 giây. Chạy 1 bản: đếm trong bộ nhớ. Chạy 2 bản sau Nginx ({@code app.ha.shared-rate-limits=true},
+ * SCRUM-96): đếm chung qua {@link SharedRateLimitStore} nên giới hạn không bị gấp đôi.
  */
 @Component
 public class LoginRateLimiter {

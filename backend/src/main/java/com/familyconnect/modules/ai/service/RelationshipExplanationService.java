@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SCRUM-64 (ai.yaml explainRelationship): LLM chỉ diễn đạt lại kết quả của thuật toán quan hệ (SCRUM-51),
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
  */
 @Service
 public class RelationshipExplanationService {
+    private static final Logger log = LoggerFactory.getLogger(RelationshipExplanationService.class);
 
     static final String MINOR_LABEL = "một thành viên";
     static final String NOT_FOUND_TEXT = "Dữ liệu gia phả hiện chưa đủ để xác định quan hệ giữa hai người này.";
@@ -81,6 +84,7 @@ public class RelationshipExplanationService {
         } catch (ApiException e) {
             throw e;
         } catch (RuntimeException e) {
+            log.warn("Giải thích quan hệ bằng AI lỗi, trả AI_001", e);
             throw new ApiException(ErrorCode.AI_001);
         }
     }

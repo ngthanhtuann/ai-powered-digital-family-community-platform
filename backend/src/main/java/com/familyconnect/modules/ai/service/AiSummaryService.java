@@ -14,10 +14,13 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-AI-04: tóm tắt bài đăng, câu chuyện, tài liệu; nội dung lấy qua {@link SummarySource} của module sở hữu. */
 @Service
 public class AiSummaryService {
+    private static final Logger log = LoggerFactory.getLogger(AiSummaryService.class);
     static final String NOT_FOUND = "Không tìm thấy thông tin.";
     private static final int PART_CHARS = 8000;
 
@@ -59,6 +62,7 @@ public class AiSummaryService {
         try {
             summary = text.length() <= PART_CHARS ? llm.summarize(text) : summarizeInParts(text);
         } catch (RuntimeException ex) {
+            log.warn("Tóm tắt AI lỗi, trả AI_001", ex); // không ghi nội dung nguồn
             throw new ApiException(ErrorCode.AI_001);
         }
         cache.save(source.familyId(), request.sourceType(), request.sourceId(), hash, summary, llm.modelName(), user.id());
