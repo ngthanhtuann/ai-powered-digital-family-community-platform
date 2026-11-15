@@ -34,6 +34,7 @@ import { getMyMembership, getMyProfile, logout } from '@/services/auth';
 import { memberRoleLabel } from '@/services/admin';
 import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { Button } from '@/components/ui/Button';
 import { tokenStorage } from '@/lib/token-storage';
 import {
   FAMILY_NAV_ITEM,
@@ -301,12 +302,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="w-full flex-1 px-4 py-5 md:px-6 md:py-6 lg:px-8">
           <div className="mx-auto w-full max-w-[1440px]">
             {accessError && (
-              <p
+              // Query mặc định không tự thử lại (providers.tsx), nên cần nút để menu theo vai trò hiện lại mà không phải F5.
+              <div
                 role="alert"
-                className="mb-4 rounded-card border border-error bg-error-soft p-4 text-body text-error"
+                className="mb-4 space-y-2 rounded-card border border-error bg-error-soft p-4 text-body text-error"
               >
-                Không tải được thông tin tài khoản: {(accessError as Error).message}
-              </p>
+                <p className="break-words">Không tải được thông tin tài khoản: {(accessError as Error).message}</p>
+                <Button
+                  variant="secondary"
+                  fullWidth={false}
+                  loading={profile.isFetching || membership.isFetching}
+                  onClick={() => {
+                    void profile.refetch();
+                    void membership.refetch();
+                  }}
+                >
+                  Thử lại
+                </Button>
+              </div>
             )}
             {children}
           </div>
