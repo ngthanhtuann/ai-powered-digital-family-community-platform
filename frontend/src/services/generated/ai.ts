@@ -90,7 +90,7 @@ export interface paths {
         };
         /**
          * Gợi ý thành viên hoặc tài nguyên liên quan
-         * @description Dùng vector embedding đã lưu của nguồn đang xem (trung bình các chunk), không gọi Gemini nên không tính hạn mức. Nguồn chưa có trong chỉ mục trả 404.
+         * @description Dùng vector embedding đã lưu của nguồn đang xem (trung bình các chunk), không gọi Gemini nên không tính hạn mức. Nguồn không tồn tại, chưa có trong chỉ mục hoặc ngoài phạm vi xem (gia đình/chi khác, hồ sơ trẻ em bị ẩn) đều trả 404 để không lộ sự tồn tại.
          */
         get: operations["getRecommendations"];
         put?: never;
@@ -623,7 +623,7 @@ export interface operations {
             };
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthorized"];
-            /** @description Nguồn thuộc gia đình khác, ngoài phạm vi chi được xem hoặc là hồ sơ trẻ em bị ẩn (PERM_001); tài khoản chưa xác minh (PERM_002). */
+            /** @description Truyền familyId khác gia đình của mình (PERM_001) hoặc tài khoản chưa xác minh (PERM_002). */
             403: {
                 headers: {
                     [name: string]: unknown;
