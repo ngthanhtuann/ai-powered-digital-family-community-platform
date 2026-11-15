@@ -4,6 +4,7 @@ import com.familyconnect.common.util.LikePatterns;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.directory.api.DirectoryQuery;
 import com.familyconnect.modules.genealogy.api.PersonSearchIndex;
@@ -23,8 +24,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -275,23 +274,7 @@ public class PersonService implements PersonSearchIndex {
     }
 
     private static void afterCommit(Runnable action) {
-        Runnable safe = () -> {
-            try {
-                action.run();
-            } catch (RuntimeException ex) {
-                log.warn("Không cập nhật được chỉ mục AI cho thành viên", ex);
-            }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safe.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                safe.run();
-            }
-        });
+        AfterCommit.runQuietly(action, ex -> log.warn("Không cập nhật được chỉ mục AI cho thành viên", ex));
     }
 
     private void requireFamily(UUID familyId) {

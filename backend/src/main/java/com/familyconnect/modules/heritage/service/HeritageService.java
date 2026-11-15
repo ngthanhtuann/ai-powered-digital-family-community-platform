@@ -5,6 +5,7 @@ import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.common.security.CurrentUser;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.auth.api.MembershipView;
@@ -32,8 +33,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -364,23 +363,7 @@ public class HeritageService implements SummarySource {
 
     /** ai.md mục 6.1: gọi AI sau khi giao dịch commit, lỗi AI không làm hỏng thao tác của Heritage. */
     private static void afterCommit(Runnable action) {
-        Runnable safeAction = () -> {
-            try {
-                action.run();
-            } catch (RuntimeException ex) {
-                log.warn("Không cập nhật được chỉ mục AI cho Heritage", ex);
-            }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safeAction.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                safeAction.run();
-            }
-        });
+        AfterCommit.runQuietly(action, ex -> log.warn("Không cập nhật được chỉ mục AI cho Heritage", ex));
     }
 
     private static String joinLines(String... parts) {

@@ -4,6 +4,7 @@ import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.CurrentUser;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.GenealogyPort;
@@ -15,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -145,19 +144,13 @@ public class EventAccess {
 
     /** BR-EVT-06: chỉ cập nhật AI sau khi giao dịch sự kiện đã commit. */
     public void eventChanged(Event event, boolean deleted) {
-        Runnable work = () -> {
-            try {
-                if (deleted) ai.removeSource(AiGateway.SourceType.EVENT,event.id());
-                else ai.upsertSource(AiGateway.SourceType.EVENT,event.id(),event.familyId(),event.branchId(),
-                    event.title() + " " + (event.description() == null ? "" : event.description())
-                        + " Bắt đầu: " + localTime(event.startAt())
-                        + (event.endAt() == null ? "" : " Kết thúc: " + localTime(event.endAt()))
-                        + (event.location() == null ? "" : " Địa điểm: " + event.location()));
-            } catch (RuntimeException ex) { log.warn("Không cập nhật được AI cho sự kiện {}",event.id(),ex); }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) { work.run(); return; }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() { work.run(); }
-        });
+        AfterCommit.runQuietly(() -> {
+            if (deleted) ai.removeSource(AiGateway.SourceType.EVENT,event.id());
+            else ai.upsertSource(AiGateway.SourceType.EVENT,event.id(),event.familyId(),event.branchId(),
+                event.title() + " " + (event.description() == null ? "" : event.description())
+                    + " Bắt đầu: " + localTime(event.startAt())
+                    + (event.endAt() == null ? "" : " Kết thúc: " + localTime(event.endAt()))
+                    + (event.location() == null ? "" : " Địa điểm: " + event.location()));
+        }, ex -> log.warn("Không cập nhật được AI cho sự kiện {}",event.id(),ex));
     }
 }
