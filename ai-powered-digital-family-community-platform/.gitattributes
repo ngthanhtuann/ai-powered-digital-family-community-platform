@@ -1,0 +1,8 @@
+# Thống nhất ký tự xuống dòng để không còn cảnh báo LF/CRLF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary

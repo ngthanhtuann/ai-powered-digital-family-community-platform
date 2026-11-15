@@ -1,0 +1,5 @@
+# Chỉ dùng khi chạy test: Spring Boot nạp thêm file này (classpath:/config/) đè lên application.yml chính.
+# Khóa dưới đây chỉ để ký token trong test, không dùng ở môi trường thật.
+app:
+  jwt:
+    secret: test-only-secret-for-unit-tests-0123456789abcdef

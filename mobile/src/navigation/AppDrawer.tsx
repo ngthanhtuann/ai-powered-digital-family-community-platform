@@ -20,6 +20,8 @@ import { HeritageScreen } from '../screens/HeritageScreen';
 import { FamilyTreeScreen } from '../screens/FamilyTreeScreen';
 import { FeedScreen } from '../screens/FeedScreen';
 import { RelationshipScreen } from '../screens/RelationshipScreen';
+import { DirectoryScreen } from '../screens/DirectoryScreen';
+import { HeritageScreen } from '../screens/HeritageScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { notificationsApi } from '../services/notifications';
@@ -164,6 +166,16 @@ export function AppDrawer() {
         name="FamilyTree"
         component={FamilyTreeScreen}
         options={{ title: 'Cây gia phả' }}
+      />
+      <Drawer.Screen
+        name="Directory"
+        component={DirectoryScreen}
+        options={{ title: 'Danh bạ' }}
+      />
+      <Drawer.Screen
+        name="Heritage"
+        component={HeritageScreen}
+        options={{ title: 'Di sản' }}
       />
       <Drawer.Screen
         name="Relationship"

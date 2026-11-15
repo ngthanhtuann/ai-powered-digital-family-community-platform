@@ -1,0 +1,23 @@
+# Build
+target/
+build/
+node_modules/
+.next/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.log
+
+# Môi trường và bí mật (KHÔNG commit)
+.env
+.env.local
+*.pem
+*.key
+backups/
+
+# Hệ điều hành
+.DS_Store
+Thumbs.db
