@@ -28,6 +28,9 @@ export type RootStackParamList = {
   /** Gia phả (SCRUM-90): màn của stack thay cho Modal để thanh trạng thái do app quản lý. */
   PersonDetail: { personId: string };
   PersonPicker: { title: string; target: PersonPickTarget };
+  /** Di sản (SCRUM-92): đọc câu chuyện; xem ảnh hoặc tài liệu phóng to (`document` để báo khi là PDF). */
+  StoryDetail: { storyId: string };
+  PhotoViewer: { mediaId: string; title: string; document?: boolean };
 };
 
 export type AppDrawerParamList = {
@@ -38,6 +41,8 @@ export type AppDrawerParamList = {
   FamilyTree: { root?: PersonPick } | undefined;
   /** `a`, `b`: người thứ nhất, thứ hai vừa chọn. Mở từ màn chi tiết thì có `clearB` để bỏ người thứ hai cũ. */
   Relationship: { a?: PersonPick; b?: PersonPick; clearB?: boolean } | undefined;
+  Directory: undefined;
+  Heritage: undefined;
   AiChat: undefined;
   AiSearch: undefined;
   AiSourceDetail: {

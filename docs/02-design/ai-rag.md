@@ -81,10 +81,10 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 ### 5.1. Khi không có câu trả lời
 - Không có kết quả truy xuất hoặc tất cả kết quả thấp hơn ngưỡng: trả `Không tìm thấy thông tin.`; không gọi LLM.
 - Có kết quả nhưng không chứa dữ kiện trả lời câu hỏi: prompt yêu cầu trả đúng câu trên; kiểm thử kết quả trước khi coi tính năng đạt.
-- Chat RAG hiện dùng `top_k=10` và `minimum_score=0.50` (`AI_CHAT_TOP_K`, `AI_CHAT_MINIMUM_SCORE`). Guard backend chạy trước LLM theo `ai.md` UC-AI-02 luồng 4b–4d: từ chối năm không có trong ngữ cảnh, hỏi lại khi nhiều hồ sơ khớp, sửa năm sinh sai theo hồ sơ. SCRUM-69 đo được 40/40 câu đúng với bản guard đầu tiên; guard đã được tổng quát hóa sau review và cần đo lại. Báo cáo và đáp án từng câu ở `docs/06-test/ai-quality-scrum-69.md` và `ai-quality-scrum-69-results.json`.
+- Chat RAG hiện dùng `top_k=10` và `minimum_score=0.50` (`AI_CHAT_TOP_K`, `AI_CHAT_MINIMUM_SCORE`). Guard backend chạy trước LLM theo `ai.md` UC-AI-02 luồng 4b–4d: từ chối năm không có trong ngữ cảnh, hỏi lại khi nhiều hồ sơ khớp, sửa năm sinh sai theo hồ sơ. SCRUM-69 đo được 40/40 câu đúng, đo lại sau khi tổng quát hóa guard (15/11/2026) vẫn 40/40, không câu nào bịa. Báo cáo và đáp án từng câu ở `docs/06-test/ai-quality-scrum-69.md` và `ai-quality-scrum-69-results.json`.
 - Không dùng ngưỡng tương đồng làm bằng chứng duy nhất rằng câu trả lời đúng. Điểm cao không bảo đảm nội dung có đủ dữ kiện; cần đánh giá trên bộ câu hỏi và đáp án kỳ vọng.
-- Ngưỡng `0.88` là giá trị thử nghiệm ban đầu từ spike, chưa phải ngưỡng tối ưu. Cần lưu lại truy vấn, top score, kết quả mong đợi và quyết định đúng/sai trên bộ test.
-- Semantic search dùng ngưỡng cosine tối thiểu `0.88`, gom nhiều chunk về một nguồn theo điểm cao nhất, phân trang `page` bắt đầu từ 0 và `size` tối đa 100. Bộ 15 truy vấn giả và bảng đo ở `docs/decisions/semantic-search-evaluation.md` cần chạy lại khi có dữ liệu đã index và khóa Gemini.
+- Ngưỡng tìm kiếm `0.65` chốt theo bộ 15 câu đo với Gemini thật ngày 15/11/2026 (SCRUM-105): ngưỡng spike `0.88` chỉ đạt 2/15, `0.65` đạt 15/15. Đo lại khi có thêm dữ liệu; đổi qua `ai.search.minimum-score`.
+- Semantic search dùng ngưỡng cosine tối thiểu `0.65`, gom nhiều chunk về một nguồn theo điểm cao nhất, phân trang `page` bắt đầu từ 0 và `size` tối đa 100. Bộ 15 truy vấn giả và bảng đo ở `docs/decisions/semantic-search-evaluation.md`.
 - Không trả nội dung hoặc score của chunk người dùng không có quyền xem.
 
 ### 5.2. Rate limit, cache và timeout

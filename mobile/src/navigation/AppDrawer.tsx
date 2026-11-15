@@ -14,7 +14,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { ComponentType } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { DirectoryScreen } from '../screens/DirectoryScreen';
 import { EventsScreen } from '../screens/EventsScreen';
+import { HeritageScreen } from '../screens/HeritageScreen';
 import { FamilyTreeScreen } from '../screens/FamilyTreeScreen';
 import { FeedScreen } from '../screens/FeedScreen';
 import { RelationshipScreen } from '../screens/RelationshipScreen';
@@ -168,6 +170,9 @@ export function AppDrawer() {
         component={RelationshipWithFab}
         options={{ title: 'Tra cứu xưng hô' }}
       />
+      {/* Danh bạ, Di sản (SCRUM-92) là danh sách cuộn nên không gắn nút nổi AI. */}
+      <Drawer.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Danh bạ' }} />
+      <Drawer.Screen name="Heritage" component={HeritageScreen} options={{ title: 'Di sản' }} />
       <Drawer.Screen name="AiChat" component={AiChatScreen} options={{ title: 'Trợ lý AI' }} />
       <Drawer.Screen name="AiSearch" component={AiSearchWithFab} options={{ title: 'Tìm kiếm' }} />
       <Drawer.Screen

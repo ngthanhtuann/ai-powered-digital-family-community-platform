@@ -27,7 +27,7 @@ public class SemanticSearchService {
 
     public SemanticSearchService(EmbeddingPipelineService embeddingPipeline, EmbeddingChunkRepository repository,
                                  AiScopeResolver scopes, AiSearchRateLimiter rateLimiter, SystemConfigQuery config,
-                                 @Value("${ai.search.minimum-score:0.88}") double minimumScore,
+                                 @Value("${ai.search.minimum-score:0.65}") double minimumScore,
                                  @Value("${ai.search.enabled:true}") boolean enabled) {
         this.embeddingPipeline = embeddingPipeline;
         this.repository = repository;

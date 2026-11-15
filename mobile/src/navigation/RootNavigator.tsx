@@ -13,6 +13,7 @@ import { EventDetailScreen } from '../screens/EventDetailScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { PersonDetailScreen } from '../screens/PersonDetailScreen';
 import { PersonPickerScreen } from '../screens/PersonPickerScreen';
+import { PhotoViewerScreen, StoryDetailScreen } from '../screens/HeritageDetailScreens';
 import { branchOf, useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 import { AppDrawer } from './AppDrawer';
@@ -87,6 +88,16 @@ export function RootNavigator() {
             name="PersonPicker"
             component={PersonPickerScreen}
             options={({ route }) => ({ title: route.params.title })}
+          />
+          <Stack.Screen
+            name="StoryDetail"
+            component={StoryDetailScreen}
+            options={{ title: 'Câu chuyện gia đình' }}
+          />
+          <Stack.Screen
+            name="PhotoViewer"
+            component={PhotoViewerScreen}
+            options={{ title: 'Xem ảnh' }}
           />
           <Stack.Screen
             name="Notifications"
