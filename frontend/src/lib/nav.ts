@@ -29,7 +29,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Thành viên', href: '/members', icon: 'users', roles: ALL_ROLES },
       { label: 'Cây gia phả', href: '/tree', icon: 'network', roles: ALL_ROLES },
-      { label: 'Tra cứu xưng hô', icon: 'search', roles: ALL_ROLES },
+      { label: 'Tra cứu xưng hô', href: '/relationship', icon: 'search', roles: ALL_ROLES },
     ],
   },
   {
