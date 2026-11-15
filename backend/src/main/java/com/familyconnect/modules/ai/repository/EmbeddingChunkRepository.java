@@ -16,6 +16,12 @@ import java.util.stream.Collectors;
 @Repository
 public class EmbeddingChunkRepository {
 
+    /**
+     * Vector câu hỏi parse một lần. Viết CAST(? AS vector) ngay trong biểu thức thì với câu prepared,
+     * PostgreSQL parse lại chuỗi 768 số cho từng dòng: 8.250 dòng mất khoảng 0,8 giây thay vì 40 ms (SCRUM-59).
+     */
+    private static final String QUERY_VECTOR = "WITH q AS MATERIALIZED (SELECT CAST(? AS vector) AS v)\n";
+
     private final JdbcTemplate jdbcTemplate;
 
     public EmbeddingChunkRepository(JdbcTemplate jdbcTemplate) {
@@ -79,18 +85,17 @@ public class EmbeddingChunkRepository {
         args.add(familyId);
         String branchFilter = branchFilter(allBranches, visibleBranches, args);
         args.add(jsonIds(excludedPersonIds));
-        args.add(Arrays.toString(embedding));
         args.add(limit);
-        return jdbcTemplate.query("""
-                SELECT c.source_type, c.source_id, c.content, 1 - (c.embedding <=> CAST(? AS vector)) AS score
-                FROM ai_embedding_chunk c
+        return jdbcTemplate.query(QUERY_VECTOR + """
+                SELECT c.source_type, c.source_id, c.content, 1 - (c.embedding <=> q.v) AS score
+                FROM ai_embedding_chunk c CROSS JOIN q
                 WHERE c.family_id = ? AND c.deleted_at IS NULL
                 """ + branchFilter + """
                   AND NOT (c.source_type = 'PERSON' AND EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
                       WHERE hidden.id::uuid = c.source_id
                   ))
-                ORDER BY c.embedding <=> CAST(? AS vector), c.source_type, c.source_id
+                ORDER BY c.embedding <=> q.v, c.source_type, c.source_id
                 LIMIT ?
                 """, (rs, rowNum) -> new ChatChunk(rs.getString("source_type"),
                 rs.getObject("source_id", UUID.class), rs.getString("content"), rs.getDouble("score")), args.toArray());
@@ -114,11 +119,11 @@ public class EmbeddingChunkRepository {
         args.add(minimumScore);
         args.add(size);
         args.add(page * size);
-        return jdbcTemplate.query("""
-                WITH ranked AS (
+        return jdbcTemplate.query(QUERY_VECTOR + """
+                , ranked AS (
                     SELECT c.source_type, c.source_id, c.content,
-                           1 - (c.embedding <=> CAST(? AS vector)) AS score
-                    FROM ai_embedding_chunk c
+                           1 - (c.embedding <=> q.v) AS score
+                    FROM ai_embedding_chunk c CROSS JOIN q
                     WHERE c.family_id = ? AND c.deleted_at IS NULL
                 """ + branchFilter + """
                       AND NOT (c.source_type = 'PERSON' AND EXISTS (
@@ -150,20 +155,20 @@ public class EmbeddingChunkRepository {
     public long countSearch(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
                             List<UUID> excludedPersonIds, float[] embedding, double minimumScore) {
         List<Object> args = new ArrayList<>();
+        args.add(Arrays.toString(embedding));
         args.add(familyId);
         String branchFilter = branchFilter(allBranches, visibleBranches, args);
         args.add(jsonIds(excludedPersonIds));
-        args.add(Arrays.toString(embedding));
         args.add(minimumScore);
-        Long count = jdbcTemplate.queryForObject("""
-                SELECT COUNT(DISTINCT (c.source_type, c.source_id)) FROM ai_embedding_chunk c
+        Long count = jdbcTemplate.queryForObject(QUERY_VECTOR + """
+                SELECT COUNT(DISTINCT (c.source_type, c.source_id)) FROM ai_embedding_chunk c CROSS JOIN q
                 WHERE c.family_id = ? AND c.deleted_at IS NULL
                 """ + branchFilter + """
                   AND NOT (c.source_type = 'PERSON' AND EXISTS (
                       SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
                       WHERE hidden.id::uuid = c.source_id
                   ))
-                  AND 1 - (c.embedding <=> CAST(? AS vector)) >= ?
+                  AND 1 - (c.embedding <=> q.v) >= ?
                 """, Long.class, args.toArray());
         return count == null ? 0 : count;
     }

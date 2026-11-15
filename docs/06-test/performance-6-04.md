@@ -4,7 +4,7 @@
 
 **Reviewer:** TV5
 
-**Nhánh chuẩn đối chiếu:** `develop` tại `5b02b03` (12/11/2026)
+**Nhánh chuẩn đối chiếu:** `develop` tại `5b02b03` (12/11/2026); phần AI đo lại 15/11/2026 trên `develop` tại `45f4ce8` (mục 5.3)
 **Phạm vi:** API cây gia phả, tra quan hệ, bảng tin, tìm kiếm ngữ nghĩa, chatbot (Jira SCRUM-59, NFR-12).
 
 > Mọi số liệu dưới đây đo thật trên máy ghi ở mục 2, mỗi kịch bản chạy một lần. Phần chưa đo được ghi "Chưa xác minh".
@@ -44,7 +44,7 @@ Dữ liệu **giả**, nạp bằng `docker/perf/prepare-perf.ps1` (tạo tài k
 | Bài đăng | 2.000 |
 | Sự kiện | 200 |
 
-Embedding chưa được sinh vì stack thử không có `GEMINI_API_KEY` (xem mục 6).
+Lượt đo 12/11 chưa có embedding vì stack thử không có `GEMINI_API_KEY` (xem mục 6). Lượt đo AI 15/11 (mục 5.3) có khóa Gemini thật; dữ liệu demo (`docker/seed-demo.ps1`) được lập chỉ mục bằng Gemini, còn 6.250 người và 2.000 bài của gia đình perf được gán **embedding ngẫu nhiên** (8.250 chunk) bằng SQL để chỉ mục có đúng quy mô; vector câu hỏi vẫn do Gemini tạo.
 
 ## 4. Kịch bản đo
 
@@ -56,7 +56,7 @@ Embedding chưa được sinh vì stack thử không có `GEMINI_API_KEY` (xem m
 | `tree_depth10` | `GET /families/{id}/tree?depth=10` | Cả cây 6.250 người trong một lần (phản hồi 3,4 MB), trường hợp nặng nhất |
 | `relationships` | `GET /relationships?personA=&personB=` | Hai người ngẫu nhiên trong 1.000 người |
 | `feed` | `GET /posts?page=&size=20` | Trang 0 đến 4 của bảng tin |
-| `ai_search` | `GET /ai/search?q=` | 4 câu hỏi mẫu |
+| `ai_search` | `GET /ai/search?q=` | 4 câu hỏi mẫu; từ 15/11 chạy tốc độ cố định 60 request/phút (gói miễn phí Gemini chỉ cho 100 embedding/phút) |
 
 Cách chạy lại (stack thử đang chạy, thay `<mạng>` bằng mạng compose, ví dụ `java_default`):
 
@@ -78,7 +78,7 @@ Get-Content -Raw docker\perf\k6-api.js | docker run --rm -i --network <mạng> -
 | Cả cây 6.250 người | 1.728 / 2.093 / 2.406 | 633 / **831** / 1.401 | 6 → 16 | 0% | Đạt (trước đó không đạt) |
 | Quan hệ | 18 / 26 / 68 | 17 / 24 / 111 | 543 → 577 | 0% | Đạt |
 | Bảng tin | 8 / 10 / 47 | 7 / 9 / 77 | 1.259 → 1.351 | 0% | Đạt |
-| Tìm kiếm AI | 6 / 7 / 36 | 6 / 7 / 25 | - | 100% (503 `AI_001`) | Chưa xác minh |
+| Tìm kiếm AI | 6 / 7 / 36 | 6 / 7 / 25 | - | 100% (503 `AI_001`, chưa có khóa) | Xem mục 5.3 |
 
 ### 5.2. 50 người dùng đồng thời
 
@@ -88,9 +88,30 @@ Get-Content -Raw docker\perf\k6-api.js | docker run --rm -i --network <mạng> -
 | Cả cây 6.250 người | 6.946 / 10.622 / 13.141 | 2.690 / **4.283** / 7.490 | 8 → 19 | 0% | **Không đạt** |
 | Quan hệ | 89 / 155 / 1.484 | 79 / 139 / 260 | 558 → 628 | 0% | Đạt |
 | Bảng tin | 32 / 67 / 187 | 30 / 64 / 201 | 1.570 → 1.635 | 0% | Đạt |
-| Tìm kiếm AI | 6 / 7 / 21 | 6 / 7 / 22 | - | 100% (503 `AI_001`) | Chưa xác minh |
+| Tìm kiếm AI | 6 / 7 / 21 | 6 / 7 / 22 | - | 100% (503 `AI_001`, chưa có khóa) | Xem mục 5.3 |
 
 Không có lỗi 5xx nào ở các API không dùng AI trong mọi lần đo.
+
+### 5.3. Tìm kiếm AI và chat với khóa Gemini (15/11/2026)
+
+Stack riêng `-p fcperf`, dữ liệu mục 3. Tài khoản `perf` (trưởng chi toàn gia đình, tìm trên 8.250 chunk). k6 gọi backend trong mạng Docker, 60 request/phút trong 60 giây.
+
+| Tìm kiếm AI | TB / trung vị / p95 / max (ms) | Số request | Lỗi | Đạt NFR-12 (< 2 giây) |
+|---|---|---|---|---|
+| Trước (`develop`) | 1.502 / 2.129 / 2.417 / 2.534 | 72 | 0% | **Không đạt** |
+| Sau (mục 6.4) | 488 / 475 / **538** / 1.055 | 72 | 0% | Đạt |
+
+Tách thời gian một lần tìm kiếm (trước khi sửa): gọi Gemini Embedding khoảng 400 ms (đo trong JVM của container), câu tìm kiếm SQL 830–970 ms, câu đếm tổng 800–870 ms.
+
+| Chat (`/ai/chat`, gia đình demo, model `gemini-3.5-flash-lite`) | Số câu | Lỗi | TB / p95 / max (ms) |
+|---|---|---|---|
+| Hai tài khoản, 10 câu mỗi tài khoản, cách nhau 4 giây | 20 | 0% | khoảng 970 / 2.139 / 2.139 |
+
+Ghi chú khi đo:
+
+- Gọi API từ Windows bằng `localhost` bị cộng thêm khoảng 2,1 giây mỗi request (máy thử IPv6 `::1` trước, cổng Docker chỉ mở IPv4); `/actuator/health` qua `localhost` mất 2.108 ms, qua `127.0.0.1` mất 9 ms. Đo bằng script trên Windows phải dùng `127.0.0.1`; k6 chạy trong mạng Docker không bị ảnh hưởng.
+- Khi chạy 5 VU liên tục sau khi sửa, 90% request trả 503 `AI_001` vì vượt hạn mức 100 embedding/phút của gói miễn phí Gemini (Gemini trả 429 `RESOURCE_EXHAUSTED`). Đây là giới hạn của gói, nên kịch bản AI chuyển sang tốc độ cố định.
+- Chat trên `develop` dùng model mặc định `gemini-2.5-flash`, model này trả 404 với khóa tạo mới (Google không còn cấp cho người dùng mới), nên mọi câu chat trả 503 `AI_001`. Số liệu chat ở trên đo với `gemini-3.5-flash-lite` (mặc định của nhánh SCRUM-69, PR #124).
 
 ## 6. Phân tích và tối ưu
 
@@ -120,8 +141,19 @@ Không có lỗi 5xx nào ở các API không dùng AI trong mọi lần đo.
 
 ### 6.3. AI (tìm kiếm, chatbot)
 
-- Stack thử không có `GEMINI_API_KEY`. `/ai/search` trả 503 `AI_001` sau khoảng 7 ms, không làm chậm hay lỗi API khác, đúng NFR-08.
-- **Chưa xác minh:** thời gian tìm kiếm ngữ nghĩa thật (tiêu chí < 2 giây), độ trễ LLM của `/ai/chat`. Cần đặt `GEMINI_API_KEY` trong `.env` của máy đo rồi chạy lại scenario `ai_search` và đo chat (giới hạn 20 câu/giờ mỗi người, `AI_CHAT_LIMIT_PER_HOUR`).
+- Không có `GEMINI_API_KEY`: `/ai/search` trả 503 `AI_001` sau khoảng 7 ms, không làm chậm hay lỗi API khác, đúng NFR-08.
+- Có khóa: số liệu ở mục 5.3; điểm chậm và cách sửa ở mục 6.4.
+
+### 6.4. Tối ưu tìm kiếm AI (15/11/2026)
+
+`EmbeddingChunkRepository` viết `1 - (c.embedding <=> CAST(? AS vector))` ngay trong biểu thức. Với câu prepared (JDBC), PostgreSQL parse lại chuỗi 768 số của vector câu hỏi **cho từng dòng**. Đo bằng `EXPLAIN ANALYZE` trên 8.250 chunk, generic plan:
+
+| Truy vấn | Cast trong biểu thức | Tính vector một lần (CTE) |
+|---|---|---|
+| Đếm kết quả tìm kiếm | 802 ms | 39 ms |
+| Top-k cho chat (cast ở cả `SELECT` và `ORDER BY`) | 1.676 ms | 63 ms |
+
+Sửa: thêm `WITH q AS MATERIALIZED (SELECT CAST(? AS vector) AS v)` và `CROSS JOIN q` cho ba truy vấn tìm kiếm, đếm, chat (`EmbeddingChunkRepository.java`). Cả hai cách đều không dùng index HNSW vì lọc theo `family_id`, nên không mất index. Lọc trẻ em với thành viên thường (800 hồ sơ cần ẩn) sau khi sửa vẫn 98 ms. Không đổi schema, API, kết quả. `mvn -B verify` sau thay đổi: 435 test, 0 lỗi.
 - Cache và giới hạn gọi: đã có bảng cache tóm tắt (`V15__create_ai_summary_cache.sql`), giới hạn chat theo giờ và rate limiter cho search, summary (`AiChatRateLimiter`, `AiSearchRateLimiter`, `SummaryRateLimiter`). Mới đọc code, chưa đo hiệu quả.
 
 ## 7. Đánh giá tiêu chí
@@ -129,11 +161,11 @@ Không có lỗi 5xx nào ở các API không dùng AI trong mọi lần đo.
 | Tiêu chí | Kết quả |
 |---|---|
 | API cây dưới 1 giây với 5.000 người | **Đạt** với cây 3 đời ở cả 10 và 50 VU, và với cả cây 6.250 người ở 10 VU (p95 831 ms). **Không đạt** khi 50 VU cùng tải cả cây (p95 4,3 giây) |
-| Tìm kiếm dưới 2 giây | Chưa xác minh (thiếu khóa Gemini) |
-| Báo cáo có số liệu cho mọi API đã đo | Đạt cho cây, quan hệ, bảng tin; AI chỉ có số liệu đường lỗi |
+| Tìm kiếm dưới 2 giây | **Đạt** sau tối ưu mục 6.4 (p95 538 ms trên 8.250 chunk, 60 request/phút); trước tối ưu không đạt (p95 2.417 ms). Chưa đo ở tải cao hơn hạn mức gói miễn phí Gemini |
+| Báo cáo có số liệu cho mọi API đã đo | Đạt (cây, quan hệ, bảng tin; tìm kiếm AI và chat ở mục 5.3) |
 
 ## 8. Hạn chế và đề xuất
 
 1. **Cả cây cùng lúc ở 50 VU:** chi phí còn lại là đọc và trả 3,4 MB JSON cho 6.250 người mỗi lần. Giao diện web và mobile không gọi kiểu này: chúng tải 3 đời rồi mở nhánh dần. Nếu cần, có thể làm task riêng: cache cây theo gia đình (xóa khi có thay đổi), hoặc giới hạn số node mỗi lần trả.
-2. **Đo AI:** cần khóa Gemini (mục 6.3).
+2. **AI:** tải tìm kiếm bị giới hạn bởi hạn mức Gemini (gói miễn phí 100 embedding/phút), không phải bởi hệ thống; triển khai thật cần gói trả phí hoặc cache embedding câu hỏi. Chat trên `develop` cần đổi model mặc định (PR #124). Lời gọi embedding chưa có thời gian chờ (SCRUM-104).
 3. Mỗi kịch bản chạy một lần, trên một máy chạy chung k6, backend và DB. Nên đo lại trên máy triển khai (SCRUM-68) để có số liệu sát thực tế.
