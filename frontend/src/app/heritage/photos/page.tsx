@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi, type HeritagePhoto } from '@/services/heritage';
+import { formatDate } from '@/lib/datetime';
 
 function ProtectedPhoto({ photo, className }: { photo: HeritagePhoto; className: string }) {
   const [src, setSrc] = useState('');
@@ -181,7 +182,7 @@ export default function HeritagePhotosPage() {
           <h2 className="text-section-title">Thêm ảnh vào thư viện</h2>
           <p className="mt-1 text-caption text-text-secondary">JPG, PNG hoặc WebP, tối đa 5 MB.</p>
           <form
-            className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+            className="mt-4 flex flex-col gap-3 md:flex-row md:items-end"
             onSubmit={(event) => {
               event.preventDefault();
               const form = event.currentTarget;
@@ -227,7 +228,7 @@ export default function HeritagePhotosPage() {
                 placeholder="Mô tả ảnh để dễ tìm kiếm"
               />
             </div>
-            <Button className="sm:w-auto" type="submit" disabled={upload.isPending}>
+            <Button className="md:w-auto" type="submit" disabled={upload.isPending}>
               {upload.isPending ? 'Đang tải...' : 'Tải ảnh lên'}
             </Button>
           </form>
@@ -273,7 +274,7 @@ export default function HeritagePhotosPage() {
             Chưa có ảnh trong thư viện.
           </p>
         )}
-        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {items.map((photo) => (
             <li key={photo.mediaId}>
               <button
@@ -283,7 +284,7 @@ export default function HeritagePhotosPage() {
               >
                 <ProtectedPhoto photo={photo} className="aspect-square w-full object-cover" />
                 <span className="block min-h-12 p-3 text-caption text-text-secondary">
-                  {photo.caption || new Date(photo.createdAt).toLocaleDateString('vi-VN')}
+                  {photo.caption || formatDate(photo.createdAt)}
                 </span>
               </button>
             </li>
@@ -292,7 +293,7 @@ export default function HeritagePhotosPage() {
         {photos.hasNextPage && (
           <div className="mt-5 text-center">
             <Button
-              className="sm:w-auto"
+              className="md:w-auto"
               disabled={photos.isFetchingNextPage}
               onClick={() => photos.fetchNextPage()}
             >
@@ -352,7 +353,7 @@ export default function HeritagePhotosPage() {
                 </button>
               )}
               <p className="text-center text-caption">
-                {activePhoto.caption || new Date(activePhoto.createdAt).toLocaleDateString('vi-VN')}{' '}
+                {activePhoto.caption || formatDate(activePhoto.createdAt)}{' '}
                 · {selectedIndex + 1}/{items.length}
               </p>
               {items.length > 1 && !targetMediaId && (

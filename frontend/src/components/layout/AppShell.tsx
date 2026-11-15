@@ -73,9 +73,29 @@ function isPublicRoute(pathname: string) {
   return pathname === '/login' || pathname === '/register';
 }
 
+// Trang không có trong menu nhưng thuộc một mục: cây của gia đình mở từ mục "Cây gia phả" (/tree chuyển hướng tới).
+const ROUTE_ALIASES: [RegExp, string][] = [[/^\/families\/[^/]+\/tree$/, '/tree']];
+// Tiêu đề header cho trang không thuộc mục menu nào.
+const EXTRA_TITLES: [RegExp, string][] = [
+  [/^\/persons\//, 'Hồ sơ thành viên'],
+  [/^\/search$/, 'Tìm kiếm'],
+];
+
+function matchesRoute(path: string, href: string) {
+  return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+}
+
+/** Mục menu khớp dài nhất: ở /heritage/photos chỉ sáng "Thư viện ảnh", không sáng thêm "Lịch sử dòng họ". */
+function activeHref(pathname: string) {
+  const path = ROUTE_ALIASES.find(([pattern]) => pattern.test(pathname))?.[1] ?? pathname;
+  return NAV_SECTIONS.flatMap((section) => section.items)
+    .map((item) => item.href)
+    .filter((href): href is string => Boolean(href) && matchesRoute(path, href as string))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
 function isCurrentRoute(pathname: string, href?: string) {
-  if (!href) return false;
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+  return Boolean(href) && href === activeHref(pathname);
 }
 
 function MenuEntry({
@@ -224,7 +244,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? 'Gia đình'
       : pathname === '/ui-kit'
         ? 'Hướng dẫn UI kit'
-        : (currentItem?.label ?? 'Tổng quan');
+        : (currentItem?.label ?? EXTRA_TITLES.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'Tổng quan');
   const familyName = membership.data?.familyName ?? '';
   const accessError = profile.error ?? membership.error;
 

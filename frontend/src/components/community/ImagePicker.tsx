@@ -47,7 +47,7 @@ export function ImagePicker({ files, onChange, disabled = false, progress }: Pro
         }} />
       {error && <p role="alert" className="text-error">{error}</p>}
       {previews.length > 0 && (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {previews.map((preview, index) => (
             <li key={index} className="space-y-1">
               {/* URL Blob chỉ dùng để preview, không phải tệp công khai trên server. */}

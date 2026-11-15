@@ -53,7 +53,7 @@ export default function UiKitPage() {
       </Card>
 
       <Card title="Ô nhập" description="Nhãn và lỗi được liên kết với trường nhập.">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <Input label="Họ và tên" placeholder="Nhập họ và tên" />
           <Input
             label="Email"

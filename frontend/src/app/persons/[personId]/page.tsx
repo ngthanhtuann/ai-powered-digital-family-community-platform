@@ -24,7 +24,7 @@ export default function PersonPage() {
 
   return (
     <Card title={person.data.fullName ?? 'Hồ sơ thành viên'} description="Thông tin được hiển thị theo quyền truy cập gia đình.">
-      <dl className="grid gap-4 sm:grid-cols-2">
+      <dl className="grid gap-4 md:grid-cols-2">
         {person.data.currentProvince && <div><dt className="text-caption text-text-secondary">Tỉnh/thành</dt><dd className="text-body">{person.data.currentProvince}</dd></div>}
         {person.data.birthYear && <div><dt className="text-caption text-text-secondary">Năm sinh</dt><dd className="text-body">{person.data.birthYear}</dd></div>}
         <div><dt className="text-caption text-text-secondary">Giới tính</dt><dd className="text-body">{person.data.gender ?? 'Chưa cập nhật'}</dd></div>

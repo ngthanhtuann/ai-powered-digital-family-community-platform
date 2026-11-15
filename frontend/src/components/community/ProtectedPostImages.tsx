@@ -62,7 +62,7 @@ export function ProtectedPostImages({ postId, preview, total }: { postId: string
           </button>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {images.map((media) => <ProtectedImage key={media.id} media={media} />)}
       </div>
       {hasMore && <button type="button" className="min-h-11 text-sm underline"

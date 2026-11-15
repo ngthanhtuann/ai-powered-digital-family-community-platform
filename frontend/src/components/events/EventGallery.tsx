@@ -78,7 +78,7 @@ export function EventGallery({ eventId }: { eventId: string }) {
       {media.length === 0 && !query.isPending && !query.isError && (
         <p className="text-body text-text-secondary">Chưa có ảnh sự kiện.</p>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {media.map((item) => (
           <ProtectedImage key={item.id} media={item} />
         ))}

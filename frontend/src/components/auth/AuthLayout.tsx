@@ -44,7 +44,7 @@ export function AuthLayout({
     <main className="flex min-h-screen flex-col bg-background lg:flex-row">
       <section
         aria-label="Giới thiệu FamilyConnect"
-        className="relative flex flex-col gap-6 overflow-hidden bg-primary px-5 py-8 md:gap-8 md:px-14 md:py-12 lg:w-[47%] lg:max-w-[680px] lg:shrink-0 lg:justify-between lg:p-12 xl:p-16"
+        className="relative flex flex-col gap-6 overflow-hidden bg-primary px-5 py-8 md:gap-8 md:px-14 md:py-12 lg:w-[47%] lg:max-w-[680px] lg:shrink-0 lg:justify-between lg:p-12"
       >
         <Image
           src="/auth/rings.svg"

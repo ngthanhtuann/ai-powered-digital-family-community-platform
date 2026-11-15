@@ -14,18 +14,16 @@ import {
   type EventRequest,
   type RsvpStatus,
 } from '@/services/events/events';
+import { formatDateTime, fromFamilyInput, toFamilyInput } from '@/lib/datetime';
 
 const inputClass =
   'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body ' +
   'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Có lỗi xảy ra.');
-const formatTime = (value: string) => new Date(value).toLocaleString('vi-VN');
-const pad = (value: number) => String(value).padStart(2, '0');
-const localDateTime = (value: string) => {
-  const d = new Date(value);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-const iso = (value: string) => (value ? new Date(value).toISOString() : undefined);
+const formatTime = (value: string) => formatDateTime(value);
+// Ô datetime-local nhập theo giờ dòng họ (Asia/Ho_Chi_Minh), khớp giờ hiển thị và giờ backend dùng để nhắc.
+const localDateTime = toFamilyInput;
+const iso = fromFamilyInput;
 const statusNames: Record<RsvpStatus, string> = {
   GOING: 'Tham dự',
   NOT_GOING: 'Không tham dự',
@@ -272,7 +270,7 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
   });
 
   return (
-    <article className="min-w-0 space-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <article className="min-w-0 space-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="break-words font-semibold">{event.title}</h3>
@@ -426,7 +424,7 @@ export default function EventsPage() {
   });
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 sm:px-4 sm:py-8">
+    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 md:px-4 md:py-8">
       <header>
         <h1 className="text-page-title">Sự kiện gia đình</h1>
         <p className="mt-1 text-text-secondary">
@@ -460,7 +458,7 @@ export default function EventsPage() {
       {ready && (
         <>
           <form
-            className="space-y-3 rounded-xl border border-border bg-surface p-4 sm:p-5"
+            className="space-y-3 rounded-xl border border-border bg-surface p-4 md:p-5"
             noValidate
             onSubmit={createForm.handleSubmit((values) => create.mutate(values))}
           >

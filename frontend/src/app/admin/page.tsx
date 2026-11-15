@@ -26,11 +26,12 @@ import {
   type SystemConfig,
   type UserStatus,
 } from '@/services/admin';
+import { formatDateTime } from '@/lib/datetime';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
   + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.');
-const dateText = (value?: string | null) => (value ? new Date(value).toLocaleString('vi-VN') : 'Chưa có');
+const dateText = (value?: string | null) => formatDateTime(value, 'Chưa có');
 const TYPE_LABEL: Record<ContentType, string> = {
   POST: 'Bài đăng', COMMENT: 'Bình luận', EVENT: 'Sự kiện', ANNOUNCEMENT: 'Thông báo',
 };

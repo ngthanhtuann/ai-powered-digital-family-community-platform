@@ -15,6 +15,7 @@ import { communityApi, type Comment, type Post, type ReactionType } from '@/serv
 import { branchesOf } from '@/services/admin';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
+import { formatDateTime } from '@/lib/datetime';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
@@ -26,7 +27,7 @@ const reactions: { type: ReactionType; label: string }[] = [
   { type: 'SAD', label: '😢 Buồn' },
 ];
 
-const dateText = (value: string) => new Date(value).toLocaleString('vi-VN');
+const dateText = (value: string) => formatDateTime(value);
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'Có lỗi xảy ra.';
 // Cùng kiểu ô nhập với TextField và StoryForm (design-system.md mục 4).
 const inputClass = 'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body '
@@ -226,7 +227,7 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
     onSuccess: () => client.invalidateQueries({ queryKey: ['community-posts'] }),
   });
   return (
-    <article id={`post-${post.id}`} className="min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
+    <article id={`post-${post.id}`} className="min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm md:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 max-w-full">
           <div className="flex flex-wrap gap-2">
@@ -422,7 +423,7 @@ export default function CommunityPage() {
     }
   }, [targetPostId, posts]);
   return (
-    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 sm:px-4 sm:py-8">
+    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 md:px-4 md:py-8">
       <header>
         <h1 className="text-page-title">Bảng tin gia đình</h1>
         <p className="mt-1 text-text-secondary">Bài đăng và tin tức trong phạm vi gia đình của bạn.</p>
@@ -472,7 +473,7 @@ export default function CommunityPage() {
                   onClick={() => setTab(key)}>{label}</button>
               ))}
           </nav>
-          <form className="space-y-3 rounded-xl border border-border bg-surface p-4 sm:p-5"
+          <form className="space-y-3 rounded-xl border border-border bg-surface p-4 md:p-5"
             onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
             <h2 className="font-semibold">Tạo bài đăng</h2>
             <label htmlFor="post-kind" className="block text-sm">Loại bài</label>

@@ -11,6 +11,7 @@ import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi, heritageDownloadName } from '@/services/heritage';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
+import { formatDate } from '@/lib/datetime';
 
 export default function HeritageDocumentDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -117,7 +118,7 @@ export default function HeritageDocumentDetailsPage() {
       <div className="mt-6">
         <AccessState loading={isLoading} error={loadError} />
         {item && (
-          <article className="mt-4 max-w-3xl rounded-card border border-border bg-surface p-5 shadow-card sm:p-7">
+          <article className="mt-4 max-w-3xl rounded-card border border-border bg-surface p-5 shadow-card md:p-7">
             {editing ? (
               <form
                 className="flex flex-col gap-4"
@@ -167,7 +168,7 @@ export default function HeritageDocumentDetailsPage() {
                 <h2 className="text-page-title">{item.title}</h2>
                 <p className="mt-2 text-caption text-text-secondary">
                   {item.category || 'Chưa phân loại'} ·{' '}
-                  {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                  {formatDate(item.createdAt)}
                 </p>
                 {item.description && (
                   <p className="mt-5 whitespace-pre-wrap text-body">{item.description}</p>

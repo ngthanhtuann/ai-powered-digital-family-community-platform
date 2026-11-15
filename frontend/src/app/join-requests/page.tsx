@@ -10,11 +10,12 @@ import { BranchSelect } from '@/components/admin/BranchSelect';
 import { branchesOf } from '@/services/admin';
 import { genealogyApi } from '@/services/genealogy';
 import { JOIN_PAGE_SIZE, joinRequestsApi, type JoinRequest, type JoinRequestStatus } from '@/services/join-requests';
+import { formatDateTime } from '@/lib/datetime';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
   + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.');
-const dateText = (value?: string | null) => (value ? new Date(value).toLocaleString('vi-VN') : '');
+const dateText = (value?: string | null) => formatDateTime(value);
 const STATUS_LABEL: Partial<Record<JoinRequestStatus, string>> = {
   PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối', CANCELLED: 'Người xin đã hủy',
 };

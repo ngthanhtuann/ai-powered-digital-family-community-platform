@@ -16,7 +16,7 @@ export function Card({
 }: CardProps) {
   return (
     <section
-      className={`rounded-card border border-border bg-surface p-5 shadow-card sm:p-6 ${className}`}
+      className={`rounded-card border border-border bg-surface p-5 shadow-card md:p-6 ${className}`}
       {...props}
     >
       {(title || description || actions) && (
