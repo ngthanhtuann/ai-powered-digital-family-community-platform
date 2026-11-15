@@ -32,7 +32,7 @@ Nhờ tuân thủ nguyên lý thiết kế module hóa từ đầu, quá trình 
 ## 3. Sơ đồ triển khai Docker
 ![Sơ đồ triển khai](../images/architecture-deployment.drawio.png)
 
-> Ghi chú: Hiện chạy 1 bản backend; đích triển khai ở Sprint 7 (SCRUM-96) là 2 bản.
+> Ghi chú: Sprint 7 (SCRUM-96) đã có `docker-compose.ha.yml` chạy 2 bản backend sau Nginx (kiểm thử ở `docs/06-test/high-availability-7-11.md`). `docker-compose.yml` dùng cho demo và phát triển vẫn chạy 1 bản.
 
 ## 4. Sơ đồ trình tự
 ### 4.1 Đăng nhập JWT
@@ -96,7 +96,7 @@ Hệ thống được thiết kế không chỉ để giải quyết các luồn
 * **Giá trị mang lại:** Giúp tiết kiệm bộ nhớ cho server và cho phép hệ thống dễ dàng mở rộng chiều ngang (Scale-out) phía sau Nginx.
 
 ### 6.4. Tính sẵn sàng cao cơ bản (Basic High Availability)
-* **Cách đáp ứng:** Toàn bộ hệ thống được đóng gói thành container độc lập. Sử dụng Nginx làm API Gateway kiêm Load Balancer (Mục tiêu Sprint 7 - SCRUM-96 là 2 bản Spring Boot sau Nginx; hiện chạy 1 bản). Thiết lập chính sách `restart: unless-stopped` và dùng Docker Volume (`pgdata`, `uploads`) để mount dữ liệu ra ngoài.
+* **Cách đáp ứng:** Toàn bộ hệ thống được đóng gói thành container độc lập. Sử dụng Nginx làm API Gateway kiêm Load Balancer (SCRUM-96: `docker-compose.ha.yml` chạy 2 bản Spring Boot sau Nginx, bộ đếm rate limit dùng chung bảng `ha_rate_limit_fixed`, `ha_rate_limit_sliding` để hai bản đếm chung; `docker-compose.yml` cho demo chạy 1 bản). Thiết lập chính sách `restart: unless-stopped` và dùng Docker Volume (`pgdata`, `uploads`) để mount dữ liệu ra ngoài.
 * **Giá trị mang lại:** Sẵn sàng phân phối lưu lượng tải, tự động phục hồi khi tiến trình sập và đảm bảo an toàn dữ liệu cứng.
 
 ### 6.5. Kiểm vết và Lưu vết hệ thống (Audit Logging)
@@ -115,6 +115,6 @@ Hệ thống được thiết kế không chỉ để giải quyết các luồn
 | 5 | Backend gồm `common/` và `modules/<tên>/{controller,service,repository,dto,entity}`. Tên module cố định: `auth`, `user`, `admin`, `genealogy`, `community`, `events`, `heritage`, `directory`, `dashboard`, `ai`. `SecurityConfig` chuyển vào `common/config` | Một cấu trúc cho mọi người | Tất cả backend, Tuấn (SCRUM-35) |
 | 6 | Lỗi trả về theo `docs/04-api/conventions.md` (`success:false, error:{code,message,details}`) | Một chuẩn lỗi cho web và mobile | Tất cả backend |
 | 7 | AI: tài khoản chưa xác minh không dùng được (403, `PERM_002`); giới hạn số câu hỏi (429, `RATE_001`); lọc theo `family_id` trước khi tạo ngữ cảnh | Theo `docs/01-srs/privacy.md` | Lê Nhựt |
-| 8 | Mục tiêu triển khai: 2 bản Spring Boot sau Nginx (Sprint 7, SCRUM-96); hiện chạy 1 bản | Đáp ứng NFR-10 | PiLo257 (SCRUM-96) |
+| 8 | Triển khai sẵn sàng cao: 2 bản Spring Boot sau Nginx bằng `docker-compose.ha.yml` (Sprint 7, SCRUM-96, đã kiểm thử failover, tự restart, backup/restore); `docker-compose.yml` cho demo chạy 1 bản | Đáp ứng NFR-10 | PiLo257 (SCRUM-96) |
 | 9 | Khóa ngoại cơ sở dữ liệu (`FOREIGN KEY ... REFERENCES`) chỉ dùng giữa các bảng trong cùng một module. Tham chiếu sang bảng của module khác (ví dụ `users`, `family`, `person`, `media`, `branch` khi ở module khác) chỉ lưu cột UUID thường, có index; service kiểm tra tồn tại, quyền và `family_id` qua interface Java của module đó | Khớp quyết định 3 (module chỉ gọi nhau qua interface, không join chéo); cho phép tách module thành service sau này | Trí (ERD), tất cả backend |
 | 10 | Báo cáo PDF (SCRUM-95) tạo bằng thư viện Apache PDFBox 3.0.5 (giấy phép Apache-2.0) trong module `dashboard`; image backend cài `fonts-dejavu-core` để hiển thị tiếng Việt | Java chuẩn không có sẵn công cụ tạo PDF; PDFBox chạy thuần Java, không cần dịch vụ ngoài | Huy Quốc (dashboard) |
