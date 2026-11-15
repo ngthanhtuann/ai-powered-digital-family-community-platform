@@ -282,6 +282,11 @@ class GenealogyApiIntegrationTest {
         call(get("/api/v1/persons/" + selfId), memberToken, null)
                 .andExpect(jsonPath("$.data.birthDate").value("1995-07-07"));
         call(get(url + "?q=em"), memberToken, null).andExpect(jsonPath("$.meta.total").value(1));
+        // SCRUM-102: gõ không dấu, khác hoa thường vẫn khớp; "%" là ký tự thường, không phải ký tự đại diện.
+        call(get(url + "?q=EM BE"), memberToken, null).andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.data[0].fullName").value("Em bé"));
+        call(get(url + "?q=chinh toi"), memberToken, null).andExpect(jsonPath("$.meta.total").value(1));
+        call(get(url + "?q=%25"), memberToken, null).andExpect(jsonPath("$.meta.total").value(0));
         call(post(url), memberToken, person("Không được thêm", LocalDate.of(1990, 1, 1)))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PERM_001"));
     }

@@ -74,8 +74,10 @@ public class PersonService implements PersonSearchIndex {
     public ListResponse<PersonData> list(UUID familyId, String q, UUID branchId, int page, int size, String sort) {
         Viewer viewer = access.requireRead(familyId);
         requireFamily(familyId);
-        String query = q == null || q.isBlank() ? null : q.trim();
-        Page<Person> found = personRepository.search(familyId, branchId, query,
+        // Escape ký tự đặc biệt của LIKE để "%" hay "_" người dùng gõ được tìm đúng nghĩa đen.
+        String pattern = q == null || q.isBlank() ? null
+                : "%" + q.trim().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        Page<Person> found = personRepository.search(familyId, branchId, pattern,
                 Paging.of(page, size, sort, SORT_FIELDS));
         return ListResponse.of(found.map(p -> toData(p, viewer)).getContent(), page, size, found.getTotalElements());
     }
