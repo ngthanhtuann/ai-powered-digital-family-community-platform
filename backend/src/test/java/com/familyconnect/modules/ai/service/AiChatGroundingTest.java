@@ -6,6 +6,7 @@ import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.AuthenticatedUser;
 import com.familyconnect.modules.ai.dto.ChatRequest;
+import com.familyconnect.modules.ai.dto.ChatResponse;
 import com.familyconnect.modules.ai.repository.ChatRepository;
 import com.familyconnect.modules.ai.repository.EmbeddingChunkRepository;
 import com.familyconnect.modules.auth.api.EffectiveRole;
@@ -46,7 +47,7 @@ class AiChatGroundingTest {
         when(embeddings.isConfigured()).thenReturn(true); when(embeddings.createEmbedding(anyString())).thenReturn(new float[768]);
         when(model.isConfigured()).thenReturn(true); when(model.answer(anyString())).thenAnswer(call -> {
             String prompt = call.getArgument(0);
-            assertTrue(prompt.contains("Chỉ trả lời dựa trên NGỮ CẢNH"));
+            assertTrue(prompt.contains("Chỉ dùng dữ kiện trực tiếp có trong NGỮ CẢNH"));
             assertTrue(prompt.contains("Hồ sơ giả: Nguyễn An sinh năm 1950."));
             return "Theo hồ sơ giả, Nguyễn An sinh năm 1950.";
         });
@@ -118,7 +119,7 @@ class AiChatGroundingTest {
         verify(model).answer(prompt.capture());
         assertTrue(prompt.getValue().contains(FACTS.get(q.fact())), "thiếu đoạn trả lời được");
         assertFalse(prompt.getValue().contains(unrelated), "đoạn điểm thấp không được vào prompt");
-        assertTrue(prompt.getValue().contains("Không bịa tên, ngày tháng"));
+        assertTrue(prompt.getValue().contains("Không bịa hoặc tự điền tên, ngày tháng"));
         assertTrue(prompt.getValue().contains("QUESTION:\n" + q.text()));
         assertEquals(List.of(relevantId), response.sources().stream().map(src -> src.sourceId()).toList());
     }
@@ -155,5 +156,88 @@ class AiChatGroundingTest {
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC));
         limiter.check(userId);
         assertEquals(ErrorCode.RATE_001, assertThrows(ApiException.class, () -> limiter.check(userId)).code());
+    }
+
+    // --- Guard trước LLM (ai.md UC-AI-02 luồng 4b, 4c) ---
+    private static final String CLARIFY = "Có nhiều người phù hợp với mô tả này. Bạn muốn hỏi về ai?";
+
+    private static EmbeddingChunkRepository.ChatChunk person(String content) {
+        return new EmbeddingChunkRepository.ChatChunk("PERSON", UUID.randomUUID(), content, 0.8);
+    }
+
+    private ChatResponse ask(String question, EmbeddingChunkRepository.ChatChunk... retrieved) {
+        when(chunks.searchChat(any(), anyBoolean(), anyList(), any(), anyList(), anyInt())).thenReturn(List.of(retrieved));
+        doReturn("Trả lời giả từ nguồn.").when(model).answer(anyString());
+        return service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest(question, null, null));
+    }
+
+    @Test void pronounWithoutHistoryAsksBack() {
+        var response = ask("Anh ấy làm nghề gì?", person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972. Nghề nghiệp: Kỹ sư xây dựng."));
+        assertEquals(CLARIFY, response.answer());
+        assertTrue(response.sources().isEmpty());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void sharedSurnameAsksBack() {
+        var response = ask("Ông Nguyễn sinh năm nào?", person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950."),
+                person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972."));
+        assertEquals(CLARIFY, response.answer());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void surnameThatIsAlsoSomeonesGivenNameGoesToModel() {
+        ask("Chị Hà sinh năm nào?", person("Họ tên: Hà Văn Long. Năm sinh: 1960."),
+                person("Họ tên: Hà Thị Lan. Năm sinh: 1962."), person("Họ tên: Nguyễn Thị Hà. Năm sinh: 1985."));
+        verify(model).answer(anyString());
+    }
+
+    @Test void questionNamingTwoDifferentPeopleGoesToModel() {
+        ask("Nguyễn Văn An là gì của Trần Thị Mai?", person("Họ tên: Nguyễn Văn An. Năm sinh: 1950."),
+                person("Họ tên: Trần Thị Mai. Năm sinh: 1954."));
+        verify(model).answer(anyString());
+    }
+
+    @Test void sameFullNameOnTwoProfilesAsksBack() {
+        var response = ask("Nguyễn Văn An sinh năm nào?", person("Họ tên: Nguyễn Văn An. Năm sinh: 1950."),
+                person("Họ tên: Nguyễn Văn An. Năm sinh: 1990."));
+        assertEquals(CLARIFY, response.answer());
+    }
+
+    @Test void genericOccupationAsksBackOnlyWhenSeveralProfilesMatch() {
+        var several = ask("Người làm nghề kỹ sư sinh năm nào?",
+                person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972. Nghề nghiệp: Kỹ sư xây dựng."),
+                person("Họ tên: Nguyễn Văn Bình. Năm sinh: 1978. Nghề nghiệp: Kỹ sư điện."));
+        assertEquals(CLARIFY, several.answer());
+        ask("Người làm nghề kỹ sư sinh năm nào?",
+                person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972. Nghề nghiệp: Kỹ sư xây dựng."),
+                person("Họ tên: Nguyễn Văn Minh. Năm sinh: 1975. Nghề nghiệp: Giáo viên Toán."));
+        verify(model).answer(anyString());
+    }
+
+    @Test void wrongBirthYearIsCorrectedFromTheOnlyMatchingProfile() {
+        var phuc = person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950. Tỉnh/thành: Nam Định.");
+        var response = ask("Tôi đoán ông Phúc sinh năm 1947; hãy kiểm tra và sửa nếu sai.", phuc,
+                person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972."));
+        assertEquals("Nguyễn Văn Phúc sinh năm 1950, không phải năm 1947 [PERSON " + phuc.sourceId() + "].", response.answer());
+        assertEquals(List.of(phuc.sourceId()), response.sources().stream().map(src -> src.sourceId()).toList());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void correctBirthYearGuessGoesToModel() {
+        ask("Ông Phúc sinh năm 1950 đúng không?", person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950."));
+        verify(model).answer(anyString());
+    }
+
+    @Test void yearMissingFromContextIsNotFound() {
+        var response = ask("Giỗ Tổ năm 2027 tổ chức ngày nào?", new EmbeddingChunkRepository.ChatChunk("EVENT",
+                UUID.randomUUID(), "Giỗ Tổ họ Nguyễn Bắt đầu: 20/12/2026 08:00", 0.8));
+        assertEquals("Không tìm thấy thông tin.", response.answer());
+        assertTrue(response.sources().isEmpty());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void yearComparisonGoesToModel() {
+        ask("Ai sinh trước năm 1960?", person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950."));
+        verify(model).answer(anyString());
     }
 }

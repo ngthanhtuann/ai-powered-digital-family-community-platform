@@ -69,7 +69,10 @@ class EventServiceTest {
             saved.startAt(),null,"Nhà văn hóa",null));
         assertThat(result.id()).isEqualTo(EVENT_ID);
         verify(ai).upsertSource(AiGateway.SourceType.EVENT,EVENT_ID,FAMILY,null,
-            "Họp mặt gia đình Buổi gặp mặt thường niên");
+            "Họp mặt gia đình Buổi gặp mặt thường niên Bắt đầu: " + EventAccess.localTime(saved.startAt())
+                + " Địa điểm: Nhà văn hóa");
+        // 01:00 UTC phải thành 08:00 giờ Việt Nam, không giữ nguyên giờ UTC.
+        assertThat(EventAccess.localTime(OffsetDateTime.parse("2026-12-20T01:00:00Z"))).isEqualTo("20/12/2026 08:00");
     }
 
     @Test void unverifiedCannotCreateEvent() {

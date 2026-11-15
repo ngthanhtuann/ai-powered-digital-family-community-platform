@@ -15,7 +15,7 @@ public class ChatLanguageModel {
     private final String apiKey;
     private final String model;
     public ChatLanguageModel(@Value("${gemini.api-key:}") String apiKey,
-                             @Value("${gemini.chat-model:gemini-2.5-flash}") String model,
+                             @Value("${gemini.chat-model:gemini-3.5-flash-lite}") String model,
                              @Value("${ai.chat.timeout_ms:30000}") int timeoutMs) {
         this.apiKey = apiKey; this.model = model;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -30,10 +30,17 @@ public class ChatLanguageModel {
         JsonNode response = client.post().uri("/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))),
-                        "generationConfig", Map.of("temperature", 0.1, "maxOutputTokens", 700)))
+                        "generationConfig", generationConfig(model)))
                 .retrieve().body(JsonNode.class);
         String text = response == null ? "" : response.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
         if (text.isBlank()) throw new IllegalStateException("Empty model response");
         return text.trim();
+    }
+
+    /** thinkingLevel chỉ Gemini 3 nhận (model cũ trả 400); Gemini 3 nên để temperature mặc định nên chỉ đặt cho model cũ. */
+    static Map<String, Object> generationConfig(String model) {
+        return model.startsWith("gemini-3")
+                ? Map.of("maxOutputTokens", 700, "thinkingConfig", Map.of("thinkingLevel", "low"))
+                : Map.of("maxOutputTokens", 700, "temperature", 0.1);
     }
 }
