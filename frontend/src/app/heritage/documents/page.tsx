@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi, heritageDownloadName } from '@/services/heritage';
+import { formatDate } from '@/lib/datetime';
 
 export default function HeritageDocumentsArchivePage() {
   const access = useHeritageAccess();
@@ -78,14 +79,14 @@ export default function HeritageDocumentsArchivePage() {
         </div>
       )}
       <section className="mt-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-section-title">Kho lưu trữ số</h2>
             <p className="mt-1 text-caption text-text-secondary">
               Tài liệu và tư liệu số của gia đình, được phân loại để dễ tìm.
             </p>
           </div>
-          <div className="sm:w-64">
+          <div className="md:w-64">
             <TextField
               label="Lọc danh mục"
               value={category}
@@ -115,11 +116,11 @@ export default function HeritageDocumentsArchivePage() {
           <p className="mt-4 text-body text-text-secondary">Đang tải tài liệu...</p>
         )}
         {documents.data?.items.length ? (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {documents.data.items.map((document) => (
               <li
                 key={document.id}
-                className="flex flex-col justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-card sm:flex-row sm:items-center"
+                className="flex flex-col justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-card md:flex-row md:items-center"
               >
                 <Link
                   href={`/heritage/documents/${document.id}`}
@@ -128,7 +129,7 @@ export default function HeritageDocumentsArchivePage() {
                   <span className="block text-section-title">{document.title}</span>
                   <span className="mt-2 block text-caption text-text-secondary">
                     {document.category || 'Chưa phân loại'} ·{' '}
-                    {new Date(document.createdAt).toLocaleDateString('vi-VN')}
+                    {formatDate(document.createdAt)}
                   </span>
                   {document.description && (
                     <span className="mt-3 block line-clamp-2 text-body">
@@ -137,7 +138,7 @@ export default function HeritageDocumentsArchivePage() {
                   )}
                 </Link>
                 <Button
-                  className="sm:w-auto"
+                  className="md:w-auto"
                   disabled={download.isPending}
                   onClick={() =>
                     download.mutate({ contentUrl: document.contentUrl, title: document.title })

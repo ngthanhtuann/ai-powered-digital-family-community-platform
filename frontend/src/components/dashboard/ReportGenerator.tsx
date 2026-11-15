@@ -125,7 +125,7 @@ export function ReportGenerator() {
         </p>
       </header>
       <Card title="Phạm vi và bộ lọc báo cáo">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {isSystemAdmin && (
             <label className="flex flex-col gap-2 text-label">
               Gia đình

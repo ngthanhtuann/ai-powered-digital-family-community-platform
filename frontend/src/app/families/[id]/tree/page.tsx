@@ -177,7 +177,7 @@ export default function FamilyTreePage() {
     ?? ([...branches, ...focus].find((b) => b.error)?.error as Error | undefined)?.message;
 
   return (
-    <main className="space-y-4 px-4 py-6 sm:px-6">
+    <main className="space-y-4 px-4 py-6 md:px-6">
       <header>
         <h1 className="text-page-title">Cây gia phả</h1>
         <p className="mt-1 text-body text-text-secondary">

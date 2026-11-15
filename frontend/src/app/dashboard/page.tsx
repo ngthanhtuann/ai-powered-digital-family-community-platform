@@ -135,7 +135,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <p className="text-body text-text-secondary">
           Theo dõi thành viên, hoạt động cộng đồng và sự kiện trong phạm vi được quản lý.
         </p>
@@ -154,7 +154,7 @@ export default function DashboardPage() {
       )}
 
       <Card title="Bộ lọc thống kê">
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col gap-4 md:flex-row">
           {isSystemAdmin && (
             <label className="flex flex-1 flex-col gap-2 text-label">
               Gia đình
@@ -210,7 +210,7 @@ export default function DashboardPage() {
 
       {data && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card title="Tổng thành viên">
               <p className="text-3xl font-semibold text-primary">
                 {data.totalMembers.toLocaleString('vi-VN')}
@@ -235,7 +235,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <Card title="Thành viên theo thế hệ">
               {chartEmpty(
                 data,

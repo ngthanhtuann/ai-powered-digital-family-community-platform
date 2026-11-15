@@ -5,6 +5,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { Button } from '@/components/ui/Button';
 import { announcementsApi, type Announcement } from '@/services/community/announcements';
 import { communityApi } from '@/services/community/posts';
+import { formatDateTime } from '@/lib/datetime';
 
 const inputClass =
   'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body';
@@ -56,7 +57,7 @@ function AnnouncementCard({
       </div>
       <p className="whitespace-pre-wrap break-words">{item.content}</p>
       <p className="text-caption text-text-secondary">
-        {new Date(item.createdAt).toLocaleString('vi-VN')}
+        {formatDateTime(item.createdAt)}
       </p>
       {canManage && (
         <div className="flex flex-wrap gap-2">

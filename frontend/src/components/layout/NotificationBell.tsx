@@ -4,6 +4,7 @@ import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/services/notifications';
+import { formatDateTime } from '@/lib/datetime';
 
 /** Số chưa đọc dùng meta.total của bộ lọc isRead=false, không chỉ đếm 20 dòng trang đầu. */
 export function NotificationBell() {
@@ -80,7 +81,7 @@ export function NotificationBell() {
                 <p className="font-semibold">{item.title}</p>
                 <p className="mt-1 whitespace-pre-wrap">{item.content}</p>
                 <p className="mt-1 text-caption text-text-secondary">
-                  {new Date(item.createdAt).toLocaleString('vi-VN')}
+                  {formatDateTime(item.createdAt)}
                 </p>
                 {!item.isRead && (
                   <button
