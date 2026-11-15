@@ -2,8 +2,8 @@
 
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Background, Controls, MiniMap, ReactFlow, useReactFlow, type Edge } from '@xyflow/react';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
@@ -103,6 +103,22 @@ export default function FamilyTreePage() {
     const depth = Math.min(10, Math.max(found.stepsFromA ?? 0, found.stepsFromB ?? 0) + 1);
     setFocusRoots((roots) => (roots.some((r) => r.rootId === rootId && r.depth >= depth) ? roots : [...roots, { rootId, depth }]));
   }, [graph.nodes]);
+
+  // Mở từ trang Tra cứu xưng hô (?a=&b=): tra cặp đó một lần khi cây đầu đã tải, rồi tô sáng như tra trong panel.
+  const search = useSearchParams();
+  const linkA = search.get('a');
+  const linkB = search.get('b');
+  const linked = useQuery({
+    queryKey: ['relationship', linkA, linkB],
+    queryFn: () => genealogyApi.relationship(linkA ?? '', linkB ?? ''),
+    enabled: Boolean(linkA && linkB && first.data),
+  });
+  const linkApplied = useRef(false);
+  useEffect(() => {
+    if (!linked.data || linkApplied.current) return;
+    linkApplied.current = true;
+    onRelation(linked.data);
+  }, [linked.data, onRelation]);
 
   const onSelect = useCallback((id: string) => {
     setSelected(id);
