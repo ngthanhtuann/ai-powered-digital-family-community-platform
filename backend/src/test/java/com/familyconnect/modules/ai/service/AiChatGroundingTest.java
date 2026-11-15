@@ -223,7 +223,7 @@ class AiChatGroundingTest {
         var phuc = person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950. Tỉnh/thành: Nam Định.");
         var response = ask("Tôi đoán ông Phúc sinh năm 1947; hãy kiểm tra và sửa nếu sai.", phuc,
                 person("Họ tên: Nguyễn Văn Hùng. Năm sinh: 1972."));
-        assertEquals("Nguyễn Văn Phúc sinh năm 1950, không phải năm 1947 [PERSON " + phuc.sourceId() + "].", response.answer());
+        assertEquals("Nguyễn Văn Phúc sinh năm 1950, không phải năm 1947.", response.answer());
         assertEquals(List.of(phuc.sourceId()), response.sources().stream().map(src -> src.sourceId()).toList());
         verify(model, never()).answer(anyString());
     }
