@@ -3,6 +3,8 @@ package com.familyconnect.modules.auth.service;
 import com.familyconnect.common.exception.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.familyconnect.common.ha.SharedRateLimitStore;
 
 import java.time.Clock;
 import java.util.Map;
@@ -22,6 +24,10 @@ public class LoginRateLimiter {
     private final int limit;
     private final Clock clock;
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    @Autowired
+    private SharedRateLimitStore sharedStore;
+    @Value("${app.ha.shared-rate-limits:false}")
+    private boolean sharedRateLimits;
 
     public LoginRateLimiter(@Value("${app.auth.login-rate-limit-per-minute:5}") int limit, Clock clock) {
         this.limit = limit;
@@ -30,6 +36,10 @@ public class LoginRateLimiter {
 
     /** Ghi nhận một lần thử; ném 429 RATE_001 kèm Retry-After nếu vượt giới hạn. */
     public void check(String ip, String email) {
+        if (sharedRateLimits) {
+            sharedStore.checkFixed("LOGIN", ip + "|" + email, limit, WINDOW_SECONDS);
+            return;
+        }
         long now = clock.instant().getEpochSecond();
         if (windows.size() > CLEANUP_THRESHOLD) {
             windows.values().removeIf(w -> now - w.start >= WINDOW_SECONDS);

@@ -3,6 +3,8 @@ package com.familyconnect.modules.auth.service;
 import com.familyconnect.common.exception.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.familyconnect.common.ha.SharedRateLimitStore;
 
 import java.time.Clock;
 import java.util.Map;
@@ -18,6 +20,10 @@ public class RefreshRateLimiter {
     private final int limit;
     private final Clock clock;
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    @Autowired
+    private SharedRateLimitStore sharedStore;
+    @Value("${app.ha.shared-rate-limits:false}")
+    private boolean sharedRateLimits;
 
     public RefreshRateLimiter(@Value("${app.auth.refresh-rate-limit-per-minute:20}") int limit, Clock clock) {
         if (limit < 1) {
@@ -28,6 +34,10 @@ public class RefreshRateLimiter {
     }
 
     public void check(String ip) {
+        if (sharedRateLimits) {
+            sharedStore.checkFixed("REFRESH", ip, limit, WINDOW_SECONDS);
+            return;
+        }
         long now = clock.instant().getEpochSecond();
         if (windows.size() > CLEANUP_THRESHOLD) {
             windows.values().removeIf(w -> now - w.start() >= WINDOW_SECONDS);

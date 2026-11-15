@@ -396,6 +396,25 @@ Table system_config {
   Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Tham số cấu hình hệ thống · Trạng thái: Đầy đủ'
 }
 
+Table ha_rate_limit_fixed {
+  scope varchar(32) [pk, note: 'LOGIN, REFRESH']
+  subject_hash varchar(64) [pk, note: 'SHA-256 hex của chủ thể, không lưu dạng rõ']
+  window_started_at timestamptz [not null, note: 'Bắt đầu cửa sổ hiện tại']
+  request_count integer [not null, note: 'Số lượt trong cửa sổ']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Bộ đếm RATE_001 cửa sổ cố định dùng chung khi chạy HA (SCRUM-96, V22); ngoại lệ cột chuẩn, xóa cứng dòng cũ hơn 1 ngày · Trạng thái: Đầy đủ'
+}
+
+Table ha_rate_limit_sliding {
+  id bigserial [pk, note: 'Khóa chính']
+  scope varchar(32) [not null, note: 'CHAT, SEARCH, SUMMARY']
+  subject_hash varchar(64) [not null, note: 'SHA-256 hex của userId']
+  called_at timestamptz [not null, note: 'Thời điểm gọi']
+  indexes {
+    (scope, subject_hash, called_at) [name: 'idx_ha_rate_limit_subject_time']
+  }
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Bộ đếm RATE_001 cửa sổ trượt 1 giờ dùng chung khi chạy HA (SCRUM-96, V22); ngoại lệ cột chuẩn, xóa cứng dòng cũ hơn 1 ngày · Trạng thái: Đầy đủ'
+}
+
 Table ai_embedding_chunk {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Phạm vi gia đình; tham chiếu logic -> family, không có FK']

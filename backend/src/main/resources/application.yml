@@ -31,6 +31,8 @@ spring:
 
 server:
   port: 8080
+  # Chỉ dùng header do Nginx tin cậy tạo (Nginx ghi đè X-Forwarded-For).
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
 
 app:
   cors:
@@ -42,6 +44,13 @@ app:
     # (auth.access_token_minutes, auth.refresh_token_days; SCRUM-94); hai dòng dưới chỉ là dự phòng của JwtService.
     access-token-minutes: 15
     refresh-token-days: 7
+  ha:
+    # Chế độ HA là opt-in: Compose mặc định (một backend) không đổi.
+    shared-rate-limits: ${HA_SHARED_RATE_LIMITS:false}
+    local-cache-enabled: ${HA_LOCAL_CACHE_ENABLED:true}
+  events:
+    # Trong HA chỉ backend-primary chạy lịch; bản secondary vẫn xử lý API.
+    reminder-enabled: ${HA_REMINDERS_ENABLED:true}
   auth:
     # Giới hạn đăng nhập theo IP và email (conventions.md mục 7.1).
     login-rate-limit-per-minute: 5

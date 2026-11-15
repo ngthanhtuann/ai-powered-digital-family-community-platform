@@ -8,6 +8,7 @@ import com.familyconnect.modules.auth.dto.SystemConfigDtos.SystemConfigData;
 import com.familyconnect.modules.auth.entity.Role;
 import com.familyconnect.modules.auth.repository.SystemConfigRepository;
 import com.familyconnect.modules.auth.repository.UserRoleRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -58,6 +59,8 @@ public class SystemConfigService implements SystemConfigQuery {
     private final AuditLogger audit;
     private final Clock clock;
     private volatile Snapshot cache;
+    @Value("${app.ha.local-cache-enabled:true}")
+    private boolean localCacheEnabled = true;
 
     public SystemConfigService(SystemConfigRepository repository, UserRoleRepository roles, AuditLogger audit,
                                Clock clock) {
@@ -95,6 +98,13 @@ public class SystemConfigService implements SystemConfigQuery {
 
     @Override
     public String getString(String key) {
+        // HA: cấu hình đọc từ PostgreSQL; không dùng snapshot riêng của từng JVM.
+        if (!localCacheEnabled) {
+            return repository.findAll().stream()
+                    .filter(entry -> entry.key().equals(key))
+                    .map(SystemConfigData::value)
+                    .findFirst().orElse(DEFAULTS.get(key));
+        }
         Snapshot snapshot = cache;
         Instant now = clock.instant();
         if (snapshot == null || snapshot.loadedAt().plus(CACHE_TTL).isBefore(now)) {
