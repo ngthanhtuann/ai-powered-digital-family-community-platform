@@ -61,8 +61,7 @@ export function PersonPickerScreen({
               label="Tìm theo họ tên"
               value={input}
               onChangeText={setInput}
-              // API tìm theo họ tên có dấu (PersonRepository, SCRUM-102); gõ không dấu sẽ không ra.
-              placeholder="Gõ có dấu, ví dụ: Nguyễn Văn"
+              placeholder="Ví dụ: Nguyễn Văn hoặc nguyen van"
               autoCorrect={false}
             />
           </View>

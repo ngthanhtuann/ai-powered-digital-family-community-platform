@@ -1158,7 +1158,7 @@ export interface operations {
                 size?: components["parameters"]["size"];
                 /** @description Sắp xếp theo tên trường JSON, ví dụ createdAt,desc */
                 sort?: components["parameters"]["sort"];
-                /** @description Tìm theo họ tên */
+                /** @description Tìm theo một phần họ tên, không phân biệt hoa thường và không dấu (gõ "to" khớp "Tổ") */
                 q?: string;
                 /** @description Lọc theo chi họ */
                 branchId?: string;
