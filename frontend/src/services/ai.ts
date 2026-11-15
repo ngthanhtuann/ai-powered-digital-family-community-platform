@@ -9,6 +9,9 @@ export type AiSourceType = AiSource['sourceType'];
 type ChatOperation = operations['chatWithFamilyAssistant'];
 export type AiChatRequest = ChatOperation['requestBody']['content']['application/json'];
 export type AiChatResponse = ChatOperation['responses'][200]['content']['application/json']['data'];
+type RecommendationOperation = operations['getRecommendations'];
+export type AiRecommendationContext = RecommendationOperation['parameters']['query']['contextType'];
+export type AiRecommendations = RecommendationOperation['responses'][200]['content']['application/json']['data'];
 export type RelationshipExplanation =
   operations['explainRelationship']['responses'][200]['content']['application/json']['data'];
 
@@ -22,4 +25,6 @@ export const aiApi = {
     } satisfies AiChatRequest),
   explainRelationship: (personAId: string, personBId: string) =>
     api.post<RelationshipExplanation>('/ai/relationship-explanations', { personAId, personBId }),
+  recommendations: (contextType: AiRecommendationContext, contextId: string, limit = 5) =>
+    api.get<AiRecommendations>('/ai/recommendations', { contextType, contextId, limit }),
 };

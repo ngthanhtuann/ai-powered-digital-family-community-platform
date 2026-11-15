@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import type { components } from '@/services/generated/genealogy';
+import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 
 type Person = components['schemas']['Person'];
 
@@ -32,6 +33,7 @@ export default function PersonPage() {
       <Link href={`/directory/members/${personId}`} className="mt-4 inline-block text-caption text-info underline">
         Xem nghề nghiệp và học vấn
       </Link>
+      <RecommendationsPanel contextType="PERSON" contextId={personId} />
     </Card>
   );
 }

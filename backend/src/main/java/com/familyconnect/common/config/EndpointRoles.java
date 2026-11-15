@@ -148,7 +148,8 @@ public class EndpointRoles {
             Map.entry("GET /ai/search", SIGNED_IN),
             Map.entry("POST /ai/chat", SIGNED_IN),
             Map.entry("POST /ai/relationship-explanations", SIGNED_IN),
-            Map.entry("POST /ai/summaries", SIGNED_IN));
+            Map.entry("POST /ai/summaries", SIGNED_IN),
+            Map.entry("GET /ai/recommendations", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {
