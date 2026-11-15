@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * Tìm kiếm ngữ nghĩa
-         * @description Tìm trong gia đình được phép xem, lọc quyền ngay trong truy vấn. Kết quả có cosine similarity tối thiểu 0.88; dưới ngưỡng trả danh sách rỗng. Mỗi nguồn chỉ xuất hiện một lần với chunk điểm cao nhất.
+         * @description Tìm trong gia đình được phép xem, lọc quyền ngay trong truy vấn. Kết quả có cosine similarity tối thiểu 0.65 (cấu hình ai.search.minimum-score); dưới ngưỡng trả danh sách rỗng. Mỗi nguồn chỉ xuất hiện một lần với chunk điểm cao nhất.
          */
         get: operations["semanticSearch"];
         put?: never;
