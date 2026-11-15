@@ -49,7 +49,7 @@ Lượt trước là lần đo phát triển để tìm lỗi. Trước lượt 
 
 ## Thay đổi sau review PR #124 (14/11/2026)
 
-Kết quả 40/40 ở trên đo với bản guard đầu tiên. Sau review, code đổi như sau và **chưa đo lại bộ 40 câu (Chưa xác minh)** vì máy review không có `GEMINI_API_KEY`:
+Lượt đo 13/11 chạy với bản guard đầu tiên. Sau review, code đổi như sau:
 
 - Guard không còn gắn với bộ câu hỏi: họ lấy từ chính các hồ sơ truy xuất được thay cho danh sách 8 họ cố định; nhánh riêng cho "kỹ sư" thành quy tắc chung "câu *Người …* có nghề nghiệp khớp nhiều hồ sơ".
 - Câu nhắc hai người khác nhau (vd. "An là gì của Mai?") không còn bị coi là mơ hồ; chỉ hỏi lại khi một họ tên khớp nhiều hồ sơ.
@@ -59,6 +59,20 @@ Kết quả 40/40 ở trên đo với bản guard đầu tiên. Sau review, code
 - Chunk sự kiện ghi giờ Việt Nam (`dd/MM/yyyy HH:mm`) thay vì giờ UTC; sự kiện đã lập chỉ mục trước đó cần sửa/lưu lại để cập nhật chunk.
 - Câu "Giỗ Tổ năm 2026 diễn ra khi nào?" chấm theo `20/12/2026` thay cho hai từ khóa `2026`, `20`.
 
-Các luồng guard được ghi trong `ai.md` UC-AI-02 luồng 4b–4d và có unit test trong `AiChatGroundingTest`. Cần chạy lại `scripts/eval-ai-quality.ps1` với khóa Gemini rồi cập nhật bảng kết quả.
+Các luồng guard được ghi trong `ai.md` UC-AI-02 luồng 4b–4d và có unit test trong `AiChatGroundingTest`.
+
+### Đo lại sau review (15/11/2026)
+
+Chạy lại `scripts/eval-ai-quality.ps1` trên nhánh tại `e111f0c`, stack Docker riêng, dữ liệu giả seed mới bằng `docker/seed-demo.ps1` (chỉ mục tạo bằng code của nhánh nên chunk sự kiện mang giờ Việt Nam). Cấu hình đúng như mục "Cấu hình đang dùng" (`gemini-3.5-flash-lite`, timeout 30000, `top_k=10`, ngưỡng `0.50`).
+
+| Nhóm câu hỏi | Số câu | Đúng | Bịa/không từ chối |
+|---|---:|---:|---:|
+| Thực tế | 16 | 16 | 0 |
+| Mơ hồ | 4 | 4 | 0 |
+| Ngoài dữ liệu | 9 | 9 | 0 |
+| Cố tình lừa | 11 | 11 | 0 |
+| **Tổng** | **40** | **40 (100%)** | **0** |
+
+Không có lỗi API. `ai-quality-scrum-69-results.json` đã thay bằng kết quả lượt này. Mỗi câu chạy một lần nên câu trả lời của LLM có thể khác chút giữa các lần chạy.
 
 Tài liệu model: [Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite).
