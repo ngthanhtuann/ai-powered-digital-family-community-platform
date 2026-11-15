@@ -16,7 +16,7 @@ import {
 } from '@/services/events/events';
 
 const inputClass =
-  'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body ' +
+  'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body ' +
   'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Có lỗi xảy ra.');
 const formatTime = (value: string) => new Date(value).toLocaleString('vi-VN');
@@ -173,14 +173,15 @@ function Participants({
       </select>
       {query.isPending && <p className="mt-2 text-sm">Đang tải danh sách...</p>}
       {query.isError && (
-        <p role="alert" className="mt-2 text-error">
-          {errorText(query.error)}
-        </p>
+        <div role="alert" className="mt-2 space-y-2">
+          <p className="break-words text-error">{errorText(query.error)}</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
       )}
       <ul className="mt-2 space-y-2">
         {people.map((person) => (
           <li key={person.id} className="flex flex-wrap justify-between gap-2 text-sm">
-            <span>{person.displayName}</span>
+            <span className="min-w-0 break-words">{person.displayName}</span>
             <span className="text-text-secondary">
               {statusNames[person.rsvpStatus]}
               {canManageAttendance && person.attendedAt && ' · Đã điểm danh'}
@@ -271,20 +272,20 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
   });
 
   return (
-    <article className="space-y-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <article className="min-w-0 space-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="font-semibold">{event.title}</h3>
+        <div className="min-w-0">
+          <h3 className="break-words font-semibold">{event.title}</h3>
           <p className="text-sm text-text-secondary">Bắt đầu: {formatTime(event.startAt)}</p>
           {event.endAt && (
             <p className="text-sm text-text-secondary">Kết thúc: {formatTime(event.endAt)}</p>
           )}
           {event.location && (
-            <p className="text-sm text-text-secondary">Địa điểm: {event.location}</p>
+            <p className="break-words text-sm text-text-secondary">Địa điểm: {event.location}</p>
           )}
         </div>
         {canManage && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" fullWidth={false} onClick={() => setEditing(!editing)}>
               Sửa
             </Button>
@@ -313,7 +314,7 @@ function EventCard({ event, userId, admin }: { event: Event; userId?: string; ad
             register={editForm.register}
             errors={editForm.formState.errors}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit" fullWidth={false} loading={update.isPending}>
               Lưu
             </Button>
@@ -425,7 +426,7 @@ export default function EventsPage() {
   });
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 sm:px-4 sm:py-8">
       <header>
         <h1 className="text-page-title">Sự kiện gia đình</h1>
         <p className="mt-1 text-text-secondary">
@@ -434,9 +435,13 @@ export default function EventsPage() {
       </header>
       {(membership.isPending || me.isPending) && <p>Đang kiểm tra quyền thành viên...</p>}
       {(membership.isError || me.isError) && (
-        <p role="alert" className="text-error">
-          {errorText(membership.error || me.error)}
-        </p>
+        <div role="alert" className="space-y-2">
+          <p className="break-words text-error">{errorText(membership.error || me.error)}</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => {
+            void membership.refetch();
+            void me.refetch();
+          }}>Thử lại</Button>
+        </div>
       )}
       {!systemAdmin && membership.data && membership.data.status !== 'APPROVED' && (
         <p>Bạn cần được xác minh thành viên để xem sự kiện.</p>
@@ -455,7 +460,7 @@ export default function EventsPage() {
       {ready && (
         <>
           <form
-            className="space-y-3 rounded-xl border border-border bg-surface p-5"
+            className="space-y-3 rounded-xl border border-border bg-surface p-4 sm:p-5"
             noValidate
             onSubmit={createForm.handleSubmit((values) => create.mutate(values))}
           >
@@ -474,7 +479,7 @@ export default function EventsPage() {
               </p>
             )}
           </form>
-          <nav aria-label="Lọc sự kiện" className="flex border-b border-border">
+          <nav aria-label="Lọc sự kiện" className="flex flex-wrap border-b border-border">
             {(
               [
                 { value: 'UPCOMING', label: 'Sắp tới' },
@@ -503,9 +508,10 @@ export default function EventsPage() {
           <section className="space-y-4" aria-label="Danh sách sự kiện">
             {feed.isPending && <p>Đang tải sự kiện...</p>}
             {feed.isError && (
-              <p role="alert" className="text-error">
-                {errorText(feed.error)}
-              </p>
+              <div role="alert" className="space-y-2">
+                <p className="break-words text-error">{errorText(feed.error)}</p>
+                <Button variant="secondary" fullWidth={false} onClick={() => void feed.refetch()}>Thử lại</Button>
+              </div>
             )}
             {!feed.isPending && !feed.isError && items.length === 0 && (
               <p className="rounded-lg bg-surface p-5 text-text-secondary">Chưa có sự kiện.</p>

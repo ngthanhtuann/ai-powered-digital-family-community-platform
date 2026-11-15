@@ -130,7 +130,12 @@ function Comments({ postId, userId, canReport }: { postId: string; userId?: stri
     <section className="mt-4 border-t border-border pt-4" aria-label="Bình luận">
       <h3 className="mb-3 font-semibold">Bình luận</h3>
       {query.isPending && <p className="text-text-secondary">Đang tải bình luận...</p>}
-      {query.isError && <p role="alert" className="text-error">{errorText(query.error)}</p>}
+      {query.isError && (
+        <div role="alert" className="space-y-2">
+          <p className="break-words text-error">{errorText(query.error)}</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
+      )}
       <ul className="space-y-3">
         {comments.map((comment: Comment) => (
           <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
@@ -176,7 +181,8 @@ function Comments({ postId, userId, canReport }: { postId: string; userId?: stri
           {query.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm bình luận'}
         </button>
       )}
-      {!query.isPending && comments.length === 0 && <p className="text-text-secondary">Chưa có bình luận.</p>}
+      {!query.isPending && !query.isError && comments.length === 0 &&
+        <p className="text-text-secondary">Chưa có bình luận.</p>}
       <form className="mt-4 space-y-2" onSubmit={(event) => { event.preventDefault(); add.mutate(); }}>
         <label htmlFor={'comment-' + postId} className="block font-medium">Viết bình luận</label>
         <textarea id={'comment-' + postId} className={inputClass} maxLength={1000}
@@ -219,22 +225,24 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
     onSuccess: () => client.invalidateQueries({ queryKey: ['community-posts'] }),
   });
   return (
-    <article id={`post-${post.id}`} className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <article id={`post-${post.id}`} className="min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
-            {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
-          </span>
-          <span className="ml-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
-            title="Phạm vi người được xem bài">
-            {labelOf(post.branchId)}
-          </span>
-          <p className="mt-2 text-xs text-text-secondary">
+        <div className="min-w-0 max-w-full">
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
+              {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
+            </span>
+            <span className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
+              title="Phạm vi người được xem bài">
+              {labelOf(post.branchId)}
+            </span>
+          </div>
+          <p className="mt-2 break-words text-xs text-text-secondary">
             {post.authorName} · {dateText(post.createdAt)}
           </p>
         </div>
         {(post.createdBy === userId || post.canDelete || canReport) && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {canReport && post.createdBy !== userId && (
               <ReportButton target={{ targetType: 'POST', targetId: post.id, label: 'bài viết' }} />
             )}
@@ -412,16 +420,21 @@ export default function CommunityPage() {
     }
   }, [targetPostId, posts]);
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 sm:px-4 sm:py-8">
       <header>
         <h1 className="text-page-title">Bảng tin gia đình</h1>
         <p className="mt-1 text-text-secondary">Bài đăng và tin tức trong phạm vi gia đình của bạn.</p>
       </header>
       {(membership.isPending || me.isPending) && <p>Đang kiểm tra quyền thành viên...</p>}
-      {(membership.isError || me.isError) &&
-        <p role="alert" className="rounded-lg bg-surface p-4 text-error">
-          Chưa thể xác minh phiên đăng nhập: {errorText(membership.error || me.error)}
-        </p>}
+      {(membership.isError || me.isError) && (
+        <div role="alert" className="space-y-2 rounded-lg bg-surface p-4">
+          <p className="break-words text-error">Chưa thể xác minh phiên đăng nhập: {errorText(membership.error || me.error)}</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => {
+            void membership.refetch();
+            void me.refetch();
+          }}>Thử lại</Button>
+        </div>
+      )}
       {!systemAdmin && membership.data && membership.data.status !== 'APPROVED' &&
         <p className="rounded-lg bg-surface p-4">Bạn cần được xác minh thành viên trước khi xem bảng tin.</p>}
       {systemAdmin && (
@@ -435,7 +448,12 @@ export default function CommunityPage() {
             ))}
           </select>
           {families.isPending && <p className="mt-1 text-xs text-text-secondary">Đang tải danh sách gia đình...</p>}
-          {families.isError && <p role="alert" className="mt-1 text-error">{errorText(families.error)}</p>}
+          {families.isError && (
+            <div role="alert" className="mt-2 space-y-2">
+              <p className="break-words text-error">{errorText(families.error)}</p>
+              <Button variant="secondary" fullWidth={false} onClick={() => void families.refetch()}>Thử lại</Button>
+            </div>
+          )}
           {families.data?.length === 0 && <p className="mt-1 text-text-secondary">Chưa có gia đình nào.</p>}
         </div>
       )}
@@ -443,7 +461,7 @@ export default function CommunityPage() {
         <>
           <Announcements familyId={familyId} branchId={branchAdmin ? membership.data?.branchId ?? undefined : undefined}
             canManage={canNews} canReport={!systemAdmin} />
-          <nav aria-label="Lọc bài đăng" className="flex border-b border-border">
+          <nav aria-label="Lọc bài đăng" className="flex flex-wrap border-b border-border">
             {([{ key: 'ALL', label: 'Tất cả' }, { key: 'NEWS', label: 'Tin tức gia đình' }] as const)
               .map(({ key, label }) => (
                 <button key={key} type="button" aria-current={tab === key ? 'page' : undefined}
@@ -452,7 +470,7 @@ export default function CommunityPage() {
                   onClick={() => setTab(key)}>{label}</button>
               ))}
           </nav>
-          <form className="space-y-3 rounded-xl border border-border bg-surface p-5"
+          <form className="space-y-3 rounded-xl border border-border bg-surface p-4 sm:p-5"
             onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
             <h2 className="font-semibold">Tạo bài đăng</h2>
             <label htmlFor="post-kind" className="block text-sm">Loại bài</label>
@@ -473,9 +491,14 @@ export default function CommunityPage() {
             </select>
             <p id="post-scope-help" className="text-xs text-text-secondary">
               {branches.isPending ? 'Đang tải danh sách chi...'
-                : branches.isError ? 'Không tải được danh sách chi, bài sẽ hiển thị cho cả dòng họ.'
+                : branches.isError ? 'Không tải được danh sách chi. Vui lòng thử lại trước khi đăng bài.'
                   : scopeHint(scope, scopeLabel(scope))}
             </p>
+            {branches.isError && (
+              <div role="alert">
+                <Button variant="secondary" fullWidth={false} onClick={() => void branches.refetch()}>Thử tải danh sách chi</Button>
+              </div>
+            )}
             <label htmlFor="post-content" className="block text-sm">Nội dung</label>
             <textarea id="post-content" className={inputClass} rows={4} maxLength={5000} required
               placeholder="Chia sẻ cùng gia đình..." value={draft}
@@ -484,10 +507,10 @@ export default function CommunityPage() {
             <ImagePicker files={selectedImages} onChange={setSelectedImages}
               disabled={Boolean(pendingPostId) || create.isPending}
               progress={create.isPending && selectedImages.length > 0 ? uploadProgress : undefined} />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-text-secondary">{draft.length}/5000 ký tự</span>
               <Button type="submit" fullWidth={false} loading={create.isPending}
-                disabled={(!draft.trim() && !pendingPostId) || branches.isPending}>
+                disabled={(!draft.trim() && !pendingPostId) || branches.isPending || (branches.isError && !pendingPostId)}>
                 {create.isPending ? 'Đang đăng...' : pendingPostId ? 'Tải tiếp ảnh' : 'Đăng bài'}
               </Button>
             </div>
@@ -505,7 +528,12 @@ export default function CommunityPage() {
           </form>
           <section className="space-y-4" aria-label="Danh sách bài đăng">
             {feed.isPending && <p>Đang tải bảng tin...</p>}
-            {feed.isError && <p role="alert" className="text-error">{errorText(feed.error)}</p>}
+            {feed.isError && (
+              <div role="alert" className="space-y-2">
+                <p className="break-words text-error">{errorText(feed.error)}</p>
+                <Button variant="secondary" fullWidth={false} onClick={() => void feed.refetch()}>Thử lại</Button>
+              </div>
+            )}
             {!feed.isPending && !feed.isError && posts.length === 0 &&
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (

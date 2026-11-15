@@ -8,6 +8,7 @@ import { communityApi, type Media } from '@/services/community/posts';
 export function ProtectedImage({ media }: { media: Media }) {
   const [src, setSrc] = useState<string>();
   const [failed, setFailed] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -22,9 +23,14 @@ export function ProtectedImage({ media }: { media: Media }) {
       setSrc(currentUrl);
     }).catch(() => { if (active) setFailed(true); });
     return () => { active = false; if (currentUrl) URL.revokeObjectURL(currentUrl); };
-  }, [media.contentUrl]);
+  }, [media.contentUrl, retryAttempt]);
 
-  if (failed) return <p role="alert" className="text-sm text-error">Không tải được ảnh.</p>;
+  if (failed) return (
+    <div role="alert" className="space-y-1 text-sm text-error">
+      <p>Không tải được ảnh.</p>
+      <button type="button" className="min-h-11 underline" onClick={() => setRetryAttempt((attempt) => attempt + 1)}>Thử lại</button>
+    </div>
+  );
   if (!src) return <p className="text-sm text-text-secondary">Đang tải ảnh...</p>;
   // Blob được tải qua API có JWT; URL này chỉ tồn tại trong trình duyệt hiện tại.
   // eslint-disable-next-line @next/next/no-img-element
@@ -43,11 +49,19 @@ export function ProtectedPostImages({ postId, preview, total }: { postId: string
       (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
   });
   const images = expanded && query.data ? query.data.pages.flatMap((page) => page.items) : preview;
-  const hasMore = expanded ? query.hasNextPage : total > preview.length;
-  if (images.length === 0 && !hasMore) return null;
+  const hasMore = expanded ? Boolean(query.hasNextPage) : total > preview.length;
+  if (images.length === 0 && !hasMore && (!expanded || (!query.isPending && !query.isError))) return null;
   return (
     <section className="mt-3 space-y-2" aria-label="Ảnh của bài đăng">
-      {query.isError && <p role="alert" className="text-sm text-error">Không lấy được danh sách ảnh.</p>}
+      {expanded && query.isPending && <p className="text-sm text-text-secondary">Đang tải danh sách ảnh...</p>}
+      {query.isError && (
+        <div role="alert" className="space-y-2">
+          <p className="text-sm text-error">Không lấy được danh sách ảnh.</p>
+          <button type="button" className="min-h-11 text-sm underline" onClick={() => void query.refetch()}>
+            Thử lại
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {images.map((media) => <ProtectedImage key={media.id} media={media} />)}
       </div>
