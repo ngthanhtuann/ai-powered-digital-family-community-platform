@@ -67,10 +67,9 @@ public class RecommendationService {
                 ? genealogy.findMinorPersonIds(familyId, LocalDate.now(clock)) : List.of();
 
         String vector = repository.findVisibleSourceVector(familyId, allBranches, visible, minors, type, id);
-        if (vector == null) {
-            // Có trong chỉ mục nhưng ngoài phạm vi xem (gia đình/chi khác, hồ sơ trẻ em bị ẩn) → 403; không có → 404.
-            throw new ApiException(repository.countActiveBySource(type, id) > 0 ? ErrorCode.PERM_001 : ErrorCode.NOT_FOUND_001);
-        }
+        // Không có, chưa có chỉ mục hay ngoài phạm vi xem (gia đình/chi khác, trẻ em bị ẩn) đều 404: không lộ nguồn có tồn tại,
+        // và trang hồ sơ (xem được mọi chi) không bị thông báo PERM_001 khi khối gợi ý tự tải.
+        if (vector == null) throw new ApiException(ErrorCode.NOT_FOUND_001);
         String reason = "Nội dung gần với " + LABELS.get(type) + " đang xem.";
         return new RecommendationResponse(repository.recommendations(familyId, allBranches, visible, minors, type, id,
                         vector, limit).stream()

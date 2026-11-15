@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * GET /ai/recommendations (UC-AI-05) với PostgreSQL thật. Gợi ý dùng embedding đã lưu nên không được gọi Gemini.
- * Bao phủ: phạm vi gia đình/chi, ẩn trẻ dưới 16 tuổi với MEMBER, xếp hạng, nguồn ngoài quyền xem (403/404),
+ * Bao phủ: phạm vi gia đình/chi, ẩn trẻ dưới 16 tuổi với MEMBER, xếp hạng, nguồn ngoài quyền xem (404),
  * VALID_001, PERM_002, AUTH_002.
  */
 @SpringBootTest
@@ -145,13 +145,13 @@ class RecommendationApiIntegrationTest {
         assertThat(ids(recommend(owner, "POST", context))).contains(closest, farther, siblingPost, minor)
                 .doesNotContain(context, otherFamilyPost);
 
-        // Nguồn ngoài quyền xem: chi khác, trẻ em bị ẩn, gia đình khác → 403; không có trong chỉ mục → 404.
-        recommend(childMember, "POST", siblingPost).andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("PERM_001"));
-        recommend(childMember, "PERSON", minor).andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("PERM_001"));
-        recommend(childMember, "POST", otherFamilyPost).andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("PERM_001"));
+        // Nguồn ngoài quyền xem (chi khác, trẻ em bị ẩn, gia đình khác) và nguồn không có đều 404, không lộ sự tồn tại.
+        recommend(childMember, "POST", siblingPost).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND_001"));
+        recommend(childMember, "PERSON", minor).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND_001"));
+        recommend(childMember, "POST", otherFamilyPost).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND_001"));
         recommend(childMember, "POST", UUID.randomUUID()).andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND_001"));
 
