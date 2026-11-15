@@ -9,6 +9,7 @@ import { Button, Card, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
 import { genealogyApi, lifeSpan, type TreeData } from '../services/genealogy';
+import { heritageApi } from '../services/heritage';
 import { mergeGraph, relativesOf } from '../services/genealogy-tree';
 import { useSession } from '../session/SessionContext';
 import { colors, text } from '../theme';
@@ -30,6 +31,15 @@ export function PersonDetailScreen({
     // Chưa có hồ sơ nghề (404) hoặc không được xem, ví dụ trẻ dưới 16 tuổi với MEMBER (403): không hiện, không báo lỗi.
     queryFn: () =>
       genealogyApi.professionProfile(personId).catch((e: unknown) => {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+        throw e;
+      }),
+  });
+  const education = useQuery({
+    queryKey: ['education-profile', personId],
+    // Như hồ sơ nghề: chưa có (404) hoặc không được xem (403) thì không hiện (SCRUM-92).
+    queryFn: () =>
+      heritageApi.educationProfile(personId).catch((e: unknown) => {
         if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
         throw e;
       }),
@@ -70,6 +80,18 @@ export function PersonDetailScreen({
             .join(' · ')
         : null,
     ],
+    [
+      'Học vấn',
+      education.data
+        ? [
+            education.data.school,
+            education.data.degree,
+            education.data.graduationYear ? `tốt nghiệp ${education.data.graduationYear}` : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : null,
+    ],
   ];
 
   return (
@@ -95,9 +117,9 @@ export function PersonDetailScreen({
                 <Text style={[text.body, { color: colors.textPrimary, flex: 1 }]}>{value}</Text>
               </View>
             ))}
-          {profession.isLoading ? (
+          {profession.isLoading || education.isLoading ? (
             <Text style={[text.caption, { color: colors.textSecondary }]}>
-              Đang tải nghề nghiệp...
+              Đang tải nghề nghiệp, học vấn...
             </Text>
           ) : null}
         </View>
