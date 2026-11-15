@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import java.util.List;
 import java.util.Map;
 
@@ -16,10 +15,7 @@ public class SummaryLlm {
     public SummaryLlm(@Value("${gemini.api-key:}") String key,
                       @Value("${gemini.summary-model:gemini-2.0-flash}") String model) {
         this.key=key; this.model=model;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5000); factory.setReadTimeout(30000);
-        client=RestClient.builder().requestFactory(factory)
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta").build();
+        client = GeminiHttp.client(GeminiHttp.BASE_URL, 30000);
     }
     public String modelName() { return model; }
     public String summarize(String source) {

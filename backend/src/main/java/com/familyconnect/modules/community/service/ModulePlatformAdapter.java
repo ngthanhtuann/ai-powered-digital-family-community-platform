@@ -4,6 +4,7 @@ import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.CurrentUser;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.GenealogyPort;
@@ -15,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -133,23 +132,7 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
                 .<Runnable>map(post -> () -> aiGateway.upsertSource(AiGateway.SourceType.POST, post.id(),
                         post.familyId(), post.branchId(), post.content()))
                 .orElse(() -> aiGateway.removeSource(AiGateway.SourceType.POST, postId));
-        Runnable safe = () -> {
-            try {
-                action.run();
-            } catch (RuntimeException ex) {
-                log.warn("Không cập nhật được chỉ mục AI cho bài đăng {}", postId, ex);
-            }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safe.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                safe.run();
-            }
-        });
+        AfterCommit.runQuietly(action, ex -> log.warn("Không cập nhật được chỉ mục AI cho bài đăng {}", postId, ex));
     }
 
     private boolean within(UUID familyId, UUID branchId, UUID ancestorBranchId) {

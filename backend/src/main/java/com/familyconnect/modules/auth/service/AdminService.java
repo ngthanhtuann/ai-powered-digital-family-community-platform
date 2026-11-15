@@ -1,5 +1,6 @@
 package com.familyconnect.modules.auth.service;
 
+import com.familyconnect.common.util.LikePatterns;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
@@ -88,8 +89,7 @@ public class AdminService {
         if (keyword.length() > 100) {
             throw ApiException.invalidField("q", "Từ khóa tối đa 100 ký tự");
         }
-        String pattern = "%" + keyword.toLowerCase(Locale.ROOT)
-                .replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        String pattern = LikePatterns.contains(keyword.toLowerCase(Locale.ROOT));
         Page<User> found = userRepository.search(pattern, status == null, status == null ? UserStatus.ACTIVE : status,
                 role == null, role == null ? "" : role.name(), pageable);
         // shortcut: mỗi người một lần đọc vai trò và gia đình (tối đa 100/trang); gom theo lô nếu trang quản trị chậm.

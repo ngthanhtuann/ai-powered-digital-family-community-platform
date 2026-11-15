@@ -1,5 +1,6 @@
 package com.familyconnect.modules.genealogy.repository;
 
+import com.familyconnect.common.util.LikePatterns;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPage;
 import com.familyconnect.modules.genealogy.api.GenealogyQuery.DirectoryPerson;
 import jakarta.persistence.EntityManager;
@@ -89,8 +90,8 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
                                       Integer generation,
                                       LocalDate asOfDate, Set<UUID> personIds, boolean excludeChildren) {
         query.setParameter("familyId", familyId);
-        query.setParameter("keyword", containsPattern(keyword));
-        query.setParameter("location", containsPattern(location));
+        query.setParameter("keyword", LikePatterns.contains(keyword));
+        query.setParameter("location", LikePatterns.contains(location));
         query.setParameter("generation", generation);
         query.setParameter("asOfDate", asOfDate);
         query.setParameter("adultBirthYear", asOfDate.getYear() - 16);
@@ -100,8 +101,4 @@ public class DirectoryPersonSearchRepositoryImpl implements DirectoryPersonSearc
         }
     }
 
-    /** Mẫu LIKE "chứa" cho so không dấu (unaccent, V12) như tìm người dùng ở trang quản trị; %, _ gõ vào là ký tự thường. */
-    private static String containsPattern(String value) {
-        return value == null ? null : "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
-    }
 }
