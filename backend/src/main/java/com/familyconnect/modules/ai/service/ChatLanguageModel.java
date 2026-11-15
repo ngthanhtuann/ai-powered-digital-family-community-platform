@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import java.util.List;
 import java.util.Map;
 
@@ -18,11 +17,7 @@ public class ChatLanguageModel {
                              @Value("${gemini.chat-model:gemini-3.5-flash-lite}") String model,
                              @Value("${ai.chat.timeout_ms:30000}") int timeoutMs) {
         this.apiKey = apiKey; this.model = model;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Math.min(5000, timeoutMs));
-        factory.setReadTimeout(timeoutMs);
-        this.client = RestClient.builder().requestFactory(factory)
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta").build();
+        this.client = GeminiHttp.client(GeminiHttp.BASE_URL, timeoutMs);
     }
     public String modelName() { return model; }
     public boolean isConfigured() { return apiKey != null && !apiKey.isBlank(); }

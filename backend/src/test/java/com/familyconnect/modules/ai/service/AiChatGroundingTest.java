@@ -37,6 +37,11 @@ class AiChatGroundingTest {
     private GenealogyQuery genealogy;
     private ChatService service;
 
+    private AiScopeResolver scopes() {
+        return new AiScopeResolver(membership, genealogy, chunks,
+                Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC));
+    }
+
     @BeforeEach void setUp() {
         embeddings = mock(EmbeddingPipelineService.class); model = mock(ChatLanguageModel.class);
         chunks = mock(EmbeddingChunkRepository.class); chats = mock(ChatRepository.class);
@@ -57,7 +62,7 @@ class AiChatGroundingTest {
         when(chats.createSession(eq(userId), eq(familyId))).thenAnswer(call -> UUID.randomUUID());
         when(chats.recentMessages(any(), anyInt())).thenReturn(List.of());
         when(chats.saveExchange(any(), any(), anyString(), anyString(), anyList(), any(), anyLong())).thenReturn(UUID.randomUUID());
-        service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, audit,
+        service = new ChatService(embeddings, model, chunks, chats, scopes(), limiter, audit,
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), SystemConfigQuery.defaults(), 5, .55, 30, true);
     }
 
@@ -142,7 +147,7 @@ class AiChatGroundingTest {
 
     @Test void foreignSessionIsRejectedBeforeRateLimit() {
         AiChatRateLimiter limiter = mock(AiChatRateLimiter.class);
-        service = new ChatService(embeddings, model, chunks, chats, membership, genealogy, limiter, mock(AuditLogger.class),
+        service = new ChatService(embeddings, model, chunks, chats, scopes(), limiter, mock(AuditLogger.class),
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), SystemConfigQuery.defaults(), 5, .55, 30, true);
         UUID foreign = UUID.randomUUID();
         when(chats.ownsActiveSession(foreign, userId, familyId)).thenReturn(false);

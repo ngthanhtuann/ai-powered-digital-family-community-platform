@@ -40,8 +40,9 @@ class SemanticSearchServiceTest {
         membership = mock(MembershipQuery.class);
         rateLimiter = mock(AiSearchRateLimiter.class);
         genealogyQuery = mock(GenealogyQuery.class);
-        service = new SemanticSearchService(embedding, repository, membership, rateLimiter, genealogyQuery,
-                CLOCK, SystemConfigQuery.defaults(), 0.88, true);
+        service = new SemanticSearchService(embedding, repository,
+                new AiScopeResolver(membership, genealogyQuery, repository, CLOCK), rateLimiter,
+                SystemConfigQuery.defaults(), 0.88, true);
     }
 
     @Test

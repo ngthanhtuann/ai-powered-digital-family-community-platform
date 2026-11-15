@@ -83,18 +83,13 @@ public class EmbeddingChunkRepository {
         List<Object> args = new ArrayList<>();
         args.add(Arrays.toString(embedding));
         args.add(familyId);
-        String branchFilter = branchFilter(allBranches, visibleBranches, args);
-        args.add(jsonIds(excludedPersonIds));
+        String scope = visibleScope(allBranches, visibleBranches, excludedPersonIds, args);
         args.add(limit);
         return jdbcTemplate.query(QUERY_VECTOR + """
                 SELECT c.source_type, c.source_id, c.content, 1 - (c.embedding <=> q.v) AS score
                 FROM ai_embedding_chunk c CROSS JOIN q
                 WHERE c.family_id = ? AND c.deleted_at IS NULL
-                """ + branchFilter + """
-                  AND NOT (c.source_type = 'PERSON' AND EXISTS (
-                      SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
-                      WHERE hidden.id::uuid = c.source_id
-                  ))
+                """ + scope + """
                 ORDER BY c.embedding <=> q.v, c.source_type, c.source_id
                 LIMIT ?
                 """, (rs, rowNum) -> new ChatChunk(rs.getString("source_type"),
@@ -175,8 +170,7 @@ public class EmbeddingChunkRepository {
         List<Object> args = new ArrayList<>();
         args.add(Arrays.toString(embedding));
         args.add(familyId);
-        String branchFilter = branchFilter(allBranches, visibleBranches, args);
-        args.add(jsonIds(excludedPersonIds));
+        String scope = visibleScope(allBranches, visibleBranches, excludedPersonIds, args);
         args.add(minimumScore);
         args.add(size);
         args.add(page * size);
@@ -186,11 +180,7 @@ public class EmbeddingChunkRepository {
                            1 - (c.embedding <=> q.v) AS score
                     FROM ai_embedding_chunk c CROSS JOIN q
                     WHERE c.family_id = ? AND c.deleted_at IS NULL
-                """ + branchFilter + """
-                      AND NOT (c.source_type = 'PERSON' AND EXISTS (
-                          SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
-                          WHERE hidden.id::uuid = c.source_id
-                      ))
+                """ + scope + """
                 ), best_per_source AS (
                     SELECT DISTINCT ON (source_type, source_id) source_type, source_id, content, score
                     FROM ranked ORDER BY source_type, source_id, score DESC
@@ -218,17 +208,12 @@ public class EmbeddingChunkRepository {
         List<Object> args = new ArrayList<>();
         args.add(Arrays.toString(embedding));
         args.add(familyId);
-        String branchFilter = branchFilter(allBranches, visibleBranches, args);
-        args.add(jsonIds(excludedPersonIds));
+        String scope = visibleScope(allBranches, visibleBranches, excludedPersonIds, args);
         args.add(minimumScore);
         Long count = jdbcTemplate.queryForObject(QUERY_VECTOR + """
                 SELECT COUNT(DISTINCT (c.source_type, c.source_id)) FROM ai_embedding_chunk c CROSS JOIN q
                 WHERE c.family_id = ? AND c.deleted_at IS NULL
-                """ + branchFilter + """
-                  AND NOT (c.source_type = 'PERSON' AND EXISTS (
-                      SELECT 1 FROM jsonb_array_elements_text(CAST(? AS jsonb)) AS hidden(id)
-                      WHERE hidden.id::uuid = c.source_id
-                  ))
+                """ + scope + """
                   AND 1 - (c.embedding <=> q.v) >= ?
                 """, Long.class, args.toArray());
         return count == null ? 0 : count;

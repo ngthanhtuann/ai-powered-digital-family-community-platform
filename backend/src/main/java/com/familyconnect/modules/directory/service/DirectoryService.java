@@ -1,5 +1,6 @@
 package com.familyconnect.modules.directory.service;
 
+import com.familyconnect.common.util.LikePatterns;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
@@ -75,7 +76,7 @@ public class DirectoryService {
         String normalizedJob = blankToNull(job);
         String normalizedLocation = blankToNull(location);
         Set<UUID> matchingPeople = normalizedJob == null ? null
-                : professionRepository.findPersonIdsByJobTitle(familyId, containsPattern(normalizedJob)).stream().collect(Collectors.toSet());
+                : professionRepository.findPersonIdsByJobTitle(familyId, LikePatterns.contains(normalizedJob)).stream().collect(Collectors.toSet());
         boolean excludeChildren = membership.role() == EffectiveRole.MEMBER
                 && (normalizedJob != null || normalizedLocation != null);
         LocalDate today = LocalDate.now(clock);
@@ -230,10 +231,6 @@ public class DirectoryService {
         return membership.familyId();
     }
 
-    /** Nghề so "chứa", không dấu; %, _ gõ vào là ký tự thường (escape "!" như ProfessionProfileRepository). */
-    private static String containsPattern(String value) {
-        return "%" + value.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
-    }
 
     private void validateSearch(String keyword, String job, String location,
                                 Integer generation, int page, int size) {

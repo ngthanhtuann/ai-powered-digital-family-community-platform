@@ -1,5 +1,6 @@
 package com.familyconnect.modules.genealogy.service;
 
+import com.familyconnect.common.util.LikePatterns;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
@@ -75,8 +76,7 @@ public class PersonService implements PersonSearchIndex {
         Viewer viewer = access.requireRead(familyId);
         requireFamily(familyId);
         // Escape ký tự đặc biệt của LIKE để "%" hay "_" người dùng gõ được tìm đúng nghĩa đen.
-        String pattern = q == null || q.isBlank() ? null
-                : "%" + q.trim().replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        String pattern = q == null || q.isBlank() ? null : LikePatterns.contains(q.trim());
         Page<Person> found = personRepository.search(familyId, branchId, pattern,
                 Paging.of(page, size, sort, SORT_FIELDS));
         return ListResponse.of(found.map(p -> toData(p, viewer)).getContent(), page, size, found.getTotalElements());
