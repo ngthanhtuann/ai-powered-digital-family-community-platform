@@ -128,11 +128,12 @@ public class EmbeddingChunkRepository {
         args.add(contextType);
         args.add(contextId);
         args.add(limit);
+        // Vector parse một lần trong CTE; CAST(? AS vector) trong biểu thức bị parse lại cho từng dòng (SCRUM-59).
         return jdbcTemplate.query("""
-                WITH ranked AS (
+                WITH q AS MATERIALIZED (SELECT CAST(? AS vector) AS v), ranked AS (
                     SELECT c.source_type, c.source_id, c.content,
-                           1 - (c.embedding <=> CAST(? AS vector)) AS score
-                    FROM ai_embedding_chunk c
+                           1 - (c.embedding <=> q.v) AS score
+                    FROM ai_embedding_chunk c CROSS JOIN q
                     WHERE c.family_id = ? AND c.deleted_at IS NULL
                 """ + scope + """
                       AND NOT (c.source_type = ? AND c.source_id = ?)
