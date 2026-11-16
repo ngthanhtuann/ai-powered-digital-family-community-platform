@@ -6,12 +6,17 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface UserRoleRepository extends JpaRepository<UserRole, UUID> {
 
     /** Mã vai trò toàn hệ thống còn hiệu lực của người dùng, ví dụ [MEMBER, SYSTEM_ADMIN]. */
     @Query("select ur.role.code from UserRole ur where ur.userId = :userId and ur.deletedAt is null order by ur.role.code")
     List<String> findRoleCodes(UUID userId);
+
+    /** Như findRoleCodes nhưng cho nhiều người một lần: mỗi dòng là [userId, mã vai trò] (trang quản trị). */
+    @Query("select ur.userId, ur.role.code from UserRole ur where ur.userId in :userIds and ur.deletedAt is null order by ur.role.code")
+    List<Object[]> findRoleCodesByUserIds(Collection<UUID> userIds);
 
     List<UserRole> findByUserIdAndDeletedAtIsNull(UUID userId);
 

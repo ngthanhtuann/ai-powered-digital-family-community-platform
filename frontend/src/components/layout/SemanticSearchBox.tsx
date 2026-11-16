@@ -42,7 +42,7 @@ export function SemanticSearchBox({ systemAdmin = false }: { systemAdmin?: boole
         className="inline-flex min-h-11 items-center gap-2 rounded-control bg-secondary px-4 text-label text-text-primary hover:bg-gold-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
       >
         <Search aria-hidden="true" size={18} />
-        <span className="hidden sm:inline">Tìm</span>
+        <span className="hidden md:inline">Tìm</span>
       </button>
     </form>
   );

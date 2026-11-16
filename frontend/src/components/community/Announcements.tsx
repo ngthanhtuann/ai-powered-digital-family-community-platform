@@ -5,9 +5,10 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { Button } from '@/components/ui/Button';
 import { announcementsApi, type Announcement } from '@/services/community/announcements';
 import { communityApi } from '@/services/community/posts';
+import { formatDateTime } from '@/lib/datetime';
 
 const inputClass =
-  'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body';
+  'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body';
 
 function AnnouncementCard({
   item,
@@ -45,21 +46,21 @@ function AnnouncementCard({
     },
   });
   return (
-    <article className="space-y-2 rounded-card border border-border bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <article className="min-w-0 space-y-2 rounded-card border border-border bg-surface p-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {item.isPinned && (
           <span className="rounded-full bg-surface-muted px-2 py-1 text-caption font-semibold">
             📌 Đã ghim
           </span>
         )}
-        <h3 className="font-semibold">{item.title}</h3>
+        <h3 className="min-w-0 break-words font-semibold">{item.title}</h3>
       </div>
       <p className="whitespace-pre-wrap break-words">{item.content}</p>
       <p className="text-caption text-text-secondary">
-        {new Date(item.createdAt).toLocaleString('vi-VN')}
+        {formatDateTime(item.createdAt)}
       </p>
       {canManage && (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" fullWidth={false} onClick={() => setEditing(!editing)}>
             Sửa / ghim
           </Button>
@@ -99,8 +100,8 @@ function AnnouncementCard({
             onChange={(e) => setContent(e.target.value)}
             aria-label="Nội dung thông báo"
           />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" className="h-5 w-5" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
             Ghim đầu bảng tin
           </label>
           <Button
@@ -116,7 +117,7 @@ function AnnouncementCard({
       {canReport && (
         <button
           type="button"
-          className="min-h-9 text-body underline"
+          className="min-h-11 text-body underline"
           onClick={() => setReporting(!reporting)}
         >
           Báo cáo
@@ -231,8 +232,8 @@ export function Announcements({
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" className="h-5 w-5" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
             Ghim ở đầu bảng tin
           </label>
           <Button
@@ -252,9 +253,10 @@ export function Announcements({
       )}
       {query.isPending && <p>Đang tải thông báo...</p>}
       {query.isError && (
-        <p role="alert" className="text-error">
-          Không tải được thông báo.
-        </p>
+        <div role="alert" className="space-y-2">
+          <p className="text-error">Không tải được thông báo.</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
       )}
       {items.map((item) => (
         <AnnouncementCard key={item.id} item={item} canManage={canManage} canReport={canReport} />

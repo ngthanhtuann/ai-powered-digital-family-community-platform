@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface PersonRepository extends JpaRepository<Person, UUID>, DirectoryPersonSearchRepository {
 
@@ -21,6 +22,8 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
 
     /** Cả gia đình trong một truy vấn; dùng khi tính quan hệ cho nhiều người (xuất CSV, UC-DSH-02). */
     List<Person> findAllByFamilyIdAndDeletedAtIsNull(UUID familyId);
+
+    List<Person> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 
     /** Cùng quy tắc isChild của PersonService: người còn sống luôn có birth_date (BR-GEN-17). */
     @Query(value = """
@@ -38,15 +41,19 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
             """, nativeQuery = true)
     boolean isActiveParentOf(@Param("parentId") UUID parentId, @Param("childId") UUID childId);
 
-    /** Tìm theo họ tên (không phân biệt hoa thường) và lọc chi; tham số null thì bỏ qua điều kiện đó. */
+    /**
+     * Tìm theo họ tên không phân biệt hoa thường và không dấu (unaccent, V12; như Danh bạ), lọc chi; tham số null
+     * thì bỏ qua điều kiện đó. pattern là mẫu LIKE đã escape bằng "!" (SCRUM-102).
+     */
     @Query("""
             select p from Person p
             where p.familyId = :familyId and p.deletedAt is null
               and (:branchId is null or p.branchId = :branchId)
-              and (:q is null or lower(p.fullName) like lower(concat('%', cast(:q as string), '%')))
+              and (:pattern is null or lower(function('unaccent', p.fullName))
+                   like lower(function('unaccent', cast(:pattern as string))) escape '!')
             """)
     Page<Person> search(@Param("familyId") UUID familyId, @Param("branchId") UUID branchId,
-                        @Param("q") String q, Pageable pageable);
+                        @Param("pattern") String pattern, Pageable pageable);
 
     long countByFamilyIdAndDeletedAtIsNull(UUID familyId);
 

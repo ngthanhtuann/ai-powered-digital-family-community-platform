@@ -161,7 +161,7 @@ export default function OutstandingMembersPage() {
       {access.isReady && (!access.isSystemAdmin || Boolean(familyId)) && (
         <>
           {access.isAdmin && (
-            <form onSubmit={createMember} className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 sm:grid-cols-2">
+            <form onSubmit={createMember} className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-label">
                 Thành viên
                 <select
@@ -218,7 +218,7 @@ export default function OutstandingMembersPage() {
                 {members.data.items.map((member) => (
                   <li key={member.id} className="rounded-card border border-border bg-surface p-5 shadow-card">
                     {editing?.id === member.id ? (
-                      <form onSubmit={saveEdit} className="grid gap-4 sm:grid-cols-2">
+                      <form onSubmit={saveEdit} className="grid gap-4 md:grid-cols-2">
                         <TextField
                           label="Thành tích"
                           maxLength={500}
@@ -244,7 +244,7 @@ export default function OutstandingMembersPage() {
                         </div>
                       </form>
                     ) : (
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                         <div>
                           <h2 className="text-section-title">{member.fullName}</h2>
                           <p className="mt-1 whitespace-pre-wrap text-body">{member.achievement}</p>

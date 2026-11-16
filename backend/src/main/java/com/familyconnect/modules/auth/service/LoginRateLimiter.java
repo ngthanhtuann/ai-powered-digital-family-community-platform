@@ -3,6 +3,8 @@ package com.familyconnect.modules.auth.service;
 import com.familyconnect.common.exception.ApiException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.familyconnect.common.ha.SharedRateLimitStore;
 
 import java.time.Clock;
 import java.util.Map;
@@ -10,8 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Giới hạn đăng nhập N lần mỗi phút theo cặp (IP, email) (BR-AUTH-04, conventions.md mục 7.1).
- * Cửa sổ cố định 60 giây, lưu trong bộ nhớ của từng bản backend: chạy 2 bản sau Nginx thì giới hạn
- * thực tế gấp đôi (đã ghi ở BR-AUTH-04).
+ * Cửa sổ cố định 60 giây. Chạy 1 bản: đếm trong bộ nhớ. Chạy 2 bản sau Nginx ({@code app.ha.shared-rate-limits=true},
+ * SCRUM-96): đếm chung qua {@link SharedRateLimitStore} nên giới hạn không bị gấp đôi.
  */
 @Component
 public class LoginRateLimiter {
@@ -22,6 +24,10 @@ public class LoginRateLimiter {
     private final int limit;
     private final Clock clock;
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    @Autowired
+    private SharedRateLimitStore sharedStore;
+    @Value("${app.ha.shared-rate-limits:false}")
+    private boolean sharedRateLimits;
 
     public LoginRateLimiter(@Value("${app.auth.login-rate-limit-per-minute:5}") int limit, Clock clock) {
         this.limit = limit;
@@ -30,6 +36,10 @@ public class LoginRateLimiter {
 
     /** Ghi nhận một lần thử; ném 429 RATE_001 kèm Retry-After nếu vượt giới hạn. */
     public void check(String ip, String email) {
+        if (sharedRateLimits) {
+            sharedStore.checkFixed("LOGIN", ip + "|" + email, limit, WINDOW_SECONDS);
+            return;
+        }
         long now = clock.instant().getEpochSecond();
         if (windows.size() > CLEANUP_THRESHOLD) {
             windows.values().removeIf(w -> now - w.start >= WINDOW_SECONDS);

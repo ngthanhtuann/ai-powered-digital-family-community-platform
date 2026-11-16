@@ -2,6 +2,7 @@ package com.familyconnect.modules.community.repository;
 
 import com.familyconnect.modules.community.dto.CommunityDto.PostType;
 import com.familyconnect.modules.community.dto.CommunityDto.ReactionType;
+import com.familyconnect.modules.community.repository.CommunityStore.WeeklyActivityCount;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -89,6 +90,44 @@ public class JdbcCommunityStore implements CommunityStore {
                 "COUNT(*) AS post_count FROM post" + where +
                 " GROUP BY week_start ORDER BY week_start",args,
                 (rs,n) -> new WeeklyPostCount(rs.getObject("week_start",LocalDate.class),rs.getLong("post_count")));
+    }
+    @Override public List<WeeklyActivityCount> countWeeklyActivity(UUID familyId, boolean allBranches,
+                                                                    List<UUID> branchIds,
+                                                                    OffsetDateTime fromInclusive,
+                                                                    OffsetDateTime toExclusive) {
+        if (!allBranches && branchIds.isEmpty()) return List.of();
+        var args = p("family",familyId,"from",fromInclusive,"to",toExclusive);
+        String scope = "family_id=:family AND deleted_at IS NULL AND hidden_at IS NULL";
+        if (!allBranches) {
+            scope += " AND (branch_id IS NULL OR branch_id IN (:branchIds))";
+            args.addValue("branchIds",branchIds);
+        }
+        String postScope = "p.family_id=:family AND p.deleted_at IS NULL AND p.hidden_at IS NULL";
+        if (!allBranches) {
+            postScope += " AND (p.branch_id IS NULL OR p.branch_id IN (:branchIds))";
+        }
+        String activity = """
+                SELECT date_trunc('week', created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date AS week_start,
+                       1 AS posts, 0 AS comments, 0 AS reactions
+                FROM post WHERE %s AND created_at >= :from AND created_at < :to
+                UNION ALL
+                SELECT date_trunc('week', c.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+                       0, 1, 0
+                FROM comment c JOIN post p ON p.id=c.post_id
+                WHERE %s AND c.deleted_at IS NULL AND c.hidden_at IS NULL
+                  AND c.created_at >= :from AND c.created_at < :to
+                UNION ALL
+                SELECT date_trunc('week', r.created_at AT TIME ZONE 'Asia/Ho_Chi_Minh')::date,
+                       0, 0, 1
+                FROM reaction r JOIN post p ON p.id=r.post_id
+                WHERE %s AND r.deleted_at IS NULL
+                  AND r.created_at >= :from AND r.created_at < :to
+                """.formatted(scope, postScope, postScope);
+        return jdbc.query("SELECT week_start, SUM(posts) AS post_count, SUM(comments) AS comment_count, " +
+                        "SUM(reactions) AS reaction_count FROM (" + activity +
+                        ") activity GROUP BY week_start ORDER BY week_start", args,
+                (rs,n) -> new WeeklyActivityCount(rs.getObject("week_start",LocalDate.class),
+                        rs.getLong("post_count"),rs.getLong("comment_count"),rs.getLong("reaction_count")));
     }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
                                        UUID branch, PostType type, int page, int size, String order) {

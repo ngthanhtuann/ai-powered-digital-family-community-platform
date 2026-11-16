@@ -27,6 +27,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BinaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Tư cách thành viên gia đình dựa trên member_verification (auth.md mục 4.1, 6.3; BR-AUTH-08, 11, 12).
@@ -219,12 +224,57 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
                 .orElseGet(MembershipData::none);
     }
 
+    /**
+     * Như {@link #describe} cho cả một trang người dùng (danh sách quản trị): đọc bản xác minh của cả trang trong
+     * hai truy vấn, tên gia đình và chi mỗi giá trị đọc một lần, thay vì tới 5 truy vấn cho từng người.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, MembershipData> describeAll(Map<UUID, List<String>> rolesByUser) {
+        List<UUID> members = rolesByUser.entrySet().stream()
+                .filter(e -> !e.getValue().contains(Role.SYSTEM_ADMIN)).map(Map.Entry::getKey).toList();
+        Map<UUID, MemberVerification> active = members.isEmpty() ? Map.of()
+                : verificationRepository.findByUserIdInAndStatusIn(members, ACTIVE_STATUSES).stream()
+                        .collect(Collectors.toMap(MemberVerification::getUserId, mv -> mv, (a, b) -> a));
+        List<UUID> others = members.stream().filter(id -> !active.containsKey(id)).toList();
+        Map<UUID, MemberVerification> rejected = others.isEmpty() ? Map.of()
+                : verificationRepository.findByUserIdInAndStatusAndDeletedAtIsNull(others, VerificationStatus.REJECTED)
+                        .stream().collect(Collectors.toMap(MemberVerification::getUserId, mv -> mv,
+                                BinaryOperator.maxBy(Comparator.comparing(MemberVerification::getUpdatedAt,
+                                        Comparator.nullsFirst(Comparator.naturalOrder())))));
+        Map<UUID, Optional<String>> familyNames = new HashMap<>();
+        Map<List<UUID>, Optional<String>> branchNames = new HashMap<>();
+        Map<UUID, MembershipData> result = new HashMap<>();
+        for (UUID userId : rolesByUser.keySet()) {
+            MemberVerification mv = active.get(userId);
+            MembershipData data;
+            if (mv != null) {
+                boolean pending = mv.getStatus() == VerificationStatus.PENDING;
+                data = toData(mv, pending ? MembershipStatus.PENDING : MembershipStatus.APPROVED,
+                        pending ? mv.getId() : null, null, pending, familyNames, branchNames);
+            } else if ((mv = rejected.get(userId)) != null) {
+                data = toData(mv, MembershipStatus.REJECTED, null, mv.getRejectReason(), true, familyNames, branchNames);
+            } else {
+                data = MembershipData.none();
+            }
+            result.put(userId, data);
+        }
+        return result;
+    }
+
     private MembershipData toData(MemberVerification mv, MembershipStatus status, UUID joinRequestId,
                                   String rejectReason, boolean canCreateFamily) {
+        return toData(mv, status, joinRequestId, rejectReason, canCreateFamily, new HashMap<>(), new HashMap<>());
+    }
+
+    private MembershipData toData(MemberVerification mv, MembershipStatus status, UUID joinRequestId,
+                                  String rejectReason, boolean canCreateFamily,
+                                  Map<UUID, Optional<String>> familyNames, Map<List<UUID>, Optional<String>> branchNames) {
         GenealogyPort port = genealogyPort.getIfAvailable();
-        String familyName = port == null ? null : port.findFamilyName(mv.getFamilyId()).orElse(null);
-        String branchName = (port == null || mv.getBranchId() == null)
-                ? null : port.findBranchName(mv.getFamilyId(), mv.getBranchId()).orElse(null);
+        String familyName = port == null ? null
+                : familyNames.computeIfAbsent(mv.getFamilyId(), port::findFamilyName).orElse(null);
+        String branchName = (port == null || mv.getBranchId() == null) ? null
+                : branchNames.computeIfAbsent(List.of(mv.getFamilyId(), mv.getBranchId()),
+                        key -> port.findBranchName(key.get(0), key.get(1))).orElse(null);
         return new MembershipData(status, mv.getRole(), mv.getFamilyId(), familyName, mv.getBranchId(),
                 branchName, joinRequestId, rejectReason, canCreateFamily);
     }

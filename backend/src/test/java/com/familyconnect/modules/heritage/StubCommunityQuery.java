@@ -41,4 +41,12 @@ public final class StubCommunityQuery implements CommunityQuery {
                                                      OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
         return List.of();
     }
+
+    @Override
+    public List<WeeklyActivityCount> getWeeklyActivityCounts(UUID familyId, boolean allBranches,
+                                                              List<UUID> branchIds,
+                                                              OffsetDateTime fromInclusive,
+                                                              OffsetDateTime toExclusive) {
+        return List.of();
+    }
 }

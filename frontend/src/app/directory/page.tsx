@@ -70,8 +70,8 @@ export default function DirectoryPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
-      <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 md:px-6">
+      <header className="flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-caption text-text-secondary">Cộng đồng gia đình</p>
           <h1 className="mt-1 text-page-title">Danh bạ thành viên</h1>
@@ -112,7 +112,7 @@ export default function DirectoryPage() {
         <>
           <form
             onSubmit={applyFilters}
-            className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 sm:grid-cols-2 lg:grid-cols-5"
+            className="mt-6 grid gap-4 rounded-card border border-border bg-surface p-5 md:grid-cols-2 lg:grid-cols-5"
           >
             <TextField
               label="Từ khóa tên thành viên"
@@ -167,7 +167,7 @@ export default function DirectoryPage() {
             <p className="mt-6 text-body text-text-secondary">Đang tải danh bạ...</p>
           ) : members.data?.items.length ? (
             <>
-              <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+              <ul className="mt-6 grid gap-3 md:grid-cols-2">
                 {members.data.items.map((member) => (
                   <li key={member.id}>
                     <Link

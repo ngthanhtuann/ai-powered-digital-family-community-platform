@@ -27,6 +27,7 @@ function SearchResults() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
+      <h1 className="sr-only">Tìm kiếm</h1>
       <Card
         title="Tìm kiếm ngữ nghĩa"
         description={

@@ -2,6 +2,7 @@ package com.familyconnect.modules.community.media;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,6 +65,24 @@ class MediaStorageTest {
         ApiException oversized = assertThrows(ApiException.class,
             () -> storage.store(file("history.pdf", huge), true));
         assertEquals(ErrorCode.FILE_001, oversized.code());
+    }
+
+    /** SCRUM-94: định dạng và dung lượng ảnh lấy từ cấu hình hệ thống, PDF Heritage không bị ảnh hưởng. */
+    @Test void imageRulesFollowSystemConfig() throws IOException {
+        Map<String, String> values = Map.of(SystemConfigQuery.UPLOAD_ALLOWED_IMAGE_TYPES, "jpg,webp",
+                SystemConfigQuery.UPLOAD_MAX_IMAGE_MB, "1");
+        MediaStorage storage = new MediaStorage(directory.toString(), values::get);
+        ApiException notAllowed = assertThrows(ApiException.class,
+            () -> storage.store(file("anh.png", png(256)), false));
+        assertEquals(ErrorCode.FILE_002, notAllowed.code());
+
+        MediaStorage pngOneMb = new MediaStorage(directory.toString(), key -> Map.of(
+                SystemConfigQuery.UPLOAD_ALLOWED_IMAGE_TYPES, "png", SystemConfigQuery.UPLOAD_MAX_IMAGE_MB, "1").get(key));
+        assertDoesNotThrow(() -> pngOneMb.store(file("vua.png", png(1024 * 1024)), false));
+        ApiException tooLarge = assertThrows(ApiException.class,
+            () -> pngOneMb.store(file("lon.png", png(1024 * 1024 + 1)), false));
+        assertEquals(ErrorCode.FILE_001, tooLarge.code());
+        assertEquals("application/pdf", pngOneMb.store(file("history.pdf", "%PDF-1.4".getBytes()), true).mimeType());
     }
 
     @Test void extensionMustMatchMagicBytes() throws IOException {

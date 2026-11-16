@@ -2,11 +2,13 @@ package com.familyconnect.modules.community.media;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.ai.api.AiGateway.SourceType;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhoto;
 import com.familyconnect.modules.community.api.CommunityQuery.HeritagePhotoPage;
+import com.familyconnect.modules.community.api.CommunityQuery.WeeklyActivityCount;
 import com.familyconnect.modules.community.api.CommunityQuery.WeeklyPostCount;
 import com.familyconnect.modules.community.api.MediaOwnerPolicy;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
@@ -18,8 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -73,6 +73,18 @@ public class MediaService implements CommunityQuery {
                                                       OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
         return posts.countPostsByWeek(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
                 .map(item -> new WeeklyPostCount(item.weekStart(), item.postCount()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WeeklyActivityCount> getWeeklyActivityCounts(UUID familyId, boolean allBranches,
+                                                              List<UUID> branchIds,
+                                                              OffsetDateTime fromInclusive,
+                                                              OffsetDateTime toExclusive) {
+        return posts.countWeeklyActivity(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(item -> new WeeklyActivityCount(item.weekStart(), item.postCount(),
+                        item.commentCount(), item.reactionCount()))
                 .toList();
     }
 
@@ -265,22 +277,6 @@ public class MediaService implements CommunityQuery {
     }
 
     private static void afterCommit(Runnable action) {
-        Runnable safeAction = () -> {
-            try {
-                action.run();
-            } catch (RuntimeException ex) {
-                log.warn("Không cập nhật được chỉ mục AI cho ảnh di sản", ex);
-            }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            safeAction.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                safeAction.run();
-            }
-        });
+        AfterCommit.runQuietly(action, ex -> log.warn("Không cập nhật được chỉ mục AI cho ảnh di sản", ex));
     }
 }

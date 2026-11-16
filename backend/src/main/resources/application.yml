@@ -31,6 +31,8 @@ spring:
 
 server:
   port: 8080
+  # Chỉ dùng header do Nginx tin cậy tạo (Nginx ghi đè X-Forwarded-For).
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:none}
 
 app:
   cors:
@@ -38,9 +40,17 @@ app:
   jwt:
     # Bắt buộc đặt bằng biến môi trường, tối thiểu 32 ký tự (conventions.md mục 7.2). Không ghi giá trị vào Git.
     secret: ${JWT_SECRET:}
-    # Thời hạn mặc định (auth.md mục 4.2). SCRUM-94 sẽ đọc từ system_config.
+    # Thời hạn mặc định (auth.md mục 4.2). Token cấp khi đăng nhập, làm mới dùng giá trị trong system_config
+    # (auth.access_token_minutes, auth.refresh_token_days; SCRUM-94); hai dòng dưới chỉ là dự phòng của JwtService.
     access-token-minutes: 15
     refresh-token-days: 7
+  ha:
+    # Chế độ HA là opt-in: Compose mặc định (một backend) không đổi.
+    shared-rate-limits: ${HA_SHARED_RATE_LIMITS:false}
+    local-cache-enabled: ${HA_LOCAL_CACHE_ENABLED:true}
+  events:
+    # Trong HA chỉ backend-primary chạy lịch; bản secondary vẫn xử lý API.
+    reminder-enabled: ${HA_REMINDERS_ENABLED:true}
   auth:
     # Giới hạn đăng nhập theo IP và email (conventions.md mục 7.1).
     login-rate-limit-per-minute: 5
@@ -74,13 +84,18 @@ springdoc:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   embedding-model: gemini-embedding-001
-  chat-model: ${GEMINI_CHAT_MODEL:gemini-2.5-flash}
+  chat-model: ${GEMINI_CHAT_MODEL:gemini-3.5-flash-lite}
+  # Model tóm tắt (UC-AI-04); gemini-2.0-flash đã bị Google ngừng (404), dùng cùng model với chat.
+  summary-model: ${GEMINI_SUMMARY_MODEL:gemini-3.5-flash-lite}
 
 ai:
+  embedding:
+    # Thời gian chờ mỗi lời gọi Gemini Embedding (BR-AI-11); quá hạn thì API trả 503 AI_001.
+    timeout_ms: ${AI_EMBEDDING_TIMEOUT_MS:30000}
   chat:
-    limit_per_hour: ${AI_CHAT_LIMIT_PER_HOUR:20}
-    top_k: 5
-    minimum_score: 0.55
+    # Giới hạn câu hỏi mỗi giờ đọc từ system_config (ai.chat.limit_per_hour, đổi ở trang Cấu hình hệ thống; SCRUM-94).
+    top_k: ${AI_CHAT_TOP_K:10}
+    minimum_score: ${AI_CHAT_MINIMUM_SCORE:0.50}
     retention_days: 30
     timeout_ms: ${AI_CHAT_TIMEOUT_MS:30000}
     enabled: ${AI_CHAT_ENABLED:true}

@@ -2,8 +2,8 @@
 
 import '@xyflow/react/dist/style.css';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Background, Controls, MiniMap, ReactFlow, useReactFlow, type Edge } from '@xyflow/react';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
@@ -104,6 +104,22 @@ export default function FamilyTreePage() {
     setFocusRoots((roots) => (roots.some((r) => r.rootId === rootId && r.depth >= depth) ? roots : [...roots, { rootId, depth }]));
   }, [graph.nodes]);
 
+  // Mở từ trang Tra cứu xưng hô (?a=&b=): tra cặp đó một lần khi cây đầu đã tải, rồi tô sáng như tra trong panel.
+  const search = useSearchParams();
+  const linkA = search.get('a');
+  const linkB = search.get('b');
+  const linked = useQuery({
+    queryKey: ['relationship', linkA, linkB],
+    queryFn: () => genealogyApi.relationship(linkA ?? '', linkB ?? ''),
+    enabled: Boolean(linkA && linkB && first.data),
+  });
+  const linkApplied = useRef(false);
+  useEffect(() => {
+    if (!linked.data || linkApplied.current) return;
+    linkApplied.current = true;
+    onRelation(linked.data);
+  }, [linked.data, onRelation]);
+
   const onSelect = useCallback((id: string) => {
     setSelected(id);
     setRelation(null);
@@ -161,7 +177,7 @@ export default function FamilyTreePage() {
     ?? ([...branches, ...focus].find((b) => b.error)?.error as Error | undefined)?.message;
 
   return (
-    <main className="space-y-4 px-4 py-6 sm:px-6">
+    <main className="space-y-4 px-4 py-6 md:px-6">
       <header>
         <h1 className="text-page-title">Cây gia phả</h1>
         <p className="mt-1 text-body text-text-secondary">
@@ -185,11 +201,13 @@ export default function FamilyTreePage() {
               nodesDraggable={false}
               nodesConnectable={false}
               fitView
+              // Không thu nhỏ quá 0,4 khi mở: cây lớn trên điện thoại vẫn đọc được tên, kéo để xem phần còn lại.
+              fitViewOptions={{ minZoom: 0.4 }}
               minZoom={0.1}
               maxZoom={1.5}
               proOptions={{ hideAttribution: true }}
             >
-              <Controls showInteractive={false} />
+              <Controls showInteractive={false} className="[&_button]:!h-11 [&_button]:!w-11" />
               <MiniMap pannable zoomable nodeClassName="fill-border-strong" ariaLabel="Bản đồ thu nhỏ của cây" />
               <Background gap={16} />
               <FitToPath ids={relation?.path?.map((step) => step.id).filter((id) => flow.nodes.some((n) => n.id === id)).join(',') ?? ''} />

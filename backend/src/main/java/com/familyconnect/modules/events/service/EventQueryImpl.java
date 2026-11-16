@@ -26,4 +26,13 @@ public class EventQueryImpl implements EventQuery {
                 .map(event -> new UpcomingEvent(event.id(), event.title(), event.startAt()))
                 .toList();
     }
+
+    @Override
+    public List<ReportEvent> getReportEvents(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                             OffsetDateTime fromInclusive, OffsetDateTime toExclusive) {
+        return eventStore.reportEvents(familyId, allBranches, branchIds, fromInclusive, toExclusive).stream()
+                .map(event -> new ReportEvent(event.id(), event.title(), event.startAt(),
+                        event.going(), event.notGoing(), event.maybe(), event.attended(), event.goingAttended()))
+                .toList();
+    }
 }

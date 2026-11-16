@@ -86,10 +86,15 @@ public class EventService {
     private EventView view(Event event, Actor actor) { return views(List.of(event),actor).get(0); }
 
     private List<ParticipantView> participants(List<Participant> items) {
+        return participants(items, true);
+    }
+
+    private List<ParticipantView> participants(List<Participant> items, boolean includeAttendance) {
         if (items.isEmpty()) return List.of();
         Map<UUID,String> names = access.names(items.stream().map(Participant::userId).collect(Collectors.toSet()));
         return items.stream().map(p -> new ParticipantView(p.id(),p.createdAt(),p.updatedAt(),
-            p.eventId(),p.userId(),p.status(),names.getOrDefault(p.userId(),"Thành viên đã rời hệ thống"))).toList();
+            p.eventId(),p.userId(),p.status(),names.getOrDefault(p.userId(),"Thành viên đã rời hệ thống"),
+            includeAttendance ? p.attendedAt() : null)).toList();
     }
 
     @Transactional
@@ -168,6 +173,22 @@ public class EventService {
         return participants(List.of(saved)).get(0);
     }
 
+    @Transactional
+    public ParticipantView updateAttendance(UUID eventId, UUID participantId, AttendanceRequest input) {
+        Actor actor = access.actor();
+        Event event = readable(actor,eventId);
+        access.requireAttendanceManager(actor,event);
+        if (input == null || input.attended() == null) {
+            throw ApiException.invalidField("attended", "Thiếu trạng thái điểm danh");
+        }
+        Participant participant = store.findParticipant(participantId)
+            .filter(found -> found.eventId().equals(eventId))
+            .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
+        Participant updated = store.updateAttendance(participantId,input.attended(),actor.id());
+        access.attendanceRecorded(event,participant,input.attended());
+        return participants(List.of(updated)).get(0);
+    }
+
     @Transactional(readOnly=true)
     public PageSuccess<ParticipantView> participants(UUID eventId, RsvpStatus status,
                                                      int page, int size, String ordering) {
@@ -175,7 +196,9 @@ public class EventService {
         readable(actor,eventId);
         pagination(page,size);
         var found = store.participants(eventId,status,page,size,sort(ordering,true));
-        return PageSuccess.of(participants(found.items()),page,size,found.total());
+        boolean includeAttendance = actor.role() == EffectiveRole.BRANCH_ADMIN
+                || actor.role() == EffectiveRole.SYSTEM_ADMIN;
+        return PageSuccess.of(participants(found.items(),includeAttendance),page,size,found.total());
     }
 
     @Transactional

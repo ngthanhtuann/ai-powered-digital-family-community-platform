@@ -92,7 +92,7 @@ export default function MembersPage() {
   const error = (access.membership.error as Error | undefined)?.message ?? (list.error as Error | undefined)?.message;
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+    <main className="mx-auto min-h-screen max-w-4xl space-y-6 px-4 py-8 md:px-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-page-title">Thành viên</h1>

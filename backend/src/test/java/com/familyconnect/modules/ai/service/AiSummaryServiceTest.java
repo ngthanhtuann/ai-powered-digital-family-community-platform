@@ -1,5 +1,6 @@
 package com.familyconnect.modules.ai.service;
 
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.common.security.AuthenticatedUser;
@@ -37,7 +38,7 @@ class AiSummaryServiceTest {
         when(llm.modelName()).thenReturn("model-gia");
         when(cache.find(any(), anyString(), any(), anyString())).thenReturn(Optional.empty());
         service = new AiSummaryService(List.of(stories), cache, new ContentHashService(), llm,
-                new SummaryRateLimiter(20, Clock.systemUTC()), true, 30000);
+                new SummaryRateLimiter(20, Clock.systemUTC()), SystemConfigQuery.defaults(), true, 30000);
     }
 
     @Test

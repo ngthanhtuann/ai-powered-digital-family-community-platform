@@ -55,7 +55,7 @@ export default function DirectoryMemberPage() {
     (education.error as ApiError | undefined)?.message;
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 sm:px-6">
+    <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 md:px-6">
       <Link href="/directory" className="text-caption text-info underline">
         Quay lại danh bạ
       </Link>

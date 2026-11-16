@@ -269,7 +269,7 @@ paths:
         - $ref: '#/components/parameters/page'
         - $ref: '#/components/parameters/size'
         - $ref: '#/components/parameters/sort'
-        - { name: q, in: query, description: Tìm theo họ tên, schema: { type: string } }
+        - { name: q, in: query, description: 'Tìm theo một phần họ tên, không phân biệt hoa thường và không dấu (gõ "to" khớp "Tổ")', schema: { type: string } }
         - { name: branchId, in: query, description: Lọc theo chi họ, schema: { type: string, format: uuid } }
       responses:
         '200':

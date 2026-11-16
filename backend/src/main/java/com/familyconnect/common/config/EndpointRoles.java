@@ -71,6 +71,7 @@ public class EndpointRoles {
             Map.entry("PUT /events/{}/rsvp", SIGNED_IN),
             Map.entry("GET /events/{}/participants", SIGNED_IN),
             Map.entry("POST /events/{}/participants", SIGNED_IN),
+            Map.entry("PUT /events/{}/participants/{}/attendance", ADMINS),
             Map.entry("DELETE /participants/{}", SIGNED_IN),
             // Cộng đồng, tệp (community-events.yaml). Đăng NEWS chỉ trưởng chi: kiểm ở service.
             Map.entry("GET /posts", SIGNED_IN),
@@ -112,6 +113,8 @@ public class EndpointRoles {
             Map.entry("GET /admin/backups", SYSTEM_ADMIN),
             Map.entry("POST /admin/restores", SYSTEM_ADMIN),
             Map.entry("GET /admin/audit-logs", SYSTEM_ADMIN),
+            Map.entry("GET /admin/configs", SYSTEM_ADMIN),
+            Map.entry("PUT /admin/configs/{}", SYSTEM_ADMIN),
             // Trưởng họ bổ nhiệm trưởng chi (UC-AUTH-14): chỉ BRANCH_ADMIN không gán chi, kiểm ở FamilyAccountService.
             Map.entry("GET /families/{}/accounts", ADMINS),
             Map.entry("PUT /families/{}/accounts/{}", ADMINS),
@@ -140,11 +143,13 @@ public class EndpointRoles {
             // Dashboard (heritage-directory-dashboard.yaml): chỉ quản trị viên gia đình/chi.
             Map.entry("GET /dashboard/statistics", ADMINS),
             Map.entry("GET /dashboard/reports/members", ADMINS),
+            Map.entry("GET /dashboard/reports/{}/pdf", ADMINS),
             // AI (ai.yaml). Phạm vi gia đình, chi và hồ sơ trẻ em được kiểm ở các service AI.
             Map.entry("GET /ai/search", SIGNED_IN),
             Map.entry("POST /ai/chat", SIGNED_IN),
             Map.entry("POST /ai/relationship-explanations", SIGNED_IN),
-            Map.entry("POST /ai/summaries", SIGNED_IN));
+            Map.entry("POST /ai/summaries", SIGNED_IN),
+            Map.entry("GET /ai/recommendations", SIGNED_IN));
 
     /** "get", "/families/{familyId}" -> "GET /families/{}". */
     static String key(String method, String path) {

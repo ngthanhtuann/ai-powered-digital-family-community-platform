@@ -2,6 +2,8 @@ package com.familyconnect.modules.community.media;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -10,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -20,9 +23,18 @@ public class MediaStorage {
     static final long MAX_PDF_BYTES = 10L * 1024 * 1024;
 
     private final Path root;
+    private final SystemConfigQuery config;
 
-    public MediaStorage(@Value("${MEDIA_STORAGE_PATH:uploads}") String path) throws IOException {
+    /** Dùng giá trị mặc định của cấu hình (test đơn vị). */
+    public MediaStorage(String path) throws IOException {
+        this(path, SystemConfigQuery.defaults());
+    }
+
+    @Autowired
+    public MediaStorage(@Value("${MEDIA_STORAGE_PATH:uploads}") String path, SystemConfigQuery config)
+            throws IOException {
         this.root = Path.of(path).toAbsolutePath().normalize();
+        this.config = config;
         Files.createDirectories(root);
     }
 
@@ -38,7 +50,14 @@ public class MediaStorage {
         if (!ext.equals(detected.ext()) || ("pdf".equals(ext) && !heritage)) {
             throw new ApiException(ErrorCode.FILE_002);
         }
-        if (file.getSize() > ("pdf".equals(ext) ? MAX_PDF_BYTES : MAX_IMAGE_BYTES)) {
+        // Định dạng và dung lượng ảnh theo cấu hình hệ thống (SCRUM-94), không vượt mức trần 5 MB của conventions.md.
+        boolean image = !"pdf".equals(ext);
+        if (image && !List.of(config.getString(SystemConfigQuery.UPLOAD_ALLOWED_IMAGE_TYPES).split(",")).contains(ext)) {
+            throw new ApiException(ErrorCode.FILE_002);
+        }
+        long maxImageBytes = Math.min(MAX_IMAGE_BYTES,
+                config.getInt(SystemConfigQuery.UPLOAD_MAX_IMAGE_MB) * 1024L * 1024);
+        if (file.getSize() > (image ? maxImageBytes : MAX_PDF_BYTES)) {
             throw new ApiException(ErrorCode.FILE_001);
         }
 

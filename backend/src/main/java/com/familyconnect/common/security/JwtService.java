@@ -42,12 +42,17 @@ public class JwtService {
     }
 
     public String createAccessToken(UUID userId, List<String> roles) {
+        return createAccessToken(userId, roles, accessTokenTtl);
+    }
+
+    /** Thời hạn do module auth truyền vào từ cấu hình hệ thống (SCRUM-94); common không phụ thuộc module. */
+    public String createAccessToken(UUID userId, List<String> roles, Duration ttl) {
         Instant now = clock.instant();
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim(ROLES_CLAIM, roles)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(accessTokenTtl)))
+                .expiration(Date.from(now.plus(ttl)))
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }

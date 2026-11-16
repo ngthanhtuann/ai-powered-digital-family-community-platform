@@ -14,11 +14,12 @@ import { dashboardApi } from '@/services/dashboard';
 
 type Message = { id: string; role: 'assistant' | 'user'; content: string; sources?: AiSource[]; failed?: boolean };
 
+// Câu gợi ý phải trả lời được từ dữ liệu đã lập chỉ mục (RAG không làm phép gộp kiểu "ai lớn tuổi nhất").
 const SUGGESTIONS = [
-  'Ông bà tổ tiên của gia đình mình có những ai?',
-  'Kể cho tôi nghe về lịch sử dòng họ.',
-  'Có những câu chuyện gia đình nào đáng nhớ?',
-  'Ai là người lớn tuổi nhất trong gia đình?',
+  'Giỗ Tổ năm 2026 diễn ra khi nào?',
+  'Nguyễn Văn Tổ là ai?',
+  'Ai làm kỹ sư xây dựng trong họ?',
+  'Kể cho tôi nghe chuyện cụ Tổ lập làng.',
 ];
 
 const SOURCE_LABEL: Record<AiSourceType, string> = {
@@ -141,8 +142,10 @@ export default function AssistantPage() {
   }
 
   return (
+    <>
+    <h1 className="mb-4 text-page-title lg:sr-only">Trợ lý AI</h1>
     <div className="mx-auto flex min-h-[calc(100vh-13rem)] max-w-5xl flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card lg:min-h-[calc(100vh-12rem)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-full bg-primary text-cream-on-dark">
             <Sparkles size={19} />
@@ -159,11 +162,11 @@ export default function AssistantPage() {
           className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border px-3 text-label transition hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-info"
         >
           <Plus size={17} />
-          <span className="hidden sm:inline">Cuộc trò chuyện mới</span>
-          <span className="sm:hidden">Mới</span>
+          <span className="hidden md:inline">Cuộc trò chuyện mới</span>
+          <span className="md:hidden">Mới</span>
         </button>
         {access.isSystemAdmin && (
-          <label className="grid w-full gap-1.5 text-label sm:w-72">
+          <label className="grid w-full gap-1.5 text-label md:w-72">
             Gia đình cần hỏi
             <select
               className="h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body"
@@ -177,7 +180,7 @@ export default function AssistantPage() {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-8">
+      <div className="flex flex-1 flex-col overflow-y-auto px-4 py-5 md:px-8">
         {messages.length === 0 ? (
           <div className="m-auto w-full max-w-2xl py-8 text-center">
             <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full bg-secondary/20 text-primary">
@@ -187,7 +190,7 @@ export default function AssistantPage() {
             <p className="mt-2 text-body text-text-secondary">
               Mình có thể giúp bạn khám phá thành viên, kỷ niệm và tư liệu gia đình.
             </p>
-            <div className="mt-7 grid gap-3 text-left sm:grid-cols-2">
+            <div className="mt-7 grid gap-3 text-left md:grid-cols-2">
               {SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
@@ -205,8 +208,8 @@ export default function AssistantPage() {
         ) : (
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
             {messages.map((message) => message.role === 'user' ? (
-              <div key={message.id} className="flex items-start justify-end gap-2 sm:gap-3">
-                <div className="max-w-[88%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-body text-cream-on-dark sm:max-w-[80%]">
+              <div key={message.id} className="flex items-start justify-end gap-2 md:gap-3">
+                <div className="max-w-[88%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-primary px-4 py-3 text-body text-cream-on-dark md:max-w-[80%]">
                   {message.content}
                 </div>
                 <div className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary/30 text-primary">
@@ -214,11 +217,11 @@ export default function AssistantPage() {
                 </div>
               </div>
             ) : (
-              <div key={message.id} className="flex items-start gap-2 sm:gap-3">
+              <div key={message.id} className="flex items-start gap-2 md:gap-3">
                 <div className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary/20 text-primary">
                   <Bot size={17} />
                 </div>
-                <div className="min-w-0 max-w-[90%] rounded-2xl rounded-tl-sm border border-border bg-surface-muted px-4 py-3 sm:max-w-[82%]">
+                <div className="min-w-0 max-w-[90%] rounded-2xl rounded-tl-sm border border-border bg-surface-muted px-4 py-3 md:max-w-[82%]">
                   <p className="whitespace-pre-wrap break-words text-body leading-7">{message.content}</p>
                   {message.sources && message.sources.length > 0 && (
                     <div className="mt-4 border-t border-border pt-3">
@@ -267,7 +270,7 @@ export default function AssistantPage() {
         )}
       </div>
 
-      <div className="border-t border-border bg-surface px-4 py-3 sm:px-6 sm:py-4">
+      <div className="border-t border-border bg-surface px-4 py-3 md:px-6 md:py-4">
         <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
           <label htmlFor="assistant-question" className="sr-only">Nhập câu hỏi</label>
           <div className="flex items-end gap-2 rounded-card border border-border-strong bg-surface p-2 shadow-card focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
@@ -298,5 +301,6 @@ export default function AssistantPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }

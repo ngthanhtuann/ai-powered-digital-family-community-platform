@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import type { components } from '@/services/generated/genealogy';
+import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 
 type Person = components['schemas']['Person'];
 
@@ -22,16 +23,20 @@ export default function PersonPage() {
   if (person.isError || !person.data) return <p role="alert" className="text-error">Không thể tải hồ sơ thành viên. {(person.error as Error | null)?.message}</p>;
 
   return (
+    <>
+    <h1 className="sr-only">{person.data.fullName ?? 'Hồ sơ thành viên'}</h1>
     <Card title={person.data.fullName ?? 'Hồ sơ thành viên'} description="Thông tin được hiển thị theo quyền truy cập gia đình.">
-      <dl className="grid gap-4 sm:grid-cols-2">
+      <dl className="grid gap-4 md:grid-cols-2">
         {person.data.currentProvince && <div><dt className="text-caption text-text-secondary">Tỉnh/thành</dt><dd className="text-body">{person.data.currentProvince}</dd></div>}
         {person.data.birthYear && <div><dt className="text-caption text-text-secondary">Năm sinh</dt><dd className="text-body">{person.data.birthYear}</dd></div>}
         <div><dt className="text-caption text-text-secondary">Giới tính</dt><dd className="text-body">{person.data.gender ?? 'Chưa cập nhật'}</dd></div>
       </dl>
       {/* Nghề nghiệp, học vấn thuộc module Directory (FR-DIR-02, FR-DIR-03). */}
-      <Link href={`/directory/members/${personId}`} className="mt-4 inline-block text-caption text-info underline">
+      <Link href={`/directory/members/${personId}`} className="mt-4 inline-flex min-h-11 items-center text-body text-info underline">
         Xem nghề nghiệp và học vấn
       </Link>
+      <RecommendationsPanel contextType="PERSON" contextId={personId} />
     </Card>
+    </>
   );
 }

@@ -17,6 +17,7 @@ export type MembershipRequest = Schemas['AdminMembershipRequest'];
 export type BackupFile = Schemas['BackupFile'];
 export type RestoreResult = Schemas['RestoreResult'];
 export type AuditLog = Schemas['AuditLog'];
+export type SystemConfig = Schemas['SystemConfig'];
 
 export const PAGE_SIZE = 20;
 
@@ -41,6 +42,12 @@ export const adminApi = {
     api.post<RestoreResult>('/admin/restores', { backupId, confirmText } satisfies Schemas['RestoreCreateRequest']),
   auditLogs: (params: { actorUserId?: string; action?: string; from?: string; to?: string; page: number }) =>
     api.list<AuditLog>('/admin/audit-logs', { ...params, size: PAGE_SIZE, sort: 'createdAt,desc' }),
+  /** UC-AUTH-12: số khóa nhỏ nên API không phân trang. */
+  configs: () => api.list<SystemConfig>('/admin/configs'),
+  updateConfig: (key: string, value: string) =>
+    api.put<SystemConfig>(`/admin/configs/${encodeURIComponent(key)}`, {
+      value,
+    } satisfies Schemas['ConfigUpdateRequest']),
 };
 
 /** UC-AUTH-14: trưởng họ (hoặc quản trị) phân công trưởng chi. */

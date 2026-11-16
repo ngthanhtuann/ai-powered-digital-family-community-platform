@@ -15,9 +15,13 @@ const STEP = Number(DURATION.replace('s', '')) + 5; // nghỉ 5 giây giữa cá
 const ENDPOINTS = ['tree_depth3', 'tree_depth10', 'relationships', 'feed', 'ai_search'];
 const scenarios = {};
 ENDPOINTS.forEach((name, i) => {
+  // Tìm kiếm AI gọi Gemini Embedding; gói miễn phí chỉ cho 100 lần/phút nên giữ 60 request/phút (nhiều VU cùng lúc)
+  // để đo độ trễ của hệ thống, không đo giới hạn của gói (SCRUM-59).
+  const load = name === 'ai_search'
+    ? { executor: 'constant-arrival-rate', rate: 1, timeUnit: '1s', preAllocatedVUs: 5, maxVUs: 10 }
+    : { executor: 'constant-vus', vus: VUS };
   scenarios[name] = {
-    executor: 'constant-vus',
-    vus: name === 'ai_search' ? Math.min(VUS, 5) : VUS, // AI phụ thuộc LLM, đo nhẹ
+    ...load,
     duration: DURATION,
     startTime: `${i * STEP}s`,
     exec: name,

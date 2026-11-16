@@ -54,6 +54,13 @@ public class EventController {
         return ApiResponse.ok(service.rsvp(id,body));
     }
 
+    @PutMapping("/events/{id}/participants/{participantId}/attendance")
+    public ApiResponse<ParticipantView> updateAttendance(@PathVariable UUID id,
+                                                          @PathVariable UUID participantId,
+                                                          @Valid @RequestBody AttendanceRequest body) {
+        return ApiResponse.ok(service.updateAttendance(id,participantId,body));
+    }
+
     @GetMapping("/events/{id}/participants")
     public PageSuccess<ParticipantView> participants(@PathVariable UUID id,
                                                      @RequestParam(required = false) RsvpStatus rsvpStatus,

@@ -8,15 +8,19 @@ import com.familyconnect.modules.ai.api.SummarySource.SummaryText;
 import com.familyconnect.modules.ai.dto.SummaryRequest;
 import com.familyconnect.modules.ai.dto.SummaryResponse;
 import com.familyconnect.modules.ai.repository.AiSummaryCache;
+import com.familyconnect.modules.auth.api.SystemConfigQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** UC-AI-04: tóm tắt bài đăng, câu chuyện, tài liệu; nội dung lấy qua {@link SummarySource} của module sở hữu. */
 @Service
 public class AiSummaryService {
+    private static final Logger log = LoggerFactory.getLogger(AiSummaryService.class);
     static final String NOT_FOUND = "Không tìm thấy thông tin.";
     private static final int PART_CHARS = 8000;
 
@@ -26,19 +30,22 @@ public class AiSummaryService {
     private final SummaryLlm llm;
     private final SummaryRateLimiter limiter;
     private final boolean enabled;
+    private final SystemConfigQuery config;
     private final int maxInput;
 
     public AiSummaryService(List<SummarySource> sources, AiSummaryCache cache,
                             ContentHashService hashes, SummaryLlm llm, SummaryRateLimiter limiter,
+                            SystemConfigQuery config,
                             @Value("${ai.summary.enabled:true}") boolean enabled,
                             @Value("${ai.summary.max_input_chars:30000}") int maxInput) {
         sources.forEach(source -> source.sourceTypes().forEach(type -> this.sources.put(type, source)));
-        this.cache = cache; this.hashes = hashes;
+        this.cache = cache; this.hashes = hashes; this.config = config;
         this.llm = llm; this.limiter = limiter; this.enabled = enabled; this.maxInput = maxInput;
     }
 
     public SummaryResponse summarize(AuthenticatedUser user, SummaryRequest request) {
-        if (!enabled) throw new ApiException(ErrorCode.AI_002);
+        // Biến môi trường là công tắc lúc triển khai; cấu hình hệ thống là công tắc của quản trị (SCRUM-94).
+        if (!enabled || !config.getBoolean(SystemConfigQuery.AI_SUMMARY_ENABLED)) throw new ApiException(ErrorCode.AI_002);
         SummarySource owner = sources.get(request.sourceType());
         if (owner == null) throw new ApiException(ErrorCode.VALID_001);
         // Module sở hữu kiểm quyền đọc (403/404) trước khi AI nhận văn bản (BR-AI-02).
@@ -55,6 +62,7 @@ public class AiSummaryService {
         try {
             summary = text.length() <= PART_CHARS ? llm.summarize(text) : summarizeInParts(text);
         } catch (RuntimeException ex) {
+            log.warn("Tóm tắt AI lỗi, trả AI_001", ex); // không ghi nội dung nguồn
             throw new ApiException(ErrorCode.AI_001);
         }
         cache.save(source.familyId(), request.sourceType(), request.sourceId(), hash, summary, llm.modelName(), user.id());

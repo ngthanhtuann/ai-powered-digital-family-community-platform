@@ -34,6 +34,7 @@ import { getMyMembership, getMyProfile, logout } from '@/services/auth';
 import { memberRoleLabel } from '@/services/admin';
 import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { Button } from '@/components/ui/Button';
 import { tokenStorage } from '@/lib/token-storage';
 import {
   FAMILY_NAV_ITEM,
@@ -72,9 +73,32 @@ function isPublicRoute(pathname: string) {
   return pathname === '/login' || pathname === '/register';
 }
 
+// Trang không có trong menu nhưng thuộc một mục: cây của gia đình mở từ mục "Cây gia phả" (/tree chuyển hướng tới).
+const ROUTE_ALIASES: [RegExp, string][] = [[/^\/families\/[^/]+\/tree$/, '/tree']];
+// Tiêu đề header cho trang không thuộc mục menu nào.
+const EXTRA_TITLES: [RegExp, string][] = [
+  [/^\/persons\//, 'Hồ sơ thành viên'],
+  [/^\/search$/, 'Tìm kiếm'],
+];
+
+// Trang hướng dẫn UI kit dành cho lập trình viên: không hiện cho người dùng ở bản build chạy thật.
+const SHOW_UI_KIT = process.env.NODE_ENV !== 'production';
+
+function matchesRoute(path: string, href: string) {
+  return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+}
+
+/** Mục menu khớp dài nhất: ở /heritage/photos chỉ sáng "Thư viện ảnh", không sáng thêm "Lịch sử dòng họ". */
+function activeHref(pathname: string) {
+  const path = ROUTE_ALIASES.find(([pattern]) => pattern.test(pathname))?.[1] ?? pathname;
+  return NAV_SECTIONS.flatMap((section) => section.items)
+    .map((item) => item.href)
+    .filter((href): href is string => Boolean(href) && matchesRoute(path, href as string))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
 function isCurrentRoute(pathname: string, href?: string) {
-  if (!href) return false;
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+  return Boolean(href) && href === activeHref(pathname);
 }
 
 function MenuEntry({
@@ -223,13 +247,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? 'Gia đình'
       : pathname === '/ui-kit'
         ? 'Hướng dẫn UI kit'
-        : (currentItem?.label ?? 'Tổng quan');
+        : (currentItem?.label ?? EXTRA_TITLES.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'Tổng quan');
   const familyName = membership.data?.familyName ?? '';
   const accessError = profile.error ?? membership.error;
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-6 overflow-y-auto bg-primary p-5 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-6 overflow-y-auto bg-primary p-5 [scrollbar-color:theme(colors.border-strong)_transparent] [scrollbar-width:thin] lg:flex">
         <Link
           href="/"
           className="rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
@@ -246,9 +270,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isPending={isPending}
           id="desktop-navigation"
         />
-        <Link href="/ui-kit" className="text-center text-caption text-cream-on-dark underline">
-          Hướng dẫn UI kit
-        </Link>
+        {SHOW_UI_KIT && (
+          <Link href="/ui-kit" className="text-center text-caption text-cream-on-dark underline">
+            Hướng dẫn UI kit
+          </Link>
+        )}
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -268,9 +294,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </a>
         </div>
 
-        <header className="flex min-h-header flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 md:px-6 lg:px-8 lg:py-0">
-          <div>
-            <h1 className="text-page-title lg:text-section-title">{pageTitle}</h1>
+        <header className="flex min-h-header items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 md:px-6 lg:px-8 lg:py-0">
+          {/* Tiêu đề header không phải h1: mỗi trang tự có đúng một h1. Trên điện thoại ẩn để không lặp tiêu đề trang
+              và thanh thương hiệu ở trên đã có tên gia đình. */}
+          <div className="hidden lg:block">
+            <p className="text-section-title">{pageTitle}</p>
             <p className="mt-1 text-body text-text-secondary">
               {familyName ||
                 (role === 'UNVERIFIED'
@@ -279,21 +307,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
           {role !== 'UNVERIFIED' && (
-            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 lg:px-8">
+            <div className="min-w-0 flex-1 lg:px-8">
               <SemanticSearchBox systemAdmin={role === 'SYSTEM_ADMIN'} />
             </div>
           )}
           <div className="flex items-center gap-3 text-right">
             {role !== 'UNVERIFIED' && <NotificationBell />}
-            {profile.data && <p className="text-label">{profile.data.fullName}</p>}
+            {profile.data && <p className="hidden text-label md:block">{profile.data.fullName}</p>}
             {role !== 'UNVERIFIED' && membership.data && (
-              <p className="text-caption text-text-secondary">
+              <p className="hidden text-caption text-text-secondary md:block">
                 {role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống'
                   : memberRoleLabel(membership.data.role, membership.data.branchId, membership.data.branchName)}
               </p>
             )}
             {profile.isLoading && (
-              <p className="text-caption text-text-secondary">Đang tải tài khoản...</p>
+              <p className="hidden text-caption text-text-secondary md:block">Đang tải tài khoản...</p>
             )}
           </div>
         </header>
@@ -301,12 +329,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="w-full flex-1 px-4 py-5 md:px-6 md:py-6 lg:px-8">
           <div className="mx-auto w-full max-w-[1440px]">
             {accessError && (
-              <p
+              // Query mặc định không tự thử lại (providers.tsx), nên cần nút để menu theo vai trò hiện lại mà không phải F5.
+              <div
                 role="alert"
-                className="mb-4 rounded-card border border-error bg-error-soft p-4 text-body text-error"
+                className="mb-4 space-y-2 rounded-card border border-error bg-error-soft p-4 text-body text-error"
               >
-                Không tải được thông tin tài khoản: {(accessError as Error).message}
-              </p>
+                <p className="break-words">Không tải được thông tin tài khoản: {(accessError as Error).message}</p>
+                <Button
+                  variant="secondary"
+                  fullWidth={false}
+                  loading={profile.isFetching || membership.isFetching}
+                  onClick={() => {
+                    void profile.refetch();
+                    void membership.refetch();
+                  }}
+                >
+                  Thử lại
+                </Button>
+              </div>
             )}
             {children}
           </div>
@@ -320,12 +360,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             isPending={isPending}
             id="mobile-navigation"
           />
-          <Link
-            href="/ui-kit"
-            className="mt-4 inline-block text-caption text-cream-on-dark underline"
-          >
-            Hướng dẫn UI kit
-          </Link>
+          {SHOW_UI_KIT && (
+            <Link
+              href="/ui-kit"
+              className="mt-4 inline-block text-caption text-cream-on-dark underline"
+            >
+              Hướng dẫn UI kit
+            </Link>
+          )}
         </div>
       </div>
     </div>

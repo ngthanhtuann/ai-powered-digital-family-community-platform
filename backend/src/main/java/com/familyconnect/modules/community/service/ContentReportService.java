@@ -3,6 +3,7 @@ package com.familyconnect.modules.community.service;
 import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.auth.api.ContentModerationPort;
 import com.familyconnect.modules.community.dto.CommunityDto.ReportInput;
@@ -22,13 +23,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.EnumMap;
+import java.util.stream.Collectors;
 
 /**
  * Báo cáo nội dung vi phạm (BR-COM-12): thành viên báo cáo; quản trị xử lý qua {@link ContentModerationPort}
@@ -101,7 +102,13 @@ public class ContentReportService implements ContentModerationPort {
         boolean ascending = order != null && order.isAscending();
         JdbcContentReportStore.Page found = store.find(status, type, ascending, pageable.getPageSize(),
                 pageable.getOffset());
-        List<ContentReportView> items = found.items().stream().map(this::withOwner).toList();
+        // Chủ nội dung đọc theo lô, mỗi loại nội dung một truy vấn, thay vì một truy vấn mỗi báo cáo.
+        Map<ContentType, Map<UUID, UUID>> owners = new EnumMap<>(ContentType.class);
+        found.items().stream().collect(Collectors.groupingBy(ContentReportView::targetType,
+                        Collectors.mapping(ContentReportView::targetId, Collectors.toSet())))
+                .forEach((targetType, ids) -> owners.put(targetType, store.ownersOf(targetType, ids)));
+        List<ContentReportView> items = found.items().stream()
+                .map(v -> withOwner(v, owners.getOrDefault(v.targetType(), Map.of()).get(v.targetId()))).toList();
         return new PageImpl<>(items, pageable, found.total());
     }
 
@@ -167,7 +174,12 @@ public class ContentReportService implements ContentModerationPort {
                 v.reason(), v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(), null, Math.max(count, 1)));
     }
 
-    // shortcut: mỗi dòng một truy vấn tìm chủ nội dung (tối đa 100/trang); gom theo loại nếu hàng đợi lớn.
+    private ContentReportView withOwner(ContentReportView v, UUID owner) {
+        return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
+                v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(), owner, v.reportCount());
+    }
+
+    /** Một báo cáo lẻ (sau khi xử lý): một truy vấn tìm chủ nội dung; danh sách dùng ownersOf theo lô. */
     private ContentReportView withOwner(ContentReportView v) {
         return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
                 v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(),
@@ -207,26 +219,12 @@ public class ContentReportService implements ContentModerationPort {
         }
         // Đọc ngay trong giao dịch; nội dung đã xóa trong lúc chờ thì chỉ gỡ.
         Target target = restored ? store.findTarget(report.targetType(), report.targetId(), true).orElse(null) : null;
-        Runnable work = () -> {
-            try {
-                if (target == null) {
-                    aiGateway.removeSource(source, report.targetId());
-                } else {
-                    aiGateway.upsertSource(source, report.targetId(), target.familyId(), target.branchId(), target.text());
-                }
-            } catch (RuntimeException ex) {
-                log.warn("Không cập nhật được chỉ mục AI cho nội dung {}", report.targetId(), ex);
+        AfterCommit.runQuietly(() -> {
+            if (target == null) {
+                aiGateway.removeSource(source, report.targetId());
+            } else {
+                aiGateway.upsertSource(source, report.targetId(), target.familyId(), target.branchId(), target.text());
             }
-        };
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            work.run();
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                work.run();
-            }
-        });
+        }, ex -> log.warn("Không cập nhật được chỉ mục AI cho nội dung {}", report.targetId(), ex));
     }
 }

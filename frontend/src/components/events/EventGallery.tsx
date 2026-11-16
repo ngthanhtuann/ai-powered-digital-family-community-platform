@@ -70,14 +70,15 @@ export function EventGallery({ eventId }: { eventId: string }) {
       )}
       {query.isPending && <p className="text-body">Đang tải thư viện ảnh...</p>}
       {query.isError && (
-        <p role="alert" className="text-error">
-          Không lấy được ảnh sự kiện.
-        </p>
+        <div role="alert" className="space-y-2">
+          <p className="text-error">Không lấy được ảnh sự kiện.</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
       )}
       {media.length === 0 && !query.isPending && !query.isError && (
         <p className="text-body text-text-secondary">Chưa có ảnh sự kiện.</p>
       )}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
         {media.map((item) => (
           <ProtectedImage key={item.id} media={item} />
         ))}

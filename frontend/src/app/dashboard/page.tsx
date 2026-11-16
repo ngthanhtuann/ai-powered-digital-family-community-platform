@@ -21,7 +21,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { datedFileName, saveBlob } from '@/lib/download';
 import { getMyMembership, getMyProfile } from '@/services/auth';
-import { dashboardApi, type DashboardBranch, type DashboardStatistics } from '@/services/dashboard';
+import { dashboardApi, getManagedBranches, type DashboardStatistics } from '@/services/dashboard';
 import tailwindConfig from '../../../tailwind.config';
 
 // Recharts cần mã màu dạng chuỗi nên đọc thẳng token trong tailwind.config (design-system.md mục 6).
@@ -44,27 +44,6 @@ const dateFormatter = new Intl.DateTimeFormat('vi-VN', {
   hour: '2-digit',
   minute: '2-digit',
 });
-
-function getManagedBranches(branches: DashboardBranch[], rootId: string): DashboardBranch[] {
-  const allowed = new Set([rootId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const branch of branches) {
-      if (
-        branch.id &&
-        branch.parentBranchId &&
-        allowed.has(branch.parentBranchId) &&
-        !allowed.has(branch.id)
-      ) {
-        allowed.add(branch.id);
-        changed = true;
-      }
-    }
-  }
-  return branches.filter((branch) => branch.id && allowed.has(branch.id));
-}
-
 function chartEmpty(data: DashboardStatistics | undefined, values: number[]) {
   return !data || values.every((value) => value === 0);
 }
@@ -155,29 +134,29 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <>
+      <h1 className="text-page-title lg:sr-only">Thống kê</h1>
+      <div className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <p className="text-body text-text-secondary">
           Theo dõi thành viên, hoạt động cộng đồng và sự kiện trong phạm vi được quản lý.
         </p>
-        <Button
-          fullWidth={false}
-          loading={exporting}
-          disabled={!familyId}
-          onClick={exportMembers}
-        >
+        <Button fullWidth={false} loading={exporting} disabled={!familyId} onClick={exportMembers}>
           Xuất CSV thành viên
         </Button>
       </div>
 
       {exportError && (
-        <p role="alert" className="rounded-card border border-error bg-error-soft p-4 text-body text-error">
+        <p
+          role="alert"
+          className="rounded-card border border-error bg-error-soft p-4 text-body text-error"
+        >
           Không xuất được CSV: {exportError}
         </p>
       )}
 
       <Card title="Bộ lọc thống kê">
-        <div className="flex flex-col gap-4 sm:flex-row">
+        <div className="flex flex-col gap-4 md:flex-row">
           {isSystemAdmin && (
             <label className="flex flex-1 flex-col gap-2 text-label">
               Gia đình
@@ -227,13 +206,13 @@ export default function DashboardPage() {
           Không tải được dashboard: {error.message}
         </p>
       ))}
-      {(families.isPending || statistics.isPending) && (
+      {(families.isLoading || statistics.isLoading) && (
         <p className="text-body text-text-secondary">Đang tải số liệu...</p>
       )}
 
       {data && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card title="Tổng thành viên">
               <p className="text-3xl font-semibold text-primary">
                 {data.totalMembers.toLocaleString('vi-VN')}
@@ -258,7 +237,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <Card title="Thành viên theo thế hệ">
               {chartEmpty(
                 data,
@@ -342,7 +321,8 @@ export default function DashboardPage() {
                         ))}
                       </Pie>
                       <Tooltip />
-                      <Legend />
+                      {/* Chữ chú thích dùng màu chữ chính: chữ vàng trên nền trắng chỉ đạt tương phản 2,3:1. */}
+                      <Legend formatter={(value) => <span className="text-text-primary">{value}</span>} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -466,5 +446,6 @@ export default function DashboardPage() {
         </>
       )}
     </div>
+    </>
   );
 }

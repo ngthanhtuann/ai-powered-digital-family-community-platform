@@ -20,8 +20,8 @@ Quyền trong từng chức năng theo `srs.md` Phụ lục A, giống web (ví 
 | Sự kiện, RSVP, người tham dự, ảnh sự kiện, nhắc nhở | Có | FR-EVT-01 đến FR-EVT-05 | UC-EVT-01 đến 05. Nhắc nhở hiển thị trong màn Thông báo (BR-EVT-05); push notification là phần mở rộng |
 | Danh sách thành viên, cây gia phả, tra quan hệ | Có (xem) | FR-GEN-03 (xem), FR-GEN-06, FR-GEN-07, FR-GEN-08 | UC-GEN-03 (xem), 06, 07, 08. Thêm, sửa thành viên và quan hệ làm trên web |
 | Trợ lý AI, tìm kiếm, tóm tắt, giải thích quan hệ, gợi ý | Có | FR-AI-01 đến FR-AI-05 | UC-AI-01 đến 05 |
-| Danh bạ, hồ sơ nghề nghiệp và học vấn | Có, ưu tiên thấp | FR-DIR-01 đến FR-DIR-04 | UC-DIR-01, 02. Cắt đầu tiên nếu trễ tiến độ |
-| Di sản: tài liệu, câu chuyện, người tiêu biểu, thư viện ảnh | Có, ưu tiên thấp | FR-HER-01 đến FR-HER-05 | UC-HER-01 đến 04. Cắt đầu tiên nếu trễ tiến độ |
+| Danh bạ, hồ sơ nghề nghiệp và học vấn | Có (SCRUM-92) | FR-DIR-01 đến FR-DIR-04 | UC-DIR-01, 02. Tìm không dấu, lọc nghề, nơi ở, thế hệ; xem hồ sơ có học vấn |
+| Di sản: tài liệu, câu chuyện, thư viện ảnh | Có (SCRUM-92, SCRUM-109) | FR-HER-01, FR-HER-02, FR-HER-04, FR-HER-05 | UC-HER-01 đến 04 (xem). Tài liệu PDF mở bằng trình xem của máy (SCRUM-109). Người tiêu biểu (FR-HER-03) và thêm, sửa nội dung di sản chỉ trên web |
 | Nhóm Quản lý: duyệt yêu cầu tham gia, thống kê và báo cáo | Không, chỉ web | FR-AUTH-04 (duyệt), FR-DSH-01 đến FR-DSH-05 | `design-system.md` mục 5.2 |
 | Nhóm Quản trị hệ thống | Không, chỉ web | FR-ADM-01 đến FR-ADM-05 | `design-system.md` mục 5.2 |
 
@@ -84,7 +84,7 @@ Bất kỳ lúc nào: nhận `401 AUTH_002` mà làm mới token thất bại th
 | AI | Trợ lý AI | UC-AI-02 (kèm 03, 04, 05) | `Chat AI / 360` (cần đổi tên `UC-AI-02 Trợ lý AI / 360`) |
 | AI | Tìm kiếm | UC-AI-01 | `Tìm kiếm / 360` (cần đổi tên `UC-AI-01 Tìm kiếm / 360`) |
 | Danh bạ | Danh bạ, xem hồ sơ | UC-DIR-01, 02 | `UC-DIR-01 Danh bạ / 360` |
-| Di sản | Lịch sử dòng họ, Thư viện ảnh, Kho lưu trữ số | UC-HER-01 đến 04 | Chưa có (ưu tiên thấp) |
+| Di sản | Di sản (tab Tài liệu, Câu chuyện, Ảnh), chi tiết câu chuyện, xem ảnh và tài liệu | UC-HER-01 đến 04 | Chưa có |
 | Tài khoản | Hồ sơ cá nhân, Đổi mật khẩu | UC-AUTH-05, 04 | Chưa có |
 
 ## 4. Kiến trúc mobile
@@ -127,6 +127,7 @@ Theo `use-cases/auth.md` mục 4.2:
 - Base URL đặt bằng biến môi trường `EXPO_PUBLIC_API_BASE_URL`, cộng tiền tố `/api/v1`; không ghi cứng địa chỉ máy phát triển trong màn hình.
 - Mọi lời gọi HTTP nằm trong `src/services/`; màn hình chỉ gọi hàm của service qua TanStack Query.
 - Ảnh đăng bài chọn từ thư viện hoặc chụp bằng `expo-image-picker` (Expo SDK 58, SCRUM-89); quyền camera chỉ xin khi người dùng bấm chụp. Ứng dụng kiểm tra `jpg`, `png`, `webp` tối đa 5 MB trước khi gửi (BR-COM-08), rồi tải multipart qua `api.upload` để được gắn JWT.
+- Tài liệu PDF trong Kho lưu trữ số tải bằng `expo-file-system` (`File.downloadFileAsync`, gắn JWT trong header) vào thư mục cache rồi mở bằng trình xem của máy qua `File.preview` (SCRUM-109). Ảnh vẫn hiển thị trực tiếp bằng `Image` kèm header.
 - **Kiểu request, response sinh bằng `openapi-typescript`** từ `docs/04-api/openapi/` vào `src/services/generated/` (lệnh `npm run gen:api`, theo `conventions.md` mục 8 và `architecture.md` quyết định 2). Commit output của lệnh; không viết tay kiểu DTO.
 - Response thành công có dạng `{success: true, data, meta?}`; lỗi có dạng `{success: false, error: {code, message, details}}` (`conventions.md` mục 2). `api.ts` chuẩn hóa lỗi thành một kiểu chung để màn hình xử lý theo mục 4.5.
 

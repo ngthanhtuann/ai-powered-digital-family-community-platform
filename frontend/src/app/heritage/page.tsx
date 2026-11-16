@@ -8,6 +8,7 @@ import { HeritageHeader, HeritagePage } from '@/components/heritage/HeritageHead
 import { TextField } from '@/components/ui/TextField';
 import { heritageApi } from '@/services/heritage';
 import { ApiError } from '@/lib/api';
+import { formatDate } from '@/lib/datetime';
 
 export default function HeritagePageIndex() {
   const access = useHeritageAccess();
@@ -37,15 +38,15 @@ export default function HeritagePageIndex() {
     <HeritagePage>
       <HeritageHeader>
         <div className="flex flex-wrap gap-2">
-          <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/outstanding-members">
+          <Link className="inline-flex min-h-11 items-center rounded-control border border-border-strong px-4 text-label hover:bg-surface-muted" href="/heritage/outstanding-members">
             Người tiêu biểu
           </Link>
           {access.isAdmin && (
             <>
-            <Link className="rounded-control bg-secondary px-4 py-2 text-label hover:bg-gold-hover" href="/heritage/documents/new">
+            <Link className="inline-flex min-h-11 items-center rounded-control bg-secondary px-4 text-label hover:bg-gold-hover" href="/heritage/documents/new">
               Thêm tài liệu
             </Link>
-            <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/stories/new">
+            <Link className="inline-flex min-h-11 items-center rounded-control border border-border-strong px-4 text-label hover:bg-surface-muted" href="/heritage/stories/new">
               Viết câu chuyện
             </Link>
             </>
@@ -74,12 +75,12 @@ export default function HeritagePageIndex() {
 
       {access.isReady && (!access.isSystemAdmin || Boolean(familyId)) && (<>
       <section className="mt-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-section-title">Tài liệu lịch sử</h2>
             <p className="mt-1 text-caption text-text-secondary">Gia phả, sắc phong, di chúc và tư liệu của gia đình.</p>
           </div>
-          <div className="sm:w-64">
+          <div className="md:w-64">
             <TextField
               label="Lọc danh mục"
               value={category}
@@ -92,13 +93,13 @@ export default function HeritagePageIndex() {
         {documents.isLoading ? (
           <p className="mt-4 text-body text-text-secondary">Đang tải tài liệu...</p>
         ) : documents.data?.items.length ? (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {documents.data.items.map((document) => (
               <li key={document.id}>
                 <Link href={`/heritage/documents/${document.id}`} className="block rounded-card border border-border bg-surface p-4 shadow-card hover:border-secondary">
                   <span className="text-section-title">{document.title}</span>
                   <span className="mt-2 block text-caption text-text-secondary">
-                    {document.category || 'Chưa phân loại'} · {new Date(document.createdAt).toLocaleDateString('vi-VN')}
+                    {document.category || 'Chưa phân loại'} · {formatDate(document.createdAt)}
                   </span>
                   {document.description && <span className="mt-3 block line-clamp-2 text-body">{document.description}</span>}
                 </Link>
@@ -125,13 +126,13 @@ export default function HeritagePageIndex() {
         {stories.isLoading ? (
           <p className="mt-4 text-body text-text-secondary">Đang tải câu chuyện...</p>
         ) : stories.data?.items.length ? (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {stories.data.items.map((story) => (
               <li key={story.id}>
                 <Link href={`/heritage/stories/${story.id}`} className="block rounded-card border border-border bg-surface p-4 shadow-card hover:border-secondary">
                   <span className="text-section-title">{story.title}</span>
                   <span className="mt-2 block text-caption text-text-secondary">
-                    {story.authorName} · {new Date(story.createdAt).toLocaleDateString('vi-VN')}
+                    {story.authorName} · {formatDate(story.createdAt)}
                   </span>
                   <span className="mt-3 block line-clamp-3 whitespace-pre-wrap text-body">{story.content}</span>
                 </Link>

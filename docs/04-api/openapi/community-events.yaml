@@ -1541,8 +1541,8 @@ paths:
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Kiểm tra Bearer JWT, trạng thái xác minh và phạm vi family/branch
         theo người dùng đăng nhập. Mọi thành viên đã xác minh có quyền xem sự kiện đều
-        xem được danh sách (srs.md Phụ lục A); chỉ trả họ tên và trạng thái RSVP, không
-        kèm thông tin liên hệ. Thêm, gỡ người tham dự chỉ dành cho người tạo sự kiện,
+        xem được danh sách (srs.md Phụ lục A); chỉ trả họ tên, trạng thái RSVP và thời
+        điểm điểm danh, không kèm thông tin liên hệ. Thêm, gỡ người tham dự chỉ dành cho người tạo sự kiện,
         BRANCH_ADMIN trong phạm vi và SYSTEM_ADMIN.
       security:
       - bearerAuth: []
@@ -1563,6 +1563,7 @@ paths:
                   userId: 550e8400-e29b-41d4-a716-446655440000
                   rsvpStatus: GOING
                   displayName: Nguyễn Văn A
+                  attendedAt: null
                 meta:
                   page: 0
                   size: 20
@@ -1614,6 +1615,7 @@ paths:
                   userId: 550e8400-e29b-41d4-a716-446655440000
                   rsvpStatus: GOING
                   displayName: Nguyễn Văn A
+                  attendedAt: null
         '400':
           $ref: '#/components/responses/ValidationError'
         '401':
@@ -1641,6 +1643,51 @@ paths:
           type: string
           format: uuid
         description: UUID của id
+  /events/{id}/participants/{participantId}/attendance:
+    put:
+      tags:
+      - Events
+      summary: Ghi nhận hoặc hủy điểm danh người tham dự
+      operationId: updateEventParticipantAttendance
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: >-
+        Chỉ BRANCH_ADMIN trong phạm vi chi/gia đình và SYSTEM_ADMIN được ghi nhận hoặc
+        hủy điểm danh. Tỷ lệ trong báo cáo tính số người RSVP GOING đã điểm danh chia
+        cho tổng RSVP GOING.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Id'
+      - name: participantId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID của người tham dự
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceRequest'
+            example:
+              attended: true
+      responses:
+        '200':
+          description: Trạng thái điểm danh được cập nhật.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParticipantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /events/{id}/media:
     get:
       tags:
@@ -2203,6 +2250,11 @@ components:
         displayName:
           type: string
           example: Nguyễn Văn A
+        attendedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Thời điểm điểm danh thực tế; null nếu chưa ghi nhận có mặt.
       additionalProperties: false
       required:
       - id
@@ -2211,6 +2263,7 @@ components:
       - rsvpStatus
       - createdAt
       - updatedAt
+      - attendedAt
     Notification:
       type: object
       properties:
@@ -2484,6 +2537,15 @@ components:
       additionalProperties: false
       required:
       - userId
+    AttendanceRequest:
+      type: object
+      properties:
+        attended:
+          type: boolean
+          description: true để ghi nhận có mặt, false để hủy ghi nhận.
+      additionalProperties: false
+      required:
+      - attended
     MarkReadRequest:
       type: object
       properties:

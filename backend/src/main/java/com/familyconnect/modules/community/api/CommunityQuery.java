@@ -42,4 +42,10 @@ public interface CommunityQuery {
 
     record WeeklyPostCount(LocalDate weekStart, long postCount) {
     }
+
+    List<WeeklyActivityCount> getWeeklyActivityCounts(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                                       OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
+
+    record WeeklyActivityCount(LocalDate weekStart, long postCount, long commentCount, long reactionCount) {
+    }
 }

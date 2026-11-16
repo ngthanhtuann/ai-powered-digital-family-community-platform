@@ -2,6 +2,7 @@ package com.familyconnect.modules.ai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -19,14 +20,19 @@ public class EmbeddingPipelineService {
     private final String apiKey;
     private final String model;
 
+    @Autowired
     public EmbeddingPipelineService(
             @Value("${gemini.api-key:}") String apiKey,
-            @Value("${gemini.embedding-model:gemini-embedding-001}") String model) {
+            @Value("${gemini.embedding-model:gemini-embedding-001}") String model,
+            @Value("${ai.embedding.timeout_ms:30000}") int timeoutMs) {
+        this(apiKey, model, GeminiHttp.BASE_URL, timeoutMs);
+    }
+
+    /** Không có timeout thì một lời gọi Gemini treo sẽ giữ request mãi (BR-AI-11: quá thời gian chờ trả 503 AI_001). */
+    EmbeddingPipelineService(String apiKey, String model, String baseUrl, int timeoutMs) {
         this.apiKey = apiKey;
         this.model = model;
-        this.restClient = RestClient.builder()
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta")
-                .build();
+        this.restClient = GeminiHttp.client(baseUrl, timeoutMs);
     }
 
     /** Chưa đặt GEMINI_API_KEY (máy dev, CI) thì không gọi Gemini. */

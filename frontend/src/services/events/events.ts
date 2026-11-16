@@ -16,29 +16,43 @@ export const eventsApi = {
   membership: () => api.get<Membership>('/users/me/membership'),
   list: (page: number, from?: string, to?: string, familyId?: string) =>
     api.list<Event>('/events', {
-      page, size: 20, sort: from ? 'startAt,asc' : 'startAt,desc',
+      page,
+      size: 20,
+      sort: from ? 'startAt,asc' : 'startAt,desc',
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
       ...(familyId ? { familyId } : {}),
     }),
   detail: (id: string) => api.get<Event>('/events/' + id),
   create: (body: EventRequest, familyId?: string) =>
-    api.post<Event>('/events' + (familyId ? '?familyId=' + encodeURIComponent(familyId) : ''), body),
+    api.post<Event>(
+      '/events' + (familyId ? '?familyId=' + encodeURIComponent(familyId) : ''),
+      body,
+    ),
   update: (id: string, body: EventUpdateRequest) => api.patch<Event>('/events/' + id, body),
   remove: (id: string) => api.delete('/events/' + id),
   rsvp: (id: string, rsvpStatus: RsvpStatus) =>
     api.put<Participant>('/events/' + id + '/rsvp', { rsvpStatus }),
   participants: (id: string, page: number, rsvpStatus?: RsvpStatus) =>
     api.list<Participant>('/events/' + id + '/participants', {
-      page, size: 20, sort: 'createdAt,desc',
+      page,
+      size: 20,
+      sort: 'createdAt,desc',
       ...(rsvpStatus ? { rsvpStatus } : {}),
     }),
-  media: (id: string, page: number) => api.list<Media>('/events/' + id + '/media', {
-    page, size: 20, sort: 'createdAt,desc',
-  }),
+  updateAttendance: (eventId: string, participantId: string, attended: boolean) =>
+    api.put<Participant>(`/events/${eventId}/participants/${participantId}/attendance`, {
+      attended,
+    }),
+  media: (id: string, page: number) =>
+    api.list<Media>('/events/' + id + '/media', {
+      page,
+      size: 20,
+      sort: 'createdAt,desc',
+    }),
   uploadMedia: (id: string, file: File) => {
     const form = new FormData();
-    form.set('file',file);
-    return api.upload<Media>('/events/' + id + '/media',form);
+    form.set('file', file);
+    return api.upload<Media>('/events/' + id + '/media', form);
   },
 };

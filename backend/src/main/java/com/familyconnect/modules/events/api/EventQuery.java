@@ -10,6 +10,13 @@ public interface EventQuery {
     List<UpcomingEvent> getUpcomingEvents(UUID familyId, boolean allBranches, List<UUID> branchIds,
                                           OffsetDateTime fromInclusive, int limit);
 
+    List<ReportEvent> getReportEvents(UUID familyId, boolean allBranches, List<UUID> branchIds,
+                                      OffsetDateTime fromInclusive, OffsetDateTime toExclusive);
+
     record UpcomingEvent(UUID id, String title, OffsetDateTime startAt) {
+    }
+
+    record ReportEvent(UUID id, String title, OffsetDateTime startAt,
+                       long going, long notGoing, long maybe, long attended, long goingAttended) {
     }
 }

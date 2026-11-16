@@ -52,6 +52,7 @@ public final class EventDto {
     }
 
     public record RsvpRequest(@NotNull RsvpStatus rsvpStatus) {}
+    public record AttendanceRequest(@NotNull Boolean attended) {}
     public record ParticipantRequest(@NotNull UUID userId, RsvpStatus rsvpStatus) {}
 
     public record RsvpCounts(long going, long notGoing, long maybe) {}
@@ -62,7 +63,8 @@ public final class EventDto {
                             UUID createdBy, RsvpStatus myRsvpStatus, RsvpCounts rsvpCounts) {}
 
     public record ParticipantView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                                  UUID eventId, UUID userId, RsvpStatus rsvpStatus, String displayName) {}
+                                  UUID eventId, UUID userId, RsvpStatus rsvpStatus, String displayName,
+                                  OffsetDateTime attendedAt) {}
 
     public record Meta(int page, int size, long total) {}
     public record PageSuccess<T>(boolean success, List<T> data, Meta meta) {
