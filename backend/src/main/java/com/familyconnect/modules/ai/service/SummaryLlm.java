@@ -13,7 +13,7 @@ public class SummaryLlm {
     private final RestClient client;
     private final String key, model;
     public SummaryLlm(@Value("${gemini.api-key:}") String key,
-                      @Value("${gemini.summary-model:gemini-2.0-flash}") String model) {
+                      @Value("${gemini.summary-model:gemini-3.5-flash-lite}") String model) {
         this.key=key; this.model=model;
         client = GeminiHttp.client(GeminiHttp.BASE_URL, 30000);
     }

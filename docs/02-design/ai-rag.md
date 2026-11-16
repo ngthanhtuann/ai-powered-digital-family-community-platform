@@ -43,6 +43,7 @@ flowchart TD
 - Nhà cung cấp: Google Gemini, gọi REST API bằng `RestClient` của Spring (`adr-ai-spike.md` mục 4, quyết định 3).
 - Model embedding đã dùng trong spike: `gemini-embedding-001`.
 - Model chat hiện tại: `gemini-3.5-flash-lite` mặc định qua `GEMINI_CHAT_MODEL`; cấu hình model có thể thay theo môi trường.
+- Model tóm tắt (UC-AI-04): `gemini-3.5-flash-lite` mặc định qua `GEMINI_SUMMARY_MODEL` (trước là `gemini-2.0-flash`, Google đã ngừng nên trả 404).
 - Quyết định schema: `outputDimensionality = 768`, kiểu cột pgvector `vector(768)`, chỉ mục HNSW.
 - Lý do: ADR ghi nhận chỉ mục HNSW/IVFFlat của `vector` có giới hạn 2000 chiều; 768 nằm trong giới hạn và giảm dung lượng so với 3072 chiều.
 - Nếu bộ đánh giá 10 truy vấn tiếng Việt không đạt, thử 1536 chiều, đo lại chất lượng và hiệu năng rồi cập nhật ADR/ERD trước khi đổi schema.
