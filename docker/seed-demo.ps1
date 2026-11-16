@@ -24,9 +24,115 @@ function Register([string]$Key, [string]$Name, [string]$Birth) {
     (Call POST '/users' @{ email = "$Key@demo.familyconnect.vn"; password = $Password; fullName = $Name; dateOfBirth = $Birth }).id
 }
 
-try { $null = Login 'phuc'; Write-Host 'Du lieu demo da co san (dang nhap duoc tai khoan phuc). Khong nap lai.'; exit 0 } catch { }
 
-Write-Host '1/7 Tao tai khoan...'
+# --- Di sản (SCRUM-114): câu chuyện, tài liệu, ảnh đều là dữ liệu giả; ảnh và PDF sinh ngay khi chạy, không lấy ảnh thật. ---
+Add-Type -AssemblyName System.Net.Http
+Add-Type -AssemblyName System.Drawing
+
+function Upload-Media([string]$File, [string]$Mime, [string]$FamilyId, [string]$Caption, [string]$Token) {
+    # PowerShell 5.1 không có Invoke-RestMethod -Form, nên dựng multipart bằng HttpClient.
+    $client = New-Object System.Net.Http.HttpClient
+    try {
+        $client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $Token)
+        $form = New-Object System.Net.Http.MultipartFormDataContent
+        $bytes = New-Object System.Net.Http.ByteArrayContent(, [IO.File]::ReadAllBytes($File))
+        $bytes.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse($Mime)
+        $form.Add($bytes, 'file', [IO.Path]::GetFileName($File))
+        $form.Add((New-Object System.Net.Http.StringContent('HERITAGE')), 'ownerType')
+        $form.Add((New-Object System.Net.Http.StringContent($FamilyId)), 'ownerId')
+        if ($Caption) { $form.Add((New-Object System.Net.Http.StringContent($Caption, [Text.Encoding]::UTF8)), 'caption') }
+        $res = $client.PostAsync("$Api/media", $form).Result
+        $text = $res.Content.ReadAsStringAsync().Result
+        if (-not $res.IsSuccessStatusCode) { throw "POST /media that bai: $text" }
+        return ($text | ConvertFrom-Json).data.id
+    } finally { $client.Dispose() }
+}
+
+function New-DemoImage([string]$Path, [string]$Title, [int]$Variant) {
+    # Ảnh minh họa: nền chuyển màu theo bảng màu design system, chữ ghi rõ là ảnh giả.
+    $tones = @(@(44, 24, 16), @(92, 138, 110), @(122, 99, 72), @(184, 122, 158), @(21, 101, 192), @(191, 68, 0))
+    $t = $tones[$Variant % $tones.Count]
+    $bmp = New-Object System.Drawing.Bitmap 960, 640
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    try {
+        $g.SmoothingMode = 'AntiAlias'; $g.TextRenderingHint = 'AntiAlias'
+        $rect = New-Object System.Drawing.Rectangle 0, 0, 960, 640
+        $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect,
+            [System.Drawing.Color]::FromArgb($t[0], $t[1], $t[2]), [System.Drawing.Color]::FromArgb(201, 168, 76), 35)
+        $g.FillRectangle($brush, $rect)
+        $cream = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(245, 230, 200))
+        $g.DrawString($Title, (New-Object System.Drawing.Font('Segoe UI', 40, [System.Drawing.FontStyle]::Bold)), $cream,
+            (New-Object System.Drawing.RectangleF 60, 220, 840, 200))
+        $g.DrawString('Ảnh minh họa – dữ liệu giả cho demo FamilyConnect', (New-Object System.Drawing.Font('Segoe UI', 20)), $cream, 60, 540)
+        $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally { $g.Dispose(); $bmp.Dispose() }
+}
+
+function New-DemoPdf([string]$Path, [string[]]$Lines) {
+    # PDF một trang tối thiểu, chữ ASCII (font chuẩn Helvetica không có dấu tiếng Việt).
+    $content = 'BT /F1 16 Tf 72 770 Td ' + (($Lines | ForEach-Object { '(' + $_ + ') Tj 0 -26 Td' }) -join ' ') + ' ET'
+    $objs = @('<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+        "<< /Length $($content.Length) >>`nstream`n$content`nendstream", '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
+    $sb = New-Object Text.StringBuilder
+    [void]$sb.Append("%PDF-1.4`n"); $offsets = @()
+    for ($i = 0; $i -lt $objs.Count; $i++) { $offsets += $sb.Length; [void]$sb.Append("$($i + 1) 0 obj`n$($objs[$i])`nendobj`n") }
+    $xref = $sb.Length
+    [void]$sb.Append("xref`n0 $($objs.Count + 1)`n0000000000 65535 f `n")
+    foreach ($o in $offsets) { [void]$sb.Append(('{0:D10} 00000 n ' -f $o) + "`n") }
+    [void]$sb.Append("trailer`n<< /Size $($objs.Count + 1) /Root 1 0 R >>`nstartxref`n$xref`n%%EOF`n")
+    [IO.File]::WriteAllText($Path, $sb.ToString(), [Text.Encoding]::ASCII)
+}
+
+function Seed-Heritage([string]$Token, [string]$FamilyId, $ToPersonId = $null) {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('fc-demo-' + [Guid]::NewGuid())
+    New-Item -ItemType Directory $dir | Out-Null
+    try {
+        $stories = @(
+            @('Cụ Tổ lập làng ven sông Ninh Cơ', 'Theo lời các cụ kể lại, năm 1945 cụ Nguyễn Văn Tổ cùng ba người em dời từ vùng trũng về ven sông Ninh Cơ, Nam Định, khai hoang lập xóm. Cụ đặt quy ước mỗi nhà góp một sào làm ruộng họ để lo giỗ chạp và khuyến học. Ngôi nhà thờ họ đầu tiên dựng bằng tre và lá cọ năm 1952. Câu chuyện này là dữ liệu giả cho bản demo.', $ToPersonId),
+            @('Quỹ khuyến học của dòng họ', 'Từ năm 1990, bác Nguyễn Văn Phúc khởi xướng quỹ khuyến học của họ Nguyễn. Mỗi dịp giỗ Tổ, họ trao thưởng cho các cháu đạt học sinh giỏi; năm 2025 có 12 cháu được khen. Câu chuyện này là dữ liệu giả cho bản demo.', $null),
+            @('Lần đầu bốn chi về giỗ Tổ đông đủ', 'Năm 2010, lần đầu tiên cả bốn chi họ Nguyễn cùng về nhà thờ họ dự giỗ Tổ, hơn 80 người. Các cụ cao tuổi kể chuyện xưa, con cháu ghi lại để làm gia phả. Câu chuyện này là dữ liệu giả cho bản demo.', $null))
+        foreach ($s in $stories) {
+            $body = @{ title = $s[0]; content = $s[1] }
+            if ($s[2]) { $body.relatedPersonId = $s[2] }
+            $null = Call POST '/heritage/stories' $body $Token
+        }
+
+        $pdf = Join-Path $dir 'gia-pha-minh-hoa.pdf'
+        New-DemoPdf $pdf @('Gia pha ho Nguyen - Nam Dinh (ban minh hoa)', 'Doi 1: Nguyen Van To (1925-1998)', 'Doi 2: Nguyen Van Phuc, Nguyen Van Loc, Nguyen Van Tai',
+            '', 'Du lieu gia dung cho demo FamilyConnect.')
+        $null = Call POST '/heritage/documents' @{ title = 'Gia phả chép tay (bản minh họa)'; category = 'Gia phả'
+            description = 'Bản chép lại ba đời đầu của họ Nguyễn. Tài liệu giả cho demo.'; mediaId = (Upload-Media $pdf 'application/pdf' $FamilyId $null $Token) } $Token
+        $award = Join-Path $dir 'bang-khen.png'
+        New-DemoImage $award 'Bằng khen khuyến học 2025' 5
+        $null = Call POST '/heritage/documents' @{ title = 'Bằng khen khuyến học 2025 (ảnh minh họa)'; category = 'Khen thưởng'
+            description = 'Ảnh chụp bằng khen trao dịp giỗ Tổ. Tài liệu giả cho demo.'; mediaId = (Upload-Media $award 'image/png' $FamilyId $null $Token) } $Token
+
+        $photos = @('Nhà thờ họ Nguyễn', 'Giỗ Tổ năm 2025', 'Trao thưởng khuyến học 2025', 'Chi 1 sửa mộ cụ Tổ', 'Họp mặt cuối năm 2024', 'Ruộng họ ven sông Ninh Cơ')
+        for ($i = 0; $i -lt $photos.Count; $i++) {
+            $file = Join-Path $dir "anh-$i.png"
+            New-DemoImage $file $photos[$i] $i
+            $null = Upload-Media $file 'image/png' $FamilyId "$($photos[$i]) (ảnh minh họa)" $Token
+        }
+        Write-Host "  Di san: $($stories.Count) cau chuyen, 2 tai lieu, $($photos.Count) anh."
+    } finally { Remove-Item -Recurse -Force $dir }
+}
+
+$existing = $null
+try { $existing = Login 'phuc' } catch { }
+if ($existing) {
+    # Demo đã nạp trước SCRUM-114: chỉ bổ sung Di sản nếu đang trống, phần khác giữ nguyên.
+    $famId = (Call GET '/users/me/membership' $null $existing).familyId
+    if (@(Call GET '/heritage/stories?page=0&size=1' $null $existing).Count -eq 0) {
+        Write-Host 'Du lieu demo da co san, bo sung phan Di san...'
+        Seed-Heritage $existing $famId
+    } else {
+        Write-Host 'Du lieu demo da co san (dang nhap duoc tai khoan phuc). Khong nap lai.'
+    }
+    exit 0
+}
+
+Write-Host '1/8 Tao tai khoan...'
 $acc = [ordered]@{
     phuc = @('Nguyễn Văn Phúc', '1950-05-10'); hung = @('Nguyễn Văn Hùng', '1972-08-20'); minh = @('Nguyễn Văn Minh', '1978-11-02')
     ha = @('Nguyễn Thị Hà', '1994-04-09'); lan = @('Nguyễn Thị Lan', '1996-07-15'); khoa = @('Lê Văn Khoa', '1993-01-25')
@@ -35,7 +141,7 @@ $acc = [ordered]@{
 $uid = @{}; $tok = @{}
 foreach ($k in $acc.Keys) { $uid[$k] = Register $k $acc[$k][0] $acc[$k][1]; $tok[$k] = Login $k }
 
-Write-Host '2/7 Tao dong ho, chi...'
+Write-Host '2/8 Tao dong ho, chi...'
 $fam = (Call POST '/families' @{ name = 'Họ Nguyễn – Nam Định (demo)'; description = 'Dữ liệu giả để demo' } $tok.phuc).id
 $famTran = (Call POST '/families' @{ name = 'Họ Trần – Huế (demo)'; description = 'Dữ liệu giả để demo' } $tok.quy).id
 $b1 = (Call POST "/families/$fam/branches" @{ name = 'Chi 1 (chi trưởng)' } $tok.phuc).id
@@ -43,7 +149,7 @@ $b2 = (Call POST "/families/$fam/branches" @{ name = 'Chi 2' } $tok.phuc).id
 $b2a = (Call POST "/families/$fam/branches" @{ name = 'Chi 2a'; parentBranchId = $b2 } $tok.phuc).id
 $b3 = (Call POST "/families/$fam/branches" @{ name = 'Chi 3' } $tok.phuc).id
 
-Write-Host '3/7 Tao cay gia pha 5 doi (53 nguoi)...'
+Write-Host '3/8 Tao cay gia pha 5 doi (53 nguoi)...'
 # Giữ thân yêu cầu của từng người: PUT hồ sơ thay toàn bộ trường nên lúc đánh dấu đã mất phải gửi lại đủ.
 $p = @{}; $body = @{}
 function Person($Key, $Name, $Gender, $Birth, $Branch, $Extra = @{}) {
@@ -162,7 +268,7 @@ Die 'to' '1998-03-12' 'Nghĩa trang làng Hải Hậu' $true
 Die 'nhan' '2005-11-20' 'Nghĩa trang làng Hải Hậu' $true
 Die 'loc' '2015-07-01' 'Nghĩa trang Hải Phòng'
 
-Write-Host '4/7 Xin vao gia dinh va duyet...'
+Write-Host '4/8 Xin vao gia dinh va duyet...'
 foreach ($j in @(@('hung', $b2), @('minh', $b1), @('ha', $b2), @('lan', $b2a), @('khoa', $b2a))) {
     $null = Call POST '/join-requests' @{ code = $j[1]; message = 'Con cháu trong họ xin vào gia đình' } $tok[$j[0]]
 }
@@ -177,7 +283,7 @@ $null = Call PUT "/families/$fam/accounts/$($uid.hung)" @{ role = 'BRANCH_ADMIN'
 $null = Call POST '/join-requests' @{ code = $b1; message = 'Cháu ngoại bác Phúc, xin vào Chi 1' } $tok.tu
 foreach ($k in @('hung','minh','ha','lan','khoa')) { $tok[$k] = Login $k }
 
-Write-Host '5/7 Tao thong bao, su kien, bai dang...'
+Write-Host '5/8 Tao thong bao, su kien, bai dang...'
 $null = Call POST "/announcements" @{ title = 'Giỗ Tổ họ Nguyễn ngày 12/3 âm lịch'; content = 'Mời con cháu các chi về nhà thờ họ dự giỗ Tổ. Mỗi chi cử 2 người phụ bếp.'; branchId = $null; isPinned = $true } $tok.phuc
 $null = Call POST '/events' @{ title = 'Giỗ Tổ họ Nguyễn'; description = 'Lễ giỗ cụ Nguyễn Văn Tổ, họp mặt toàn họ.'; startAt = '2026-12-20T08:00:00+07:00'; endAt = '2026-12-20T14:00:00+07:00'; location = 'Nhà thờ họ Nguyễn, Hải Hậu, Nam Định'; branchId = $null } $tok.phuc
 $null = Call POST '/events' @{ title = 'Họp Chi 2 tổng kết năm'; description = 'Tổng kết quỹ khuyến học và kế hoạch năm sau.'; startAt = '2026-12-27T18:00:00+07:00'; location = 'Nhà chú Hùng, Hà Nội'; branchId = $b2 } $tok.hung
@@ -188,7 +294,7 @@ $null = Call POST '/posts' @{ content = 'Cuối tuần này Chi 2a gặp mặt m
 $null = Call POST '/posts' @{ content = 'Cảm ơn cả họ đã đón con rể mới. Hẹn gặp mọi người ở giỗ Tổ!'; type = 'POST'; branchId = $null } $tok.khoa
 $null = Call POST '/posts' @{ content = 'Họ Trần lịch tảo mộ cuối năm tại Huế, mời con cháu sắp xếp về.'; type = 'POST'; branchId = $null } $tok.quy
 
-Write-Host '6/7 Tao ho so nghe nghiep (ten co quan la gia)...'
+Write-Host '6/8 Tao ho so nghe nghiep (ten co quan la gia)...'
 foreach ($j in @(@('hung','Kỹ sư xây dựng','Công ty Xây dựng Demo','Hà Nội'), @('minh','Giáo viên Toán','Trường THPT Demo','Nam Định'),
                  @('an','Bác sĩ','Phòng khám Demo','Đà Nẵng'), @('long','Kế toán','Công ty Cảng Demo','Hải Phòng'),
                  @('quang','Lập trình viên','Công ty Phần mềm Demo','TP. Hồ Chí Minh'), @('ha','Chuyên viên dữ liệu','Ngân hàng Demo','Hà Nội'),
@@ -196,7 +302,10 @@ foreach ($j in @(@('hung','Kỹ sư xây dựng','Công ty Xây dựng Demo','H�
     $null = Call PUT "/directory/members/$($p[$j[0]])/profession-profile" @{ jobTitle = $j[1]; company = $j[2]; workLocation = $j[3] } $tok.phuc
 }
 
-Write-Host '7/7 Tu kiem tra...'
+Write-Host '7/8 Tao du lieu Di san (cau chuyen, tai lieu, anh minh hoa gia)...'
+Seed-Heritage $tok.phuc $fam $p['to']
+
+Write-Host '8/8 Tu kiem tra...'
 $all = @(Call GET "/families/$fam/persons?page=0&size=100" $null $tok.phuc)
 Write-Host "So nguoi trong ho Nguyen: $($all.Count)"
 if ($all.Count -ne $p.Count) { throw "Mong doi $($p.Count) nguoi, API tra ve $($all.Count)" }
