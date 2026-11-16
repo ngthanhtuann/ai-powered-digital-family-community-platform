@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Collection;
+import java.util.HashMap;
 
 /** Dữ liệu của module Gia phả cho module khác đọc (genealogy.md mục 9: GenealogyQuery). */
 public interface GenealogyQuery {
@@ -25,6 +27,13 @@ public interface GenealogyQuery {
     Optional<UUID> findPersonFamilyId(UUID personId);
 
     Optional<DirectoryPerson> findDirectoryPerson(UUID personId);
+
+    /** Như findDirectoryPerson cho nhiều người một lần; người đã xóa không có trong kết quả. */
+    default Map<UUID, DirectoryPerson> findDirectoryPersons(Collection<UUID> personIds) {
+        Map<UUID, DirectoryPerson> found = new HashMap<>();
+        personIds.forEach(id -> findDirectoryPerson(id).ifPresent(person -> found.put(id, person)));
+        return found;
+    }
 
     Optional<DirectoryPerson> findDirectoryPersonByUserId(UUID userId);
 

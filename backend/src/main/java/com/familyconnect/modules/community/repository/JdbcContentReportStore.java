@@ -14,6 +14,9 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Bảng content_report và cột hidden_at của nội dung (BR-COM-12). Sự kiện cùng module Community/Events. */
 @Repository
@@ -152,6 +155,16 @@ public class JdbcContentReportStore {
         return table == null ? Optional.empty()
                 : jdbc.queryForList("SELECT created_by FROM " + table + " WHERE id=:id",
                         new MapSqlParameterSource("id", id), UUID.class).stream().findFirst();
+    }
+
+    /** Như ownerOf cho nhiều nội dung cùng loại (một trang danh sách báo cáo). */
+    public Map<UUID, UUID> ownersOf(ContentType type, Collection<UUID> ids) {
+        String table = table(type);
+        if (table == null || ids.isEmpty()) return Map.of();
+        Map<UUID, UUID> owners = new HashMap<>();
+        jdbc.query("SELECT id, created_by FROM " + table + " WHERE id IN (:ids)", new MapSqlParameterSource("ids", ids),
+                rs -> { owners.put(rs.getObject("id", UUID.class), rs.getObject("created_by", UUID.class)); });
+        return owners;
     }
 
     /** hidden=true: đặt hidden_at; false: bỏ ẩn. Nội dung đã xóa thì giữ nguyên. */

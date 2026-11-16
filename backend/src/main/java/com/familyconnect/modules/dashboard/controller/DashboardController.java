@@ -1,5 +1,6 @@
 package com.familyconnect.modules.dashboard.controller;
 
+import com.familyconnect.common.util.FamilyTime;
 import com.familyconnect.common.api.ApiResponse;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.modules.dashboard.dto.DashboardResponses.DashboardStatisticsData;
@@ -44,7 +45,7 @@ public class DashboardController {
         if (!"csv".equalsIgnoreCase(format)) {
             throw ApiException.invalidField("format", "Hiện chỉ hỗ trợ format=csv");
         }
-        String fileName = "members-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+        String fileName = "members-" + LocalDate.now(FamilyTime.ZONE).format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
@@ -60,7 +61,7 @@ public class DashboardController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         String safeReportType = reportType.replaceAll("[^A-Za-z0-9_-]", "");
         String fileName = "report-" + safeReportType.toLowerCase(Locale.ROOT) + "-"
-                + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".pdf";
+                + LocalDate.now(FamilyTime.ZONE).format(DateTimeFormatter.BASIC_ISO_DATE) + ".pdf";
         byte[] report = dashboardService.exportStatisticsPdf(reportType, familyId, branchId, from, to);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)

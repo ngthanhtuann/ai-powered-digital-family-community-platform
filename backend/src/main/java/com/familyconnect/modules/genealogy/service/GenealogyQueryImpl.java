@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -67,6 +69,14 @@ public class GenealogyQueryImpl implements GenealogyQuery {
     @Override
     public Optional<DirectoryPerson> findDirectoryPerson(UUID personId) {
         return personRepository.findByIdAndDeletedAtIsNull(personId).map(GenealogyQueryImpl::toDirectoryPerson);
+    }
+
+    @Override
+    public Map<UUID, DirectoryPerson> findDirectoryPersons(Collection<UUID> personIds) {
+        if (personIds.isEmpty()) return Map.of();
+        return personRepository.findAllByIdInAndDeletedAtIsNull(personIds).stream()
+                .map(GenealogyQueryImpl::toDirectoryPerson)
+                .collect(Collectors.toMap(DirectoryPerson::id, person -> person));
     }
 
     @Override
