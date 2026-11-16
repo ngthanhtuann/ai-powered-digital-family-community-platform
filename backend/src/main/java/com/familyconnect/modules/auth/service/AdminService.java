@@ -45,6 +45,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 /**
  * Quản trị hệ thống: người dùng (UC-AUTH-08) và hàng đợi kiểm duyệt (UC-AUTH-09). Chỉ SYSTEM_ADMIN.
@@ -92,8 +94,16 @@ public class AdminService {
         String pattern = LikePatterns.contains(keyword.toLowerCase(Locale.ROOT));
         Page<User> found = userRepository.search(pattern, status == null, status == null ? UserStatus.ACTIVE : status,
                 role == null, role == null ? "" : role.name(), pageable);
-        // shortcut: mỗi người một lần đọc vai trò và gia đình (tối đa 100/trang); gom theo lô nếu trang quản trị chậm.
-        List<AdminUserData> data = found.getContent().stream().map(this::toData).toList();
+        // Đọc vai trò và gia đình của cả trang theo lô (vài truy vấn cho cả trang, không phải vài truy vấn mỗi người).
+        List<UUID> ids = found.getContent().stream().map(User::getId).toList();
+        Map<UUID, List<String>> roles = new LinkedHashMap<>();
+        ids.forEach(id -> roles.put(id, new ArrayList<>()));
+        if (!ids.isEmpty()) {
+            userRoleRepository.findRoleCodesByUserIds(ids).forEach(row -> roles.get((UUID) row[0]).add((String) row[1]));
+        }
+        Map<UUID, MembershipData> memberships = membershipService.describeAll(roles);
+        List<AdminUserData> data = found.getContent().stream()
+                .map(user -> AdminUserData.of(user, roles.get(user.getId()), memberships.get(user.getId()))).toList();
         return PageResponse.of(data, page, size, found.getTotalElements());
     }
 

@@ -24,6 +24,16 @@ public interface MemberVerificationRepository extends JpaRepository<MemberVerifi
             """)
     Optional<MemberVerification> findByUserIdAndStatusIn(UUID userId, Collection<VerificationStatus> statuses);
 
+    /** Như findByUserIdAndStatusIn cho nhiều người (trang quản trị); mỗi người tối đa một bản ghi hiệu lực. */
+    @Query("""
+            select mv from MemberVerification mv
+            where mv.userId in :userIds and mv.deletedAt is null and mv.status in :statuses
+            """)
+    List<MemberVerification> findByUserIdInAndStatusIn(Collection<UUID> userIds, Collection<VerificationStatus> statuses);
+
+    /** Mọi bản ghi theo trạng thái của nhiều người; bên gọi tự lấy bản mới nhất mỗi người. */
+    List<MemberVerification> findByUserIdInAndStatusAndDeletedAtIsNull(Collection<UUID> userIds, VerificationStatus status);
+
     /** Bản ghi gần nhất theo trạng thái (dùng để hiện lý do bị từ chối). */
     Optional<MemberVerification> findFirstByUserIdAndStatusAndDeletedAtIsNullOrderByUpdatedAtDesc(
             UUID userId, VerificationStatus status);

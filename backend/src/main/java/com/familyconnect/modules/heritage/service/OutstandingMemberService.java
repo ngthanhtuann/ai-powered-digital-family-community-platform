@@ -57,7 +57,13 @@ public class OutstandingMemberService {
         PageRequest pageable = pageRequest(page, size, sort);
         // Xem là quyền chung của cả dòng họ (OpenAPI getOutstandingMembers); phạm vi chi chỉ áp cho thêm/sửa/xóa.
         Page<OutstandingMember> result = repository.findAllByFamilyIdAndDeletedAtIsNull(familyId, pageable);
-        List<OutstandingMemberData> items = result.getContent().stream().map(this::toData).toList();
+        // Họ tên đọc theo lô cho cả trang, thay vì một truy vấn mỗi người tiêu biểu.
+        Map<UUID, DirectoryPerson> people = genealogyQuery.findDirectoryPersons(
+                result.getContent().stream().map(OutstandingMember::getPersonId).toList());
+        List<OutstandingMemberData> items = result.getContent().stream()
+                .map(member -> toData(member, people.containsKey(member.getPersonId())
+                        ? people.get(member.getPersonId()).fullName() : REMOVED_PERSON))
+                .toList();
         return ListResponse.of(items, page, size, result.getTotalElements());
     }
 

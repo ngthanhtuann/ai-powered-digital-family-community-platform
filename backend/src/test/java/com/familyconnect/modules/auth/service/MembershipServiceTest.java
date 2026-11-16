@@ -183,4 +183,40 @@ class MembershipServiceTest {
         assertThat(data.status()).isEqualTo(MembershipStatus.NONE);
         assertThat(data.canCreateFamily()).isTrue();
     }
+
+    /** SCRUM-115: describeAll (trang quản trị) cho kết quả như describe từng người, tên gia đình chỉ đọc một lần. */
+    @Test
+    void describeAllMatchesDescribeAndReadsFamilyNameOnce() {
+        UUID pending = UUID.randomUUID(), rejected = UUID.randomUUID(), none = UUID.randomUUID(), admin = UUID.randomUUID();
+        MemberVerification pendingMv = record(VerificationStatus.PENDING, MemberRole.MEMBER);
+        ReflectionTestUtils.setField(pendingMv, "userId", pending);
+        MemberVerification oldReject = record(VerificationStatus.REJECTED, MemberRole.MEMBER);
+        ReflectionTestUtils.setField(oldReject, "userId", rejected);
+        ReflectionTestUtils.setField(oldReject, "rejectReason", "cũ");
+        ReflectionTestUtils.setField(oldReject, "updatedAt", OffsetDateTime.parse("2026-10-01T00:00:00Z"));
+        MemberVerification newReject = record(VerificationStatus.REJECTED, MemberRole.MEMBER);
+        ReflectionTestUtils.setField(newReject, "userId", rejected);
+        ReflectionTestUtils.setField(newReject, "rejectReason", "mới nhất");
+        ReflectionTestUtils.setField(newReject, "updatedAt", OffsetDateTime.parse("2026-10-10T00:00:00Z"));
+        when(verifications.findByUserIdInAndStatusIn(any(), any())).thenReturn(List.of(pendingMv));
+        when(verifications.findByUserIdInAndStatusAndDeletedAtIsNull(any(), eq(VerificationStatus.REJECTED)))
+                .thenReturn(List.of(oldReject, newReject));
+        when(genealogy.findFamilyName(FAMILY)).thenReturn(Optional.of("Họ Nguyễn"));
+
+        java.util.Map<UUID, List<String>> roles = new java.util.LinkedHashMap<>();
+        roles.put(pending, List.of(Role.MEMBER));
+        roles.put(rejected, List.of(Role.MEMBER));
+        roles.put(none, List.of(Role.MEMBER));
+        roles.put(admin, List.of(Role.SYSTEM_ADMIN));
+        var all = service.describeAll(roles);
+
+        assertThat(all.get(pending).status()).isEqualTo(MembershipStatus.PENDING);
+        assertThat(all.get(pending).joinRequestId()).isEqualTo(pendingMv.getId());
+        assertThat(all.get(pending).familyName()).isEqualTo("Họ Nguyễn");
+        assertThat(all.get(rejected).status()).isEqualTo(MembershipStatus.REJECTED);
+        assertThat(all.get(rejected).rejectReason()).isEqualTo("mới nhất");
+        assertThat(all.get(none)).isEqualTo(MembershipData.none());
+        assertThat(all.get(admin)).isEqualTo(MembershipData.none());
+        verify(genealogy, org.mockito.Mockito.times(1)).findFamilyName(FAMILY);
+    }
 }

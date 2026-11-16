@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface PersonRepository extends JpaRepository<Person, UUID>, DirectoryPersonSearchRepository {
 
@@ -21,6 +22,8 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
 
     /** Cả gia đình trong một truy vấn; dùng khi tính quan hệ cho nhiều người (xuất CSV, UC-DSH-02). */
     List<Person> findAllByFamilyIdAndDeletedAtIsNull(UUID familyId);
+
+    List<Person> findAllByIdInAndDeletedAtIsNull(Collection<UUID> ids);
 
     /** Cùng quy tắc isChild của PersonService: người còn sống luôn có birth_date (BR-GEN-17). */
     @Query(value = """

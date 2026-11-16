@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.EnumMap;
+import java.util.stream.Collectors;
 
 /**
  * Báo cáo nội dung vi phạm (BR-COM-12): thành viên báo cáo; quản trị xử lý qua {@link ContentModerationPort}
@@ -100,7 +102,13 @@ public class ContentReportService implements ContentModerationPort {
         boolean ascending = order != null && order.isAscending();
         JdbcContentReportStore.Page found = store.find(status, type, ascending, pageable.getPageSize(),
                 pageable.getOffset());
-        List<ContentReportView> items = found.items().stream().map(this::withOwner).toList();
+        // Chủ nội dung đọc theo lô, mỗi loại nội dung một truy vấn, thay vì một truy vấn mỗi báo cáo.
+        Map<ContentType, Map<UUID, UUID>> owners = new EnumMap<>(ContentType.class);
+        found.items().stream().collect(Collectors.groupingBy(ContentReportView::targetType,
+                        Collectors.mapping(ContentReportView::targetId, Collectors.toSet())))
+                .forEach((targetType, ids) -> owners.put(targetType, store.ownersOf(targetType, ids)));
+        List<ContentReportView> items = found.items().stream()
+                .map(v -> withOwner(v, owners.getOrDefault(v.targetType(), Map.of()).get(v.targetId()))).toList();
         return new PageImpl<>(items, pageable, found.total());
     }
 
@@ -167,6 +175,11 @@ public class ContentReportService implements ContentModerationPort {
     }
 
     // shortcut: mỗi dòng một truy vấn tìm chủ nội dung (tối đa 100/trang); gom theo loại nếu hàng đợi lớn.
+    private ContentReportView withOwner(ContentReportView v, UUID owner) {
+        return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
+                v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(), owner, v.reportCount());
+    }
+
     private ContentReportView withOwner(ContentReportView v) {
         return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
                 v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(),
