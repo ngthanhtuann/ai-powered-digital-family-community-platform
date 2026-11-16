@@ -81,6 +81,9 @@ const EXTRA_TITLES: [RegExp, string][] = [
   [/^\/search$/, 'Tìm kiếm'],
 ];
 
+// Trang hướng dẫn UI kit dành cho lập trình viên: không hiện cho người dùng ở bản build chạy thật.
+const SHOW_UI_KIT = process.env.NODE_ENV !== 'production';
+
 function matchesRoute(path: string, href: string) {
   return href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
 }
@@ -250,7 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-6 overflow-y-auto bg-primary p-5 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-6 overflow-y-auto bg-primary p-5 [scrollbar-color:theme(colors.border-strong)_transparent] [scrollbar-width:thin] lg:flex">
         <Link
           href="/"
           className="rounded-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-info"
@@ -267,9 +270,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isPending={isPending}
           id="desktop-navigation"
         />
-        <Link href="/ui-kit" className="text-center text-caption text-cream-on-dark underline">
-          Hướng dẫn UI kit
-        </Link>
+        {SHOW_UI_KIT && (
+          <Link href="/ui-kit" className="text-center text-caption text-cream-on-dark underline">
+            Hướng dẫn UI kit
+          </Link>
+        )}
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -289,9 +294,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </a>
         </div>
 
-        <header className="flex min-h-header flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 md:px-6 lg:px-8 lg:py-0">
-          <div>
-            <h1 className="text-page-title lg:text-section-title">{pageTitle}</h1>
+        <header className="flex min-h-header items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 md:px-6 lg:px-8 lg:py-0">
+          {/* Tiêu đề header không phải h1: mỗi trang tự có đúng một h1. Trên điện thoại ẩn để không lặp tiêu đề trang
+              và thanh thương hiệu ở trên đã có tên gia đình. */}
+          <div className="hidden lg:block">
+            <p className="text-section-title">{pageTitle}</p>
             <p className="mt-1 text-body text-text-secondary">
               {familyName ||
                 (role === 'UNVERIFIED'
@@ -300,21 +307,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
           {role !== 'UNVERIFIED' && (
-            <div className="order-3 w-full lg:order-none lg:w-auto lg:flex-1 lg:px-8">
+            <div className="min-w-0 flex-1 lg:px-8">
               <SemanticSearchBox systemAdmin={role === 'SYSTEM_ADMIN'} />
             </div>
           )}
           <div className="flex items-center gap-3 text-right">
             {role !== 'UNVERIFIED' && <NotificationBell />}
-            {profile.data && <p className="text-label">{profile.data.fullName}</p>}
+            {profile.data && <p className="hidden text-label lg:block">{profile.data.fullName}</p>}
             {role !== 'UNVERIFIED' && membership.data && (
-              <p className="text-caption text-text-secondary">
+              <p className="hidden text-caption text-text-secondary lg:block">
                 {role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống'
                   : memberRoleLabel(membership.data.role, membership.data.branchId, membership.data.branchName)}
               </p>
             )}
             {profile.isLoading && (
-              <p className="text-caption text-text-secondary">Đang tải tài khoản...</p>
+              <p className="hidden text-caption text-text-secondary lg:block">Đang tải tài khoản...</p>
             )}
           </div>
         </header>
@@ -353,12 +360,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             isPending={isPending}
             id="mobile-navigation"
           />
-          <Link
-            href="/ui-kit"
-            className="mt-4 inline-block text-caption text-cream-on-dark underline"
-          >
-            Hướng dẫn UI kit
-          </Link>
+          {SHOW_UI_KIT && (
+            <Link
+              href="/ui-kit"
+              className="mt-4 inline-block text-caption text-cream-on-dark underline"
+            >
+              Hướng dẫn UI kit
+            </Link>
+          )}
         </div>
       </div>
     </div>

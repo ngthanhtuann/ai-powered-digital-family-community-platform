@@ -100,8 +100,8 @@ function AnnouncementCard({
             onChange={(e) => setContent(e.target.value)}
             aria-label="Nội dung thông báo"
           />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" className="h-5 w-5" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
             Ghim đầu bảng tin
           </label>
           <Button
@@ -117,7 +117,7 @@ function AnnouncementCard({
       {canReport && (
         <button
           type="button"
-          className="min-h-9 text-body underline"
+          className="min-h-11 text-body underline"
           onClick={() => setReporting(!reporting)}
         >
           Báo cáo
@@ -232,8 +232,8 @@ export function Announcements({
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
+          <label className="flex min-h-11 items-center gap-2">
+            <input type="checkbox" className="h-5 w-5" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />{' '}
             Ghim ở đầu bảng tin
           </label>
           <Button

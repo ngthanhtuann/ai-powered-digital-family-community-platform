@@ -134,7 +134,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <>
+      <h1 className="text-page-title lg:sr-only">Thống kê</h1>
+      <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <p className="text-body text-text-secondary">
           Theo dõi thành viên, hoạt động cộng đồng và sự kiện trong phạm vi được quản lý.
@@ -204,7 +206,7 @@ export default function DashboardPage() {
           Không tải được dashboard: {error.message}
         </p>
       ))}
-      {(families.isPending || statistics.isPending) && (
+      {(families.isLoading || statistics.isLoading) && (
         <p className="text-body text-text-secondary">Đang tải số liệu...</p>
       )}
 
@@ -319,7 +321,8 @@ export default function DashboardPage() {
                         ))}
                       </Pie>
                       <Tooltip />
-                      <Legend />
+                      {/* Chữ chú thích dùng màu chữ chính: chữ vàng trên nền trắng chỉ đạt tương phản 2,3:1. */}
+                      <Legend formatter={(value) => <span className="text-text-primary">{value}</span>} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -443,5 +446,6 @@ export default function DashboardPage() {
         </>
       )}
     </div>
+    </>
   );
 }

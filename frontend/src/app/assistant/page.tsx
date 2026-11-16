@@ -14,11 +14,12 @@ import { dashboardApi } from '@/services/dashboard';
 
 type Message = { id: string; role: 'assistant' | 'user'; content: string; sources?: AiSource[]; failed?: boolean };
 
+// Câu gợi ý phải trả lời được từ dữ liệu đã lập chỉ mục (RAG không làm phép gộp kiểu "ai lớn tuổi nhất").
 const SUGGESTIONS = [
-  'Ông bà tổ tiên của gia đình mình có những ai?',
-  'Kể cho tôi nghe về lịch sử dòng họ.',
-  'Có những câu chuyện gia đình nào đáng nhớ?',
-  'Ai là người lớn tuổi nhất trong gia đình?',
+  'Giỗ Tổ năm 2026 diễn ra khi nào?',
+  'Nguyễn Văn Tổ là ai?',
+  'Ai làm kỹ sư xây dựng trong họ?',
+  'Kể cho tôi nghe chuyện cụ Tổ lập làng.',
 ];
 
 const SOURCE_LABEL: Record<AiSourceType, string> = {
@@ -141,6 +142,8 @@ export default function AssistantPage() {
   }
 
   return (
+    <>
+    <h1 className="mb-4 text-page-title lg:sr-only">Trợ lý AI</h1>
     <div className="mx-auto flex min-h-[calc(100vh-13rem)] max-w-5xl flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card lg:min-h-[calc(100vh-12rem)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
@@ -298,5 +301,6 @@ export default function AssistantPage() {
         </form>
       </div>
     </div>
+    </>
   );
 }
