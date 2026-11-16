@@ -201,11 +201,13 @@ export default function FamilyTreePage() {
               nodesDraggable={false}
               nodesConnectable={false}
               fitView
+              // Không thu nhỏ quá 0,4 khi mở: cây lớn trên điện thoại vẫn đọc được tên, kéo để xem phần còn lại.
+              fitViewOptions={{ minZoom: 0.4 }}
               minZoom={0.1}
               maxZoom={1.5}
               proOptions={{ hideAttribution: true }}
             >
-              <Controls showInteractive={false} />
+              <Controls showInteractive={false} className="[&_button]:!h-11 [&_button]:!w-11" />
               <MiniMap pannable zoomable nodeClassName="fill-border-strong" ariaLabel="Bản đồ thu nhỏ của cây" />
               <Background gap={16} />
               <FitToPath ids={relation?.path?.map((step) => step.id).filter((id) => flow.nodes.some((n) => n.id === id)).join(',') ?? ''} />

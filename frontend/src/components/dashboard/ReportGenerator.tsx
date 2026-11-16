@@ -30,7 +30,7 @@ export function ReportGenerator() {
   const [reportFrom, setReportFrom] = useState(initialReportFrom);
   const [reportTo, setReportTo] = useState(() => toDateInputValue(new Date()));
   const [pdfAction, setPdfAction] = useState<'preview' | 'download' | null>(null);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');
+  const [pdfPreview, setPdfPreview] = useState<{ url: string; filters: string } | null>(null);
   const [pdfError, setPdfError] = useState('');
   const membership = useQuery({ queryKey: ['app-shell-membership'], queryFn: getMyMembership });
   const profile = useQuery({ queryKey: ['app-shell-profile'], queryFn: getMyProfile });
@@ -62,14 +62,14 @@ export function ReportGenerator() {
       : selectedBranch;
   const errors = [families.error, branches.error].filter((error) => error instanceof Error);
 
-  useEffect(() => {
-    setPdfPreviewUrl('');
-  }, [familyId, branchId, reportType, reportFrom, reportTo]);
+  // Bản xem trước gắn với bộ lọc đã tạo ra nó: đổi bộ lọc thì không hiện nữa, không cần effect xóa state.
+  const filters = [familyId, branchId, reportType, reportFrom, reportTo].join('|');
+  const pdfPreviewUrl = pdfPreview?.filters === filters ? pdfPreview.url : '';
   useEffect(
     () => () => {
-      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      if (pdfPreview) URL.revokeObjectURL(pdfPreview.url);
     },
-    [pdfPreviewUrl],
+    [pdfPreview],
   );
 
   if (membership.isPending || profile.isPending) {
@@ -98,7 +98,7 @@ export function ReportGenerator() {
         to: reportTo,
       });
       if (action === 'preview') {
-        setPdfPreviewUrl(URL.createObjectURL(blob));
+        setPdfPreview({ url: URL.createObjectURL(blob), filters });
       } else {
         saveBlob(blob, datedFileName(`report-${reportType.toLowerCase()}`, 'pdf'));
       }

@@ -32,6 +32,8 @@ export default function PendingApprovalPage() {
   });
 
   return (
+    <>
+    <h1 className="sr-only">{data?.status === 'REJECTED' ? 'Yêu cầu bị từ chối' : 'Tài khoản đang chờ duyệt'}</h1>
     <Card title={data?.status === 'REJECTED' ? 'Yêu cầu bị từ chối' : 'Tài khoản đang chờ duyệt'}
       className="mx-auto max-w-2xl">
       {membership.isLoading && <p className="text-body text-text-secondary">Đang kiểm tra trạng thái...</p>}
@@ -66,5 +68,6 @@ export default function PendingApprovalPage() {
         </div>
       )}
     </Card>
+    </>
   );
 }

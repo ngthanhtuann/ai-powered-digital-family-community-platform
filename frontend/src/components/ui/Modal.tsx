@@ -25,6 +25,8 @@ export function Modal({ open, title, description, onClose, children, actions }: 
   }, [open]);
 
   return (
+    // Bấm nền để đóng; bàn phím đóng bằng Escape qua sự kiện cancel gốc của <dialog>.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
@@ -32,12 +34,6 @@ export function Modal({ open, title, description, onClose, children, actions }: 
       onCancel={(event) => {
         event.preventDefault();
         onClose();
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          onClose();
-        }
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();

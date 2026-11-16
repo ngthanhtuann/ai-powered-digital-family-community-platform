@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
@@ -107,6 +107,14 @@ export default function HeritagePhotosPage() {
   }, [items, targetMediaId]);
   const selectedIndex = items.findIndex((photo) => photo.mediaId === selected);
   const activePhoto = selectedIndex >= 0 ? items[selectedIndex] : null;
+  // Hộp xem ảnh là <dialog> mở bằng showModal(): trình duyệt tự chuyển và giữ tiêu điểm bên trong, Escape đóng.
+  const lightbox = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = lightbox.current;
+    if (!dialog) return;
+    if (activePhoto && !dialog.open) dialog.showModal();
+    if (!activePhoto && dialog.open) dialog.close();
+  }, [activePhoto]);
 
   const upload = useMutation({
     mutationFn: ({ file, photoCaption }: { file: File; photoCaption: string }) =>
@@ -303,23 +311,27 @@ export default function HeritagePhotosPage() {
         )}
       </section>
 
-      {activePhoto && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Xem ảnh"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="flex max-h-full w-full max-w-6xl flex-col items-center gap-3"
-            onClick={(event) => event.stopPropagation()}
-          >
+      {/* Bấm nền để đóng; bàn phím đóng bằng Escape qua sự kiện cancel gốc của <dialog>. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
+      <dialog
+        ref={lightbox}
+        aria-label="Xem ảnh"
+        className="m-0 h-full max-h-none w-full max-w-none bg-primary/95 p-4 text-cream-on-dark backdrop:bg-transparent"
+        onCancel={(event) => {
+          event.preventDefault();
+          setSelected(null);
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setSelected(null);
+        }}
+      >
+        {activePhoto && (
+          <div className="mx-auto flex h-full w-full max-w-6xl flex-col items-center justify-center gap-3">
             <div className="flex w-full justify-end gap-2">
               {items.length > 1 && !targetMediaId && (
                 <button
                   type="button"
-                  className="rounded-control border border-white/40 px-3 py-2 text-label text-white"
+                  className="min-h-11 rounded-control border border-cream-on-dark/40 px-3 text-label"
                   onClick={() => setSlideshow((value) => !value)}
                 >
                   {slideshow ? 'Tạm dừng' : 'Trình chiếu'}
@@ -328,7 +340,7 @@ export default function HeritagePhotosPage() {
               <button
                 type="button"
                 aria-label="Đóng"
-                className="rounded-control border border-white/40 px-3 py-2 text-label text-white"
+                className="min-h-11 rounded-control border border-cream-on-dark/40 px-3 text-label"
                 onClick={() => setSelected(null)}
               >
                 Đóng
@@ -338,11 +350,11 @@ export default function HeritagePhotosPage() {
               photo={activePhoto}
               className="max-h-[75vh] max-w-full object-contain"
             />
-            <div className="flex w-full items-center justify-between gap-3 text-white">
+            <div className="flex w-full items-center justify-between gap-3">
               {items.length > 1 && !targetMediaId && (
                 <button
                   type="button"
-                  className="rounded-control border border-white/40 px-3 py-2 text-label"
+                  className="min-h-11 rounded-control border border-cream-on-dark/40 px-3 text-label"
                   onClick={() =>
                     setSelected(
                       items[(selectedIndex - 1 + items.length) % items.length]?.mediaId ?? null,
@@ -359,7 +371,7 @@ export default function HeritagePhotosPage() {
               {items.length > 1 && !targetMediaId && (
                 <button
                   type="button"
-                  className="rounded-control border border-white/40 px-3 py-2 text-label"
+                  className="min-h-11 rounded-control border border-cream-on-dark/40 px-3 text-label"
                   onClick={() =>
                     setSelected(items[(selectedIndex + 1) % items.length]?.mediaId ?? null)
                   }
@@ -369,8 +381,8 @@ export default function HeritagePhotosPage() {
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </dialog>
     </HeritagePage>
   );
 }

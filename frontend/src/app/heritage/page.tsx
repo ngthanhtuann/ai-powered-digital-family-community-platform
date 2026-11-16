@@ -38,15 +38,15 @@ export default function HeritagePageIndex() {
     <HeritagePage>
       <HeritageHeader>
         <div className="flex flex-wrap gap-2">
-          <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/outstanding-members">
+          <Link className="inline-flex min-h-11 items-center rounded-control border border-border-strong px-4 text-label hover:bg-surface-muted" href="/heritage/outstanding-members">
             Người tiêu biểu
           </Link>
           {access.isAdmin && (
             <>
-            <Link className="rounded-control bg-secondary px-4 py-2 text-label hover:bg-gold-hover" href="/heritage/documents/new">
+            <Link className="inline-flex min-h-11 items-center rounded-control bg-secondary px-4 text-label hover:bg-gold-hover" href="/heritage/documents/new">
               Thêm tài liệu
             </Link>
-            <Link className="rounded-control border border-border-strong px-4 py-2 text-label hover:bg-surface-muted" href="/heritage/stories/new">
+            <Link className="inline-flex min-h-11 items-center rounded-control border border-border-strong px-4 text-label hover:bg-surface-muted" href="/heritage/stories/new">
               Viết câu chuyện
             </Link>
             </>
