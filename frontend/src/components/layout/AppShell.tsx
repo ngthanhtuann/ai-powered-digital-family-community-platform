@@ -313,15 +313,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           <div className="flex items-center gap-3 text-right">
             {role !== 'UNVERIFIED' && <NotificationBell />}
-            {profile.data && <p className="hidden text-label lg:block">{profile.data.fullName}</p>}
+            {profile.data && <p className="hidden text-label md:block">{profile.data.fullName}</p>}
             {role !== 'UNVERIFIED' && membership.data && (
-              <p className="hidden text-caption text-text-secondary lg:block">
+              <p className="hidden text-caption text-text-secondary md:block">
                 {role === 'SYSTEM_ADMIN' ? 'Quản trị hệ thống'
                   : memberRoleLabel(membership.data.role, membership.data.branchId, membership.data.branchName)}
               </p>
             )}
             {profile.isLoading && (
-              <p className="hidden text-caption text-text-secondary lg:block">Đang tải tài khoản...</p>
+              <p className="hidden text-caption text-text-secondary md:block">Đang tải tài khoản...</p>
             )}
           </div>
         </header>

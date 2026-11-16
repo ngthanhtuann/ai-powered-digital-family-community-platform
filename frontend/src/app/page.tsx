@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Calendar, Maximize2, MessageSquare, Search, Users, type LucideIcon } from 'lucide-react';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
@@ -30,11 +30,12 @@ export default function HomePage() {
   const access = useHeritageAccess();
   const familyId = access.familyId ?? undefined;
   const ready = access.isReady && Boolean(familyId);
-  // Mốc thời gian cố định trong một lần mở trang, để queryKey không đổi mỗi lần render.
-  const now = useMemo(() => Date.now(), []);
+  // Mốc thời gian cố định trong một lần mở trang; queryKey có ngày (giờ VN) nên sang ngày mới sẽ tải lại.
+  const [now] = useState(() => Date.now());
+  const today = familyDay(new Date(now));
 
   const events = useQuery({
-    queryKey: ['home-events', familyId],
+    queryKey: ['home-events', familyId, today],
     queryFn: () => eventsApi.list(0, new Date(now).toISOString(), new Date(now + UPCOMING_DAYS * DAY).toISOString(), familyId),
     enabled: ready,
   });
@@ -143,7 +144,7 @@ export default function HomePage() {
             <Card title="Sự kiện và ngày giỗ sắp tới" actions={<ActionLink href="/events">Xem lịch</ActionLink>}>
               <QueryState query={events} empty={!events.data?.items.length} emptyText={`Không có sự kiện nào trong ${UPCOMING_DAYS} ngày tới.`}>
                 <ul className="space-y-3">
-                  {events.data?.items.slice(0, 3).map((event) => <EventRow key={event.id} event={event} now={now} />)}
+                  {events.data?.items.slice(0, 3).map((event) => <EventRow key={event.id} event={event} today={today} />)}
                 </ul>
               </QueryState>
             </Card>
@@ -266,9 +267,15 @@ function TreePerson({ node, big = false, child = false }: { node: TreeNode; big?
   );
 }
 
-function EventRow({ event, now }: { event: Event; now: number }) {
+// Ngày theo lịch Việt Nam dạng yyyy-mm-dd, để "còn N ngày" đếm theo ngày lịch chứ không theo 24 giờ.
+const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: FAMILY_TIME_ZONE });
+function familyDay(date: Date) {
+  return dayKey.format(date);
+}
+
+function EventRow({ event, today }: { event: Event; today: string }) {
   const start = new Date(event.startAt);
-  const days = Math.max(0, Math.ceil((start.getTime() - now) / DAY));
+  const days = Math.max(0, Math.round((Date.parse(familyDay(start)) - Date.parse(today)) / DAY));
   return (
     <li className="flex items-center gap-3 rounded-card border border-border bg-surface-muted px-3 py-3">
       <div aria-hidden="true" className="flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center rounded-card bg-primary text-cream-on-dark">
