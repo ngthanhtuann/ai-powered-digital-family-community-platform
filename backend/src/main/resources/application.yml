@@ -85,6 +85,8 @@ gemini:
   api-key: ${GEMINI_API_KEY:}
   embedding-model: gemini-embedding-001
   chat-model: ${GEMINI_CHAT_MODEL:gemini-3.5-flash-lite}
+  # Model tóm tắt (UC-AI-04); gemini-2.0-flash đã bị Google ngừng (404), dùng cùng model với chat.
+  summary-model: ${GEMINI_SUMMARY_MODEL:gemini-3.5-flash-lite}
 
 ai:
   embedding:
