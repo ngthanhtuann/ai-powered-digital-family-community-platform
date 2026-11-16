@@ -174,12 +174,12 @@ public class ContentReportService implements ContentModerationPort {
                 v.reason(), v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(), null, Math.max(count, 1)));
     }
 
-    // shortcut: mỗi dòng một truy vấn tìm chủ nội dung (tối đa 100/trang); gom theo loại nếu hàng đợi lớn.
     private ContentReportView withOwner(ContentReportView v, UUID owner) {
         return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
                 v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(), owner, v.reportCount());
     }
 
+    /** Một báo cáo lẻ (sau khi xử lý): một truy vấn tìm chủ nội dung; danh sách dùng ownersOf theo lô. */
     private ContentReportView withOwner(ContentReportView v) {
         return new ContentReportView(v.id(), v.targetType(), v.targetId(), v.familyId(), v.reporterId(), v.reason(),
                 v.contentSnippet(), v.status(), v.createdAt(), v.updatedAt(),
