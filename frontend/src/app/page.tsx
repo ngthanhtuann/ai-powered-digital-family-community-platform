@@ -202,10 +202,11 @@ function ActionLink({ href, icon: Icon, children }: { href: string; icon?: Lucid
   );
 }
 
+// Chữ viết tắt cỡ 24px: nền màu nhấn (accent) chỉ đạt tương phản 3:1, đủ cho chữ lớn theo WCAG.
 function Initial({ name, className, size = 'h-10 w-10' }: { name: string; className: string; size?: string }) {
   const letter = name.trim().split(/\s+/).pop()?.[0]?.toUpperCase() ?? '?';
   return (
-    <span aria-hidden="true" className={`flex ${size} shrink-0 items-center justify-center rounded-full border-2 border-surface text-label text-text-primary ${className}`}>
+    <span aria-hidden="true" className={`flex ${size} shrink-0 items-center justify-center rounded-full border-2 border-surface text-page-title text-text-primary ${className}`}>
       {letter}
     </span>
   );
