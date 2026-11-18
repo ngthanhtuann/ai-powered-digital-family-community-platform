@@ -56,9 +56,9 @@ function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch
     && (within(parents, myBranch, b.id) || (branchAdmin && within(parents, b.id, myBranch))));
 }
 
-function PostCard({ post, userId, canReport, canDescendants, scopeOptions, labelOf, onReaction }: {
+function PostCard({ post, userId, canReport, canDescendants, scopeOptions, onReaction }: {
   post: Post; userId?: string; canReport: boolean; canDescendants: boolean;
-  scopeOptions: BranchNode[]; labelOf: (branchId?: string | null) => string;
+  scopeOptions: BranchNode[];
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
   const client = useQueryClient();
@@ -70,7 +70,7 @@ function PostCard({ post, userId, canReport, canDescendants, scopeOptions, label
   const [editScope, setEditScope] = useState(currentScope);
   // Giữ phạm vi hiện tại trong danh sách dù người đăng đã chuyển chi, để sửa nội dung không vô tình đổi phạm vi.
   const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope || currentScope === DESCENDANTS
-    ? scopeOptions : [...scopeOptions, { id: currentScope, name: labelOf(currentScope) }];
+    ? scopeOptions : [...scopeOptions, { id: currentScope, name: 'Giữ người xem hiện tại' }];
   const update = useMutation({
     mutationFn: () => {
       const target = toAudience(editScope);
@@ -99,7 +99,7 @@ function PostCard({ post, userId, canReport, canDescendants, scopeOptions, label
             <span className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
               title="Phạm vi người được xem bài">
               {post.audience === 'DESCENDANTS' ? 'Người xem: con cháu của người đăng'
-                : post.branchId ? `Người xem: ${labelOf(post.branchId)} và các chi con` : 'Người xem: cả dòng họ'}
+                : post.branchId ? 'Người xem: chi của người đăng' : 'Người xem: cả dòng họ'}
             </span>
           </div>
           </div>
@@ -135,7 +135,7 @@ function PostCard({ post, userId, canReport, canDescendants, scopeOptions, label
           </select>
           {editScope !== currentScope && (
             <p id={'scope-help-' + post.id} className="text-xs text-text-secondary">
-              Sau khi lưu: {scopeHint(editScope, labelOf(editScope))}
+              Sau khi lưu: {scopeHint(editScope, 'chi của bạn')}
             </p>
           )}
           <div className="flex gap-2">
@@ -204,17 +204,17 @@ export default function CommunityPage() {
     enabled: ready && /^[0-9a-f-]{36}$/i.test(branchFamily),
     queryFn: () => branchesOf(branchFamily),
   });
-  const branchName = useMemo(
-    () => new Map((branches.data?.items ?? []).map((b) => [b.id ?? '', b.name ?? ''])), [branches.data]);
+  // Chỉ 3 lựa chọn (góp ý 18/11/2026): Cả dòng họ / Chi của tôi / Con cháu của tôi; không liệt kê tên từng chi.
   const scopeOptions = useMemo(() => postableBranches(branches.data?.items ?? [],
-    systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin), [branches.data, systemAdmin, branchAdmin, myBranch]);
+    systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin)
+    .filter((b) => b.id === myBranch).map((b) => ({ ...b, name: 'Chi của tôi' })),
+  [branches.data, systemAdmin, branchAdmin, myBranch]);
   // Mặc định là chi của mình; muốn cả họ thấy thì người đăng chọn "Cả dòng họ". '' là cả dòng họ.
   // "Con cháu của tôi" cần hồ sơ gia phả gắn tài khoản (BR-COM-13); chưa gắn thì /persons/me trả 404.
   const canDescendants = Boolean(useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false }).data);
   const [scopeChoice, setScopeChoice] = useState<string>();
   const wanted = scopeChoice ?? myBranch ?? '';
   const scope = (wanted === DESCENDANTS && canDescendants) || scopeOptions.some((b) => b.id === wanted) ? wanted : '';
-  const scopeLabel = (branchId?: string | null) => branchId ? branchName.get(branchId) ?? 'Một chi' : 'Cả dòng họ';
 
   const feedKey = useMemo(() => ['community-posts', tab, familyId ?? 'own'], [tab, familyId]);
   const feed = useInfiniteQuery({
@@ -361,14 +361,14 @@ export default function CommunityPage() {
               onChange={(event) => setScopeChoice(event.target.value)}>
               <option value="">Cả dòng họ</option>
               {scopeOptions.map((b) => (
-                <option key={b.id} value={b.id ?? ''}>{b.name}{b.id === myBranch ? ' (chi của tôi)' : ''}</option>
+                <option key={b.id} value={b.id ?? ''}>{b.name}</option>
               ))}
               {canDescendants && <option value={DESCENDANTS}>Con cháu của tôi</option>}
             </select>
             <p id="post-scope-help" className="text-xs text-text-secondary">
               {branches.isPending ? 'Đang tải danh sách chi...'
                 : branches.isError ? 'Không tải được danh sách chi. Vui lòng thử lại trước khi đăng bài.'
-                  : scopeHint(scope, scopeLabel(scope))}
+                  : scopeHint(scope, 'chi của bạn')}
             </p>
             {branches.isError && (
               <div role="alert">
@@ -414,7 +414,7 @@ export default function CommunityPage() {
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
-                canDescendants={canDescendants} scopeOptions={scopeOptions} labelOf={scopeLabel}
+                canDescendants={canDescendants} scopeOptions={scopeOptions}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&

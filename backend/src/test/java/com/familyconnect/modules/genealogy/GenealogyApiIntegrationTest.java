@@ -411,6 +411,11 @@ class GenealogyApiIntegrationTest {
         Map<String, Object> relink = person("Đổi tên", LocalDate.of(1990, 2, 2));
         relink.put("userId", userId(otherEmail).toString());
         call(put("/api/v1/persons/" + personId), token(memberEmail), relink).andExpect(status().isForbidden());
+        // SCRUM-122: quản trị hệ thống cũng không sửa thông tin cá nhân của hồ sơ đã gắn tài khoản.
+        String adminEmail = newUser();
+        jdbc.update("insert into user_role(user_id, role_id) select ?, id from role where code = 'SYSTEM_ADMIN'", userId(adminEmail));
+        call(put("/api/v1/persons/" + personId), token(adminEmail), person("Admin đổi", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isForbidden());
         // SCRUM-119: chính chủ tự tải ảnh đại diện và gán; Trưởng họ không tải ảnh vào hồ sơ đã gắn tài khoản.
         UUID photo = uploadAvatar(token(memberEmail), "PERSON", personId);
         Map<String, Object> withPhoto = person("Đổi tên", LocalDate.of(1990, 2, 2));
