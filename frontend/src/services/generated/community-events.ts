@@ -163,7 +163,7 @@ export interface paths {
         put?: never;
         /**
          * Tải ảnh (hoặc tệp pdf của heritage) cho tài nguyên heritage hoặc person
-         * @description Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên sở hữu do module heritage/genealogy quyết định. Ảnh bài đăng và sự kiện dùng endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB. Sai định dạng trả 415 FILE_002; quá kích thước trả 413 FILE_001.
+         * @description Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên sở hữu do module heritage/genealogy quyết định (với PERSON là người được sửa hồ sơ theo BR-GEN-20, gồm chính chủ tự tải ảnh đại diện). Ảnh bài đăng và sự kiện dùng endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB. Sai định dạng trả 415 FILE_002; quá kích thước trả 413 FILE_001.
          */
         post: operations["uploadMedia"];
         delete?: never;

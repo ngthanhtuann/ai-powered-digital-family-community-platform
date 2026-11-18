@@ -410,6 +410,18 @@ class GenealogyApiIntegrationTest {
         Map<String, Object> relink = person("Đổi tên", LocalDate.of(1990, 2, 2));
         relink.put("userId", userId(otherEmail).toString());
         call(put("/api/v1/persons/" + personId), token(memberEmail), relink).andExpect(status().isForbidden());
+        // SCRUM-119: chính chủ tự tải ảnh đại diện và gán; Trưởng họ không tải ảnh vào hồ sơ đã gắn tài khoản.
+        UUID photo = uploadAvatar(token(memberEmail), "PERSON", personId);
+        Map<String, Object> withPhoto = person("Đổi tên", LocalDate.of(1990, 2, 2));
+        withPhoto.put("avatarMediaId", photo.toString());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), withPhoto)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.avatarMediaId").value(photo.toString()));
+        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0};
+        mvc.perform(multipart("/api/v1/media")
+                        .file(new MockMultipartFile("file", "a.png", "image/png", png))
+                        .param("ownerType", "PERSON").param("ownerId", personId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
         // Trang cá nhân của tôi; Trưởng họ thấy canEdit=false với hồ sơ đã gắn tài khoản.
         call(get("/api/v1/persons/me"), token(memberEmail), null)
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(personId.toString()));
