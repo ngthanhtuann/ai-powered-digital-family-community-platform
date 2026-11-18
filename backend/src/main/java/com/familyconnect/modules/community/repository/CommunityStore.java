@@ -21,7 +21,12 @@ public interface CommunityStore {
         }
     }
     record Comment(UUID id, UUID postId, String content, UUID createdBy,
-                   OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
+                   OffsetDateTime createdAt, OffsetDateTime updatedAt, UUID parentId) {
+        public Comment(UUID id, UUID postId, String content, UUID createdBy,
+                       OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+            this(id, postId, content, createdBy, createdAt, updatedAt, null);
+        }
+    }
     record Reaction(UUID id, UUID postId, ReactionType type, UUID createdBy,
                     OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     record Page<T>(List<T> items, long total) {}
@@ -52,7 +57,7 @@ public interface CommunityStore {
     }
 
     Optional<Reaction> myReaction(UUID postId, UUID userId);
-    Comment insertComment(UUID postId, String content, UUID userId);
+    Comment insertComment(UUID postId, UUID parentId, String content, UUID userId);
     Optional<Comment> findComment(UUID id);
     Page<Comment> comments(UUID postId, int page, int size, String orderBy);
     Comment updateComment(UUID id, String content, UUID userId);

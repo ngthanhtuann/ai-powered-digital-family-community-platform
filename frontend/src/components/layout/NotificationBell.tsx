@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -83,6 +84,12 @@ export function NotificationBell() {
                 <p className="mt-1 text-caption text-text-secondary">
                   {formatDateTime(item.createdAt)}
                 </p>
+                {item.refType === 'POST' && item.refId && (
+                  <Link href={`/community#post-${item.refId}`} className="mt-2 inline-flex min-h-9 items-center text-body text-info underline"
+                    onClick={() => { if (!item.isRead) mark.mutate(item.id); setOpen(false); }}>
+                    Xem bài viết
+                  </Link>
+                )}
                 {!item.isRead && (
                   <button
                     type="button"

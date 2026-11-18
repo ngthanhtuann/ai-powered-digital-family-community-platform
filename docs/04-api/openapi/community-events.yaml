@@ -2053,6 +2053,11 @@ components:
         createdAt: *id001
         updatedAt: *id001
         postId: *id002
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Bình luận gốc được trả lời (BR-COM-14); null là bình luận gốc.
         content:
           type: string
           example: Mình sẽ tham gia.
@@ -2301,6 +2306,8 @@ components:
           - REPORT_HIDDEN
           - REPORT_DISMISSED
           - REPORT_RESTORED
+          - POST_COMMENTED
+          - COMMENT_REPLIED
           example: EVENT_REMINDER_24H
         title:
           type: string
@@ -2425,6 +2432,11 @@ components:
           type: string
           maxLength: 1000
           example: Mình sẽ tham gia.
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Trả lời bình luận này (BR-COM-14, 1 cấp); bỏ trống là bình luận gốc. Chỉ dùng khi tạo, khi sửa bỏ qua.
       additionalProperties: false
       required:
       - content

@@ -476,4 +476,35 @@ class GenealogyApiIntegrationTest {
         call(post("/api/v1/posts"), headToken,
                 Map.of("content", "Thử", "type", "POST", "audience", "DESCENDANTS")).andExpect(status().isBadRequest());
     }
+
+    // ---- BR-COM-14 (SCRUM-123): trả lời bình luận 1 cấp và thông báo ----
+
+    @Test
+    void commentRepliesStayOneLevelAndNotifyPostAuthorAndRepliedUser() throws Exception {
+        Object[] o = owner();
+        UUID familyId = (UUID) o[1];
+        String author = newUser(), commenter = newUser();
+        member(author, familyId, null, "MEMBER");
+        member(commenter, familyId, null, "MEMBER");
+        UUID postId = id(call(post("/api/v1/posts"), token(author), Map.of("content", "Bài thử", "type", "POST"))
+                .andExpect(status().isCreated()));
+        UUID root = id(call(post("/api/v1/posts/" + postId + "/comments"), token(commenter), Map.of("content", "Hay quá"))
+                .andExpect(status().isCreated()));
+        UUID reply = id(call(post("/api/v1/posts/" + postId + "/comments"), token(author),
+                Map.of("content", "Cảm ơn", "parentId", root.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.parentId").value(root.toString())));
+        // Trả lời một câu trả lời vẫn gắn vào bình luận gốc.
+        call(post("/api/v1/posts/" + postId + "/comments"), token(commenter), Map.of("content", "Dạ", "parentId", reply.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.parentId").value(root.toString()));
+
+        Integer commented = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'POST_COMMENTED'",
+                Integer.class, userId(author));
+        Integer replied = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'COMMENT_REPLIED'",
+                Integer.class, userId(commenter));
+        org.assertj.core.api.Assertions.assertThat(commented).isEqualTo(1); // "Dạ" trả lời tác giả: chỉ COMMENT_REPLIED
+        org.assertj.core.api.Assertions.assertThat(replied).isEqualTo(1);
+        Integer replyToAuthor = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'COMMENT_REPLIED'",
+                Integer.class, userId(author));
+        org.assertj.core.api.Assertions.assertThat(replyToAuthor).isEqualTo(1);
+    }
 }
