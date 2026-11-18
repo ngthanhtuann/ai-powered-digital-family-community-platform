@@ -116,6 +116,12 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
     }
 
     @Override
+    public Map<UUID, GenealogyPort.PersonCard> authorPersons(Collection<UUID> userIds) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        return port == null || userIds.isEmpty() ? Map.of() : port.personsByUserIds(userIds);
+    }
+
+    @Override
     public void logContentDeleted(String contentType, UUID contentId, UUID familyId, boolean byOwner) {
         auditLogger.log("CONTENT_DELETED", contentType, contentId, familyId, Map.of("byOwner", byOwner));
     }

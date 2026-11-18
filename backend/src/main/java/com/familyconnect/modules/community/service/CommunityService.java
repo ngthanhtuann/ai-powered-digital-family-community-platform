@@ -13,9 +13,11 @@ import com.familyconnect.modules.community.service.CommunityPlatformPort.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.familyconnect.modules.auth.api.GenealogyPort;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -73,13 +75,18 @@ public class CommunityService implements SummarySource {
         Map<UUID,Long> comments = store.commentCounts(ids);
         Map<UUID,Map<ReactionType,Long>> reactions = store.reactionCounts(ids);
         Map<UUID,ReactionType> mine = store.myReactions(ids,user.userId());
-        Map<UUID,String> names = platform.authorNames(posts.stream().map(Post::createdBy).collect(Collectors.toSet()));
+        Set<UUID> authorIds = posts.stream().map(Post::createdBy).collect(Collectors.toSet());
+        Map<UUID,String> names = platform.authorNames(authorIds);
+        Map<UUID,GenealogyPort.PersonCard> cards = platform.authorPersons(authorIds);
         Map<UUID,Long> mediaCounts = mediaRepository.countByOwners("POST", ids);
         Map<UUID,List<MediaRepository.Media>> previews = mediaRepository.latestByOwners("POST", ids, MEDIA_PREVIEW);
         Map<UUID,Boolean> moderatable = new HashMap<>();
         return posts.stream().map(post -> new PostView(post.id(),post.createdAt(),post.updatedAt(),
             post.familyId(),post.branchId(),post.content(),post.type(),post.createdBy(),
-            names.get(post.createdBy()),canDelete(user,post,post.createdBy(),moderatable),
+            names.get(post.createdBy()),
+            Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::personId).orElse(null),
+            Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
+            canDelete(user,post,post.createdBy(),moderatable),
             comments.getOrDefault(post.id(),0L),reactions.get(post.id()),mine.get(post.id()),
             mediaCounts.getOrDefault(post.id(),0L),
             previews.getOrDefault(post.id(),List.of()).stream().map(MediaService.MediaView::of).toList())).toList();
@@ -147,7 +154,8 @@ public class CommunityService implements SummarySource {
     }
 
     @Transactional(readOnly=true)
-    public PageSuccess<PostView> posts(UUID familyId, UUID branchId, PostType type, int page, int size, String sort) {
+    public PageSuccess<PostView> posts(UUID familyId, UUID branchId, PostType type, UUID authorId,
+                                      int page, int size, String sort) {
         Actor user = actor();
         UUID family = family(user,familyId);
         pagination(page,size);
@@ -157,7 +165,7 @@ public class CommunityService implements SummarySource {
             || (user.role() == Role.BRANCH_ADMIN && user.branchId() == null);
         List<UUID> visible = allBranches ? List.of() : store.postBranchIds(family).stream()
             .filter(branch -> platform.canRead(user,family,branch)).toList();
-        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,page,size,order);
+        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,authorId,page,size,order);
         return PageSuccess.of(views(found.items(),user),
                               page,size,found.total());
     }

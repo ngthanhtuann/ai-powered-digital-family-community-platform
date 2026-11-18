@@ -171,7 +171,7 @@ export default function DirectoryPage() {
                 {members.data.items.map((member) => (
                   <li key={member.id}>
                     <Link
-                      href={`/directory/members/${member.id}`}
+                      href={`/persons/${member.id}`}
                       className="block rounded-card border border-border bg-surface p-5 shadow-card transition-colors hover:border-secondary"
                     >
                       <span className="text-section-title">{member.fullName}</span>

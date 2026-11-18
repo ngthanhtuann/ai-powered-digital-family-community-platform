@@ -72,23 +72,18 @@ export const NAV_SECTIONS: NavSection[] = [
     heading: 'Quản trị hệ thống',
     roles: ['SYSTEM_ADMIN'],
     items: [
-      { label: 'Quản lý người dùng', href: '/admin', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
-      {
-        label: 'Kiểm duyệt nội dung',
-        href: '/admin#kiem-duyet',
-        icon: 'shield-check',
-        roles: ['SYSTEM_ADMIN'],
-      },
-      { label: 'Nhật ký kiểm toán', icon: 'history', roles: ['SYSTEM_ADMIN'] },
-      { label: 'Sao lưu và khôi phục', icon: 'database', roles: ['SYSTEM_ADMIN'] },
-      { label: 'Cấu hình hệ thống', href: '/admin#cau-hinh', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Quản lý người dùng', href: '/admin/nguoi-dung', icon: 'user-cog', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Kiểm duyệt nội dung', href: '/admin/kiem-duyet', icon: 'shield-check', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Nhật ký kiểm toán', href: '/admin/nhat-ky', icon: 'history', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Sao lưu và khôi phục', href: '/admin/sao-luu', icon: 'database', roles: ['SYSTEM_ADMIN'] },
+      { label: 'Cấu hình hệ thống', href: '/admin/cau-hinh', icon: 'sliders-horizontal', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   {
     heading: 'Tài khoản',
     items: [
       { label: 'Hồ sơ cá nhân', href: '/profile', icon: 'user-round' },
-      { label: 'Đổi mật khẩu', href: '/profile#doi-mat-khau', icon: 'lock-keyhole' },
+      { label: 'Đổi mật khẩu', href: '/profile/password', icon: 'lock-keyhole' },
     ],
   },
 ];

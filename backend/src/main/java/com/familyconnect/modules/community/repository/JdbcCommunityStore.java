@@ -130,8 +130,8 @@ public class JdbcCommunityStore implements CommunityStore {
                         rs.getLong("post_count"),rs.getLong("comment_count"),rs.getLong("reaction_count")));
     }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
-                                       UUID branch, PostType type, int page, int size, String order) {
-        var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),
+                                       UUID branch, PostType type, UUID author, int page, int size, String order) {
+        var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),"author",author,
                      "limit",size,"offset",(long)page*size);
         var where = new StringBuilder(" FROM post WHERE family_id=:family AND deleted_at IS NULL " +
                                       "AND hidden_at IS NULL");
@@ -144,6 +144,7 @@ public class JdbcCommunityStore implements CommunityStore {
         }
         if (branch != null) where.append(" AND branch_id=:branch");
         if (type != null) where.append(" AND type=:type");
+        if (author != null) where.append(" AND created_by=:author");
         long total = jdbc.queryForObject("SELECT COUNT(*)" + where, args, Long.class);
         var items = jdbc.query("SELECT " + POST_COLUMNS + where + " ORDER BY " + order +
                               " LIMIT :limit OFFSET :offset", args, POST_MAPPER);

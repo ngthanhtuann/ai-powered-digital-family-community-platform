@@ -60,7 +60,7 @@ public class FamilyTreeService {
         if (familyRepository.findByIdAndDeletedAtIsNull(familyId).isEmpty()) {
             throw new ApiException(ErrorCode.NOT_FOUND_001);
         }
-        UUID root = rootId != null ? requireInFamily(rootId, familyId) : defaultRoot(familyId, viewer);
+        UUID root = rootId != null ? requireInFamily(rootId, familyId) : defaultRoot(familyId);
         if (root == null) {
             return new TreeData(null, List.of(), List.of()); // UC-GEN-06 2a: gia đình chưa có thành viên
         }
@@ -93,12 +93,9 @@ public class FamilyTreeService {
         return new TreeData(root, nodes, edges);
     }
 
-    /** genealogy.yaml: mặc định là hồ sơ gắn với tài khoản hiện tại, nếu không có thì người tổ. */
-    private UUID defaultRoot(UUID familyId, Viewer viewer) {
-        return personRepository.findByUserIdAndDeletedAtIsNull(viewer.userId())
-                .filter(p -> familyId.equals(p.getFamilyId()))
-                .map(Person::getId)
-                .orElseGet(() -> treeRepository.findTopAncestor(familyId).orElse(null));
+    /** genealogy.yaml (17/11/2026): mặc định mở từ người tổ để thấy cả dòng họ, không từ đời của người xem. */
+    private UUID defaultRoot(UUID familyId) {
+        return treeRepository.findTopAncestor(familyId).orElse(null);
     }
 
     private UUID requireInFamily(UUID personId, UUID familyId) {

@@ -20,6 +20,8 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
 
     Optional<Person> findByUserIdAndDeletedAtIsNull(UUID userId);
 
+    List<Person> findAllByUserIdInAndDeletedAtIsNull(Collection<UUID> userIds);
+
     /** Cả gia đình trong một truy vấn; dùng khi tính quan hệ cho nhiều người (xuất CSV, UC-DSH-02). */
     List<Person> findAllByFamilyIdAndDeletedAtIsNull(UUID familyId);
 

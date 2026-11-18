@@ -402,7 +402,13 @@ class GenealogyApiIntegrationTest {
         call(put("/api/v1/persons/" + personId), token, person("Trưởng họ đổi", LocalDate.of(1990, 2, 2)))
                 .andExpect(status().isForbidden());
         call(put("/api/v1/persons/" + personId), token(memberEmail), person("Đổi tên", LocalDate.of(1990, 2, 2)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"))
+                .andExpect(jsonPath("$.data.canEdit").value(true));
+        // Trang cá nhân của tôi; Trưởng họ thấy canEdit=false với hồ sơ đã gắn tài khoản.
+        call(get("/api/v1/persons/me"), token(memberEmail), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(personId.toString()));
+        call(get("/api/v1/persons/" + personId), token, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.canEdit").value(false));
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
         org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));

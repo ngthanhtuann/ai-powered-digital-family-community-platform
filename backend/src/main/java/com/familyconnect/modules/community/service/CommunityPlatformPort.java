@@ -25,6 +25,10 @@ public interface CommunityPlatformPort {
     void requireCanModerate(Actor actor, UUID familyId, UUID branchId);
     /** Họ tên theo userId; người đã xóa tài khoản có tên mặc định. */
     Map<UUID, String> authorNames(Collection<UUID> userIds);
+    /** SCRUM-117: hồ sơ gia phả, ảnh đại diện của người đăng để bảng tin dẫn tới trang cá nhân. */
+    default Map<UUID, com.familyconnect.modules.auth.api.GenealogyPort.PersonCard> authorPersons(Collection<UUID> userIds) {
+        return Map.of();
+    }
     /** BR-COM-10, BR-COM-12: mọi thao tác xóa nội dung đều ghi audit log. */
     void logContentDeleted(String contentType, UUID contentId, UUID familyId, boolean byOwner);
     /** SCRUM-57: tạo, sửa nội dung cũng ghi audit log (auth.md mục 6.4, nhóm "Module khác"). */

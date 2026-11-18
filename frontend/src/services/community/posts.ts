@@ -22,6 +22,9 @@ export const communityApi = {
       ...(type ? { type } : {}),
       ...(familyId ? { familyId } : {}),
     }),
+  /** Bài của một tài khoản cho trang cá nhân (SCRUM-117); backend vẫn lọc theo phạm vi chi người xem được. */
+  postsByAuthor: (authorId: string, page: number) =>
+    api.list<Post>('/posts', { page, size: 10, sort: 'createdAt,desc', authorId }),
   /** branchId null: cả dòng họ; có giá trị: chi đó và các chi con (BR-COM-03). */
   createPost: (content: string, type: PostType, branchId: string | null, familyId?: string) =>
     api.post<Post>('/posts' + (familyId ? '?familyId=' + encodeURIComponent(familyId) : ''), {

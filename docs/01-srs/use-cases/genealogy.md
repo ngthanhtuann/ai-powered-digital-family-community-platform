@@ -115,7 +115,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | Actor | MEMBER (đã xác minh), BRANCH_ADMIN, SYSTEM_ADMIN |
 | Mô tả ngắn | Xem cây gia phả tương tác: zoom, kéo, mở và thu nhánh, xem hồ sơ tóm tắt. |
 | Tiền điều kiện | Đã đăng nhập; là thành viên đã xác minh của gia đình. |
-| Luồng chính | 1. Người dùng mở "Cây gia phả".<br>2. Hệ thống tải cây quanh một người gốc (mặc định là hồ sơ gắn với tài khoản, hoặc người tổ), độ sâu mặc định 3 đời.<br>3. Giao diện vẽ nút (thành viên) và cạnh (cha-con, hôn nhân) bằng React Flow.<br>4. Người dùng zoom, kéo, bấm nút để xem hồ sơ tóm tắt, mở hoặc thu nhánh. Khi mở thêm nhánh, hệ thống tải tiếp theo yêu cầu (lazy-load).<br>5. Người dùng có quyền sửa có thể bấm "Thêm cha/mẹ", "Thêm con", "Thêm vợ/chồng" ngay trên nút (chuyển sang UC-GEN-03, 04, 05). |
+| Luồng chính | 1. Người dùng mở "Cây gia phả".<br>2. Hệ thống tải cây quanh một người gốc (mặc định là người tổ, để thấy cả dòng họ), độ sâu mặc định 3 đời; web mở sẵn tới 10 đời.<br>3. Giao diện vẽ nút (thành viên) và cạnh (cha-con, hôn nhân) bằng React Flow.<br>4. Người dùng zoom, kéo, bấm nút để xem hồ sơ tóm tắt, mở hoặc thu nhánh. Khi mở thêm nhánh, hệ thống tải tiếp theo yêu cầu (lazy-load).<br>5. Người dùng có quyền sửa có thể bấm "Thêm cha/mẹ", "Thêm con", "Thêm vợ/chồng" ngay trên nút (chuyển sang UC-GEN-03, 04, 05). |
 | Luồng thay thế / ngoại lệ | 1a. Người dùng chưa xác minh: từ chối, lỗi `PERM_002`, giao diện báo "Cần được trưởng chi duyệt".<br>2a. Gia đình chưa có thành viên: hiển thị trạng thái trống và nút "Thêm thành viên đầu tiên".<br>4a. Tải nhánh quá chậm hoặc lỗi mạng: hiển thị thông báo, cho phép thử lại, giữ nguyên phần cây đã vẽ. |
 | Hậu điều kiện | Không thay đổi dữ liệu. |
 | Quy tắc nghiệp vụ | BR-GEN-10 (ẩn thông tin theo vai trò, trẻ em, người đã mất), BR-GEN-14 |
@@ -341,8 +341,9 @@ Tất cả API nằm dưới `/api/v1`, tên tài nguyên số nhiều, theo `do
 | DELETE | `/branches/{branchId}` | Xóa mềm chi họ | UC-GEN-02 | BRANCH_ADMIN, SYSTEM_ADMIN |
 | GET | `/families/{familyId}/persons` | Danh sách thành viên (phân trang, lọc) | UC-GEN-03 | MEMBER đã xác minh trở lên |
 | POST | `/families/{familyId}/persons` | Thêm thành viên | UC-GEN-03 | BRANCH_ADMIN, SYSTEM_ADMIN |
+| GET | `/persons/me` | Hồ sơ gắn với tài khoản đang đăng nhập (trang cá nhân) | UC-GEN-03 | MEMBER đã xác minh trở lên |
 | GET | `/persons/{personId}` | Xem hồ sơ thành viên | UC-GEN-03 | MEMBER đã xác minh trở lên |
-| PUT | `/persons/{personId}` | Sửa thành viên | UC-GEN-03 | BRANCH_ADMIN, SYSTEM_ADMIN |
+| PUT | `/persons/{personId}` | Sửa thành viên | UC-GEN-03 | MEMBER (chỉ hồ sơ của mình), BRANCH_ADMIN, SYSTEM_ADMIN theo BR-GEN-20 |
 | DELETE | `/persons/{personId}` | Xóa mềm thành viên | UC-GEN-03 | BRANCH_ADMIN, SYSTEM_ADMIN |
 | POST | `/persons/{personId}/parents` | Thêm cha/mẹ cho thành viên | UC-GEN-04 | BRANCH_ADMIN, SYSTEM_ADMIN |
 | DELETE | `/persons/{personId}/parents/{parentId}` | Gỡ quan hệ cha-mẹ-con | UC-GEN-04 | BRANCH_ADMIN, SYSTEM_ADMIN |

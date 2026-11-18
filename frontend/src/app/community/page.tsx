@@ -16,6 +16,8 @@ import { branchesOf } from '@/services/admin';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 import { formatDateTime } from '@/lib/datetime';
+import Link from 'next/link';
+import { Avatar } from '@/components/genealogy/PersonNode';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
@@ -211,6 +213,7 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
 }) {
   const client = useQueryClient();
   const [showComments, setShowComments] = useState(false);
+  const [showAi, setShowAi] = useState(false);
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(post.content);
   const currentScope = post.branchId ?? '';
@@ -229,19 +232,23 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
   return (
     <article id={`post-${post.id}`} className="min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm md:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 max-w-full">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 max-w-full items-start gap-3">
+          <Avatar mediaId={post.authorAvatarMediaId} name={post.authorName ?? ''} />
+          <div className="min-w-0">
+          {post.authorPersonId
+            ? <Link href={`/persons/${post.authorPersonId}`} className="break-words text-sm font-semibold hover:underline">{post.authorName}</Link>
+            : <p className="break-words text-sm font-semibold">{post.authorName}</p>}
+          <p className="break-words text-xs text-text-secondary">{dateText(post.createdAt)}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
               {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
             </span>
             <span className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
               title="Phạm vi người được xem bài">
-              {labelOf(post.branchId)}
+              {post.branchId ? `Người xem: ${labelOf(post.branchId)} và các chi con` : 'Người xem: cả dòng họ'}
             </span>
           </div>
-          <p className="mt-2 break-words text-xs text-text-secondary">
-            {post.authorName} · {dateText(post.createdAt)}
-          </p>
+          </div>
         </div>
         {(post.createdBy === userId || post.canDelete || canReport) && (
           <div className="flex flex-wrap gap-2">
@@ -284,8 +291,15 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
       ) : (
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
-      {!editing && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
-      {!editing && <RecommendationsPanel contextType="POST" contextId={post.id} deferred />}
+      {/* Công cụ AI gom vào một nút, chỉ tải khi mở, để bảng tin gọn như mạng xã hội (góp ý 16/11/2026). */}
+      {!editing && (
+        <button type="button" className={'mt-2 ' + linkButtonClass} aria-expanded={showAi}
+          onClick={() => setShowAi((value) => !value)}>
+          {showAi ? 'Ẩn công cụ AI' : '⋯ Tóm tắt AI, nội dung liên quan'}
+        </button>
+      )}
+      {!editing && showAi && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
+      {!editing && showAi && <RecommendationsPanel contextType="POST" contextId={post.id} />}
       <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
