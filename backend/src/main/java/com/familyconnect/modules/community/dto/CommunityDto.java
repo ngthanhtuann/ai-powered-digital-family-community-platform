@@ -79,7 +79,7 @@ public final class CommunityDto {
                            List<com.familyconnect.modules.community.media.MediaService.MediaView> media) {}
     public record CommentView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                               UUID postId, UUID parentId, String content, UUID createdBy, String authorName,
-                              boolean canDelete) {}
+                              UUID authorPersonId, UUID authorAvatarMediaId, boolean canDelete) {}
     public record ReactionView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                                UUID postId, ReactionType type, UUID createdBy) {}
     public record Meta(int page, int size, long total) {}

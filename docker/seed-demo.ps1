@@ -16,7 +16,12 @@ function Call([string]$Method, [string]$Path, $Body = $null, [string]$Token = $n
     $params = @{ Method = $Method; Uri = "$Api$Path"; ContentType = 'application/json; charset=utf-8'; Headers = @{} }
     if ($Token) { $params.Headers.Authorization = "Bearer $Token" }
     if ($null -ne $Body) { $params.Body = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 6 -Compress)) }
-    try { return (Invoke-RestMethod @params).data }
+    # PowerShell 5.1 đọc JSON không ghi charset theo ISO-8859-1 nên tiếng Việt bị méo ("Nguyá»n");
+    # gửi ngược dữ liệu đọc về (như PUT /persons) sẽ ghi tên méo vào DB. Vì vậy tự giải mã UTF-8.
+    try {
+        $res = Invoke-WebRequest @params -UseBasicParsing
+        return ([Text.Encoding]::UTF8.GetString($res.RawContentStream.ToArray()) | ConvertFrom-Json).data
+    }
     catch { throw "$Method $Path that bai: $($_.ErrorDetails.Message)" }
 }
 function Login([string]$Key) { (Call POST '/auth/login' @{ email = "$Key@demo.familyconnect.vn"; password = $Password }).accessToken }

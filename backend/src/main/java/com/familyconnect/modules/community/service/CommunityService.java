@@ -120,12 +120,20 @@ public class CommunityService implements SummarySource {
         return views(List.of(post),user).get(0);
     }
     private List<CommentView> commentViews(List<Comment> comments, Post post, Actor user) {
-        Map<UUID,String> names = platform.authorNames(
-            comments.stream().map(Comment::createdBy).collect(Collectors.toSet()));
+        Set<UUID> authorIds = comments.stream().map(Comment::createdBy).collect(Collectors.toSet());
+        Map<UUID,String> names = platform.authorNames(authorIds);
+        // Hồ sơ gia phả của người bình luận để mở trang cá nhân (SCRUM-130), lấy theo lô như bài đăng.
+        Map<UUID,GenealogyPort.PersonCard> cards = platform.authorPersons(authorIds);
         Map<UUID,Boolean> moderatable = new HashMap<>();
-        return comments.stream().map(comment -> new CommentView(comment.id(),comment.createdAt(),
-            comment.updatedAt(),comment.postId(),comment.parentId(),comment.content(),comment.createdBy(),
-            names.get(comment.createdBy()),canDelete(user,post,comment.createdBy(),moderatable))).toList();
+        return comments.stream().map(comment -> {
+            Optional<GenealogyPort.PersonCard> card = Optional.ofNullable(cards.get(comment.createdBy()));
+            return new CommentView(comment.id(),comment.createdAt(),
+                comment.updatedAt(),comment.postId(),comment.parentId(),comment.content(),comment.createdBy(),
+                names.get(comment.createdBy()),
+                card.map(GenealogyPort.PersonCard::personId).orElse(null),
+                card.map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
+                canDelete(user,post,comment.createdBy(),moderatable));
+        }).toList();
     }
     /** BR-COM-05, BR-COM-06; nhớ kết quả theo chi để một trang không hỏi Gia phả lặp lại. */
     private boolean canDelete(Actor user, Post post, UUID owner, Map<UUID,Boolean> moderatable) {

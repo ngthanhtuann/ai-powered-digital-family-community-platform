@@ -1,4 +1,5 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import {
@@ -20,6 +21,7 @@ import {
   nextPage,
   useFamilyBranches,
 } from '../components/community-ui';
+import { PersonAvatar } from '../components/genealogy-ui';
 import { Button, Card, Loading, Notice } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
 import {
@@ -41,7 +43,8 @@ const REACTIONS: { type: ReactionType; label: string }[] = [
 
 export function PostDetailScreen() {
   const { postId } = useRoute<RouteProp<RootStackParamList, 'PostDetail'>>().params;
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const openPerson = (personId: string) => navigation.push('PersonDetail', { personId });
   const qc = useQueryClient();
   const { session } = useSession();
   const myId = session.status === 'signedIn' ? session.user.id : undefined;
@@ -177,9 +180,13 @@ export function PostDetailScreen() {
               <ErrorPanel error={post.error} retry={() => post.refetch()} />
             ) : (
               <Card>
-                <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>
-                  {post.data.authorName}
-                </Text>
+                <AuthorLink
+                  name={post.data.authorName}
+                  personId={post.data.authorPersonId}
+                  mediaId={post.data.authorAvatarMediaId}
+                  onOpen={openPerson}
+                  size={44}
+                />
                 <Text style={[text.caption, { color: colors.textSecondary }]}>
                   {formatWhen(post.data.createdAt)} ·{' '}
                   {scopeLabel(post.data.branchId, branchNames, post.data.audience)}
@@ -295,6 +302,7 @@ export function PostDetailScreen() {
             <CommentBody
               item={item}
               onReply={reply}
+              onOpenPerson={openPerson}
               myId={myId}
               canReport={canReport}
               onChanged={refreshAll}
@@ -312,6 +320,7 @@ export function PostDetailScreen() {
                 <CommentBody
                   item={r}
                   onReply={reply}
+                  onOpenPerson={openPerson}
                   myId={myId}
                   canReport={canReport}
                   onChanged={refreshAll}
@@ -420,15 +429,52 @@ function ItemActions({
   );
 }
 
+/** Ảnh và tên người viết; bấm mở trang cá nhân (SCRUM-130). Chưa gắn hồ sơ gia phả thì chỉ hiện, không bấm được. */
+function AuthorLink({
+  name,
+  personId,
+  mediaId,
+  onOpen,
+  size = 32,
+}: {
+  name?: string | null;
+  personId?: string | null;
+  mediaId?: string | null;
+  onOpen: (personId: string) => void;
+  size?: number;
+}) {
+  return (
+    <Pressable
+      accessibilityRole={personId ? 'link' : undefined}
+      accessibilityLabel={personId ? `Trang cá nhân ${name ?? ''}` : undefined}
+      disabled={!personId}
+      onPress={() => personId && onOpen(personId)}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 }}
+    >
+      <PersonAvatar name={name} mediaId={mediaId} size={size} />
+      <Text
+        style={[
+          size > 40 ? text.sectionTitle : text.label,
+          { color: personId ? colors.info : colors.textPrimary, flexShrink: 1 },
+        ]}
+      >
+        {name}
+      </Text>
+    </Pressable>
+  );
+}
+
 function CommentBody({
   item,
   onReply,
+  onOpenPerson,
   myId,
   canReport,
   onChanged,
 }: {
   item: Comment;
   onReply: (c: Comment) => void;
+  onOpenPerson: (personId: string) => void;
   myId?: string;
   canReport: boolean;
   onChanged: () => void;
@@ -453,7 +499,12 @@ function CommentBody({
   const failed = update.error ?? remove.error;
   return (
     <View style={{ gap: 2 }}>
-      <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
+      <AuthorLink
+        name={item.authorName}
+        personId={item.authorPersonId}
+        mediaId={item.authorAvatarMediaId}
+        onOpen={onOpenPerson}
+      />
       <Text style={[text.caption, { color: colors.textSecondary }]}>
         {formatWhen(item.createdAt)}
       </Text>

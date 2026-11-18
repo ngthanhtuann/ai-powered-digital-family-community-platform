@@ -55,6 +55,10 @@ export function FeedScreen() {
     drawer
       .getParent<NativeStackNavigationProp<RootStackParamList>>()
       ?.navigate('PostDetail', { postId });
+  const openPerson = (personId: string) =>
+    drawer
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.navigate('PersonDetail', { personId });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -110,17 +114,31 @@ export function FeedScreen() {
             onPress={() => open(item.id)}
           >
             <Card>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* Bấm ảnh hoặc tên người đăng để mở trang cá nhân (SCRUM-130). */}
+              <Pressable
+                accessibilityRole={item.authorPersonId ? 'link' : undefined}
+                accessibilityLabel={`Trang cá nhân ${item.authorName ?? ''}`}
+                disabled={!item.authorPersonId}
+                onPress={() => item.authorPersonId && openPerson(item.authorPersonId)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+              >
                 <PersonAvatar name={item.authorName} mediaId={item.authorAvatarMediaId} size={40} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
+                  <Text
+                    style={[
+                      text.label,
+                      { color: item.authorPersonId ? colors.info : colors.textPrimary },
+                    ]}
+                  >
+                    {item.authorName}
+                  </Text>
                   <Text style={[text.caption, { color: colors.textSecondary }]}>
                     {formatWhen(item.createdAt)} ·{' '}
                     {scopeLabel(item.branchId, branchNames, item.audience)} ·{' '}
                     {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
                   </Text>
                 </View>
-              </View>
+              </Pressable>
               <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={8}>
                 {item.content}
               </Text>

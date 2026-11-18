@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 import { formatDateTime } from '@/lib/datetime';
+import Link from 'next/link';
+import { Avatar } from '@/components/genealogy/PersonNode';
 
 // Bình luận, báo cáo vi phạm và cảm xúc dùng chung cho Bảng tin và trang cá nhân (SCRUM-120).
 
@@ -112,9 +114,20 @@ export function Comments({ postId, userId, canReport }: { postId: string; userId
   // Trả lời 1 cấp (BR-COM-14): câu trả lời hiện thụt vào dưới bình luận gốc.
   const renderComment = (comment: Comment) => (
           <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
-            <p className="text-xs text-text-secondary">
-              {comment.authorName} · {dateText(comment.createdAt)}
-            </p>
+            {/* Bấm tên hoặc ảnh người bình luận để mở trang cá nhân (SCRUM-130); chưa gắn hồ sơ thì chỉ hiện tên. */}
+            <div className="flex items-center gap-2">
+              {comment.authorPersonId ? (
+                <Link href={`/persons/${comment.authorPersonId}`} aria-label={`Trang cá nhân ${comment.authorName}`}>
+                  <Avatar mediaId={comment.authorAvatarMediaId} name={comment.authorName ?? ''} size="h-8 w-8" />
+                </Link>
+              ) : <Avatar mediaId={comment.authorAvatarMediaId} name={comment.authorName ?? ''} size="h-8 w-8" />}
+              <p className="min-w-0 text-xs text-text-secondary">
+                {comment.authorPersonId
+                  ? <Link href={`/persons/${comment.authorPersonId}`} className="font-semibold text-text-primary hover:underline">{comment.authorName}</Link>
+                  : <span className="font-semibold text-text-primary">{comment.authorName}</span>}
+                {' · '}{dateText(comment.createdAt)}
+              </p>
+            </div>
             {editing === comment.id ? (
               <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
                 <textarea className={inputClass} maxLength={1000} required value={editContent}

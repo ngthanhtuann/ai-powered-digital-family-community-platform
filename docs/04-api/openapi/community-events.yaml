@@ -2066,6 +2066,16 @@ components:
           type: string
           description: Họ tên người đăng (created_by), tra qua UserDirectory của module auth; tài khoản đã xóa hiện "Thành viên đã rời hệ thống".
           example: Nguyễn Văn An
+        authorPersonId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Hồ sơ gia phả gắn với tài khoản người bình luận (qua GenealogyPort), để mở trang cá nhân (SCRUM-130); null nếu chưa gắn.
+        authorAvatarMediaId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Ảnh đại diện của hồ sơ người bình luận; tải qua endpoint media có kiểm tra quyền.
         canDelete:
           type: boolean
           description: Người đang xem được xóa bình luận này (người viết, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-06).
