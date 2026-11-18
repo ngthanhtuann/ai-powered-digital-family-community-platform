@@ -14,6 +14,13 @@ class ChatCitationTest {
     private final List<SourceReference> available = List.of(person, event);
 
     @Test
+    void dropsCitationCutOffAtEndOfAnswer() {
+        // Gemini hết token giữa thẻ nguồn (SCRUM-125): bỏ phần thẻ dở dang, không hiện cho người dùng.
+        var cited = ChatService.citations("Bạn là cháu nội của Nguyễn Văn Tổ [PERSON 15f3f400-def0-4cd9", available);
+        assertEquals("Bạn là cháu nội của Nguyễn Văn Tổ", cited.answer());
+    }
+
+    @Test
     void stripsBracketCitationAndKeepsOnlyCitedSource() {
         var cited = ChatService.citations("Nguyễn Văn Hùng ([PERSON " + person.sourceId() + "]).", available);
         assertEquals("Nguyễn Văn Hùng.", cited.answer());
