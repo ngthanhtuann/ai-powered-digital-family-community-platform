@@ -12,7 +12,9 @@ import { ApiError } from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/datetime';
 import { genealogyApi, toPersonInput, type Person } from '@/services/genealogy';
 import { directoryApi } from '@/services/directory';
-import { communityApi } from '@/services/community/posts';
+import { communityApi, type Post } from '@/services/community/posts';
+import { Comments, ReactionBar } from '@/components/community/PostInteractions';
+import { useHeritageAccess } from '@/components/heritage/HeritageAccess';
 
 const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 const PHOTO_TYPES = 'image/jpeg,image/png,image/webp';
@@ -59,6 +61,21 @@ function AvatarUpload({ personId, person }: { personId: string; person: Person }
   );
 }
 
+/** Cảm xúc và bình luận ngay trên trang cá nhân, không phải sang Bảng tin (SCRUM-120). */
+function PostActions({ post, userId, canReport }: { post: Post; userId?: string; canReport: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ReactionBar post={post} invalidateKey={['person-posts']} />
+      <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+        className="mt-2 inline-flex min-h-11 items-center text-label text-info hover:underline">
+        {open ? 'Ẩn bình luận' : `Bình luận (${post.commentCount})`}
+      </button>
+      {open && <Comments postId={post.id} userId={userId} canReport={canReport} />}
+    </>
+  );
+}
+
 /**
  * Trang cá nhân kiểu mạng xã hội nội bộ (SCRUM-117, SCRUM-119): ảnh, giới thiệu, nghề nghiệp, học vấn, vị trí trên
  * gia phả và bài đăng. Chính chủ (hoặc người có quyền theo BR-GEN-20) sửa hồ sơ, đổi ảnh ngay tại đây.
@@ -70,6 +87,7 @@ export default function PersonPage() {
   const [editing, setEditing] = useState(false);
   const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId), retry: false });
   const me = useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false });
+  const access = useHeritageAccess();
   const p = person.data;
   const profession = useQuery({
     queryKey: ['profession-profile', personId],
@@ -197,14 +215,7 @@ export default function PersonPage() {
                   {/* Nội dung bài cỡ chữ lớn hơn để dễ đọc (góp ý 18/11/2026). */}
                   <p className="mt-4 whitespace-pre-wrap break-words text-section-title font-normal">{post.content}</p>
                   <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
-                  <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-body text-text-secondary">
-                    <span>
-                      {Object.values(post.reactionCounts ?? {}).reduce((sum, n) => sum + (n ?? 0), 0)} cảm xúc · {post.commentCount} bình luận
-                    </span>
-                    <Link href={`/community#post-${post.id}`} className="inline-flex min-h-11 items-center text-info underline">
-                      Xem trên bảng tin
-                    </Link>
-                  </footer>
+                  <PostActions post={post} userId={access.profile.data?.id} canReport={!access.isSystemAdmin} />
                 </article>
               </li>
             ))}
