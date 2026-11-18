@@ -100,6 +100,11 @@ public class MediaService implements CommunityQuery {
     private Post readablePost(Actor actor, UUID id) {
         Post post = posts.findPost(id).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         platform.requireCanRead(actor, post.familyId(), post.branchId());
+        // BR-COM-13: ảnh của bài "con cháu của tôi" theo đúng người xem của bài.
+        if (post.audience() == com.familyconnect.modules.community.dto.CommunityDto.PostAudience.DESCENDANTS) {
+            java.util.Set<UUID> authors = platform.descendantsAudienceAuthors(actor);
+            if (authors != null && !authors.contains(post.createdBy())) throw new ApiException(ErrorCode.PERM_001);
+        }
         return post;
     }
 

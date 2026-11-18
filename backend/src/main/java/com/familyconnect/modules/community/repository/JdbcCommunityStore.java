@@ -1,5 +1,6 @@
 package com.familyconnect.modules.community.repository;
 
+import com.familyconnect.modules.community.dto.CommunityDto.PostAudience;
 import com.familyconnect.modules.community.dto.CommunityDto.PostType;
 import com.familyconnect.modules.community.dto.CommunityDto.ReactionType;
 import com.familyconnect.modules.community.repository.CommunityStore.WeeklyActivityCount;
@@ -23,7 +24,7 @@ import java.util.UUID;
 public class JdbcCommunityStore implements CommunityStore {
     private final NamedParameterJdbcTemplate jdbc;
     private static final String POST_COLUMNS =
-        "id, family_id, branch_id, content, type, created_by, created_at, updated_at";
+        "id, family_id, branch_id, content, type, created_by, created_at, updated_at, audience";
     private static final String COMMENT_COLUMNS =
         "id, post_id, content, created_by, created_at, updated_at";
     private static final String REACTION_COLUMNS =
@@ -42,7 +43,8 @@ public class JdbcCommunityStore implements CommunityStore {
     private static final RowMapper<Post> POST_MAPPER = (rs, n) ->
         new Post(uuid(rs, "id"), uuid(rs, "family_id"), uuid(rs, "branch_id"),
                  rs.getString("content"), PostType.valueOf(rs.getString("type")),
-                 uuid(rs, "created_by"), at(rs, "created_at"), at(rs, "updated_at"));
+                 uuid(rs, "created_by"), at(rs, "created_at"), at(rs, "updated_at"),
+                 PostAudience.valueOf(rs.getString("audience")));
     private static final RowMapper<Comment> COMMENT_MAPPER = (rs, n) ->
         new Comment(uuid(rs, "id"), uuid(rs, "post_id"), rs.getString("content"),
                     uuid(rs, "created_by"), at(rs, "created_at"), at(rs, "updated_at"));
@@ -60,10 +62,12 @@ public class JdbcCommunityStore implements CommunityStore {
         return jdbc.queryForObject(sql, args, mapper);
     }
 
-    @Override public Post insertPost(UUID family, UUID branch, String content, PostType type, UUID user) {
-        return single("INSERT INTO post(family_id,branch_id,content,type,created_by) " +
-                      "VALUES (:family,:branch,:content,:type,:user) RETURNING " + POST_COLUMNS,
-            p("family",family,"branch",branch,"content",content,"type",type.name(),"user",user), POST_MAPPER);
+    @Override public Post insertPost(UUID family, UUID branch, String content, PostType type, UUID user,
+                                     PostAudience audience) {
+        return single("INSERT INTO post(family_id,branch_id,content,type,created_by,audience) " +
+                      "VALUES (:family,:branch,:content,:type,:user,:audience) RETURNING " + POST_COLUMNS,
+            p("family",family,"branch",branch,"content",content,"type",type.name(),"user",user,
+              "audience",audience.name()), POST_MAPPER);
     }
     @Override public Optional<Post> findPost(UUID id) {
         return jdbc.query("SELECT " + POST_COLUMNS + " FROM post " +
@@ -130,8 +134,9 @@ public class JdbcCommunityStore implements CommunityStore {
                         rs.getLong("post_count"),rs.getLong("comment_count"),rs.getLong("reaction_count")));
     }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
-                                       UUID branch, PostType type, int page, int size, String order) {
-        var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),
+                                       UUID branch, PostType type, UUID author, java.util.Set<UUID> descendantsAuthors,
+                                       int page, int size, String order) {
+        var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),"author",author,
                      "limit",size,"offset",(long)page*size);
         var where = new StringBuilder(" FROM post WHERE family_id=:family AND deleted_at IS NULL " +
                                       "AND hidden_at IS NULL");
@@ -144,15 +149,24 @@ public class JdbcCommunityStore implements CommunityStore {
         }
         if (branch != null) where.append(" AND branch_id=:branch");
         if (type != null) where.append(" AND type=:type");
+        if (author != null) where.append(" AND created_by=:author");
+        // BR-COM-13: bài "con cháu của tôi" chỉ hiện khi người đăng là chính mình hoặc tổ tiên của mình/vợ chồng mình.
+        if (descendantsAuthors != null) {
+            if (descendantsAuthors.isEmpty()) where.append(" AND audience <> 'DESCENDANTS'");
+            else {
+                where.append(" AND (audience <> 'DESCENDANTS' OR created_by IN (:descAuthors))");
+                args.addValue("descAuthors", descendantsAuthors);
+            }
+        }
         long total = jdbc.queryForObject("SELECT COUNT(*)" + where, args, Long.class);
         var items = jdbc.query("SELECT " + POST_COLUMNS + where + " ORDER BY " + order +
                               " LIMIT :limit OFFSET :offset", args, POST_MAPPER);
         return new Page<>(items,total);
     }
-    @Override public Post updatePost(UUID id, String content, UUID branch, UUID user) {
-        return single("UPDATE post SET content=:content,branch_id=:branch,updated_by=:user," +
+    @Override public Post updatePost(UUID id, String content, UUID branch, UUID user, PostAudience audience) {
+        return single("UPDATE post SET content=:content,branch_id=:branch,audience=:audience,updated_by=:user," +
                       "updated_at=now() WHERE id=:id AND deleted_at IS NULL RETURNING " + POST_COLUMNS,
-            p("id",id,"content",content,"branch",branch,"user",user), POST_MAPPER);
+            p("id",id,"content",content,"branch",branch,"user",user,"audience",audience.name()), POST_MAPPER);
     }
     @Override public void deletePost(UUID id) {
         jdbc.update("UPDATE post SET deleted_at=now(),updated_at=now() WHERE id=:id AND deleted_at IS NULL",

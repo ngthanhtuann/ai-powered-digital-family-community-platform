@@ -284,6 +284,7 @@ Người sở hữu: **TV3 PiLo257**
 | id | UUID | PK | Khóa chính |
 | family_id | UUID | NOT NULL | Gia đình sở hữu → `family` (tham chiếu logic) |
 | branch_id | UUID | NULL | NULL = cả gia đình → `branch` (tham chiếu logic) |
+| audience | VARCHAR(20) | NOT NULL, CHECK, DEFAULT 'FAMILY' | Người xem: FAMILY, BRANCH, DESCENDANTS (BR-COM-13, V23) |
 | content | TEXT | NOT NULL | Nội dung |
 | type | VARCHAR(20) | NOT NULL, CHECK | POST, NEWS |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |

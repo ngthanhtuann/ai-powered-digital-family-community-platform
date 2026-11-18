@@ -13,6 +13,8 @@ export type PersonNodeData = {
   collapsed: boolean;
   loading: boolean;
   selected: boolean;
+  /** Hồ sơ gắn với tài khoản đang xem: nền khác màu và nhãn "Bạn" để biết vị trí của mình (SCRUM-120). */
+  isMe?: boolean;
   /** Đang tô sáng đường quan hệ: true nếu người này nằm trên đường, false nếu bị làm mờ, undefined nếu không tô. */
   onPath?: boolean;
   onToggle: (id: string) => void;
@@ -53,7 +55,7 @@ export function Avatar({ mediaId, name, size = 'h-10 w-10' }: { mediaId?: string
 
 /** Node cây gia phả (SCRUM-52): màu viền theo giới tính luôn kèm nhãn chữ (design-system.md mục 1.2). */
 function PersonNode({ data }: NodeProps<PersonFlowNode>) {
-  const { person, hasLoadedChildren, collapsed, loading, selected, onPath, onToggle, onSelect } = data;
+  const { person, hasLoadedChildren, collapsed, loading, selected, isMe, onPath, onToggle, onSelect } = data;
   const gender = GENDER[person.gender ?? ''] ?? { label: 'Khác', border: 'border-border-strong' };
   const canOpen = person.hasMoreChildren || (hasLoadedChildren && collapsed);
   const toggleLabel = loading ? 'Đang tải...' : canOpen ? 'Mở nhánh' : 'Thu nhánh';
@@ -63,10 +65,15 @@ function PersonNode({ data }: NodeProps<PersonFlowNode>) {
   return (
     <div
       style={{ width: PERSON_NODE_WIDTH, height: PERSON_NODE_HEIGHT }}
-      className={`flex flex-col items-center justify-center gap-1 rounded-card border-2 px-2 text-center shadow-card ${gender.border} ${ring} ${
-        person.isDeceased ? 'bg-surface-muted' : 'bg-surface'
+      className={`relative flex flex-col items-center justify-center gap-1 rounded-card border-2 px-2 text-center shadow-card ${gender.border} ${ring} ${
+        isMe ? 'bg-info-soft shadow-overlay' : person.isDeceased ? 'bg-surface-muted' : 'bg-surface'
       } ${onPath === false ? 'opacity-40' : ''}`}
     >
+      {isMe && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2 text-caption font-semibold text-cream-on-dark">
+          Bạn
+        </span>
+      )}
       <Handle type="target" position={Position.Top} isConnectable={false} />
       <button
         type="button"

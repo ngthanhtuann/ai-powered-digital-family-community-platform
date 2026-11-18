@@ -111,6 +111,11 @@ public class GenealogyController {
         return ApiResponse.ok(personService.create(familyId, input));
     }
 
+    @GetMapping("/persons/me")
+    public ApiResponse<PersonData> getMyPerson() {
+        return ApiResponse.ok(personService.mine());
+    }
+
     @GetMapping("/persons/{personId}")
     public ApiResponse<PersonData> getPerson(@PathVariable UUID personId) {
         return ApiResponse.ok(personService.get(personId));

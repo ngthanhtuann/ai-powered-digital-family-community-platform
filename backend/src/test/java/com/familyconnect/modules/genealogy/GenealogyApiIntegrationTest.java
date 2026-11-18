@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -398,10 +399,76 @@ class GenealogyApiIntegrationTest {
         linked.put("userId", userId(memberEmail).toString());
         UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), token, linked));
 
-        call(put("/api/v1/persons/" + personId), token, person("Đổi tên", LocalDate.of(1990, 2, 2)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"));
+        // BR-GEN-20: hồ sơ đã gắn tài khoản thì Trưởng họ không sửa được, chỉ chính chủ sửa.
+        call(put("/api/v1/persons/" + personId), token, person("Trưởng họ đổi", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isForbidden());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), person("Đổi tên", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"))
+                .andExpect(jsonPath("$.data.canEdit").value(true));
+        // Chính chủ không tự chuyển hồ sơ sang tài khoản khác.
+        String otherEmail = newUser();
+        member(otherEmail, familyId, null, "MEMBER");
+        Map<String, Object> relink = person("Đổi tên", LocalDate.of(1990, 2, 2));
+        relink.put("userId", userId(otherEmail).toString());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), relink).andExpect(status().isForbidden());
+        // SCRUM-119: chính chủ tự tải ảnh đại diện và gán; Trưởng họ không tải ảnh vào hồ sơ đã gắn tài khoản.
+        UUID photo = uploadAvatar(token(memberEmail), "PERSON", personId);
+        Map<String, Object> withPhoto = person("Đổi tên", LocalDate.of(1990, 2, 2));
+        withPhoto.put("avatarMediaId", photo.toString());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), withPhoto)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.avatarMediaId").value(photo.toString()));
+        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0};
+        mvc.perform(multipart("/api/v1/media")
+                        .file(new MockMultipartFile("file", "a.png", "image/png", png))
+                        .param("ownerType", "PERSON").param("ownerId", personId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+        // Trang cá nhân của tôi; Trưởng họ thấy canEdit=false với hồ sơ đã gắn tài khoản.
+        call(get("/api/v1/persons/me"), token(memberEmail), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(personId.toString()));
+        call(get("/api/v1/persons/" + personId), token, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.canEdit").value(false));
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
         org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));
+    }
+
+    // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
+
+    @Test
+    void descendantsAudiencePostVisibleOnlyToDescendantsAndTheirSpouses() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String grandpa = newUser(), son = newUser(), wife = newUser();
+        for (String email : List.of(grandpa, son, wife)) member(email, familyId, null, "MEMBER");
+        UUID[] ids = new UUID[3];
+        String[] emails = {grandpa, son, wife};
+        for (int k = 0; k < 3; k++) {
+            Map<String, Object> body = person("Người " + k, LocalDate.of(1950 + k * 20, 1, 1));
+            body.put("userId", userId(emails[k]).toString());
+            ids[k] = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, body));
+        }
+        jdbc.update("insert into parent_child(parent_id, child_id, parent_role, created_by) values (?, ?, 'FATHER', ?)",
+                ids[0], ids[1], userId(grandpa));
+        jdbc.update("insert into marriage(person1_id, person2_id, status, created_by) values (?, ?, 'MARRIED', ?)",
+                ids[1], ids[2], userId(grandpa));
+
+        UUID postId = id(call(post("/api/v1/posts"), token(grandpa),
+                Map.of("content", "Chuyện riêng trong nhà", "type", "POST", "audience", "DESCENDANTS"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.audience").value("DESCENDANTS")));
+
+        for (String email : List.of(grandpa, son, wife)) {
+            call(get("/api/v1/posts/" + postId), token(email), null).andExpect(status().isOk());
+            call(get("/api/v1/posts"), token(email), null)
+                    .andExpect(jsonPath("$.data[?(@.id == '" + postId + "')]").exists());
+        }
+        // Trưởng họ không phải con cháu: không thấy trên bảng tin, mở thẳng bài bị 403.
+        call(get("/api/v1/posts"), headToken, null)
+                .andExpect(jsonPath("$.data[?(@.id == '" + postId + "')]").doesNotExist());
+        call(get("/api/v1/posts/" + postId), headToken, null).andExpect(status().isForbidden());
+        // Chưa gắn hồ sơ gia phả thì không chọn được "con cháu của tôi".
+        call(post("/api/v1/posts"), headToken,
+                Map.of("content", "Thử", "type", "POST", "audience", "DESCENDANTS")).andExpect(status().isBadRequest());
     }
 }

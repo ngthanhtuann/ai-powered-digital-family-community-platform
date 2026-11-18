@@ -39,10 +39,10 @@ public class AuditLogRepository {
     }
 
     /** Lọc theo người, hành động, khoảng thời gian; điều kiện null thì bỏ qua. */
-    public List<AuditLogData> search(UUID actorUserId, String action, OffsetDateTime from, OffsetDateTime to,
-                                     boolean ascending, int page, int size) {
+    public List<AuditLogData> search(UUID actorUserId, UUID familyId, String action, OffsetDateTime from,
+                                     OffsetDateTime to, boolean ascending, int page, int size) {
         List<Object> args = new ArrayList<>();
-        String where = where(actorUserId, action, from, to, args);
+        String where = where(actorUserId, familyId, action, from, to, args);
         String order = ascending ? "ASC" : "DESC";
         args.add(size);
         args.add((long) page * size);
@@ -50,19 +50,24 @@ public class AuditLogRepository {
                 + " LIMIT ? OFFSET ?", rowMapper(), args.toArray());
     }
 
-    public long count(UUID actorUserId, String action, OffsetDateTime from, OffsetDateTime to) {
+    public long count(UUID actorUserId, UUID familyId, String action, OffsetDateTime from, OffsetDateTime to) {
         List<Object> args = new ArrayList<>();
-        Long total = jdbc.queryForObject("SELECT count(*) FROM audit_log" + where(actorUserId, action, from, to, args),
+        Long total = jdbc.queryForObject("SELECT count(*) FROM audit_log"
+                        + where(actorUserId, familyId, action, from, to, args),
                 Long.class, args.toArray());
         return total == null ? 0 : total;
     }
 
-    private static String where(UUID actorUserId, String action, OffsetDateTime from, OffsetDateTime to,
-                                List<Object> args) {
+    private static String where(UUID actorUserId, UUID familyId, String action, OffsetDateTime from,
+                                OffsetDateTime to, List<Object> args) {
         List<String> conditions = new ArrayList<>();
         if (actorUserId != null) {
             conditions.add("actor_user_id = ?");
             args.add(actorUserId);
+        }
+        if (familyId != null) {
+            conditions.add("family_id = ?");
+            args.add(familyId);
         }
         if (action != null) {
             conditions.add("action = ?");

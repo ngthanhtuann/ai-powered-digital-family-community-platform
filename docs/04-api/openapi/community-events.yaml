@@ -127,6 +127,11 @@ paths:
       - $ref: '#/components/parameters/Sort'
       - $ref: '#/components/parameters/TypeFilter'
       - $ref: '#/components/parameters/BranchFilter'
+      - name: authorId
+        in: query
+        required: false
+        description: Chỉ lấy bài của tài khoản này (trang cá nhân, SCRUM-117); vẫn lọc theo phạm vi chi người xem được (BR-COM-03).
+        schema: { type: string, format: uuid }
   /posts/{id}:
     get:
       tags:
@@ -685,7 +690,8 @@ paths:
       operationId: uploadMedia
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên
-        sở hữu do module heritage/genealogy quyết định. Ảnh bài đăng và sự kiện dùng
+        sở hữu do module heritage/genealogy quyết định (với PERSON là người được sửa hồ sơ theo BR-GEN-20,
+        gồm chính chủ tự tải ảnh đại diện). Ảnh bài đăng và sự kiện dùng
         endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng
         ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md
         mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB.
@@ -1947,6 +1953,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null)."
         content:
           type: string
           example: Thông báo họp mặt gia đình cuối tuần
@@ -1961,6 +1971,16 @@ components:
           type: string
           description: Họ tên người đăng (created_by), tra qua UserDirectory của module auth; tài khoản đã xóa hiện "Thành viên đã rời hệ thống".
           example: Nguyễn Văn An
+        authorPersonId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Hồ sơ gia phả gắn với tài khoản người đăng (qua GenealogyPort), để mở trang cá nhân; null nếu chưa gắn.
+        authorAvatarMediaId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Ảnh đại diện của hồ sơ người đăng; tải qua endpoint media có kiểm tra quyền.
         canDelete:
           type: boolean
           description: Người đang xem được xóa bài này (người tạo, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-05).
@@ -2374,6 +2394,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId."
       additionalProperties: false
       required:
       - content
@@ -2389,6 +2413,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId."
       additionalProperties: false
     CommentRequest:
       type: object

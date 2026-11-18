@@ -11,6 +11,7 @@ import { useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { ApiError } from '@/lib/api';
 import { aiApi, type AiSource, type AiSourceType } from '@/services/ai';
 import { dashboardApi } from '@/services/dashboard';
+import { setAdminFamily, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 type Message = { id: string; role: 'assistant' | 'user'; content: string; sources?: AiSource[]; failed?: boolean };
 
@@ -60,7 +61,7 @@ export default function AssistantPage() {
   const families = useQuery({
     queryKey: ['dashboard-families'], queryFn: dashboardApi.families, enabled: access.isSystemAdmin,
   });
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const familyId = access.isSystemAdmin ? adminFamily || families.data?.[0]?.id || '' : undefined;
   const ready = access.isSystemAdmin ? Boolean(familyId) : access.isReady;
 

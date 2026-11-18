@@ -86,6 +86,7 @@ Table post {
   id uuid [pk, note: 'Khóa chính']
   family_id uuid [not null, note: 'Gia đình sở hữu; tham chiếu logic -> family, không có FK']
   branch_id uuid [note: 'NULL = cả gia đình; tham chiếu logic -> branch, không có FK']
+  audience varchar(20) [not null, default: 'FAMILY', note: 'FAMILY, BRANCH, DESCENDANTS (BR-COM-13)']
   content text [not null, note: 'Nội dung']
   type varchar(20) [not null, note: 'POST, NEWS']
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']

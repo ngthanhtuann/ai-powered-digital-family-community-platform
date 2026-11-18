@@ -318,6 +318,22 @@ paths:
                 under16: { value: { success: false, error: { code: GEN_012, message: Người dưới 16 tuổi không có tài khoản đăng nhập riêng, details: [] } } }
                 otherFamily: { value: { success: false, error: { code: GEN_014, message: Hồ sơ không thuộc gia đình của tài khoản cần gắn, details: [] } } }
 
+  /persons/me:
+    get:
+      operationId: getMyPerson
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Hồ sơ gia phả gắn với tài khoản đang đăng nhập (trang cá nhân của tôi, SCRUM-117)
+      description: Chưa gắn hồ sơ thì 404 NOT_FOUND_001; chưa xác minh gia đình thì 403 PERM_002.
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /persons/{personId}:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -341,7 +357,7 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     put:
       operationId: updatePerson
-      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [persons]
       summary: Sửa thành viên (UC-GEN-03)
       description: "Thay toàn bộ trường của hồ sơ: gửi lại đủ các trường đọc được từ GET (người có quyền sửa luôn nhận đủ dữ liệu), trừ userId (xem PersonInput). Đánh dấu đã mất thì hôn nhân MARRIED của người đó tự chuyển WIDOWED (BR-GEN-08)."
@@ -540,7 +556,7 @@ paths:
       tags: [tree]
       summary: Lấy cây gia phả dạng nodes/edges cho React Flow (UC-GEN-06)
       description: |
-        rootId không bắt buộc, mặc định là hồ sơ gắn với tài khoản hiện tại, nếu không có thì người tổ.
+        rootId không bắt buộc, mặc định là người tổ (đời cao nhất) để thấy cả dòng họ (đổi 17/11/2026).
         depth là số đời tải mỗi lần, tính cả người gốc (mặc định 3, ngoài 1 đến 10 trả 400 VALID_001).
         Trả hậu duệ của người gốc kèm vợ/chồng của họ; node ở đời cuối còn con có hasMoreChildren = true,
         lazy-load nhánh bằng cách gọi lại với rootId là node đó. rootId không thuộc gia đình trả 404.
@@ -788,6 +804,8 @@ components:
         note: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        userId: { type: string, format: uuid, nullable: true, description: "Tài khoản gắn với hồ sơ (chỉ đọc, SCRUM-117) để trang cá nhân lấy bài qua GET /posts?authorId=; null với trẻ dưới 16 tuổi bị giới hạn (BR-GEN-10)." }
+        canEdit: { type: boolean, description: "Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN)." }
     PersonResponse:
       type: object
       properties:

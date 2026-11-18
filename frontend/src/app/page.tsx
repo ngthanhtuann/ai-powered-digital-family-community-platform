@@ -235,14 +235,25 @@ function TreePreview({ query }: { query: Loadable & { data?: TreeData } }) {
   return (
     <QueryState query={query} empty={!root} emptyText="Gia đình chưa có thành viên.">
       <figure aria-label="Cây gia phả thu gọn" className="rounded-card bg-surface-muted px-3 py-5">
-        <div className="flex justify-center gap-6">
-          {[root, spouse].filter((n): n is TreeNode => Boolean(n)).map((node) => <TreePerson key={node.id} node={node} big />)}
+        <div className="flex items-start justify-center">
+          {root && <TreePerson node={root} big />}
+          {/* Vạch hôn nhân ngang tâm ảnh đại diện (h-12 → giữa 24px); thanh dọc xuống con đi ra từ giữa vạch này. */}
+          {spouse && <span aria-hidden="true" className="mt-6 h-0.5 w-6 shrink-0 bg-secondary" />}
+          {spouse && <TreePerson node={spouse} big />}
         </div>
         {children.length > 0 && (
           <>
-            <span aria-hidden="true" className="mx-auto block h-5 w-0.5 bg-secondary" />
-            <div className="flex flex-wrap justify-center gap-4">
-              {children.map((node) => <TreePerson key={node.id} node={node} child />)}
+            <span aria-hidden="true" className="mx-auto block h-4 w-0.5 bg-secondary" />
+            <div className="flex justify-center">
+              {children.map((node, i) => (
+                <div key={node.id} className="relative px-1">
+                  {/* Thanh ngang nối các con: con đầu từ giữa sang phải, con cuối từ trái tới giữa. */}
+                  {children.length > 1 && (
+                    <span aria-hidden="true" className={`absolute top-0 h-0.5 bg-secondary ${i === 0 ? 'left-1/2' : 'left-0'} ${i === children.length - 1 ? 'right-1/2' : 'right-0'}`} />
+                  )}
+                  <TreePerson node={node} child />
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -258,8 +269,8 @@ function TreePreview({ query }: { query: Loadable & { data?: TreeData } }) {
 
 function TreePerson({ node, big = false, child = false }: { node: TreeNode; big?: boolean; child?: boolean }) {
   return (
-    <div className="flex w-28 flex-col items-center gap-1 text-center">
-      {child && <span aria-hidden="true" className="h-3 w-0.5 bg-secondary" />}
+    <div className="flex w-24 flex-col items-center gap-1 text-center md:w-28">
+      {child && <span aria-hidden="true" className="-mb-1 h-4 w-0.5 bg-secondary" />}
       <Initial name={node.fullName ?? ''} size={big ? 'h-12 w-12' : 'h-10 w-10'}
         className={child ? 'bg-accent-green text-surface' : genderTone(node.gender)} />
       <p className="text-caption text-text-primary">{node.fullName}</p>

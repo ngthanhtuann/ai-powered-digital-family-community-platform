@@ -23,7 +23,8 @@ public final class GenealogyResponses {
     public record PersonData(UUID id, UUID familyId, UUID branchId, String fullName, String gender,
                              Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince,
                              String currentAddress, boolean isDeceased, LocalDate deathDate, String burialPlace,
-                             UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+                             UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt,
+                             UUID userId, boolean canEdit) {
     }
 
     public record PaginationMeta(int page, int size, long total) {

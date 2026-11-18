@@ -163,7 +163,7 @@ export interface paths {
         put?: never;
         /**
          * Tải ảnh (hoặc tệp pdf của heritage) cho tài nguyên heritage hoặc person
-         * @description Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên sở hữu do module heritage/genealogy quyết định. Ảnh bài đăng và sự kiện dùng endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB. Sai định dạng trả 415 FILE_002; quá kích thước trả 413 FILE_001.
+         * @description Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên sở hữu do module heritage/genealogy quyết định (với PERSON là người được sửa hồ sơ theo BR-GEN-20, gồm chính chủ tự tải ảnh đại diện). Ảnh bài đăng và sự kiện dùng endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB. Sai định dạng trả 415 FILE_002; quá kích thước trả 413 FILE_001.
          */
         post: operations["uploadMedia"];
         delete?: never;
@@ -511,6 +511,11 @@ export interface components {
             familyId: string;
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null).
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
             /** @example Thông báo họp mặt gia đình cuối tuần */
             content: string;
             /**
@@ -528,6 +533,16 @@ export interface components {
              * @example Nguyễn Văn An
              */
             authorName: string;
+            /**
+             * Format: uuid
+             * @description Hồ sơ gia phả gắn với tài khoản người đăng (qua GenealogyPort), để mở trang cá nhân; null nếu chưa gắn.
+             */
+            authorPersonId?: string | null;
+            /**
+             * Format: uuid
+             * @description Ảnh đại diện của hồ sơ người đăng; tải qua endpoint media có kiểm tra quyền.
+             */
+            authorAvatarMediaId?: string | null;
             /** @description Người đang xem được xóa bài này (người tạo, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-05). */
             canDelete: boolean;
             /** @example 0 */
@@ -894,12 +909,22 @@ export interface components {
             type: "POST" | "NEWS";
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId.
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
         };
         PostUpdateRequest: {
             /** @example Cập nhật giờ họp mặt gia đình */
             content?: string;
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId.
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
         };
         CommentRequest: {
             /** @example Mình sẽ tham gia. */
@@ -1429,6 +1454,8 @@ export interface operations {
                 sort?: components["parameters"]["Sort"];
                 type?: components["parameters"]["TypeFilter"];
                 branchId?: components["parameters"]["BranchFilter"];
+                /** @description Chỉ lấy bài của tài khoản này (trang cá nhân, SCRUM-117); vẫn lọc theo phạm vi chi người xem được (BR-COM-03). */
+                authorId?: string;
             };
             header?: never;
             path?: never;

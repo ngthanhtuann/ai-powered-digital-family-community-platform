@@ -220,7 +220,7 @@ public class ContentReportService implements ContentModerationPort {
         // Đọc ngay trong giao dịch; nội dung đã xóa trong lúc chờ thì chỉ gỡ.
         Target target = restored ? store.findTarget(report.targetType(), report.targetId(), true).orElse(null) : null;
         AfterCommit.runQuietly(() -> {
-            if (target == null) {
+            if (target == null || !target.aiIndexable()) {
                 aiGateway.removeSource(source, report.targetId());
             } else {
                 aiGateway.upsertSource(source, report.targetId(), target.familyId(), target.branchId(), target.text());
