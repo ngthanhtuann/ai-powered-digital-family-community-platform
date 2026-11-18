@@ -85,7 +85,7 @@ export function NotificationBell() {
                   {formatDateTime(item.createdAt)}
                 </p>
                 {item.refType === 'POST' && item.refId && (
-                  <Link href={`/community#post-${item.refId}`} className="mt-2 inline-flex min-h-9 items-center text-body text-info underline"
+                  <Link href={`/community?item=${item.refId}`} className="mt-2 inline-flex min-h-9 items-center text-body text-info underline"
                     onClick={() => { if (!item.isRead) mark.mutate(item.id); setOpen(false); }}>
                     Xem bài viết
                   </Link>

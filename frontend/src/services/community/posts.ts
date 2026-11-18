@@ -24,6 +24,8 @@ export const communityApi = {
       ...(type ? { type } : {}),
       ...(familyId ? { familyId } : {}),
     }),
+  /** Một bài theo id, để mở bài từ thông báo hoặc tìm kiếm khi bài không nằm trong trang đầu của bảng tin. */
+  post: (id: string) => api.get<Post>('/posts/' + id),
   /** Bài của một tài khoản cho trang cá nhân (SCRUM-117); backend vẫn lọc theo phạm vi chi người xem được. */
   postsByAuthor: (authorId: string, page: number) =>
     api.list<Post>('/posts', { page, size: 10, sort: 'createdAt,desc', authorId }),

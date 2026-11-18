@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   useInfiniteQuery, useMutation, useQuery, useQueryClient,
   type InfiniteData, type QueryKey,
@@ -54,6 +55,13 @@ function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch
   const parents = new Map(branches.map((b) => [b.id ?? '', b.parentBranchId ?? null]));
   return branches.filter((b) => b.id
     && (within(parents, myBranch, b.id) || (branchAdmin && within(parents, b.id, myBranch))));
+}
+
+/** Đọc ?item= mỗi lần URL đổi (bấm thông báo khi đang ở bảng tin); useSearchParams cần Suspense khi dựng trang tĩnh. */
+function TargetFromUrl({ onChange }: { onChange: (id: string | null) => void }) {
+  const id = useSearchParams().get('item');
+  useEffect(() => onChange(id), [id, onChange]);
+  return null;
 }
 
 function PostCard({ post, userId, canReport, canDescendants, scopeOptions, onReaction }: {
@@ -261,7 +269,7 @@ export default function CommunityPage() {
       await client.cancelQueries({ queryKey: ['community-posts'] });
       const previous = client.getQueriesData<FeedCache>({ queryKey: ['community-posts'] });
       client.setQueriesData<FeedCache>({ queryKey: ['community-posts'] }, (data) => {
-        if (!data) return data;
+        if (!data?.pages) return data; // bỏ qua bài ghim (một bài, không phân trang)
         return {
           ...data,
           pages: data.pages.map((page) => ({
@@ -286,16 +294,23 @@ export default function CommunityPage() {
   });
 
   const posts = useMemo(() => feed.data?.pages.flatMap((page) => page.items) ?? [], [feed.data]);
+  const targetInFeed = Boolean(targetPostId && posts.some((post) => post.id === targetPostId));
+  // Bài cũ không nằm trong trang đầu: tải riêng và ghim lên đầu danh sách.
+  const pinned = useQuery({
+    queryKey: ['community-posts', 'item', targetPostId],
+    enabled: ready && Boolean(targetPostId) && feed.isSuccess && !targetInFeed,
+    queryFn: () => communityApi.post(targetPostId!),
+    retry: false,
+  });
+  const pinnedPost = !targetInFeed ? pinned.data : undefined;
   useEffect(() => {
-    setTargetPostId(new URLSearchParams(window.location.search).get('item'));
-  }, []);
-  useEffect(() => {
-    if (targetPostId && posts.some((post) => post.id === targetPostId)) {
+    if (targetPostId && (targetInFeed || pinnedPost)) {
       document.getElementById(`post-${targetPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [targetPostId, posts]);
+  }, [targetPostId, targetInFeed, pinnedPost]);
   return (
     <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 md:px-4 md:py-8">
+      <Suspense><TargetFromUrl onChange={setTargetPostId} /></Suspense>
       <header>
         <h1 className="text-page-title">Bảng tin gia đình</h1>
         <p className="mt-1 text-text-secondary">Bài đăng và tin tức trong phạm vi gia đình của bạn.</p>
@@ -412,6 +427,13 @@ export default function CommunityPage() {
             )}
             {!feed.isPending && !feed.isError && posts.length === 0 &&
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
+            {targetPostId && !targetInFeed && pinned.isError &&
+              <p role="alert" className="text-error">Bài viết đã bị xóa hoặc bạn không có quyền xem.</p>}
+            {pinnedPost && (
+              <PostCard post={pinnedPost} userId={me.data?.id} canReport={!systemAdmin}
+                canDescendants={canDescendants} scopeOptions={scopeOptions}
+                onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
+            )}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
                 canDescendants={canDescendants} scopeOptions={scopeOptions}
