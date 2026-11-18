@@ -245,4 +245,45 @@ class AiChatGroundingTest {
         ask("Ai sinh trước năm 1960?", person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950."));
         verify(model).answer(anyString());
     }
+
+    // ---- BR-AI-17 (SCRUM-125): câu hỏi về chính người hỏi ----
+
+    private GenealogyQuery.DirectoryPerson asker() {
+        return new GenealogyQuery.DirectoryPerson(UUID.fromString("00000000-0000-0000-0000-0000000000a1"), familyId, null,
+                "Nguyễn Thị Hà", java.time.LocalDate.of(1994, 4, 9), 1994, "Hà Nội", false, userId, "FEMALE", 4);
+    }
+
+    @Test void selfQuestionUsesAskerProfileAndComputedRelations() {
+        GenealogyQuery.DirectoryPerson me = asker();
+        GenealogyQuery.DirectoryPerson father = new GenealogyQuery.DirectoryPerson(UUID.randomUUID(), familyId, null,
+                "Nguyễn Văn Minh", null, 1960, null, false, null, "MALE", 3);
+        when(genealogy.findDirectoryPersonByUserId(userId)).thenReturn(java.util.Optional.of(me));
+        when(genealogy.findMinorPersonIds(any(), any())).thenReturn(List.of());
+        when(genealogy.searchDirectoryPeople(eq(familyId), any(), any(), any(), any(), any(), eq(false), eq("fullName"), eq(true), eq(0), eq(500)))
+                .thenReturn(new GenealogyQuery.DirectoryPage(List.of(me, father), 2));
+        when(genealogy.relationshipLabels(eq(me.id()), anyList())).thenReturn(java.util.Map.of(father.id(), "cha"));
+        org.mockito.Mockito.doAnswer(call -> {
+            String prompt = call.getArgument(0);
+            assertTrue(prompt.contains("Họ tên: Nguyễn Thị Hà. Năm sinh: 1994. Đời thứ 4"));
+            assertTrue(prompt.contains("Quan hệ với người hỏi (đã tính bằng thuật toán gia phả): Nguyễn Văn Minh là cha."));
+            return "Cha của bạn là Nguyễn Văn Minh.";
+        }).when(model).answer(anyString());
+        service.setGenealogy(genealogy);
+
+        var response = service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Cha tôi là ai?", null, null));
+
+        assertEquals("Cha của bạn là Nguyễn Văn Minh.", response.answer());
+        // Tìm chunk theo họ tên người hỏi thay vì chữ "tôi".
+        org.mockito.Mockito.verify(embeddings).createEmbedding("Cha Nguyễn Thị Hà là ai?");
+    }
+
+    @Test void selfQuestionWithoutLinkedProfileExplainsInsteadOfNotFound() {
+        when(genealogy.findDirectoryPersonByUserId(userId)).thenReturn(java.util.Optional.empty());
+        service.setGenealogy(genealogy);
+
+        var response = service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Tôi là ai?", null, null));
+
+        assertEquals(ChatService.NO_PROFILE, response.answer());
+        org.mockito.Mockito.verify(model, org.mockito.Mockito.never()).answer(anyString());
+    }
 }
