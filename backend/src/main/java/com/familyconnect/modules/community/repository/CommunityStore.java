@@ -1,5 +1,6 @@
 package com.familyconnect.modules.community.repository;
 
+import com.familyconnect.modules.community.dto.CommunityDto.PostAudience;
 import com.familyconnect.modules.community.dto.CommunityDto.PostType;
 import com.familyconnect.modules.community.dto.CommunityDto.ReactionType;
 import java.time.OffsetDateTime;
@@ -11,20 +12,28 @@ import java.util.UUID;
 
 public interface CommunityStore {
     record Post(UUID id, UUID familyId, UUID branchId, String content, PostType type,
-                UUID createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
+                UUID createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt, PostAudience audience) {
+        /** Bài chưa ghi người xem: suy ra từ branchId như trước BR-COM-13. */
+        public Post(UUID id, UUID familyId, UUID branchId, String content, PostType type,
+                    UUID createdBy, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
+            this(id, familyId, branchId, content, type, createdBy, createdAt, updatedAt,
+                 branchId == null ? PostAudience.FAMILY : PostAudience.BRANCH);
+        }
+    }
     record Comment(UUID id, UUID postId, String content, UUID createdBy,
                    OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     record Reaction(UUID id, UUID postId, ReactionType type, UUID createdBy,
                     OffsetDateTime createdAt, OffsetDateTime updatedAt) {}
     record Page<T>(List<T> items, long total) {}
 
-    Post insertPost(UUID family, UUID branch, String content, PostType type, UUID userId);
+    Post insertPost(UUID family, UUID branch, String content, PostType type, UUID userId, PostAudience audience);
     Optional<Post> findPost(UUID id);
     /** Các chi đang có bài trong gia đình, để lọc phạm vi xem (BR-COM-03). */
     List<UUID> postBranchIds(UUID familyId);
     Page<Post> posts(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
-                     UUID branchFilter, PostType type, UUID authorFilter, int page, int size, String orderBy);
-    Post updatePost(UUID id, String content, UUID branch, UUID userId);
+                     UUID branchFilter, PostType type, UUID authorFilter,
+                     java.util.Set<UUID> descendantsAuthors, int page, int size, String orderBy);
+    Post updatePost(UUID id, String content, UUID branch, UUID userId, PostAudience audience);
     void deletePost(UUID id);
     /** Đếm theo lô cho một trang bài, tránh mỗi bài một truy vấn. */
     Map<UUID, Long> commentCounts(List<UUID> postIds);

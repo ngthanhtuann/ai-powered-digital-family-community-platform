@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -430,5 +431,44 @@ class GenealogyApiIntegrationTest {
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
         org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));
+    }
+
+    // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
+
+    @Test
+    void descendantsAudiencePostVisibleOnlyToDescendantsAndTheirSpouses() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String grandpa = newUser(), son = newUser(), wife = newUser();
+        for (String email : List.of(grandpa, son, wife)) member(email, familyId, null, "MEMBER");
+        UUID[] ids = new UUID[3];
+        String[] emails = {grandpa, son, wife};
+        for (int k = 0; k < 3; k++) {
+            Map<String, Object> body = person("Người " + k, LocalDate.of(1950 + k * 20, 1, 1));
+            body.put("userId", userId(emails[k]).toString());
+            ids[k] = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, body));
+        }
+        jdbc.update("insert into parent_child(parent_id, child_id, parent_role, created_by) values (?, ?, 'FATHER', ?)",
+                ids[0], ids[1], userId(grandpa));
+        jdbc.update("insert into marriage(person1_id, person2_id, status, created_by) values (?, ?, 'MARRIED', ?)",
+                ids[1], ids[2], userId(grandpa));
+
+        UUID postId = id(call(post("/api/v1/posts"), token(grandpa),
+                Map.of("content", "Chuyện riêng trong nhà", "type", "POST", "audience", "DESCENDANTS"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.audience").value("DESCENDANTS")));
+
+        for (String email : List.of(grandpa, son, wife)) {
+            call(get("/api/v1/posts/" + postId), token(email), null).andExpect(status().isOk());
+            call(get("/api/v1/posts"), token(email), null)
+                    .andExpect(jsonPath("$.data[?(@.id == '" + postId + "')]").exists());
+        }
+        // Trưởng họ không phải con cháu: không thấy trên bảng tin, mở thẳng bài bị 403.
+        call(get("/api/v1/posts"), headToken, null)
+                .andExpect(jsonPath("$.data[?(@.id == '" + postId + "')]").doesNotExist());
+        call(get("/api/v1/posts/" + postId), headToken, null).andExpect(status().isForbidden());
+        // Chưa gắn hồ sơ gia phả thì không chọn được "con cháu của tôi".
+        call(post("/api/v1/posts"), headToken,
+                Map.of("content", "Thử", "type", "POST", "audience", "DESCENDANTS")).andExpect(status().isBadRequest());
     }
 }

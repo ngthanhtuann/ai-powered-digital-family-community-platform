@@ -116,6 +116,24 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
     }
 
     @Override
+    public java.util.Set<UUID> descendantsAudienceAuthors(Actor actor) {
+        if (actor.role() == Role.SYSTEM_ADMIN) {
+            return null;
+        }
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        java.util.Set<UUID> authors = new java.util.HashSet<>(port == null ? java.util.Set.of()
+                : port.ancestorAccountIds(actor.userId()));
+        authors.add(actor.userId());
+        return authors;
+    }
+
+    @Override
+    public boolean hasGenealogyProfile(UUID userId) {
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        return port != null && !port.personsByUserIds(java.util.Set.of(userId)).isEmpty();
+    }
+
+    @Override
     public Map<UUID, GenealogyPort.PersonCard> authorPersons(Collection<UUID> userIds) {
         GenealogyPort port = genealogyPort.getIfAvailable();
         return port == null || userIds.isEmpty() ? Map.of() : port.personsByUserIds(userIds);
@@ -135,7 +153,10 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
     public void postChanged(UUID postId, UUID familyId) {
         // Đọc ngay trong giao dịch, gọi AI sau khi commit (ai.md mục 6.1): lỗi AI không làm hỏng thao tác bài đăng.
         Runnable action = store.findPost(postId)
-                .<Runnable>map(post -> () -> aiGateway.upsertSource(AiGateway.SourceType.POST, post.id(),
+                // BR-COM-13: bài "con cháu của tôi" không vào chỉ mục AI (ai cũng hỏi được trợ lý).
+                .<Runnable>map(post -> post.audience() == com.familyconnect.modules.community.dto.CommunityDto.PostAudience.DESCENDANTS
+                        ? () -> aiGateway.removeSource(AiGateway.SourceType.POST, post.id())
+                        : () -> aiGateway.upsertSource(AiGateway.SourceType.POST, post.id(),
                         post.familyId(), post.branchId(), post.content()))
                 .orElse(() -> aiGateway.removeSource(AiGateway.SourceType.POST, postId));
         AfterCommit.runQuietly(action, ex -> log.warn("Không cập nhật được chỉ mục AI cho bài đăng {}", postId, ex));

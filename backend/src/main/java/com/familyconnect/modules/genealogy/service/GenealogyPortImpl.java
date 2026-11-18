@@ -62,6 +62,12 @@ public class GenealogyPortImpl implements GenealogyPort {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Set<UUID> ancestorAccountIds(UUID userId) {
+        return java.util.Set.copyOf(personRepository.findAncestorAccountIds(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.Map<UUID, PersonCard> personsByUserIds(java.util.Collection<UUID> userIds) {
         java.util.Map<UUID, PersonCard> cards = new java.util.HashMap<>();
         personRepository.findAllByUserIdInAndDeletedAtIsNull(userIds)

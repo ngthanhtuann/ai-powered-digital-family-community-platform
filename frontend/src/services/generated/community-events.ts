@@ -511,6 +511,11 @@ export interface components {
             familyId: string;
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null).
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
             /** @example Thông báo họp mặt gia đình cuối tuần */
             content: string;
             /**
@@ -904,12 +909,22 @@ export interface components {
             type: "POST" | "NEWS";
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId.
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
         };
         PostUpdateRequest: {
             /** @example Cập nhật giờ họp mặt gia đình */
             content?: string;
             /** Format: uuid */
             branchId?: string | null;
+            /**
+             * @description Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId.
+             * @enum {string}
+             */
+            audience?: "FAMILY" | "BRANCH" | "DESCENDANTS";
         };
         CommentRequest: {
             /** @example Mình sẽ tham gia. */

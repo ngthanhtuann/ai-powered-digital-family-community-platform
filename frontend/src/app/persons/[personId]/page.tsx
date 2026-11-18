@@ -207,7 +207,7 @@ export default function PersonPage() {
                     <div className="min-w-0">
                       <p className="text-label">{p.fullName}</p>
                       <p className="text-caption text-text-secondary">
-                        {formatDateTime(post.createdAt)} · {post.branchId ? 'Người xem: một chi' : 'Người xem: cả dòng họ'}
+                        {formatDateTime(post.createdAt)} · {post.audience === 'DESCENDANTS' ? 'Người xem: con cháu' : post.branchId ? 'Người xem: một chi' : 'Người xem: cả dòng họ'}
                         {post.type === 'NEWS' ? ' · Tin tức gia đình' : ''}
                       </p>
                     </div>
