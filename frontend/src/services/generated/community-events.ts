@@ -588,6 +588,11 @@ export interface components {
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
             postId: string;
+            /**
+             * Format: uuid
+             * @description Bình luận gốc được trả lời (BR-COM-14); null là bình luận gốc.
+             */
+            parentId?: string | null;
             /** @example Mình sẽ tham gia. */
             content: string;
             /**
@@ -835,7 +840,7 @@ export interface components {
              * @example EVENT_REMINDER_24H
              * @enum {string}
              */
-            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED";
+            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED" | "POST_COMMENTED" | "COMMENT_REPLIED";
             /** @example Nhắc sự kiện: Họp mặt gia đình */
             title: string;
             /** @example EVENT */
@@ -929,6 +934,11 @@ export interface components {
         CommentRequest: {
             /** @example Mình sẽ tham gia. */
             content: string;
+            /**
+             * Format: uuid
+             * @description Trả lời bình luận này (BR-COM-14, 1 cấp); bỏ trống là bình luận gốc. Chỉ dùng khi tạo, khi sửa bỏ qua.
+             */
+            parentId?: string | null;
         };
         ReactionRequest: {
             /**

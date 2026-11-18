@@ -26,7 +26,7 @@ public class JdbcCommunityStore implements CommunityStore {
     private static final String POST_COLUMNS =
         "id, family_id, branch_id, content, type, created_by, created_at, updated_at, audience";
     private static final String COMMENT_COLUMNS =
-        "id, post_id, content, created_by, created_at, updated_at";
+        "id, post_id, content, created_by, created_at, updated_at, parent_id";
     private static final String REACTION_COLUMNS =
         "id, post_id, type, created_by, created_at, updated_at";
 
@@ -47,7 +47,7 @@ public class JdbcCommunityStore implements CommunityStore {
                  PostAudience.valueOf(rs.getString("audience")));
     private static final RowMapper<Comment> COMMENT_MAPPER = (rs, n) ->
         new Comment(uuid(rs, "id"), uuid(rs, "post_id"), rs.getString("content"),
-                    uuid(rs, "created_by"), at(rs, "created_at"), at(rs, "updated_at"));
+                    uuid(rs, "created_by"), at(rs, "created_at"), at(rs, "updated_at"), uuid(rs, "parent_id"));
     private static final RowMapper<Reaction> REACTION_MAPPER = (rs, n) ->
         new Reaction(uuid(rs, "id"), uuid(rs, "post_id"),
                      ReactionType.valueOf(rs.getString("type")), uuid(rs, "created_by"),
@@ -206,10 +206,10 @@ public class JdbcCommunityStore implements CommunityStore {
                           "AND created_by=:user AND deleted_at IS NULL", p("post",postId,"user",userId),
             REACTION_MAPPER).stream().findFirst();
     }
-    @Override public Comment insertComment(UUID postId, String content, UUID user) {
-        return single("INSERT INTO comment(post_id,content,created_by) VALUES (:post,:content,:user) " +
-                      "RETURNING " + COMMENT_COLUMNS,
-            p("post",postId,"content",content,"user",user), COMMENT_MAPPER);
+    @Override public Comment insertComment(UUID postId, UUID parentId, String content, UUID user) {
+        return single("INSERT INTO comment(post_id,parent_id,content,created_by) " +
+                      "VALUES (:post,:parent,:content,:user) RETURNING " + COMMENT_COLUMNS,
+            p("post",postId,"parent",parentId,"content",content,"user",user), COMMENT_MAPPER);
     }
     @Override public Optional<Comment> findComment(UUID id) {
         return jdbc.query("SELECT " + COMMENT_COLUMNS + " FROM comment " +

@@ -302,6 +302,7 @@ Người sở hữu: **TV3 PiLo257**
 |---|---|---|---|
 | id | UUID | PK | Khóa chính |
 | post_id | UUID | NOT NULL, FK | Bài đăng → `post.id` (FK, cùng module) |
+| parent_id | UUID | NULL, FK | Bình luận gốc được trả lời → `comment.id` (1 cấp, BR-COM-14, V24) |
 | content | TEXT | NOT NULL | Nội dung |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |
@@ -400,7 +401,7 @@ Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHER
 | family_id | UUID | NOT NULL, INDEX | Gia đình của thông báo → `family` (tham chiếu logic, SCRUM-53) |
 | ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT |
 | ref_id | UUID | NULL | Tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED |
+| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận (SCRUM-123): POST_COMMENTED, COMMENT_REPLIED |
 | title | VARCHAR(255) | NOT NULL |  |
 | content | TEXT | NOT NULL |  |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE |  |

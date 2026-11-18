@@ -44,9 +44,11 @@ export const communityApi = {
       size: 20,
       sort: 'createdAt,desc',
     }),
-  createComment: (postId: string, content: string) =>
+  /** parentId: trả lời bình luận đó (BR-COM-14). */
+  createComment: (postId: string, content: string, parentId?: string) =>
     api.post<Comment>('/posts/' + postId + '/comments', {
       content,
+      parentId: parentId ?? null,
     } satisfies Community['schemas']['CommentRequest']),
   updateComment: (id: string, content: string) =>
     api.patch<Comment>('/comments/' + id, {
