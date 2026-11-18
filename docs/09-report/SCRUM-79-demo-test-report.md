@@ -62,7 +62,7 @@ BUG-FC-02 và BUG-FC-03 phát hiện khi chạy thử demo lần 1 ngày 19/11/2
 
 - **Mở đầu (0 - 1 phút):** Chào thầy cô và các bạn, đại diện nhóm xin trình bày kết quả kiểm thử và kịch bản demo cho nền tảng **FamilyConnect** (Mã kế hoạch 8-09). Hệ thống hướng tới xây dựng một mạng xã hội gia tộc thông minh ứng dụng AI.
 - **Kiến trúc & Triển khai (1 - 2.5 phút):**
-  - Hệ thống được docker hóa toàn diện (Spring Boot Backend, React Frontend, PostgreSQL).
+  - Hệ thống được docker hóa toàn diện (Spring Boot Backend, Next.js Frontend, PostgreSQL); Mobile dùng Expo.
   - Tích hợp các module cốt lõi: Quản lý danh bạ thành viên, Cây gia phả, Đăng bài viết phân quyền theo chi, và Trợ lý AI tìm kiếm ngữ nghĩa.
 - **Kết quả kiểm thử & Demo (2.5 - 4 phút):**
   - Chạy thử lần 1 (19/11/2026) phát hiện 2 lỗi, đã sửa ở PR #164. Lần chạy thử toàn nhóm thứ 2: chưa xác minh (ghi kết quả vào `demo-script.md` mục 6).
