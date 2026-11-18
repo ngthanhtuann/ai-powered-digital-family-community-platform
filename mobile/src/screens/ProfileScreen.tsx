@@ -1,5 +1,8 @@
 // UC-AUTH-05 Xem và sửa hồ sơ cá nhân. Figma mobile chưa có khung này (mobile.md mục 5).
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -14,7 +17,9 @@ import {
   TextField,
   type NoticeMessage,
 } from '../components/ui';
+import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
+import { genealogyApi } from '../services/genealogy';
 import { getMyProfile, updateMyProfile } from '../services/auth';
 import { useSession } from '../session/SessionContext';
 
@@ -44,6 +49,13 @@ export function ProfileScreen() {
   const queryClient = useQueryClient();
   const [alert, setAlert] = useState<NoticeMessage | null>(null);
   const profile = useQuery({ queryKey: ['my-profile'], queryFn: getMyProfile });
+  // Hồ sơ gia phả gắn tài khoản; chưa gắn thì /persons/me trả 404 và ẩn nút trang cá nhân.
+  const myPerson = useQuery({
+    queryKey: ['person', 'me'],
+    queryFn: genealogyApi.myPerson,
+    retry: false,
+  });
+  const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
   const save = useMutation({ mutationFn: updateMyProfile });
   const {
     control,
@@ -99,6 +111,17 @@ export function ProfileScreen() {
 
   return (
     <Screen>
+      {myPerson.data?.id ? (
+        <Button
+          title="Xem trang cá nhân của tôi"
+          variant="secondary"
+          onPress={() =>
+            drawer
+              .getParent<NativeStackNavigationProp<RootStackParamList>>()
+              ?.navigate('PersonDetail', { personId: myPerson.data.id! })
+          }
+        />
+      ) : null}
       <Card title="Hồ sơ cá nhân" description="Email dùng để đăng nhập, không đổi được.">
         {alert ? <Notice {...alert} /> : null}
         <TextField label="Email" value={profile.data.email} editable={false} />

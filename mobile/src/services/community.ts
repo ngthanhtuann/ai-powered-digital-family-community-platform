@@ -59,6 +59,9 @@ export const communityApi = {
       ...(type ? { type } : {}),
       ...(familyId ? { familyId } : {}),
     }),
+  /** Bài của một tài khoản cho trang cá nhân; backend vẫn lọc theo người xem được (BR-COM-13). */
+  postsByAuthor: (authorId: string, page: number) =>
+    api.list<Post>('/posts', { page, size: 10, sort: 'createdAt,desc', authorId }),
   detail: (id: string) => api.get<Post>(`/posts/${encodeURIComponent(id)}`),
   branches: (familyId: string) =>
     api.list<Branch>(`/families/${encodeURIComponent(familyId)}/branches`, { page: 0, size: 100 }),
