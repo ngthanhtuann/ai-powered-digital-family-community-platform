@@ -29,6 +29,8 @@ export const genealogyApi = {
       ...(q.trim() ? { q: q.trim() } : {}),
     }),
   person: (personId: string) => api.get<Person>(`/persons/${encodeURIComponent(personId)}`),
+  /** Hồ sơ gắn với tài khoản đang đăng nhập; 404 khi chưa gắn. */
+  myPerson: () => api.get<Person>('/persons/me'),
   relationship: (personA: string, personB: string) =>
     api.get<Relationship>('/relationships', { personA, personB }),
   /** 404 khi người này chưa có hồ sơ nghề (heritage-directory-dashboard.yaml). */

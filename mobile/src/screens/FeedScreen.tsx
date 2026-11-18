@@ -97,7 +97,7 @@ export function FeedScreen() {
             <Card>
               <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
               <Text style={[text.caption, { color: colors.textSecondary }]}>
-                {formatWhen(item.createdAt)} · {scopeLabel(item.branchId, branchNames)} ·{' '}
+                {formatWhen(item.createdAt)} · {scopeLabel(item.branchId, branchNames, item.audience)} ·{' '}
                 {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
               </Text>
               <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={5}>

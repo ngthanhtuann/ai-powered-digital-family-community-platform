@@ -1,7 +1,7 @@
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import {
   EmptyPanel,
   ErrorPanel,
@@ -35,6 +35,8 @@ export function PostDetailScreen() {
   const { names: branchNames } = useFamilyBranches(); // nhãn phạm vi bài (SCRUM-101)
   const [content, setContent] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const list = useRef<FlatList<Comment>>(null);
   const post = useQuery({ queryKey: ['post', postId], queryFn: () => communityApi.detail(postId) });
   const comments = useInfiniteQuery({
     queryKey: ['comments', postId],
@@ -66,9 +68,10 @@ export function PostDetailScreen() {
     onError: (error) => setNotice(error.message),
   });
   const comment = useMutation({
-    mutationFn: (value: string) => communityApi.comment(postId, value),
+    mutationFn: (value: string) => communityApi.comment(postId, value, replyTo?.id),
     onSuccess: () => {
       setContent('');
+      setReplyTo(null);
       setNotice(null);
       qc.invalidateQueries({ queryKey: ['comments', postId] });
       qc.invalidateQueries({ queryKey: ['post', postId] });
@@ -76,6 +79,17 @@ export function PostDetailScreen() {
     },
     onError: (error) => setNotice(error.message),
   });
+  // Trả lời 1 cấp (BR-COM-14): câu trả lời hiện dưới bình luận gốc; bấm "Trả lời" thì cuộn lên ô viết.
+  const ids = new Set(allComments.map((c) => c.id));
+  const roots = allComments.filter((c) => !c.parentId || !ids.has(c.parentId));
+  const repliesOf = new Map<string, Comment[]>();
+  for (const c of allComments) {
+    if (c.parentId && ids.has(c.parentId)) repliesOf.set(c.parentId, [c, ...(repliesOf.get(c.parentId) ?? [])]);
+  }
+  const reply = (target: Comment) => {
+    setReplyTo(target);
+    list.current?.scrollToOffset({ offset: 0, animated: true });
+  };
   const send = () => {
     const value = content.trim();
     if (!value || value.length > 1000) {
@@ -92,7 +106,8 @@ export function PostDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <FlatList
-        data={allComments}
+        ref={list}
+        data={roots}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: spacing.page, gap: spacing.gap, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
@@ -123,7 +138,7 @@ export function PostDetailScreen() {
                   {post.data.authorName}
                 </Text>
                 <Text style={[text.caption, { color: colors.textSecondary }]}>
-                  {formatWhen(post.data.createdAt)} · {scopeLabel(post.data.branchId, branchNames)}
+                  {formatWhen(post.data.createdAt)} · {scopeLabel(post.data.branchId, branchNames, post.data.audience)}
                 </Text>
                 <Text style={[text.body, { color: colors.textPrimary }]}>{post.data.content}</Text>
                 <Text style={[text.caption, { color: colors.textSecondary }]}>
@@ -166,7 +181,7 @@ export function PostDetailScreen() {
                 ) : null}
               </Card>
             ) : null}
-            <Card title="Viết bình luận">
+            <Card title={replyTo ? `Trả lời ${replyTo.authorName}` : 'Viết bình luận'}>
               <TextInput
                 accessibilityLabel="Nội dung bình luận"
                 value={content}
@@ -186,7 +201,10 @@ export function PostDetailScreen() {
                   color: colors.textPrimary,
                 }}
               />
-              <Button title="Gửi bình luận" loading={comment.isPending} onPress={send} />
+              <Button title={replyTo ? 'Gửi trả lời' : 'Gửi bình luận'} loading={comment.isPending} onPress={send} />
+              {replyTo ? (
+                <Button title="Hủy trả lời" variant="secondary" onPress={() => setReplyTo(null)} />
+              ) : null}
               {notice ? (
                 <Notice variant="error" title="Không thực hiện được" message={notice} />
               ) : null}
@@ -196,11 +214,15 @@ export function PostDetailScreen() {
         }
         renderItem={({ item }) => (
           <Card>
-            <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
-            <Text style={[text.caption, { color: colors.textSecondary }]}>
-              {formatWhen(item.createdAt)}
-            </Text>
-            <Text style={[text.body, { color: colors.textPrimary }]}>{item.content}</Text>
+            <CommentBody item={item} onReply={reply} />
+            {(repliesOf.get(item.id) ?? []).map((r) => (
+              <View
+                key={r.id}
+                style={{ marginLeft: 16, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: colors.border }}
+              >
+                <CommentBody item={r} onReply={reply} />
+              </View>
+            ))}
           </Card>
         )}
         ListEmptyComponent={
@@ -221,5 +243,23 @@ export function PostDetailScreen() {
         }
       />
     </KeyboardAvoidingView>
+  );
+}
+
+function CommentBody({ item, onReply }: { item: Comment; onReply: (c: Comment) => void }) {
+  return (
+    <View style={{ gap: 2 }}>
+      <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
+      <Text style={[text.caption, { color: colors.textSecondary }]}>{formatWhen(item.createdAt)}</Text>
+      <Text style={[text.body, { color: colors.textPrimary }]}>{item.content}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Trả lời ${item.authorName ?? ''}`}
+        onPress={() => onReply(item)}
+        style={{ minHeight: 44, justifyContent: 'center' }}
+      >
+        <Text style={[text.label, { color: colors.info }]}>Trả lời</Text>
+      </Pressable>
+    </View>
   );
 }

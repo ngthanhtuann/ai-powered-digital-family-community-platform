@@ -40,8 +40,14 @@ export function postableBranches(
 }
 
 /** Nhãn phạm vi của bài: "Cả dòng họ" hoặc tên chi. */
-export function scopeLabel(branchId: string | null | undefined, names: Map<string, string>) {
-  return branchId ? (names.get(branchId) ?? 'Một chi') : 'Cả dòng họ';
+/** Người xem của bài (BR-COM-13): không hiện tên chi, chỉ 3 loại như web (SCRUM-124). */
+export function scopeLabel(
+  branchId: string | null | undefined,
+  names: Map<string, string>,
+  audience?: string | null,
+) {
+  if (audience === 'DESCENDANTS') return 'Con cháu của người đăng';
+  return branchId ? 'Chi của người đăng' : 'Cả dòng họ';
 }
 
 export const communityApi = {
@@ -56,12 +62,18 @@ export const communityApi = {
   detail: (id: string) => api.get<Post>(`/posts/${encodeURIComponent(id)}`),
   branches: (familyId: string) =>
     api.list<Branch>(`/families/${encodeURIComponent(familyId)}/branches`, { page: 0, size: 100 }),
-  /** branchId null là cả dòng họ (SCRUM-101). */
-  create: (content: string, branchId: string | null, familyId?: string) =>
+  /** branchId null là cả dòng họ (SCRUM-101); audience DESCENDANTS là con cháu của tôi (BR-COM-13). */
+  create: (
+    content: string,
+    branchId: string | null,
+    familyId?: string,
+    audience?: 'FAMILY' | 'BRANCH' | 'DESCENDANTS',
+  ) =>
     api.post<Post>(`/posts${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`, {
       content,
       type: 'POST',
       branchId,
+      audience,
     } satisfies Schemas['PostCreateRequest']),
   comments: (postId: string, page: number) =>
     api.list<Comment>(`/posts/${encodeURIComponent(postId)}/comments`, {
@@ -69,9 +81,11 @@ export const communityApi = {
       size: 20,
       sort: 'createdAt,desc',
     }),
-  comment: (postId: string, content: string) =>
+  /** parentId: trả lời bình luận đó, 1 cấp (BR-COM-14). */
+  comment: (postId: string, content: string, parentId?: string) =>
     api.post<Comment>(`/posts/${encodeURIComponent(postId)}/comments`, {
       content,
+      parentId: parentId ?? null,
     } satisfies Schemas['CommentRequest']),
   react: (postId: string, type: ReactionType) =>
     api.post(`/posts/${encodeURIComponent(postId)}/reactions`, {

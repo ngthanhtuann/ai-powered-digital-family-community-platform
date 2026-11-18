@@ -2387,6 +2387,8 @@ export interface operations {
             query?: {
                 /** @description Người thực hiện. */
                 actorUserId?: string;
+                /** @description Chỉ hoạt động trong gia đình này (theo dõi hoạt động, SCRUM-117); chỉ hành động, không có nội dung riêng tư. */
+                familyId?: string;
                 /** @description Mã hành động, khớp chính xác. */
                 action?: string;
                 /** @description Từ thời điểm (ISO-8601 kèm múi giờ). */
