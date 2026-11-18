@@ -227,7 +227,7 @@ public class AdminService {
     // ---- UC-AUTH-10: nhật ký kiểm toán ----
 
     @Transactional(readOnly = true)
-    public PageResponse<AuditLogData> listAuditLogs(UUID adminId, UUID actorUserId, String action,
+    public PageResponse<AuditLogData> listAuditLogs(UUID adminId, UUID actorUserId, UUID familyId, String action,
                                                     OffsetDateTime from, OffsetDateTime to,
                                                     int page, int size, String sort) {
         requireSystemAdmin(adminId);
@@ -239,8 +239,8 @@ public class AdminService {
         if (from != null && to != null && from.isAfter(to)) {
             throw ApiException.invalidField("from", "from phải trước hoặc bằng to");
         }
-        return PageResponse.of(auditLogs.search(actorUserId, code, from, to, ascending, page, size), page, size,
-                auditLogs.count(actorUserId, code, from, to));
+        return PageResponse.of(auditLogs.search(actorUserId, familyId, code, from, to, ascending, page, size), page, size,
+                auditLogs.count(actorUserId, familyId, code, from, to));
     }
 
     // ---- dùng chung ----

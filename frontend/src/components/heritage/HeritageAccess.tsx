@@ -2,12 +2,15 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getMyMembership, getMyProfile } from '@/services/auth';
+import { useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 export function useHeritageAccess() {
   const membership = useQuery({ queryKey: ['my-membership'], queryFn: getMyMembership });
   const profile = useQuery({ queryKey: ['my-profile'], queryFn: getMyProfile });
   const isSystemAdmin = profile.data?.roles.includes('SYSTEM_ADMIN') ?? false;
-  const familyId = membership.data?.familyId ?? null;
+  const adminFamily = useAdminFamily();
+  // Quản trị hệ thống không thuộc gia đình nào: dùng gia đình chọn trên header.
+  const familyId = membership.data?.familyId ?? (isSystemAdmin ? adminFamily : null);
   const isAdmin = isSystemAdmin || membership.data?.role === 'BRANCH_ADMIN';
 
   return {

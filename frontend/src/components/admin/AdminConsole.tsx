@@ -11,6 +11,7 @@ import { Table, type TableColumn } from '@/components/ui/Table';
 import { TextField } from '@/components/ui/TextField';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { BranchSelect } from '@/components/admin/BranchSelect';
+import { useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 import {
   adminApi,
   PAGE_SIZE,
@@ -428,10 +429,13 @@ function AuditSection() {
   const [toDay, setToDay] = useState('');
   const [actor, setActor] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  // Theo dõi hoạt động một gia đình: lấy gia đình đang chọn trên header (chỉ hành động, không có nội dung riêng tư).
+  const viewingFamily = useAdminFamily();
+  const [onlyFamily, setOnlyFamily] = useState(true);
   const badRange = Boolean(fromDay && toDay && fromDay > toDay);
   const params = {
     action: action || undefined, from: dayBound(fromDay, false), to: dayBound(toDay, true),
-    actorUserId: actor ?? undefined, page,
+    actorUserId: actor ?? undefined, familyId: (onlyFamily && viewingFamily) || undefined, page,
   };
   const list = useQuery({
     queryKey: ['admin-audit-logs', params],
@@ -496,6 +500,13 @@ function AuditSection() {
             onChange={(e) => filter(() => setToDay(e.target.value))} />
         </label>
       </div>
+      {viewingFamily && (
+        <label className="flex min-h-11 items-center gap-2 text-body">
+          <input type="checkbox" className="h-5 w-5" checked={onlyFamily}
+            onChange={(e) => filter(() => setOnlyFamily(e.target.checked))} />
+          Chỉ hoạt động của gia đình đang xem (chọn ở đầu trang)
+        </label>
+      )}
       {actor && (
         <div className="flex flex-wrap items-center gap-2 text-body">
           <span>Đang lọc theo người thực hiện <span className="font-semibold" title={actor}>{shortId(actor)}</span></span>

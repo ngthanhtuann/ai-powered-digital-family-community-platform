@@ -121,6 +121,11 @@ public class PersonService implements PersonSearchIndex {
         if (!canEdit(person, viewer)) {
             throw new ApiException(ErrorCode.PERM_001);
         }
+        // Chính chủ không được tự đổi liên kết tài khoản; gắn tài khoản là việc của người quản lý chi.
+        if (input.userId() != null && !input.userId().equals(person.getUserId())
+                && !access.canManage(viewer, familyId, person.getBranchId())) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
         // Đổi chi cần quyền quản lý chi mới, kể cả chính chủ (BR-GEN-14).
         if (!java.util.Objects.equals(person.getBranchId(), input.branchId())) {
             access.requireManage(viewer, familyId, input.branchId());

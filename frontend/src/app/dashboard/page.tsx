@@ -48,6 +48,26 @@ function chartEmpty(data: DashboardStatistics | undefined, values: number[]) {
   return !data || values.every((value) => value === 0);
 }
 
+/** Biểu đồ chỉ vẽ 8 mục đầu; "Xem thêm" mở danh sách đầy đủ (góp ý 16/11/2026). */
+function FullList({ items, unit }: { items: (readonly [string | null | undefined, number])[]; unit: string }) {
+  if (items.length <= 8) return null;
+  return (
+    <details className="mt-3">
+      <summary className="flex min-h-11 cursor-pointer items-center text-label text-info">
+        Xem thêm ({items.length} {unit})
+      </summary>
+      <ul className="mt-2 max-h-72 divide-y divide-border overflow-y-auto">
+        {items.map(([name, count]) => (
+          <li key={name ?? ''} className="flex justify-between gap-3 py-2 text-body">
+            <span className="min-w-0 break-words">{name || 'Chưa rõ'}</span>
+            <span className="shrink-0 text-text-secondary">{count} người</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default function DashboardPage() {
   const [selectedFamily, setSelectedFamily] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -359,6 +379,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
               )}
+              <FullList items={data.professionStats.map((item) => [item.jobTitle, item.count] as const)} unit="nghề" />
             </Card>
 
             <Card title="Nơi ở" description="Không bao gồm hồ sơ của trẻ dưới 16 tuổi.">
@@ -391,6 +412,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
               )}
+              <FullList items={data.locationStats.map((item) => [item.location, item.count] as const)} unit="nơi ở" />
             </Card>
 
             <Card title="Bài đăng theo tuần" description="8 tuần gần nhất, theo múi giờ Việt Nam.">
