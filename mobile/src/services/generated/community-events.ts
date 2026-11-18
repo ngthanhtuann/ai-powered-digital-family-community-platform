@@ -605,6 +605,16 @@ export interface components {
              * @example Nguyễn Văn An
              */
             authorName: string;
+            /**
+             * Format: uuid
+             * @description Hồ sơ gia phả gắn với tài khoản người bình luận (qua GenealogyPort), để mở trang cá nhân (SCRUM-130); null nếu chưa gắn.
+             */
+            authorPersonId?: string | null;
+            /**
+             * Format: uuid
+             * @description Ảnh đại diện của hồ sơ người bình luận; tải qua endpoint media có kiểm tra quyền.
+             */
+            authorAvatarMediaId?: string | null;
             /** @description Người đang xem được xóa bình luận này (người viết, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-06). */
             canDelete: boolean;
         };
