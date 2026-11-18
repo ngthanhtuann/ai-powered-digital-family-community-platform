@@ -13,6 +13,7 @@ import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAc
 import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
 import { Avatar } from '@/components/genealogy/PersonNode';
 import { genealogyApi, toPersonInput, type Person } from '@/services/genealogy';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const PAGE_SIZE = 20;
 
@@ -77,7 +78,7 @@ function PersonFormModal({ familyId, person, onClose }: { familyId: string; pers
 
 export default function MembersPage() {
   const access = useHeritageAccess();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const familyId = access.familyId ?? (access.isSystemAdmin ? adminFamily.trim() : '');
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
@@ -103,7 +104,7 @@ export default function MembersPage() {
       </header>
       <AccessState loading={access.membership.isLoading || access.profile.isLoading} error={error} />
       {access.isSystemAdmin && !access.familyId && (
-        <TextField label="Mã gia đình" value={adminFamily} onChange={(e) => setAdminFamily(e.target.value)} placeholder="UUID gia đình" />
+        <AdminFamilyPicker />
       )}
       {familyId && <>
         <form className="flex gap-2" role="search" onSubmit={(e) => { e.preventDefault(); setPage(0); setQ(search.trim()); }}>

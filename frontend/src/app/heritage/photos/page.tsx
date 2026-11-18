@@ -10,6 +10,7 @@ import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { heritageApi, type HeritagePhoto } from '@/services/heritage';
 import { formatDate } from '@/lib/datetime';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 function ProtectedPhoto({ photo, className }: { photo: HeritagePhoto; className: string }) {
   const [src, setSrc] = useState('');
@@ -67,7 +68,7 @@ function ProtectedPhoto({ photo, className }: { photo: HeritagePhoto; className:
 export default function HeritagePhotosPage() {
   const access = useHeritageAccess();
   const queryClient = useQueryClient();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const [targetMediaId, setTargetMediaId] = useState('');
   const [caption, setCaption] = useState('');
   const [uploadError, setUploadError] = useState('');
@@ -177,12 +178,7 @@ export default function HeritagePhotosPage() {
       </div>
       {access.isSystemAdmin && access.isReady && (
         <div className="mt-5 max-w-xl">
-          <TextField
-            label="Family ID (SYSTEM_ADMIN)"
-            value={adminFamily}
-            onChange={(event) => setAdminFamily(event.target.value)}
-            placeholder="UUID gia đình"
-          />
+          <AdminFamilyPicker />
         </div>
       )}
       {enabled && (

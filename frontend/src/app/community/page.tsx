@@ -18,6 +18,7 @@ import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 import { formatDateTime } from '@/lib/datetime';
 import Link from 'next/link';
 import { Avatar } from '@/components/genealogy/PersonNode';
+import { setAdminFamily, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
@@ -332,7 +333,7 @@ export default function CommunityPage() {
   const [uploadProgress, setUploadProgress] = useState<number>();
   const [pendingPostId, setPendingPostId] = useState<string | null>(null);
   const [uploadedCount, setUploadedCount] = useState(0);
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const membership = useQuery({ queryKey: ['me-membership'], queryFn: communityApi.membership });
   const me = useQuery({ queryKey: ['me-user'], queryFn: communityApi.user });
   const systemAdmin = me.data?.roles.includes('SYSTEM_ADMIN') ?? false;
