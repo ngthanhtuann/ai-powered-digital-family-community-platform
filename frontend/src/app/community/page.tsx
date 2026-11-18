@@ -6,40 +6,23 @@ import {
   type InfiniteData, type QueryKey,
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { dashboardApi } from '@/services/dashboard';
 import { ImagePicker } from '@/components/community/ImagePicker';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
 import { Announcements } from '@/components/community/Announcements';
-import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
+import { communityApi, type Post, type ReactionType } from '@/services/community/posts';
 import { branchesOf } from '@/services/admin';
 import { genealogyApi } from '@/services/genealogy';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
-import { formatDateTime } from '@/lib/datetime';
 import Link from 'next/link';
 import { Avatar } from '@/components/genealogy/PersonNode';
+import { Comments, ReportButton, dateText, errorText, inputClass, linkButtonClass, reactions } from '@/components/community/PostInteractions';
 import { setAdminFamily, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
 
-const reactions: { type: ReactionType; label: string }[] = [
-  { type: 'LIKE', label: '👍 Thích' },
-  { type: 'LOVE', label: '❤️ Yêu thích' },
-  { type: 'HAHA', label: '😄 Vui' },
-  { type: 'SAD', label: '😢 Buồn' },
-];
-
-const dateText = (value: string) => formatDateTime(value);
-const errorText = (error: unknown) => error instanceof Error ? error.message : 'Có lỗi xảy ra.';
-// Cùng kiểu ô nhập với TextField và StoryForm (design-system.md mục 4).
-const inputClass = 'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body '
-  + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
-// Nút dạng chữ vẫn đủ vùng chạm 44px.
-const linkButtonClass = 'min-h-11 px-1 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-60';
-
-type ReportTarget = { targetType: 'POST' | 'COMMENT'; targetId: string; label: string };
 type BranchNode = { id?: string; name?: string; parentBranchId?: string | null };
 
 /** branch là ancestor hoặc nằm dưới ancestor (đi theo parentBranchId). */
@@ -71,149 +54,6 @@ function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch
   const parents = new Map(branches.map((b) => [b.id ?? '', b.parentBranchId ?? null]));
   return branches.filter((b) => b.id
     && (within(parents, myBranch, b.id) || (branchAdmin && within(parents, b.id, myBranch))));
-}
-
-/** BR-COM-12: thành viên báo cáo nội dung vi phạm; quản trị hệ thống xử lý ở /admin. */
-function ReportButton({ target }: { target: ReportTarget }) {
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState('');
-  const report = useMutation({
-    mutationFn: () => communityApi.report(target.targetType, target.targetId, reason.trim()),
-  });
-  const close = () => { setOpen(false); setReason(''); report.reset(); };
-  return (
-    <>
-      <button type="button" className={linkButtonClass + ' text-text-secondary'} onClick={() => setOpen(true)}>
-        Báo cáo
-      </button>
-      {open && (
-        <Modal open title={`Báo cáo ${target.label}`} onClose={close}
-          description="Quản trị hệ thống sẽ xem xét và ẩn nội dung nếu vi phạm.">
-          {report.isSuccess ? (
-            <div className="space-y-4">
-              <p role="status" className="text-body">Đã gửi báo cáo. Cảm ơn bạn.</p>
-              <Button onClick={close}>Đóng</Button>
-            </div>
-          ) : (
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); report.mutate(); }}>
-              <label htmlFor={'report-' + target.targetId} className="block font-medium">Lý do</label>
-              <textarea id={'report-' + target.targetId} className={inputClass} maxLength={255} required
-                value={reason} onChange={(event) => setReason(event.target.value)}
-                placeholder="Ví dụ: quảng cáo, nội dung xúc phạm..." />
-              <p className="text-xs text-text-secondary">{reason.length}/255</p>
-              {report.isError && <p role="alert" className="text-error">{errorText(report.error)}</p>}
-              <Button type="submit" loading={report.isPending} disabled={!reason.trim()}>Gửi báo cáo</Button>
-            </form>
-          )}
-        </Modal>
-      )}
-    </>
-  );
-}
-
-function Comments({ postId, userId, canReport }: { postId: string; userId?: string; canReport: boolean }) {
-  const client = useQueryClient();
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const query = useInfiniteQuery({
-    queryKey: ['community-comments', postId],
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => communityApi.comments(postId, pageParam),
-    getNextPageParam: (last) =>
-      (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
-  });
-  const refresh = async () => {
-    await client.invalidateQueries({ queryKey: ['community-comments', postId] });
-    await client.invalidateQueries({ queryKey: ['community-posts'] });
-  };
-  const add = useMutation({
-    mutationFn: () => communityApi.createComment(postId, draft),
-    onSuccess: async () => { setDraft(''); await refresh(); },
-  });
-  const update = useMutation({
-    mutationFn: () => communityApi.updateComment(editing!, editContent),
-    onSuccess: async () => { setEditing(null); await refresh(); },
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => communityApi.deleteComment(id),
-    onSuccess: refresh,
-  });
-  const comments = query.data?.pages.flatMap((page) => page.items) ?? [];
-  return (
-    <section className="mt-4 border-t border-border pt-4" aria-label="Bình luận">
-      <h3 className="mb-3 font-semibold">Bình luận</h3>
-      {query.isPending && <p className="text-text-secondary">Đang tải bình luận...</p>}
-      {query.isError && (
-        <div role="alert" className="space-y-2">
-          <p className="break-words text-error">{errorText(query.error)}</p>
-          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
-        </div>
-      )}
-      <ul className="space-y-3">
-        {comments.map((comment: Comment) => (
-          <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
-            <p className="text-xs text-text-secondary">
-              {comment.authorName} · {dateText(comment.createdAt)}
-            </p>
-            {editing === comment.id ? (
-              <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
-                <textarea className={inputClass} maxLength={1000} required value={editContent}
-                  onChange={(event) => setEditContent(event.target.value)} />
-                <div className="flex gap-2">
-                  <Button type="submit" fullWidth={false} loading={update.isPending} disabled={!editContent.trim()}>Lưu</Button>
-                  <Button variant="secondary" fullWidth={false} onClick={() => setEditing(null)}>Hủy</Button>
-                </div>
-              </form>
-            ) : (
-              <p className="mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
-            )}
-            {(comment.createdBy === userId || comment.canDelete || canReport) && editing !== comment.id && (
-              <div className="mt-2 flex gap-3 text-sm text-text-secondary">
-                {canReport && comment.createdBy !== userId && (
-                  <ReportButton target={{ targetType: 'COMMENT', targetId: comment.id, label: 'bình luận' }} />
-                )}
-                {comment.createdBy === userId && (
-                  <button type="button" className={linkButtonClass} onClick={() => {
-                    setEditing(comment.id); setEditContent(comment.content);
-                  }}>Sửa</button>
-                )}
-                {comment.canDelete && (
-                  <button type="button" className={linkButtonClass + ' text-error'} disabled={remove.isPending}
-                    onClick={() => { if (window.confirm('Xóa bình luận này?')) remove.mutate(comment.id); }}>
-                    Xóa
-                  </button>
-                )}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-      {query.hasNextPage && (
-        <button className={'mt-3 ' + linkButtonClass} type="button" disabled={query.isFetchingNextPage}
-          onClick={() => query.fetchNextPage()}>
-          {query.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm bình luận'}
-        </button>
-      )}
-      {!query.isPending && !query.isError && comments.length === 0 &&
-        <p className="text-text-secondary">Chưa có bình luận.</p>}
-      <form className="mt-4 space-y-2" onSubmit={(event) => { event.preventDefault(); add.mutate(); }}>
-        <label htmlFor={'comment-' + postId} className="block font-medium">Viết bình luận</label>
-        <textarea id={'comment-' + postId} className={inputClass} maxLength={1000}
-          value={draft} required onChange={(event) => setDraft(event.target.value)}
-          placeholder="Nhập bình luận..." />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-text-secondary">{draft.length}/1000</span>
-          <Button type="submit" fullWidth={false} loading={add.isPending} disabled={!draft.trim()}>Gửi bình luận</Button>
-        </div>
-        {(add.isError || update.isError || remove.isError) && (
-          <p role="alert" className="text-error">
-            {errorText(add.error || update.error || remove.error)}
-          </p>
-        )}
-      </form>
-    </section>
-  );
 }
 
 function PostCard({ post, userId, canReport, canDescendants, scopeOptions, labelOf, onReaction }: {
