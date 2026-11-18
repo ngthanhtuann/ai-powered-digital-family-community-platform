@@ -36,7 +36,7 @@ Mở **Trợ lý AI** từ menu chính. Tìm kiếm ngữ nghĩa nằm ở mục
 
 **Ví dụ AI không trả lời được:** “Quỹ khuyến học hiện có bao nhiêu tiền?” khi dữ liệu gia đình không ghi số dư. Kết quả mong đợi là **“Không tìm thấy thông tin.”**; AI không tra Internet và không nên đoán.
 
-Chat không tự tính quan hệ họ hàng mới. Để hỏi quan hệ, dùng mục **Tra cứu quan hệ**.
+Có thể hỏi về chính mình: “Tôi là ai?”, “Cha tôi là ai?”, “Tôi là gì của Nguyễn Văn Tổ?” (tài khoản cần gắn với hồ sơ trong gia phả). Quan hệ do thuật toán gia phả tính sẵn, AI không tự suy ra (BR-AI-17). Để so sánh hai người bất kỳ, dùng mục **Tra cứu quan hệ**.
 
 ### 2.3. Giải thích quan hệ
 
@@ -132,7 +132,7 @@ npm start
 | Di sản | Mở câu chuyện, tài liệu và ảnh di sản |
 | Trợ lý AI | Hỏi đáp gia phả và xem citation |
 | Tìm kiếm | Tìm ngữ nghĩa trong nội dung gia đình |
-| Hồ sơ cá nhân | Xem/cập nhật hồ sơ theo quyền |
+| Hồ sơ cá nhân | Xem/cập nhật hồ sơ tài khoản; nút **Xem trang cá nhân của tôi** mở trang thành viên có bài đăng của bạn |
 
 Từ trang chi tiết hoặc một số màn hình, nút **Trợ lý AI** nổi cũng mở nhanh chatbot. Nút quay lại của điện thoại đưa về màn trước; dùng ☰ để chuyển sang mục khác.
 
@@ -144,7 +144,7 @@ Từ trang chi tiết hoặc một số màn hình, nút **Trợ lý AI** nổi 
 | Hỏi đáp gia phả | Menu **Trợ lý AI** | Hỏi dữ kiện có trong nguồn gia đình; có citation |
 | Giải thích quan hệ | **Tra cứu xưng hô** → chọn hai người → **Giải thích bằng AI** | Chỉ diễn giải quan hệ được thuật toán hỗ trợ |
 | Tóm tắt | Mở kết quả bài viết/câu chuyện → **Tóm tắt bằng AI** | Mobile hiện hỗ trợ POST và STORY; tài liệu và loại khác xem trên Web |
-| Gợi ý liên quan | Chưa có trên Mobile | Dùng trang chi tiết thành viên/bài viết trên Web |
+| Gợi ý liên quan | Chưa có trên Mobile | Dùng Bảng tin trên Web (⋯ Tóm tắt AI, nội dung liên quan) |
 
 ## 6. Lỗi thường gặp
 
