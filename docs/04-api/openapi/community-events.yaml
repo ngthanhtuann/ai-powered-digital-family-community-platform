@@ -1953,6 +1953,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null)."
         content:
           type: string
           example: Thông báo họp mặt gia đình cuối tuần
@@ -2390,6 +2394,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId."
       additionalProperties: false
       required:
       - content
@@ -2405,6 +2413,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        audience:
+          type: string
+          enum: [FAMILY, BRANCH, DESCENDANTS]
+          description: "Người xem (BR-COM-13). FAMILY cả dòng họ; BRANCH chi branchId và chi con; DESCENDANTS con cháu của người đăng và vợ/chồng của họ (branchId phải null). Không gửi thì suy ra từ branchId."
       additionalProperties: false
     CommentRequest:
       type: object

@@ -155,8 +155,8 @@ class DashboardApiIntegrationTest {
                 Map.of("jobTitle", "Học sinh")).andExpect(status().isCreated());
 
         jdbc.update("""
-                INSERT INTO post(family_id,branch_id,content,type,created_by)
-                VALUES (?,?,?,'POST',?), (?,?,?,'POST',?)
+                INSERT INTO post(family_id,branch_id,content,type,created_by,audience)
+                VALUES (?,?,?,'POST',?,'BRANCH'), (?,?,?,'POST',?,'BRANCH')
                 """, familyId, branchA, "Bài A", ownerId, familyId, branchB, "Bài B", ownerId);
         OffsetDateTime future = OffsetDateTime.now().plusDays(2);
         jdbc.update("""
@@ -307,8 +307,8 @@ class DashboardApiIntegrationTest {
                 LocalDate.of(1980, 5, 1), null, "Hà Nội", false);
         jdbc.update("UPDATE person SET current_address='DIA_CHI_KHONG_DUOC_XUAT' WHERE id=?", privatePerson);
         UUID postId = jdbc.queryForObject("""
-                INSERT INTO post(family_id,branch_id,content,type,created_by,created_at)
-                VALUES (?,?,?,'POST',?,?) RETURNING id
+                INSERT INTO post(family_id,branch_id,content,type,created_by,created_at,audience)
+                VALUES (?,?,?,'POST',?,?,'BRANCH') RETURNING id
                 """, UUID.class, familyId, branchA, "Nội dung không đưa vào báo cáo", ownerId, activityAt);
         jdbc.update("""
                 INSERT INTO comment(post_id,content,created_by,created_at)

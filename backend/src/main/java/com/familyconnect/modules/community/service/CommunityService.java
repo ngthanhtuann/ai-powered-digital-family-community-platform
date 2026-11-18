@@ -66,7 +66,24 @@ public class CommunityService implements SummarySource {
     private Post readablePost(Actor actor, UUID id) {
         Post post = store.findPost(id).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         platform.requireCanRead(actor, post.familyId(), post.branchId());
+        // BR-COM-13: bài "con cháu của tôi" chỉ người đăng, con cháu và vợ/chồng của con cháu xem được.
+        if (post.audience() == PostAudience.DESCENDANTS) {
+            java.util.Set<UUID> authors = platform.descendantsAudienceAuthors(actor);
+            if (authors != null && !authors.contains(post.createdBy())) throw new ApiException(ErrorCode.PERM_001);
+        }
         return post;
+    }
+    /** BR-COM-13: không gửi audience thì suy ra từ branch như trước; kiểm audience khớp branch. */
+    private PostAudience audience(Actor actor, PostAudience requested, UUID branch) {
+        PostAudience audience = requested != null ? requested : branch != null ? PostAudience.BRANCH : PostAudience.FAMILY;
+        if ((audience == PostAudience.BRANCH) != (branch != null)) {
+            throw ApiException.invalidField("audience", audience == PostAudience.BRANCH
+                    ? "Chọn chi khi người xem là chi của tôi" : "Người xem này không đi kèm chi");
+        }
+        if (audience == PostAudience.DESCENDANTS && !platform.hasGenealogyProfile(actor.userId())) {
+            throw ApiException.invalidField("audience", "Tài khoản chưa gắn hồ sơ gia phả nên chưa chọn được con cháu của tôi");
+        }
+        return audience;
     }
     /** Một trang bài: đếm bình luận, reaction, tên tác giả theo lô (số truy vấn cố định). */
     private List<PostView> views(List<Post> posts, Actor user) {
@@ -82,7 +99,7 @@ public class CommunityService implements SummarySource {
         Map<UUID,List<MediaRepository.Media>> previews = mediaRepository.latestByOwners("POST", ids, MEDIA_PREVIEW);
         Map<UUID,Boolean> moderatable = new HashMap<>();
         return posts.stream().map(post -> new PostView(post.id(),post.createdAt(),post.updatedAt(),
-            post.familyId(),post.branchId(),post.content(),post.type(),post.createdBy(),
+            post.familyId(),post.branchId(),post.audience(),post.content(),post.type(),post.createdBy(),
             names.get(post.createdBy()),
             Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::personId).orElse(null),
             Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
@@ -147,7 +164,8 @@ public class CommunityService implements SummarySource {
         if (input.type() == PostType.NEWS && user.role() == Role.MEMBER) throw new ApiException(ErrorCode.PERM_001);
         String content = nonBlank(input.content(),5000,"content");
         canPublish(user,family,input.branchId());
-        Post created = store.insertPost(family,input.branchId(),content,input.type(),user.userId());
+        Post created = store.insertPost(family,input.branchId(),content,input.type(),user.userId(),
+                                        audience(user,input.audience(),input.branchId()));
         platform.logContentSaved(true,"POST",created.id(),family);
         platform.postChanged(created.id(),family);
         return asView(created,user);
@@ -165,7 +183,8 @@ public class CommunityService implements SummarySource {
             || (user.role() == Role.BRANCH_ADMIN && user.branchId() == null);
         List<UUID> visible = allBranches ? List.of() : store.postBranchIds(family).stream()
             .filter(branch -> platform.canRead(user,family,branch)).toList();
-        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,authorId,page,size,order);
+        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,authorId,
+                platform.descendantsAudienceAuthors(user),page,size,order);
         return PageSuccess.of(views(found.items(),user),
                               page,size,found.total());
     }
@@ -208,7 +227,9 @@ public class CommunityService implements SummarySource {
         String content = input.content() == null ? post.content() : nonBlank(input.content(),5000,"content");
         UUID branch = input.branchSpecified() ? input.branchId() : post.branchId();
         canPublish(user,post.familyId(),branch);
-        Post updated = store.updatePost(id,content,branch,user.userId());
+        PostAudience audience = input.audience() == null && !input.branchSpecified() ? post.audience()
+                : audience(user,input.audience(),branch);
+        Post updated = store.updatePost(id,content,branch,user.userId(),audience);
         platform.logContentSaved(false,"POST",id,post.familyId());
         platform.postChanged(id,post.familyId());
         return asView(updated,user);

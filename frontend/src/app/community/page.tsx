@@ -13,6 +13,7 @@ import { ProtectedPostImages } from '@/components/community/ProtectedPostImages'
 import { Announcements } from '@/components/community/Announcements';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 import { branchesOf } from '@/services/admin';
+import { genealogyApi } from '@/services/genealogy';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
 import { formatDateTime } from '@/lib/datetime';
@@ -51,9 +52,17 @@ function within(parents: Map<string, string | null>, branch: string, ancestor: s
   return false;
 }
 
-const scopeHint = (branchId: string, label: string) => branchId
-  ? `Chỉ người trong ${label} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
-  : 'Mọi thành viên trong dòng họ đều thấy.';
+// Giá trị trong ô "Ai được xem": '' cả dòng họ, DESCENDANTS con cháu của tôi, còn lại là id chi (BR-COM-13).
+const DESCENDANTS = 'DESCENDANTS';
+const scopeHint = (scope: string, label: string) => scope === DESCENDANTS
+  ? 'Chỉ con, cháu, chắt... của bạn (theo cây gia phả) và vợ/chồng của họ thấy. Trưởng chi, trưởng họ cũng không thấy.'
+  : scope
+    ? `Chỉ người trong ${label} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
+    : 'Mọi thành viên trong dòng họ đều thấy.';
+/** Đổi giá trị ô chọn sang branchId và audience gửi lên API. */
+const toAudience = (scope: string) => scope === DESCENDANTS
+  ? { branchId: null, audience: 'DESCENDANTS' as const }
+  : scope ? { branchId: scope, audience: 'BRANCH' as const } : { branchId: null, audience: 'FAMILY' as const };
 
 /** Chi được chọn khi đăng bài: cùng quy tắc đọc với backend (BR-COM-03, ModulePlatformAdapter.canRead). */
 function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch: string | null, branchAdmin: boolean) {
@@ -207,8 +216,8 @@ function Comments({ postId, userId, canReport }: { postId: string; userId?: stri
   );
 }
 
-function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }: {
-  post: Post; userId?: string; canReport: boolean;
+function PostCard({ post, userId, canReport, canDescendants, scopeOptions, labelOf, onReaction }: {
+  post: Post; userId?: string; canReport: boolean; canDescendants: boolean;
   scopeOptions: BranchNode[]; labelOf: (branchId?: string | null) => string;
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
@@ -217,13 +226,16 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
   const [showAi, setShowAi] = useState(false);
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(post.content);
-  const currentScope = post.branchId ?? '';
+  const currentScope = post.audience === 'DESCENDANTS' ? DESCENDANTS : post.branchId ?? '';
   const [editScope, setEditScope] = useState(currentScope);
   // Giữ phạm vi hiện tại trong danh sách dù người đăng đã chuyển chi, để sửa nội dung không vô tình đổi phạm vi.
-  const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope
+  const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope || currentScope === DESCENDANTS
     ? scopeOptions : [...scopeOptions, { id: currentScope, name: labelOf(currentScope) }];
   const update = useMutation({
-    mutationFn: () => communityApi.updatePost(post.id, content, editScope || null),
+    mutationFn: () => {
+      const target = toAudience(editScope);
+      return communityApi.updatePost(post.id, content, target.branchId, target.audience);
+    },
     onSuccess: async () => { setEditing(false); await client.invalidateQueries({ queryKey: ['community-posts'] }); },
   });
   const remove = useMutation({
@@ -246,7 +258,8 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
             </span>
             <span className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
               title="Phạm vi người được xem bài">
-              {post.branchId ? `Người xem: ${labelOf(post.branchId)} và các chi con` : 'Người xem: cả dòng họ'}
+              {post.audience === 'DESCENDANTS' ? 'Người xem: con cháu của người đăng'
+                : post.branchId ? `Người xem: ${labelOf(post.branchId)} và các chi con` : 'Người xem: cả dòng họ'}
             </span>
           </div>
           </div>
@@ -278,6 +291,7 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
             aria-describedby={'scope-help-' + post.id} onChange={(event) => setEditScope(event.target.value)}>
             <option value="">Cả dòng họ</option>
             {editOptions.map((b) => <option key={b.id} value={b.id ?? ''}>{b.name}</option>)}
+            {(canDescendants || currentScope === DESCENDANTS) && <option value={DESCENDANTS}>Con cháu của tôi</option>}
           </select>
           {editScope !== currentScope && (
             <p id={'scope-help-' + post.id} className="text-xs text-text-secondary">
@@ -355,9 +369,11 @@ export default function CommunityPage() {
   const scopeOptions = useMemo(() => postableBranches(branches.data?.items ?? [],
     systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin), [branches.data, systemAdmin, branchAdmin, myBranch]);
   // Mặc định là chi của mình; muốn cả họ thấy thì người đăng chọn "Cả dòng họ". '' là cả dòng họ.
+  // "Con cháu của tôi" cần hồ sơ gia phả gắn tài khoản (BR-COM-13); chưa gắn thì /persons/me trả 404.
+  const canDescendants = Boolean(useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false }).data);
   const [scopeChoice, setScopeChoice] = useState<string>();
   const wanted = scopeChoice ?? myBranch ?? '';
-  const scope = scopeOptions.some((b) => b.id === wanted) ? wanted : '';
+  const scope = (wanted === DESCENDANTS && canDescendants) || scopeOptions.some((b) => b.id === wanted) ? wanted : '';
   const scopeLabel = (branchId?: string | null) => branchId ? branchName.get(branchId) ?? 'Một chi' : 'Cả dòng họ';
 
   const feedKey = useMemo(() => ['community-posts', tab, familyId ?? 'own'], [tab, familyId]);
@@ -374,7 +390,8 @@ export default function CommunityPage() {
       // Mỗi request /posts/{id}/media nhận 1 file, theo OpenAPI. Nhiều ảnh tải lần lượt.
       let postId = pendingPostId;
       if (!postId) {
-        postId = (await communityApi.createPost(draft, postType, scope || null, familyId)).id;
+        const target = toAudience(scope);
+        postId = (await communityApi.createPost(draft, postType, target.branchId, familyId, target.audience)).id;
         setPendingPostId(postId);
       }
       for (let i = uploadedCount; i < selectedImages.length; i++) {
@@ -506,6 +523,7 @@ export default function CommunityPage() {
               {scopeOptions.map((b) => (
                 <option key={b.id} value={b.id ?? ''}>{b.name}{b.id === myBranch ? ' (chi của tôi)' : ''}</option>
               ))}
+              {canDescendants && <option value={DESCENDANTS}>Con cháu của tôi</option>}
             </select>
             <p id="post-scope-help" className="text-xs text-text-secondary">
               {branches.isPending ? 'Đang tải danh sách chi...'
@@ -556,7 +574,7 @@ export default function CommunityPage() {
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
-                scopeOptions={scopeOptions} labelOf={scopeLabel}
+                canDescendants={canDescendants} scopeOptions={scopeOptions} labelOf={scopeLabel}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&
