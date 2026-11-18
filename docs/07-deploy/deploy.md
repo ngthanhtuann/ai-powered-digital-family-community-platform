@@ -97,7 +97,7 @@ Compose hiện không đặt Nginx trước backend: trình duyệt gọi API tr
 4. **Khởi chạy hệ thống:**
 
    ```powershell
-   docker compose up -d --build
+   docker compose --env-file .env up -d --build
    ```
 
    Lần build đầu mất nhiều thời gian hơn các lần sau.
@@ -127,13 +127,14 @@ Compose hiện không đặt Nginx trước backend: trình duyệt gọi API tr
 
    | Vai trò                          | Email                                                                            |
    | -------------------------------- | -------------------------------------------------------------------------------- |
-   | MEMBER đã xác minh               | `hung@demo.familyconnect.vn`                                                     |
+   | MEMBER đã xác minh               | `ha@demo.familyconnect.vn` (Nguyễn Thị Hà, Chi 2)                                |
    | MEMBER chưa xác minh (chờ duyệt) | `tu@demo.familyconnect.vn`                                                       |
-   | BRANCH_ADMIN                     | `phuc@demo.familyconnect.vn` (Trưởng họ / Trưởng chi, có quyền quản lý chi)      |
+   | BRANCH_ADMIN (Trưởng chi)        | `hung@demo.familyconnect.vn` (Trưởng Chi 2)                                      |
+   | BRANCH_ADMIN (Trưởng họ)         | `phuc@demo.familyconnect.vn` (người tạo dòng họ, quản lý cả họ)                  |
    | SYSTEM_ADMIN                     | Email và mật khẩu bạn đặt ở `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` |
 
 3. **Checklist kiểm tra luồng chính:**
-   - [ ] Đăng nhập và xem cây gia phả (sơ đồ 5 đời).
+   - [ ] Đăng nhập và xem cây gia phả (5 đời, 53 người).
    - [ ] Đăng bài và RSVP sự kiện.
    - [ ] Tải ảnh hợp lệ, tối đa 5 MB.
    - [ ] Tải tài liệu Heritage dạng PDF, tối đa 10 MB.
