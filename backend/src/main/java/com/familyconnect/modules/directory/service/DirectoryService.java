@@ -171,6 +171,11 @@ public class DirectoryService {
         if (membership.role() == EffectiveRole.SYSTEM_ADMIN) {
             return actorId;
         }
+        if (membership.role() == EffectiveRole.BRANCH_ADMIN && person.userId() != null
+                && !person.userId().equals(actorId)) {
+            // BR-DIR-03: hồ sơ của người đã có tài khoản chỉ chính chủ sửa; quản trị chi chỉ nhập thay người chưa có tài khoản.
+            throw new ApiException(ErrorCode.PERM_001);
+        }
         if (membership.role() == EffectiveRole.BRANCH_ADMIN) {
             boolean inScope = membership.branchId() == null
                     || (person.branchId() != null

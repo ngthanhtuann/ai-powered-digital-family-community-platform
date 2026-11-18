@@ -398,7 +398,10 @@ class GenealogyApiIntegrationTest {
         linked.put("userId", userId(memberEmail).toString());
         UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), token, linked));
 
-        call(put("/api/v1/persons/" + personId), token, person("Đổi tên", LocalDate.of(1990, 2, 2)))
+        // BR-GEN-20: hồ sơ đã gắn tài khoản thì Trưởng họ không sửa được, chỉ chính chủ sửa.
+        call(put("/api/v1/persons/" + personId), token, person("Trưởng họ đổi", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isForbidden());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), person("Đổi tên", LocalDate.of(1990, 2, 2)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"));
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);

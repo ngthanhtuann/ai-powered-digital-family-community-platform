@@ -109,9 +109,20 @@ public class PersonService implements PersonSearchIndex {
         Person person = find(personId);
         UUID familyId = person.getFamilyId();
         Viewer viewer = access.requireRead(familyId);
-        // Cần quyền ở cả chi hiện tại và chi mới (BR-GEN-14).
-        access.requireManage(viewer, familyId, person.getBranchId());
-        access.requireManage(viewer, familyId, input.branchId());
+        if (viewer.userId().equals(person.getUserId())) {
+            // BR-GEN-20: chính chủ sửa thông tin của mình; tự đổi chi vẫn cần quyền quản lý chi mới (BR-GEN-14).
+            if (!java.util.Objects.equals(person.getBranchId(), input.branchId())) {
+                access.requireManage(viewer, familyId, input.branchId());
+            }
+        } else {
+            // Cần quyền ở cả chi hiện tại và chi mới (BR-GEN-14).
+            access.requireManage(viewer, familyId, person.getBranchId());
+            access.requireManage(viewer, familyId, input.branchId());
+            // BR-GEN-20: hồ sơ đã gắn tài khoản chỉ chính chủ sửa; quản trị chỉ nhập thay người chưa có tài khoản.
+            if (person.getUserId() != null && !viewer.isSystemAdmin()) {
+                throw new ApiException(ErrorCode.PERM_001);
+            }
+        }
         validate(familyId, personId, input);
         boolean becameDeceased = !person.isDeceased() && input.deceased();
         apply(person, input);
