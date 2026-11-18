@@ -91,7 +91,7 @@ class DirectoryServiceTest {
     void updateProfessionProfileCreatesProfileForOwnPerson() {
         DirectoryPerson person = person(PERSON_ID, ACTOR_ID, LocalDate.of(1990, 1, 1), false);
         when(genealogyQuery.findDirectoryPerson(PERSON_ID)).thenReturn(Optional.of(person));
-        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
+        lenient().when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
         when(professionRepository.findByPersonIdAndDeletedAtIsNull(PERSON_ID)).thenReturn(Optional.empty());
         when(professionRepository.saveAndFlush(any(ProfessionProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -211,7 +211,7 @@ class DirectoryServiceTest {
     void graduationYearCannotExceedTenYearsAhead() {
         DirectoryPerson person = person(PERSON_ID, ACTOR_ID, LocalDate.of(1990, 1, 1), false);
         when(genealogyQuery.findDirectoryPerson(PERSON_ID)).thenReturn(Optional.of(person));
-        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
+        lenient().when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
 
         ApiException error = assertThrows(ApiException.class, () -> service.updateEducationProfile(
                 PERSON_ID, new EducationProfileRequest("University", null, 2037)));

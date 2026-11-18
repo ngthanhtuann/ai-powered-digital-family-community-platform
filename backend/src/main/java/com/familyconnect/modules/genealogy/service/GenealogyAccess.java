@@ -57,12 +57,15 @@ public class GenealogyAccess {
         }
     }
 
-    /** BR-GEN-20: chính chủ; người quản lý chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN sửa được mọi hồ sơ. */
+    /**
+     * BR-GEN-20 (18/11/2026): hồ sơ đã gắn tài khoản chỉ chính chủ sửa, kể cả SYSTEM_ADMIN cũng không;
+     * hồ sơ chưa gắn tài khoản (tổ tiên, trẻ nhỏ) do người quản lý chi hoặc SYSTEM_ADMIN nhập.
+     */
     public boolean canEditPerson(Viewer viewer, com.familyconnect.modules.genealogy.entity.Person p) {
-        if (viewer.userId().equals(p.getUserId()) || viewer.isSystemAdmin()) {
-            return true;
+        if (p.getUserId() != null) {
+            return viewer.userId().equals(p.getUserId());
         }
-        return p.getUserId() == null && canManage(viewer, p.getFamilyId(), p.getBranchId());
+        return canManage(viewer, p.getFamilyId(), p.getBranchId());
     }
 
     public boolean canManage(Viewer viewer, UUID familyId, UUID branchId) {
