@@ -37,6 +37,7 @@ public class ChatService {
     private static final String NOT_FOUND = "Không tìm thấy thông tin.";
     /** BR-AI-17: hỏi về chính mình mà tài khoản chưa gắn hồ sơ gia phả. */
     static final String NO_PROFILE = "Tài khoản của bạn chưa gắn với hồ sơ trong gia phả, nên mình chưa biết bạn là ai.";
+    private static final Pattern DESCENDANT = Pattern.compile("(con(?! (rể|dâu))|(cháu|chắt) (nội|ngoại)|chút|chít|hậu duệ)");
     private static final Pattern SELF = Pattern.compile("(?<!\\p{L})(tôi|mình|tớ)(?!\\p{L})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     private static final int MAX_RELATIVES = 80;
 
@@ -168,6 +169,11 @@ public class ChatService {
      * Thêm vào ngữ cảnh một đoạn duy nhất (nguồn là hồ sơ người hỏi): thông tin người hỏi và quan hệ do thuật toán
      * xưng hô tính với người trong gia đình. Gộp một đoạn để danh sách nguồn gọn và ngữ cảnh không quá dài.
      */
+    /** Nhãn do KinshipCalculator sinh cho con cháu trực hệ; loại con/cháu rể, dâu và cháu họ. */
+    static boolean isDescendant(String label) {
+        return label != null && DESCENDANT.matcher(label).lookingAt();
+    }
+
     private List<ChatChunk> withAsker(List<ChatChunk> relevant, GenealogyQuery.DirectoryPerson asker, List<UUID> hidden) {
         StringBuilder me = new StringBuilder("Người hỏi (\"tôi\" trong câu hỏi; khi trả lời gọi là \"bạn\"): Họ tên: ")
                 .append(asker.fullName()).append(".");
@@ -186,6 +192,12 @@ public class ChatService {
         if (!relations.isEmpty()) {
             me.append(" Quan hệ với người hỏi (đã tính bằng thuật toán gia phả): ").append(relations).append(".");
         }
+        // Liệt kê sẵn con cháu trực hệ để LLM không coi cháu họ (con của anh chị em) là con cháu của người hỏi.
+        String descendants = people.stream().filter(p -> isDescendant(labels.get(p.id())))
+                .map(p -> p.fullName() + " (" + labels.get(p.id()) + ")")
+                .reduce((a, b) -> a + "; " + b).orElse("không có người nào được phép hiển thị (trẻ dưới 16 tuổi không hiển thị)");
+        me.append(" Con cháu trực hệ của người hỏi (con, cháu nội/ngoại, chắt...; cháu họ không tính): ")
+                .append(descendants).append(".");
         List<ChatChunk> result = new java.util.ArrayList<>();
         result.add(new ChatChunk("PERSON", asker.id(), me.toString(), 1.0));
         relevant.stream().filter(c -> !(c.sourceType().equals("PERSON") && c.sourceId().equals(asker.id())))

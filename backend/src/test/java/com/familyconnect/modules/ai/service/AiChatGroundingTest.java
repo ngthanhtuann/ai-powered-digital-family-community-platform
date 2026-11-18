@@ -266,6 +266,7 @@ class AiChatGroundingTest {
             String prompt = call.getArgument(0);
             assertTrue(prompt.contains("Họ tên: Nguyễn Thị Hà. Năm sinh: 1994. Đời thứ 4"));
             assertTrue(prompt.contains("Quan hệ với người hỏi (đã tính bằng thuật toán gia phả): Nguyễn Văn Minh là cha."));
+            assertTrue(prompt.contains("cháu họ không tính): không có người nào được phép hiển thị (trẻ dưới 16 tuổi không hiển thị)."));
             return "Cha của bạn là Nguyễn Văn Minh.";
         }).when(model).answer(anyString());
         service.setGenealogy(genealogy);
@@ -275,6 +276,15 @@ class AiChatGroundingTest {
         assertEquals("Cha của bạn là Nguyễn Văn Minh.", response.answer());
         // Tìm chunk theo họ tên người hỏi thay vì chữ "tôi".
         org.mockito.Mockito.verify(embeddings).createEmbedding("Cha Nguyễn Thị Hà là ai?");
+    }
+
+    @Test void descendantLabelsExcludeInLawsNephewsAndCollateralCousins() {
+        for (String yes : List.of("con", "con (nuôi)", "cháu nội", "cháu ngoại", "chắt nội", "chút (bên nội)", "hậu duệ đời thứ 6")) {
+            assertTrue(ChatService.isDescendant(yes), yes);
+        }
+        for (String no : List.of("con rể", "con dâu", "cháu", "cháu rể", "cháu họ (bên nội)", "chắt họ (bên nội)", "cha", "chú")) {
+            org.junit.jupiter.api.Assertions.assertFalse(ChatService.isDescendant(no), no);
+        }
     }
 
     @Test void selfQuestionWithoutLinkedProfileExplainsInsteadOfNotFound() {
