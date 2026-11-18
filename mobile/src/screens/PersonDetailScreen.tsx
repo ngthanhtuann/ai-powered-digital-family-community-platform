@@ -22,6 +22,7 @@ export function PersonDetailScreen({
   const { personId } = route.params;
   const { session } = useSession();
   const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
+  const myUserId = session.status === 'signedIn' ? session.user.id : null;
   const queryClient = useQueryClient();
   const person = useQuery({
     queryKey: ['person', personId],
@@ -148,6 +149,13 @@ export function PersonDetailScreen({
             </Pressable>
           ))}
         </Card>
+      ) : null}
+      {authorId && authorId === myUserId ? (
+        // BR-GEN-20: chỉ chính chủ sửa thông tin của mình.
+        <Button
+          title="Chỉnh sửa hồ sơ"
+          onPress={() => navigation.push('EditProfile', { personId })}
+        />
       ) : null}
       {authorId ? (
         <Card title="Bài đăng">

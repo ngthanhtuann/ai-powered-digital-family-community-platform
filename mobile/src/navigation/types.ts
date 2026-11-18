@@ -27,6 +27,8 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   /** Gia phả (SCRUM-90): màn của stack thay cho Modal để thanh trạng thái do app quản lý. */
   PersonDetail: { personId: string };
+  /** Chính chủ sửa hồ sơ gia phả của mình (SCRUM-128). */
+  EditProfile: { personId: string };
   PersonPicker: { title: string; target: PersonPickTarget };
   /** Di sản (SCRUM-92): đọc câu chuyện; xem ảnh hoặc tài liệu phóng to (`document` để báo khi là PDF). */
   StoryDetail: { storyId: string };

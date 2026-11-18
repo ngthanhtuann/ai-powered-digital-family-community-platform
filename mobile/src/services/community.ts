@@ -95,6 +95,29 @@ export const communityApi = {
       type,
     } satisfies Schemas['ReactionRequest']),
   removeReaction: (postId: string) => api.delete(`/posts/${encodeURIComponent(postId)}/reactions`),
+  /** Sửa nội dung; giữ nguyên người xem (branchId, audience) của bài. */
+  updatePost: (post: Post, content: string) =>
+    api.patch<Post>(`/posts/${encodeURIComponent(post.id)}`, {
+      content,
+      branchId: post.branchId ?? null,
+      audience: post.audience,
+    } satisfies Schemas['PostUpdateRequest']),
+  deletePost: (id: string) => api.delete(`/posts/${encodeURIComponent(id)}`),
+  updateComment: (id: string, content: string) =>
+    api.patch<Comment>(`/comments/${encodeURIComponent(id)}`, {
+      content,
+    } satisfies Schemas['CommentRequest']),
+  deleteComment: (id: string) => api.delete(`/comments/${encodeURIComponent(id)}`),
+  report: (
+    targetType: Schemas['ContentReportRequest']['targetType'],
+    targetId: string,
+    reason: string,
+  ) =>
+    api.post('/content-reports', {
+      targetType,
+      targetId,
+      reason,
+    } satisfies Schemas['ContentReportRequest']),
   media: (postId: string, page: number) =>
     api.list<Media>(`/posts/${encodeURIComponent(postId)}/media`, {
       page,

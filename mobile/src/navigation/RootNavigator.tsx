@@ -12,6 +12,7 @@ import { CreatePostScreen } from '../screens/CreatePostScreen';
 import { EventDetailScreen } from '../screens/EventDetailScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { PersonDetailScreen } from '../screens/PersonDetailScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { PersonPickerScreen } from '../screens/PersonPickerScreen';
 import { PhotoViewerScreen, StoryDetailScreen } from '../screens/HeritageDetailScreens';
 import { branchOf, useSession } from '../session/SessionContext';
@@ -83,6 +84,11 @@ export function RootNavigator() {
             name="PersonDetail"
             component={PersonDetailScreen}
             options={{ title: 'Thông tin thành viên' }}
+          />
+          <Stack.Screen
+            name="EditProfile"
+            component={EditProfileScreen}
+            options={{ title: 'Chỉnh sửa hồ sơ' }}
           />
           <Stack.Screen
             name="PersonPicker"
