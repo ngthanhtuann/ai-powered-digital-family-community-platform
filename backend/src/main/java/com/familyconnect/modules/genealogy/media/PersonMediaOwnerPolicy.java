@@ -35,7 +35,10 @@ public class PersonMediaOwnerPolicy implements MediaOwnerPolicy {
     @Override public UUID requireUploadFamily(UUID ownerId) {
         Person person = person(ownerId, null);
         var viewer = access.requireRead(person.getFamilyId());
-        access.requireManage(viewer, person.getFamilyId(), person.getBranchId());
+        // Ai sửa được hồ sơ thì tải được ảnh đại diện (BR-GEN-20): chính chủ tự đổi ảnh của mình.
+        if (!access.canEditPerson(viewer, person)) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
         return person.getFamilyId();
     }
 

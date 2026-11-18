@@ -34,6 +34,14 @@ export const genealogyApi = {
   relationship: (personA: string, personB: string) => api.get<Relationship>('/relationships', { personA, personB }),
   /** Ảnh qua API có kiểm quyền (tệp không có URL công khai). */
   mediaContent: (mediaId: string) => api.download(`/media/${mediaId}/content`),
+  /** Tải ảnh lên hồ sơ (ownerType PERSON), rồi gán làm ảnh đại diện bằng PUT /persons/{id} (SCRUM-119). */
+  uploadPersonPhoto: (personId: string, file: File) => {
+    const body = new FormData();
+    body.set('file', file);
+    body.set('ownerType', 'PERSON');
+    body.set('ownerId', personId);
+    return api.upload<{ id: string }>('/media', body);
+  },
 };
 
 /** Dữ liệu hồ sơ hiện có thành input đầy đủ: PUT /persons ghi đè mọi trường nên phải gửi lại trường không sửa. */

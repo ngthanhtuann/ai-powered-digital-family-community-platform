@@ -78,7 +78,8 @@ function isPublicRoute(pathname: string) {
 const ROUTE_ALIASES: [RegExp, string][] = [[/^\/families\/[^/]+\/tree$/, '/tree']];
 // Tiêu đề header cho trang không thuộc mục menu nào.
 const EXTRA_TITLES: [RegExp, string][] = [
-  [/^\/persons\//, 'Hồ sơ thành viên'],
+  [/^\/persons\//, 'Trang cá nhân'],
+  [/^\/profile\/account$/, 'Tài khoản đăng nhập'],
   [/^\/search$/, 'Tìm kiếm'],
 ];
 

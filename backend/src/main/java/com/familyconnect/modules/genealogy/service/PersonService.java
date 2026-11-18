@@ -238,10 +238,7 @@ public class PersonService implements PersonSearchIndex {
     /** BR-GEN-10, privacy.md mục 3 và 4: ẩn trường theo vai trò người xem và tuổi của người được xem. */
     /** BR-GEN-20: chính chủ; hoặc người quản lý chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN sửa được mọi hồ sơ. */
     private boolean canEdit(Person p, Viewer viewer) {
-        if (viewer.userId().equals(p.getUserId()) || viewer.isSystemAdmin()) {
-            return true;
-        }
-        return p.getUserId() == null && access.canManage(viewer, p.getFamilyId(), p.getBranchId());
+        return access.canEditPerson(viewer, p);
     }
 
     private PersonData toData(Person p, Viewer viewer) {

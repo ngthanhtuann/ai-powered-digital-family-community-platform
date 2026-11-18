@@ -690,7 +690,8 @@ paths:
       operationId: uploadMedia
       x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
       description: Dùng cho ownerType HERITAGE hoặc PERSON; quyền trên tài nguyên
-        sở hữu do module heritage/genealogy quyết định. Ảnh bài đăng và sự kiện dùng
+        sở hữu do module heritage/genealogy quyết định (với PERSON là người được sửa hồ sơ theo BR-GEN-20,
+        gồm chính chủ tự tải ảnh đại diện). Ảnh bài đăng và sự kiện dùng
         endpoint riêng. Định dạng nhận jpg, png, webp, tối đa 5 MB mỗi tệp. Riêng
         ownerType HERITAGE cho phép thêm pdf, tối đa 10 MB mỗi tệp (xem conventions.md
         mục 7.3). Tổng dung lượng tệp mỗi request tối đa 10 MB.
