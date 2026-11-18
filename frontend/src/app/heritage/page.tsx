@@ -9,11 +9,12 @@ import { TextField } from '@/components/ui/TextField';
 import { heritageApi } from '@/services/heritage';
 import { ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/datetime';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 export default function HeritagePageIndex() {
   const access = useHeritageAccess();
   const [category, setCategory] = useState('');
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const familyId = access.isSystemAdmin ? adminFamily.trim() : undefined;
   const queryKey = useMemo(() => ['heritage-documents', category, familyId], [category, familyId]);
   const documents = useQuery({
@@ -59,12 +60,7 @@ export default function HeritagePageIndex() {
       </div>
       {access.isSystemAdmin && access.isReady && (
         <div className="mt-5 max-w-xl">
-          <TextField
-            label="Family ID (SYSTEM_ADMIN)"
-            value={adminFamily}
-            onChange={(event) => setAdminFamily(event.target.value)}
-            placeholder="UUID gia đình"
-          />
+          <AdminFamilyPicker />
         </div>
       )}
       {dataError && (

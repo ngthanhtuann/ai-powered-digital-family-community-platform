@@ -6,7 +6,6 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useForm, type FieldErrors, type UseFormRegister } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
-import { TextField } from '@/components/ui/TextField';
 import { EventGallery } from '@/components/events/EventGallery';
 import {
   eventsApi,
@@ -15,6 +14,7 @@ import {
   type RsvpStatus,
 } from '@/services/events/events';
 import { formatDateTime, fromFamilyInput, toFamilyInput } from '@/lib/datetime';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const inputClass =
   'min-w-0 w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body ' +
@@ -380,7 +380,7 @@ export default function EventsPage() {
   const cache = useQueryClient();
   const [tab, setTab] = useState<'UPCOMING' | 'PAST'>('UPCOMING');
   const [cutoff, setCutoff] = useState(() => new Date().toISOString());
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const createForm = useForm<EventValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: emptyEvent,
@@ -446,13 +446,7 @@ export default function EventsPage() {
       )}
       {systemAdmin && (
         <div className="rounded-lg border border-border bg-surface p-4">
-          <TextField
-            id="event-family"
-            label="Mã gia đình"
-            value={adminFamily}
-            onChange={(e) => setAdminFamily(e.target.value)}
-            placeholder="UUID gia đình"
-          />
+          <AdminFamilyPicker />
         </div>
       )}
       {ready && (
