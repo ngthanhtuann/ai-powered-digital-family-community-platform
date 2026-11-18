@@ -4,49 +4,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
-import { useFamilyBranches } from '../components/community-ui';
+import { toUploadAsset, useFamilyBranches } from '../components/community-ui';
 import { Button, Card, Notice, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import {
-  communityApi,
-  postableBranches,
-  type UploadAsset,
-} from '../services/community';
+import { communityApi, postableBranches, type UploadAsset } from '../services/community';
 import { genealogyApi } from '../services/genealogy';
 import { useSession } from '../session/SessionContext';
 import { colors, radius, text } from '../theme';
 
 const DESCENDANTS = 'DESCENDANTS';
-
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
-
-function toUploadAsset(asset: ImagePicker.ImagePickerAsset): UploadAsset {
-  const extension = (asset.fileName ?? asset.uri).split('?')[0].split('.').pop()?.toLowerCase();
-  const type =
-    asset.mimeType ??
-    (extension === 'jpg' || extension === 'jpeg'
-      ? 'image/jpeg'
-      : extension === 'png'
-        ? 'image/png'
-        : extension === 'webp'
-          ? 'image/webp'
-          : '');
-  if (!IMAGE_MIMES.includes(type)) {
-    throw new Error(
-      'Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP. Ảnh HEIC cần chuyển sang JPG trước khi chọn.',
-    );
-  }
-  if (asset.fileSize && asset.fileSize > IMAGE_MAX_BYTES) {
-    throw new Error('Mỗi ảnh được chọn phải nhỏ hơn hoặc bằng 5 MB.');
-  }
-  const suffix = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
-  const name =
-    asset.fileName && asset.fileName.toLowerCase().endsWith(`.${suffix}`)
-      ? asset.fileName
-      : `anh-${Date.now()}.${suffix}`;
-  return { uri: asset.uri, name, mimeType: type };
-}
 
 export function CreatePostScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -74,9 +40,14 @@ export function CreatePostScreen() {
   const [scopeChoice, setScopeChoice] = useState<string | null | undefined>(undefined);
   const wanted = scopeChoice === undefined ? myBranch : scopeChoice;
   // 3 lựa chọn như web (SCRUM-124): Cả dòng họ / Chi của tôi / Con cháu của tôi (cần hồ sơ gia phả).
-  const canDescendants = !!useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false }).data;
+  const canDescendants = !!useQuery({
+    queryKey: ['person', 'me'],
+    queryFn: genealogyApi.myPerson,
+    retry: false,
+  }).data;
   const scope =
-    (wanted === DESCENDANTS && canDescendants) || (wanted && scopeOptions.some((b) => b.id === wanted && b.id === myBranch))
+    (wanted === DESCENDANTS && canDescendants) ||
+    (wanted && scopeOptions.some((b) => b.id === wanted && b.id === myBranch))
       ? wanted
       : null;
 

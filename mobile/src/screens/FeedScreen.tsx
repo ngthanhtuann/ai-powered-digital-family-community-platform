@@ -1,7 +1,7 @@
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import {
@@ -14,12 +14,19 @@ import {
   useFamilyBranches,
 } from '../components/community-ui';
 import { Button, Card, Loading } from '../components/ui';
-import { communityApi, scopeLabel, type Post } from '../services/community';
+import { PersonAvatar } from '../components/genealogy-ui';
+import { communityApi, scopeLabel, type Post, type ReactionType } from '../services/community';
 import { useSession } from '../session/SessionContext';
 import { colors, spacing, text } from '../theme';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 
 type FeedFilter = 'ALL' | 'NEWS';
+const QUICK_REACTIONS: { type: ReactionType; icon: string }[] = [
+  { type: 'LIKE', icon: '👍' },
+  { type: 'LOVE', icon: '❤️' },
+  { type: 'HAHA', icon: '😄' },
+  { type: 'SAD', icon: '😢' },
+];
 
 export function FeedScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
@@ -36,6 +43,14 @@ export function FeedScreen() {
     getNextPageParam: nextPage<Post>,
   });
   const posts = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
+  const qc = useQueryClient();
+  const react = useMutation({
+    mutationFn: ({ post, type }: { post: Post; type: ReactionType }) =>
+      post.myReaction === type
+        ? communityApi.removeReaction(post.id)
+        : communityApi.react(post.id, type),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['posts'] }),
+  });
   const open = (postId: string) =>
     drawer
       .getParent<NativeStackNavigationProp<RootStackParamList>>()
@@ -95,21 +110,50 @@ export function FeedScreen() {
             onPress={() => open(item.id)}
           >
             <Card>
-              <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
-              <Text style={[text.caption, { color: colors.textSecondary }]}>
-                {formatWhen(item.createdAt)} · {scopeLabel(item.branchId, branchNames, item.audience)} ·{' '}
-                {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
-              </Text>
-              <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={5}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <PersonAvatar name={item.authorName} mediaId={item.authorAvatarMediaId} size={40} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[text.label, { color: colors.textPrimary }]}>{item.authorName}</Text>
+                  <Text style={[text.caption, { color: colors.textSecondary }]}>
+                    {formatWhen(item.createdAt)} ·{' '}
+                    {scopeLabel(item.branchId, branchNames, item.audience)} ·{' '}
+                    {item.type === 'NEWS' ? 'Tin tức' : 'Bài đăng'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={8}>
                 {item.content}
               </Text>
               <MediaGallery media={item.media ?? []} />
-              <Text style={[text.caption, { color: colors.textSecondary }]}>
-                {Object.values(item.reactionCounts).reduce((sum, n) => sum + n, 0)} cảm xúc ·{' '}
-                {item.commentCount} bình luận
-                {item.myReaction ? ` · Đã thả ${item.myReaction}` : ''}
+              {/* Thả cảm xúc ngay trên thẻ như web; chạm lại cảm xúc đang chọn để bỏ. */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {QUICK_REACTIONS.map(({ type, icon }) => (
+                  <Pressable
+                    key={type}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: item.myReaction === type }}
+                    accessibilityLabel={`Thả ${type}`}
+                    disabled={react.isPending}
+                    onPress={() => react.mutate({ post: item, type })}
+                    style={{
+                      minHeight: 40,
+                      paddingHorizontal: 12,
+                      justifyContent: 'center',
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      borderColor: item.myReaction === type ? colors.primary : colors.border,
+                      backgroundColor: item.myReaction === type ? colors.infoSoft : colors.surface,
+                    }}
+                  >
+                    <Text style={[text.label, { color: colors.textPrimary }]}>
+                      {icon} {item.reactionCounts[type] ?? 0}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={[text.label, { color: colors.primary }]}>
+                {item.commentCount} bình luận · Xem và bình luận
               </Text>
-              <Text style={[text.label, { color: colors.primary }]}>Xem chi tiết và tương tác</Text>
             </Card>
           </Pressable>
         )}
