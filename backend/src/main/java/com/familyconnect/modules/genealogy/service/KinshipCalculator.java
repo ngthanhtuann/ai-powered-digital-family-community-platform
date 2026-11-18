@@ -127,6 +127,31 @@ public final class KinshipCalculator {
                 }
             }
         }
+        // (4) Qua hôn nhân đã ly hôn: chỉ xét khi không có quan hệ nào ở trên (mục 2.4, SCRUM-117).
+        for (MarriageLink m : marriages) {
+            if (!DIVORCED.equals(m.status())) {
+                continue;
+            }
+            Result viaEx = bloodRelation(m.spouseId(), b);
+            if (viaEx != null && viaEx.supported()) {
+                List<String> path = new ArrayList<>(List.of(a));
+                path.addAll(viaEx.path());
+                return new Result(true, pick(gender, "chồng cũ", "vợ cũ", "vợ/chồng cũ") + " của " + viaEx.relation(),
+                        null, null, null, List.copyOf(path));
+            }
+        }
+        for (MarriageLink m : graph.marriagesOf(b)) {
+            if (!DIVORCED.equals(m.status())) {
+                continue;
+            }
+            Result toEx = bloodRelation(a, m.spouseId());
+            if (toEx != null && toEx.supported()) {
+                List<String> path = new ArrayList<>(toEx.path());
+                path.add(b);
+                return new Result(true, toEx.relation() + " " + pick(pb.gender(), "vợ cũ", "chồng cũ", "vợ/chồng cũ"),
+                        null, null, null, List.copyOf(path));
+            }
+        }
         return Result.none();
     }
 

@@ -88,7 +88,8 @@ class RelationshipCaseCatalogTest {
             c(47,"coi","to",null,null,true,null,"vợ","Vợ chồng góa vẫn được coi là quan hệ vợ/chồng."),
             c(48,"cuong","mai",null,null,true,null,"chồng cũ","Hôn nhân DIVORCED trả tên quan hệ cũ."),
             c(49,"c","a1",2,0,true,"a1","cháu nội","Nhánh ngắn duy nhất từ C tới A1 đi qua B1."),
-            c(50,"c","x",3,0,true,"x","chắt nội","Hai đường cùng độ dài; ưu tiên đường đầu qua cha B1.")
+            c(50,"c","x",3,0,true,"x","chắt nội","Hai đường cùng độ dài; ưu tiên đường đầu qua cha B1."),
+            c(54,"mai","hai",null,null,true,null,"vợ cũ của em","Mai ly hôn với Cường, em của Hải (mục 2.4 (4)).")
         );
     }
 
@@ -216,8 +217,9 @@ class RelationshipCaseCatalogTest {
     @Test
     void catalogHasFiftyAlgorithmCasesInOrder() {
         List<Case> all = cases().toList();
-        assertEquals(50, all.size(), "Ca #1 đến #50 trong mục 7; #51-#53 thuộc tầng controller");
-        for (int i = 0; i < all.size(); i++) assertEquals(i + 1, all.get(i).no());
+        assertEquals(51, all.size(), "Ca #1 đến #50 và #54 trong mục 7; #51-#53 thuộc tầng controller");
+        for (int i = 0; i < 50; i++) assertEquals(i + 1, all.get(i).no());
+        assertEquals(54, all.get(50).no());
     }
 
     /** Khoảng cách ngắn nhất từ p lên mỗi tổ tiên (p ở độ sâu 0), tối đa MAX_GENERATIONS đời. */
