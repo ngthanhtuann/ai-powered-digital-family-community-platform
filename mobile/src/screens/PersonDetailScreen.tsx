@@ -3,11 +3,12 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { ErrorPanel } from '../components/community-ui';
+import { ErrorPanel, formatWhen } from '../components/community-ui';
 import { GENDER_LABEL, PersonAvatar } from '../components/genealogy-ui';
 import { Button, Card, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
+import { communityApi, scopeLabel } from '../services/community';
 import { genealogyApi, lifeSpan, type TreeData } from '../services/genealogy';
 import { heritageApi } from '../services/heritage';
 import { mergeGraph, relativesOf } from '../services/genealogy-tree';
@@ -43,6 +44,13 @@ export function PersonDetailScreen({
         if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
         throw e;
       }),
+  });
+  // Bài đăng của người đã gắn tài khoản, như trang cá nhân trên web (SCRUM-127).
+  const authorId = person.data?.userId ?? null;
+  const posts = useQuery({
+    queryKey: ['posts', 'author', authorId],
+    enabled: Boolean(authorId),
+    queryFn: () => communityApi.postsByAuthor(authorId!, 0),
   });
   // Quan hệ lấy từ phần cây đã tải ở màn Cây gia phả (bộ nhớ đệm React Query), không gọi API thêm.
   const trees = queryClient
@@ -136,6 +144,35 @@ export function PersonDetailScreen({
               <Text style={[text.body, { color: colors.textPrimary }]}>
                 <Text style={{ color: colors.textSecondary }}>{r.role}: </Text>
                 {r.name}
+              </Text>
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
+      {authorId ? (
+        <Card title="Bài đăng">
+          {posts.isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+          {posts.isError ? <ErrorPanel error={posts.error} retry={() => posts.refetch()} /> : null}
+          {posts.data && posts.data.items.length === 0 ? (
+            <Text style={[text.body, { color: colors.textSecondary }]}>Chưa có bài đăng.</Text>
+          ) : null}
+          {posts.data?.items.map((post) => (
+            <Pressable
+              key={post.id}
+              accessibilityRole="button"
+              accessibilityLabel="Xem bài và bình luận"
+              onPress={() => navigation.push('PostDetail', { postId: post.id })}
+              style={{ gap: 4, paddingVertical: 8, borderTopWidth: 1, borderColor: colors.border }}
+            >
+              <Text style={[text.caption, { color: colors.textSecondary }]}>
+                {formatWhen(post.createdAt)} · {scopeLabel(post.branchId, new Map(), post.audience)}
+              </Text>
+              <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={6}>
+                {post.content}
+              </Text>
+              <Text style={[text.caption, { color: colors.primary }]}>
+                {Object.values(post.reactionCounts).reduce((sum, n) => sum + n, 0)} cảm xúc ·{' '}
+                {post.commentCount} bình luận · Xem và bình luận
               </Text>
             </Pressable>
           ))}
