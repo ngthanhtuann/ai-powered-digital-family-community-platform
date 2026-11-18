@@ -6,9 +6,9 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { errorText, selectClass, yearOf } from '@/components/genealogy/RelationModal';
 import { Button } from '@/components/ui/Button';
-import { TextField } from '@/components/ui/TextField';
 import { aiApi } from '@/services/ai';
 import { genealogyApi, type Relationship } from '@/services/genealogy';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 type Step = NonNullable<Relationship['path']>[number];
 
@@ -18,7 +18,7 @@ type Step = NonNullable<Relationship['path']>[number];
  */
 export default function RelationshipPage() {
   const access = useHeritageAccess();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const familyId = access.familyId ?? (access.isSystemAdmin ? adminFamily.trim() : '');
   const [personA, setPersonA] = useState('');
   const [personB, setPersonB] = useState('');
@@ -56,8 +56,7 @@ export default function RelationshipPage() {
       <AccessState loading={access.membership.isLoading || access.profile.isLoading}
         error={(access.membership.error as Error | null)?.message} />
       {access.isReady && !access.familyId && access.isSystemAdmin && (
-        <TextField label="Mã gia đình" value={adminFamily} placeholder="UUID gia đình"
-          onChange={(e) => { setAdminFamily(e.target.value); setPersonA(''); setPersonB(''); relation.reset(); }} />
+        <AdminFamilyPicker />
       )}
 
       {familyId && (

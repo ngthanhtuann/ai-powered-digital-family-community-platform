@@ -10,12 +10,13 @@ import { ApiError } from '@/lib/api';
 import { datedFileName, saveBlob } from '@/lib/download';
 import { directoryApi } from '@/services/directory';
 import { dashboardApi } from '@/services/dashboard';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const PAGE_SIZE = 20;
 
 export default function DirectoryPage() {
   const access = useHeritageAccess();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const [draft, setDraft] = useState({ keyword: '', job: '', location: '', generation: '' });
   const [filters, setFilters] = useState({ keyword: '', job: '', location: '', generation: '' });
   const [page, setPage] = useState(0);
@@ -99,12 +100,7 @@ export default function DirectoryPage() {
       </div>
       {access.isSystemAdmin && access.isReady && (
         <div className="mt-5 max-w-xl">
-          <TextField
-            label="Family ID (SYSTEM_ADMIN)"
-            value={adminFamily}
-            onChange={(event) => setAdminFamily(event.target.value)}
-            placeholder="UUID gia đình"
-          />
+          <AdminFamilyPicker />
         </div>
       )}
 
