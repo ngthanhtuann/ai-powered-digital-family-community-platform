@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-11-15",
+  "source": "docs/06-test/ai-quality-scrum-69-results.json",
+  "notice": "Đáp án lưu từ lượt đánh giá Gemini trên dữ liệu seed giả; dùng làm tài liệu dự phòng trình bày, không phải chế độ offline của ứng dụng.",
+  "results": [
+    {
+      "case": 1,
+      "account": "phuc",
+      "question": "Ông Phúc sinh năm nào?",
+      "answer": "1950 [PERSON 1bad2700-7348-4308-846a-020ec0574479]",
+      "sourceType": "PERSON",
+      "score": "Đúng"
+    },
+    {
+      "case": 7,
+      "account": "phuc",
+      "question": "Nguyễn Văn An làm nghề gì?",
+      "answer": "Bác sĩ [e85a2d6f-d7e2-4c86-a6d6-66edc858a822].",
+      "sourceType": "PERSON",
+      "score": "Đúng"
+    },
+    {
+      "case": 5,
+      "account": "lan",
+      "question": "Anh Hùng làm nghề gì?",
+      "answer": "Kỹ sư xây dựng [45334213-a8dc-4f1b-917e-b0dc5d41793c]",
+      "sourceType": "PERSON",
+      "score": "Đúng"
+    },
+    {
+      "case": 14,
+      "account": "hung",
+      "question": "Giỗ Tổ họ Nguyễn tổ chức ở đâu?",
+      "answer": "Địa điểm: Nhà thờ họ Nguyễn, Hải Hậu, Nam Định (Nguồn: EVENT 41487467-e92d-4356-ba8d-c6360b005373)",
+      "sourceType": "EVENT",
+      "score": "Đúng"
+    },
+    {
+      "case": 15,
+      "account": "minh",
+      "question": "Sự kiện giỗ Tổ tưởng niệm ai?",
+      "answer": "Sự kiện giỗ Tổ tưởng niệm cụ Nguyễn Văn Tổ [EVENT 41487467-e92d-4356-ba8d-c6360b005373].",
+      "sourceType": "EVENT",
+      "score": "Đúng"
+    },
+    {
+      "case": 23,
+      "account": "lan",
+      "question": "Quỹ khuyến học hiện có bao nhiêu tiền?",
+      "answer": "Không tìm thấy thông tin.",
+      "sourceType": null,
+      "score": "Đúng"
+    }
+  ]
+}
