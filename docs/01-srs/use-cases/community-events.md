@@ -434,7 +434,7 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 | Phương thức | Đường dẫn | Mô tả | Quyền (role) |
 |---|---|---|---|
 | POST | `/api/v1/posts` | Tạo bài đăng thường/tin tức | MEMBER đã xác minh (`POST`); BRANCH_ADMIN trở lên (`NEWS`) |
-| GET | `/api/v1/posts` | Danh sách bài đăng; lọc `type`, `branchId`, phân trang | Thành viên có quyền xem |
+| GET | `/api/v1/posts` | Danh sách bài đăng; lọc `type`, `branchId`, `authorId` (trang cá nhân), phân trang; mỗi bài kèm `authorPersonId`, `authorAvatarMediaId` | Thành viên có quyền xem |
 | GET | `/api/v1/posts/{id}` | Chi tiết bài đăng | Thành viên có quyền xem |
 | PATCH | `/api/v1/posts/{id}` | Sửa nội dung bài đăng, không đổi `type` | Người tạo |
 | DELETE | `/api/v1/posts/{id}` | Xóa mềm bài đăng | Người tạo; BRANCH_ADMIN trong phạm vi; SYSTEM_ADMIN |

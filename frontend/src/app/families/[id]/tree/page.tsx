@@ -52,7 +52,8 @@ function FitToPath({ ids }: { ids: string }) {
 export default function FamilyTreePage() {
   const { id: familyId } = useParams<{ id: string }>();
   const access = useHeritageAccess();
-  const first = useQuery({ queryKey: ['tree', familyId], queryFn: () => genealogyApi.tree(familyId) });
+  // Mở từ người tổ, sẵn 10 đời để thấy cả dòng họ (góp ý 16/11/2026).
+  const first = useQuery({ queryKey: ['tree', familyId], queryFn: () => genealogyApi.tree(familyId, { depth: 10 }) });
   // Nhánh đã mở giữ theo id gốc, để khi thêm quan hệ (invalidate ['tree']) thì mọi nhánh tải lại.
   const [branchRoots, setBranchRoots] = useState<string[]>([]);
   const branches = useQueries({
@@ -62,7 +63,9 @@ export default function FamilyTreePage() {
     })),
   });
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<string | null>(null);
+  // Từ trang cá nhân "Xem trên gia phả" (?focus=): mở sẵn panel của người đó.
+  const focusParam = useSearchParams().get('focus');
+  const [selected, setSelected] = useState<string | null>(focusParam);
   const [relation, setRelation] = useState<Relationship | null>(null);
   // SCRUM-56: tra quan hệ với người chưa hiện trên cây thì tải thêm cây từ tổ tiên chung, đủ sâu tới cả hai người.
   const [focusRoots, setFocusRoots] = useState<{ rootId: string; depth: number }[]>([]);

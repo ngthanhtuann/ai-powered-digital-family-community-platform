@@ -299,7 +299,9 @@ foreach ($j in @(@('hung','Kỹ sư xây dựng','Công ty Xây dựng Demo','H�
                  @('an','Bác sĩ','Phòng khám Demo','Đà Nẵng'), @('long','Kế toán','Công ty Cảng Demo','Hải Phòng'),
                  @('quang','Lập trình viên','Công ty Phần mềm Demo','TP. Hồ Chí Minh'), @('ha','Chuyên viên dữ liệu','Ngân hàng Demo','Hà Nội'),
                  @('khoa','Kỹ sư điện','Công ty Điện Demo','TP. Hồ Chí Minh'), @('tuan','Kỹ thuật viên','Xưởng Cơ khí Demo','Nam Định'))) {
-    $null = Call PUT "/directory/members/$($p[$j[0]])/profession-profile" @{ jobTitle = $j[1]; company = $j[2]; workLocation = $j[3] } $tok.phuc
+    # BR-DIR-03: người có tài khoản tự khai hồ sơ của mình; Trưởng họ chỉ nhập thay người chưa có tài khoản.
+    $who = if ($tok.Contains($j[0])) { $tok[$j[0]] } else { $tok.phuc }
+    $null = Call PUT "/directory/members/$($p[$j[0]])/profession-profile" @{ jobTitle = $j[1]; company = $j[2]; workLocation = $j[3] } $who
 }
 
 Write-Host '7/8 Tao du lieu Di san (cau chuyen, tai lieu, anh minh hoa gia)...'
@@ -309,9 +311,9 @@ Write-Host '8/8 Tu kiem tra...'
 $all = @(Call GET "/families/$fam/persons?page=0&size=100" $null $tok.phuc)
 Write-Host "So nguoi trong ho Nguyen: $($all.Count)"
 if ($all.Count -ne $p.Count) { throw "Mong doi $($p.Count) nguoi, API tra ve $($all.Count)" }
-# Mỗi dòng: A, B, có hỗ trợ không. Thuật toán chỉ tính tới chắt (3,0); (4,0) trở đi trả supported=false (algorithm-relationship.md).
+# Mỗi dòng: A, B, có hỗ trợ không. Từ 17/11/2026 mọi cặp có tổ tiên chung đều có tên (algorithm-relationship.md mục 2.3b).
 foreach ($q in @(@('minh','ha',$true), @('bin','hung',$true), @('kiet','phuc',$true), @('mthu','phuc',$true), @('an','phuc',$true),
-                 @('huy','minh',$true), @('thinh','to',$true), @('phong','to',$false))) {
+                 @('huy','minh',$true), @('thinh','to',$true), @('phong','to',$true))) {
     $r = Call GET "/relationships?personA=$($p[$q[0]])&personB=$($p[$q[1]])" $null $tok.phuc
     Write-Host "  $($q[0]) -> $($q[1]): $($r.description)"
     if ([bool]$r.supported -ne $q[2]) { throw "Quan he $($q[0]) -> $($q[1]) tra supported=$($r.supported), mong doi $($q[2])" }

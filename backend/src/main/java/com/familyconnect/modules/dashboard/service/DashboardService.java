@@ -222,6 +222,23 @@ public class DashboardService {
                                                                DashboardDemographics demographics,
                                                                LocalDate today) {
         List<PdfReportGenerator.Section> sections = new ArrayList<>();
+        List<ProfessionStatistic> professions = directoryQuery.getProfessionStatistics(
+                        demographics.professionPersonIds()).stream()
+                .map(item -> new ProfessionStatistic(item.jobTitle(), item.count())).toList();
+        // Tổng quan đặt đầu báo cáo, kèm các chỉ số tóm tắt để báo cáo đọc được ngay (góp ý 16/11/2026).
+        sections.add(section("Tổng quan gia phả", List.of("Chỉ số", "Giá trị"), List.of(
+                List.of("Tổng thành viên (bao gồm người đã mất)", Long.toString(demographics.totalMembers())),
+                List.of("Số thế hệ", Integer.toString(demographics.generationStats().size())),
+                List.of("Nam / Nữ / Khác", demographics.maleCount() + " / " + demographics.femaleCount() + " / "
+                        + demographics.otherCount()),
+                List.of("Nghề phổ biến nhất", professions.isEmpty() ? "Chưa có dữ liệu"
+                        : professions.get(0).jobTitle() + " (" + professions.get(0).count() + " người)"),
+                List.of("Nơi ở nhiều nhất", demographics.locationStats().isEmpty() ? "Chưa có dữ liệu"
+                        : demographics.locationStats().get(0).location() + " ("
+                        + demographics.locationStats().get(0).count() + " người)"),
+                List.of("Ngày chốt số liệu", today.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))),
+                List.of("Ghi chú", "Số liệu gia phả là ảnh chụp hiện tại; nghề nghiệp, nơi ở không tính trẻ dưới 16 tuổi.")),
+                false));
         sections.add(section("Thành viên theo thế hệ", List.of("Thế hệ", "Số thành viên"),
                 demographics.generationStats().stream()
                         .map(item -> List.of("Đời " + item.generation(), Long.toString(item.count()))).toList(), true));
@@ -232,20 +249,11 @@ public class DashboardService {
                 List.of("Nam", Long.toString(demographics.maleCount())),
                 List.of("Nữ", Long.toString(demographics.femaleCount())),
                 List.of("Khác", Long.toString(demographics.otherCount()))), true));
-        List<ProfessionStatistic> professions = directoryQuery.getProfessionStatistics(
-                        demographics.professionPersonIds()).stream()
-                .map(item -> new ProfessionStatistic(item.jobTitle(), item.count())).toList();
         sections.add(section("Thành viên theo nghề nghiệp", List.of("Nghề nghiệp", "Số thành viên"),
                 professions.stream().map(item -> List.of(item.jobTitle(), Long.toString(item.count()))).toList(), true));
         sections.add(section("Thành viên theo nơi ở", List.of("Tỉnh/thành", "Số thành viên"),
                 demographics.locationStats().stream()
                         .map(item -> List.of(item.location(), Long.toString(item.count()))).toList(), true));
-        sections.add(section("Tổng quan gia phả", List.of("Chỉ số", "Giá trị"),
-                List.of(List.of("Tổng thành viên (bao gồm người đã mất)",
-                                Long.toString(demographics.totalMembers())),
-                        List.of("Ngày chốt số liệu hiện tại", today.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))),
-                        List.of("Phạm vi ngày", "Số liệu gia phả là ảnh chụp hiện tại; không có lịch sử để hồi cứu.")),
-                false));
         return List.copyOf(sections);
     }
 

@@ -52,8 +52,10 @@ public class EndpointRoles {
             Map.entry("DELETE /branches/{}", ADMINS),
             Map.entry("GET /families/{}/persons", SIGNED_IN),
             Map.entry("POST /families/{}/persons", ADMINS),
+            Map.entry("GET /persons/me", SIGNED_IN),
             Map.entry("GET /persons/{}", SIGNED_IN),
-            Map.entry("PUT /persons/{}", ADMINS),
+            // BR-GEN-20: thành viên sửa hồ sơ của chính mình; quyền chi tiết kiểm ở PersonService.
+            Map.entry("PUT /persons/{}", SIGNED_IN),
             Map.entry("DELETE /persons/{}", ADMINS),
             Map.entry("POST /persons/{}/parents", ADMINS),
             Map.entry("DELETE /persons/{}/parents/{}", ADMINS),

@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/TextField';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
+import { Avatar } from '@/components/genealogy/PersonNode';
 import { genealogyApi, toPersonInput, type Person } from '@/services/genealogy';
 
 const PAGE_SIZE = 20;
@@ -115,19 +116,24 @@ export default function MembersPage() {
             {q ? 'Không có thành viên phù hợp.' : 'Gia đình chưa có thành viên.'}
           </p>
         )}
-        <ul className="space-y-3">
+        <ul className="grid gap-3 md:grid-cols-2">
           {list.data?.items.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-4">
-              <div className="min-w-0">
-                <Link href={`/persons/${p.id}`} className="text-body font-semibold text-info underline">{p.fullName}</Link>
-                <p className="text-caption text-text-secondary">
-                  {[yearOf(p) && `Sinh ${yearOf(p)}`, p.currentProvince, p.isDeceased && 'Đã mất'].filter(Boolean).join(' · ') || 'Chưa có thông tin'}
-                </p>
-              </div>
-              {access.isAdmin && <div className="flex flex-wrap gap-2">
-                <Button fullWidth={false} variant="secondary" onClick={() => setEditing(p)}>Sửa</Button>
-                <Button fullWidth={false} variant="secondary" onClick={() => setRelation({ person: p, mode: 'parent' })}>Thêm cha/mẹ</Button>
-                <Button fullWidth={false} variant="secondary" onClick={() => setRelation({ person: p, mode: 'spouse' })}>Thêm vợ/chồng</Button>
+            <li key={p.id} className="space-y-3 rounded-card border border-border bg-surface p-4 shadow-card">
+              {/* Bấm cả thẻ để mở trang cá nhân (SCRUM-117). */}
+              <Link href={`/persons/${p.id}`} className="flex min-h-11 items-center gap-3 rounded-control hover:bg-surface-muted">
+                <Avatar mediaId={p.avatarMediaId} name={p.fullName ?? ''} size="h-12 w-12" />
+                <span className="min-w-0">
+                  <span className="block truncate text-label">{p.fullName}</span>
+                  <span className="block text-caption text-text-secondary">
+                    {[yearOf(p) && `Sinh ${yearOf(p)}`, p.currentProvince, p.isDeceased && 'Đã mất'].filter(Boolean).join(' · ') || 'Chưa có thông tin'}
+                  </span>
+                </span>
+              </Link>
+              {(p.canEdit || access.isAdmin) && <div className="flex flex-wrap gap-2">
+                {/* BR-GEN-20: nút Sửa theo canEdit do backend tính (chính chủ, hoặc quản trị với hồ sơ chưa có tài khoản). */}
+                {p.canEdit && <Button fullWidth={false} variant="secondary" onClick={() => setEditing(p)}>Sửa</Button>}
+                {access.isAdmin && <Button fullWidth={false} variant="secondary" onClick={() => setRelation({ person: p, mode: 'parent' })}>Thêm cha/mẹ</Button>}
+                {access.isAdmin && <Button fullWidth={false} variant="secondary" onClick={() => setRelation({ person: p, mode: 'spouse' })}>Thêm vợ/chồng</Button>}
               </div>}
             </li>
           ))}

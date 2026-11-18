@@ -9,6 +9,15 @@ import java.util.UUID;
  */
 public interface GenealogyPort {
 
+    /** Hồ sơ gia phả gắn với một tài khoản: id hồ sơ và ảnh đại diện (SCRUM-117, trang cá nhân). */
+    record PersonCard(UUID personId, UUID avatarMediaId) {
+    }
+
+    /** Theo lô; tài khoản chưa gắn hồ sơ thì không có trong kết quả. */
+    default java.util.Map<UUID, PersonCard> personsByUserIds(java.util.Collection<UUID> userIds) {
+        return java.util.Map.of();
+    }
+
     /** Rỗng nếu gia đình không tồn tại. */
     Optional<String> findFamilyName(UUID familyId);
 

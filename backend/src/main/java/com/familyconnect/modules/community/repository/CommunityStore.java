@@ -23,7 +23,7 @@ public interface CommunityStore {
     /** Các chi đang có bài trong gia đình, để lọc phạm vi xem (BR-COM-03). */
     List<UUID> postBranchIds(UUID familyId);
     Page<Post> posts(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
-                     UUID branchFilter, PostType type, int page, int size, String orderBy);
+                     UUID branchFilter, PostType type, UUID authorFilter, int page, int size, String orderBy);
     Post updatePost(UUID id, String content, UUID branch, UUID userId);
     void deletePost(UUID id);
     /** Đếm theo lô cho một trang bài, tránh mỗi bài một truy vấn. */

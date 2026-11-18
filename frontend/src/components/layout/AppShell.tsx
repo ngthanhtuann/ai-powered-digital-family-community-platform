@@ -33,6 +33,7 @@ import { useEffect, useState } from 'react';
 import { getMyMembership, getMyProfile, logout } from '@/services/auth';
 import { memberRoleLabel } from '@/services/admin';
 import { SemanticSearchBox } from '@/components/layout/SemanticSearchBox';
+import { AdminFamilyPicker } from '@/components/admin/AdminFamilyPicker';
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { Button } from '@/components/ui/Button';
 import { tokenStorage } from '@/lib/token-storage';
@@ -312,6 +313,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
           <div className="flex items-center gap-3 text-right">
+            {role === 'SYSTEM_ADMIN' && <AdminFamilyPicker />}
             {role !== 'UNVERIFIED' && <NotificationBell />}
             {profile.data && <p className="hidden text-label md:block">{profile.data.fullName}</p>}
             {role !== 'UNVERIFIED' && membership.data && (

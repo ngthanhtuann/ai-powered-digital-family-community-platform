@@ -102,12 +102,14 @@ public class AdminController {
     @Operation(operationId = "adminListAuditLogs", summary = "Xem nhật ký kiểm toán (UC-AUTH-10)")
     public PageResponse<AuditLogData> listAuditLogs(
             @RequestParam(required = false) UUID actorUserId,
+            @RequestParam(required = false) UUID familyId,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
-        return adminService.listAuditLogs(CurrentUser.require().id(), actorUserId, action, from, to, page, size, sort);
+        return adminService.listAuditLogs(CurrentUser.require().id(), actorUserId, familyId, action, from, to, page, size,
+                sort);
     }
 }

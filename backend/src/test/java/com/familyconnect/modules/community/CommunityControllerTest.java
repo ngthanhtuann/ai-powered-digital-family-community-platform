@@ -37,7 +37,7 @@ class CommunityControllerTest {
     }
 
     @Test void invalidPageReturnsStandardValidationEnvelope() throws Exception {
-        when(service.posts(isNull(),isNull(),isNull(),eq(-1),eq(20),eq("createdAt,desc")))
+        when(service.posts(isNull(),isNull(),isNull(),isNull(),eq(-1),eq(20),eq("createdAt,desc")))
             .thenThrow(ApiException.invalidField("page","page phải bắt đầu từ 0"));
         mvc.perform(get("/api/v1/posts").param("page","-1"))
             .andExpect(status().isBadRequest())

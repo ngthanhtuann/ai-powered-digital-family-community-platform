@@ -398,8 +398,23 @@ class GenealogyApiIntegrationTest {
         linked.put("userId", userId(memberEmail).toString());
         UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), token, linked));
 
-        call(put("/api/v1/persons/" + personId), token, person("Đổi tên", LocalDate.of(1990, 2, 2)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"));
+        // BR-GEN-20: hồ sơ đã gắn tài khoản thì Trưởng họ không sửa được, chỉ chính chủ sửa.
+        call(put("/api/v1/persons/" + personId), token, person("Trưởng họ đổi", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isForbidden());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), person("Đổi tên", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fullName").value("Đổi tên"))
+                .andExpect(jsonPath("$.data.canEdit").value(true));
+        // Chính chủ không tự chuyển hồ sơ sang tài khoản khác.
+        String otherEmail = newUser();
+        member(otherEmail, familyId, null, "MEMBER");
+        Map<String, Object> relink = person("Đổi tên", LocalDate.of(1990, 2, 2));
+        relink.put("userId", userId(otherEmail).toString());
+        call(put("/api/v1/persons/" + personId), token(memberEmail), relink).andExpect(status().isForbidden());
+        // Trang cá nhân của tôi; Trưởng họ thấy canEdit=false với hồ sơ đã gắn tài khoản.
+        call(get("/api/v1/persons/me"), token(memberEmail), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(personId.toString()));
+        call(get("/api/v1/persons/" + personId), token, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.canEdit").value(false));
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
         org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));

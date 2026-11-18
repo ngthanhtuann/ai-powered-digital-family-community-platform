@@ -61,7 +61,8 @@ public final class CommunityDto {
 
     public record PostView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                            UUID familyId, UUID branchId, String content, PostType type,
-                           UUID createdBy, String authorName, boolean canDelete,
+                           UUID createdBy, String authorName, UUID authorPersonId,
+                           UUID authorAvatarMediaId, boolean canDelete,
                            long commentCount, Map<ReactionType, Long> reactionCounts,
                            ReactionType myReaction, long mediaCount,
                            List<com.familyconnect.modules.community.media.MediaService.MediaView> media) {}

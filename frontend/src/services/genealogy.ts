@@ -29,6 +29,8 @@ export const genealogyApi = {
   tree: (familyId: string, params: { rootId?: string; depth?: number } = {}) =>
     api.get<TreeData>(`/families/${familyId}/tree`, params),
   person: (personId: string) => api.get<Person>(`/persons/${personId}`),
+  /** Hồ sơ gắn với tài khoản đang đăng nhập; 404 khi chưa gắn (SCRUM-117). */
+  myPerson: () => api.get<Person>('/persons/me'),
   relationship: (personA: string, personB: string) => api.get<Relationship>('/relationships', { personA, personB }),
   /** Ảnh qua API có kiểm quyền (tệp không có URL công khai). */
   mediaContent: (mediaId: string) => api.download(`/media/${mediaId}/content`),

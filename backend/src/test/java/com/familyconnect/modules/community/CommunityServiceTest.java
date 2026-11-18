@@ -55,7 +55,7 @@ class CommunityServiceTest {
     @Test void crossFamilyQueryFailsBeforeDatabaseAccess() {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         ApiException ex = assertThrows(ApiException.class,
-            () -> service.posts(familyB,null,null,0,20,"createdAt,desc"));
+            () -> service.posts(familyB,null,null,null,0,20,"createdAt,desc"));
         assertEquals(ErrorCode.PERM_001,ex.code());
         verifyNoInteractions(store);
     }
@@ -114,19 +114,29 @@ class CommunityServiceTest {
         when(store.postBranchIds(familyA)).thenReturn(List.of(branchId,otherBranch));
         when(platform.canRead(admin,familyA,branchId)).thenReturn(true);
         when(platform.canRead(admin,familyA,otherBranch)).thenReturn(false);
-        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),
+        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),
                          eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
-        service.posts(null,null,null,0,20,"createdAt,desc");
-        verify(store).posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),eq(0),eq(20),anyString());
+        service.posts(null,null,null,null,0,20,"createdAt,desc");
+        verify(store).posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),eq(0),eq(20),anyString());
+    }
+
+    @Test void authorFilterIsPassedToStoreForProfilePage() {
+        UUID author = UUID.randomUUID();
+        when(platform.requireAuthenticatedActor())
+            .thenReturn(new Actor(memberId,familyA,null,Role.BRANCH_ADMIN,true));
+        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),eq(0),eq(10),anyString()))
+            .thenReturn(new CommunityStore.Page<>(List.of(),0));
+        service.posts(null,null,null,author,0,10,"createdAt,desc");
+        verify(store).posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),eq(0),eq(10),anyString());
     }
 
     @Test void wholeFamilyAdminSkipsBranchFilter() {
         when(platform.requireAuthenticatedActor())
             .thenReturn(new Actor(memberId,familyA,null,Role.BRANCH_ADMIN,true));
-        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(0),eq(20),anyString()))
+        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),isNull(),eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
-        service.posts(null,null,null,0,20,"createdAt,desc");
+        service.posts(null,null,null,null,0,20,"createdAt,desc");
         verify(store,never()).postBranchIds(any());
     }
 
@@ -134,10 +144,10 @@ class CommunityServiceTest {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         when(store.postBranchIds(familyA)).thenReturn(List.of(branchId));
         when(platform.canRead(any(),eq(familyA),eq(branchId))).thenReturn(true);
-        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),eq(PostType.NEWS),
+        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),eq(PostType.NEWS),isNull(),
                          eq(0),eq(20),eq("created_at DESC, id DESC")))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
-        var response = service.posts(null,null,PostType.NEWS,0,20,"createdAt,desc");
+        var response = service.posts(null,null,PostType.NEWS,null,0,20,"createdAt,desc");
         assertEquals(0,response.meta().page());
         assertEquals(20,response.meta().size());
         assertEquals(0,response.meta().total());
@@ -146,7 +156,7 @@ class CommunityServiceTest {
     @Test void sizeOverHundredFailsWithStandardError() {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         ApiException ex = assertThrows(ApiException.class,
-            () -> service.posts(null,null,null,0,101,"createdAt,desc"));
+            () -> service.posts(null,null,null,null,0,101,"createdAt,desc"));
         assertEquals(ErrorCode.VALID_001,ex.code());
     }
 
@@ -187,14 +197,14 @@ class CommunityServiceTest {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         Post mine = new Post(UUID.randomUUID(),familyA,null,"Của tôi",PostType.POST,memberId,now,now);
         Post other = new Post(postId,familyA,null,"Của người khác",PostType.POST,authorId,now,now);
-        when(store.posts(eq(familyA),eq(false),eq(List.of()),isNull(),isNull(),eq(0),eq(20),anyString()))
+        when(store.posts(eq(familyA),eq(false),eq(List.of()),isNull(),isNull(),isNull(),eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(mine,other),2));
         when(store.reactionCounts(anyList())).thenReturn(Map.of(
             mine.id(),Map.of(ReactionType.LIKE,1L), other.id(),Map.of(ReactionType.LIKE,0L)));
         when(store.commentCounts(anyList())).thenReturn(Map.of(other.id(),3L));
         when(platform.authorNames(any())).thenReturn(Map.of(memberId,"Tôi",authorId,"Người khác"));
 
-        var items = service.posts(null,null,null,0,20,"createdAt,desc").data();
+        var items = service.posts(null,null,null,null,0,20,"createdAt,desc").data();
 
         assertEquals("Tôi",items.get(0).authorName());
         assertTrue(items.get(0).canDelete());

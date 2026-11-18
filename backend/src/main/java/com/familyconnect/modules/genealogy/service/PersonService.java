@@ -81,6 +81,15 @@ public class PersonService implements PersonSearchIndex {
         return ListResponse.of(found.map(p -> toData(p, viewer)).getContent(), page, size, found.getTotalElements());
     }
 
+    /** Hồ sơ gia phả gắn với tài khoản đang đăng nhập (trang cá nhân của tôi); chưa gắn thì 404. */
+    @Transactional(readOnly = true)
+    public PersonData mine() {
+        UUID userId = access.current().userId();
+        Person person = personRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
+        return toData(person, access.requireRead(person.getFamilyId()));
+    }
+
     @Transactional(readOnly = true)
     public PersonData get(UUID personId) {
         Person person = find(personId);
@@ -109,9 +118,18 @@ public class PersonService implements PersonSearchIndex {
         Person person = find(personId);
         UUID familyId = person.getFamilyId();
         Viewer viewer = access.requireRead(familyId);
-        // Cần quyền ở cả chi hiện tại và chi mới (BR-GEN-14).
-        access.requireManage(viewer, familyId, person.getBranchId());
-        access.requireManage(viewer, familyId, input.branchId());
+        if (!canEdit(person, viewer)) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        // Chính chủ không được tự đổi liên kết tài khoản; gắn tài khoản là việc của người quản lý chi.
+        if (input.userId() != null && !input.userId().equals(person.getUserId())
+                && !access.canManage(viewer, familyId, person.getBranchId())) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        // Đổi chi cần quyền quản lý chi mới, kể cả chính chủ (BR-GEN-14).
+        if (!java.util.Objects.equals(person.getBranchId(), input.branchId())) {
+            access.requireManage(viewer, familyId, input.branchId());
+        }
         validate(familyId, personId, input);
         boolean becameDeceased = !person.isDeceased() && input.deceased();
         apply(person, input);
@@ -218,17 +236,27 @@ public class PersonService implements PersonSearchIndex {
     }
 
     /** BR-GEN-10, privacy.md mục 3 và 4: ẩn trường theo vai trò người xem và tuổi của người được xem. */
+    /** BR-GEN-20: chính chủ; hoặc người quản lý chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN sửa được mọi hồ sơ. */
+    private boolean canEdit(Person p, Viewer viewer) {
+        if (viewer.userId().equals(p.getUserId()) || viewer.isSystemAdmin()) {
+            return true;
+        }
+        return p.getUserId() == null && access.canManage(viewer, p.getFamilyId(), p.getBranchId());
+    }
+
     private PersonData toData(Person p, Viewer viewer) {
         Integer birthYear = birthYear(p);
         boolean full = viewer.seesFullData(p.getFamilyId()) || viewer.userId().equals(p.getUserId());
         if (!full && isChild(p.isDeceased(), p.getBirthDate(), LocalDate.now(clock))) {
             return new PersonData(p.getId(), p.getFamilyId(), null, p.getFullName(), p.getGender(), birthYear,
-                    null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt());
+                    null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt(),
+                    null, false);
         }
         return new PersonData(p.getId(), p.getFamilyId(), p.getBranchId(), p.getFullName(), p.getGender(), birthYear,
                 full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(),
                 full ? p.getCurrentAddress() : null, p.isDeceased(), p.getDeathDate(), p.getBurialPlace(),
-                p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt());
+                p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt(),
+                p.getUserId(), canEdit(p, viewer));
     }
 
     private static Integer birthYear(Person p) {
