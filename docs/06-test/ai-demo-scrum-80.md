@@ -22,6 +22,10 @@
 
 Mỗi câu trong bảng tương ứng với case thực tế được chấm đúng trong [kết quả JSON SCRUM-69](ai-quality-scrum-69-results.json). Câu trả lời live có thể khác cách diễn đạt; kiểm tra dữ kiện và source citation, không đòi khớp từng chữ.
 
+### Câu hỏi về chính người hỏi (BR-AI-17, PR #161)
+
+Đăng nhập `ha`, hỏi **“Tôi là ai?”** và **“Tôi là gì của Nguyễn Văn Tổ?”**. Kết quả đã thấy khi chạy thử ngày 18/11/2026 trên dữ liệu seed: “Bạn là Nguyễn Thị Hà.”, “Bạn là cháu nội của Nguyễn Văn Tổ.” Quan hệ do thuật toán gia phả tính sẵn; câu này không nằm trong bộ 40 câu SCRUM-69.
+
 ### Câu thể hiện từ chối
 
 Đăng nhập `lan`, hỏi: **“Quỹ khuyến học hiện có bao nhiêu tiền?”**. Quỹ không có số dư trong dữ liệu seed; kết quả mong đợi là **“Không tìm thấy thông tin.”**, không đoán số và không có nguồn được trích. Case này cũng được chấm đúng trong lượt SCRUM-69.

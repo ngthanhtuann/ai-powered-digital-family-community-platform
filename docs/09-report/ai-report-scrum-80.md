@@ -30,7 +30,7 @@ flowchart LR
 
 - **Lập chỉ mục:** các module nguồn gọi interface `AiGateway`; nội dung được chuẩn hóa, chia đoạn, băm để bỏ qua nguồn không đổi. Embedding `gemini-embedding-001` có 768 chiều, lưu trong `ai_embedding_chunk` (`vector(768)`) và index HNSW.
 - **Truy vấn:** backend xác thực người dùng, xác minh membership, resolve `family_id` và chi được xem. Vector câu hỏi được so sánh bằng cosine distance; chat lấy tối đa 10 chunk, ngưỡng mặc định `0.50`. Bộ lọc gia đình/chi, bản ghi chưa xóa và người dưới 16 tuổi được áp dụng trước khi đưa context sang LLM.
-- **Sinh câu trả lời:** `ChatService` dựng prompt từ dữ kiện truy xuất, lịch sử gần đây chỉ để hiểu hội thoại (không là nguồn sự thật), gọi Gemini qua Spring `RestClient`, tách source citation và lưu trao đổi. Quan hệ gia phả được tính bởi module genealogy, không để LLM tự suy ra.
+- **Sinh câu trả lời:** `ChatService` dựng prompt từ dữ kiện truy xuất, lịch sử gần đây chỉ để hiểu hội thoại (không là nguồn sự thật), gọi Gemini qua Spring `RestClient`, tách source citation và lưu trao đổi. Quan hệ gia phả được tính bởi module genealogy, không để LLM tự suy ra. Khi câu hỏi có “tôi”, “mình”, “tớ”, chat dùng hồ sơ gắn tài khoản người hỏi và đưa sẵn quan hệ giữa người hỏi với thành viên trong gia đình vào ngữ cảnh (BR-AI-17, PR #161).
 - **Giới hạn truy xuất riêng:** semantic search dùng ngưỡng mặc định `0.65`; kết quả đo 15/15 ở ngưỡng này nằm trong [đánh giá SCRUM-105](../decisions/semantic-search-evaluation.md). Đây là đánh giá search, không cộng vào điểm chatbot 40/40.
 
 ## 3. Nguyên tắc prompt và guard
