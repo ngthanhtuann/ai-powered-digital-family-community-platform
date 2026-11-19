@@ -1,41 +1,76 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/TextField';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { BranchSelect } from '@/components/admin/BranchSelect';
 import { branchesOf } from '@/services/admin';
-import { genealogyApi } from '@/services/genealogy';
+import { genealogyApi, type Person } from '@/services/genealogy';
 import { JOIN_PAGE_SIZE, joinRequestsApi, type JoinRequest, type JoinRequestStatus } from '@/services/join-requests';
-import { formatDateTime } from '@/lib/datetime';
+import { formatDate, formatDateTime } from '@/lib/datetime';
 import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
   + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
 const errorText = (error: unknown) => (error instanceof Error ? error.message : 'Có lỗi xảy ra, vui lòng thử lại.');
 const dateText = (value?: string | null) => formatDateTime(value);
+/** Họ tên bỏ dấu, chữ thường, gộp khoảng trắng: so khớp trùng tên giống tìm kiếm không dấu của backend. */
+const plainName = (s?: string | null) => (s ?? '').normalize('NFD').replace(/\p{M}/gu, '')
+  .replace(/đ/gi, 'd').toLowerCase().replace(/\s+/g, ' ').trim();
+const personLabel = (p: Person) => p.fullName
+  + (p.birthDate ? ` (${formatDate(p.birthDate)})` : p.birthYear ? ` (${p.birthYear})` : '');
 const STATUS_LABEL: Partial<Record<JoinRequestStatus, string>> = {
   PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECTED: 'Đã từ chối', CANCELLED: 'Người xin đã hủy',
 };
 
-/** UC-AUTH-07 bước 2: duyệt, có thể gắn với hồ sơ thành viên có sẵn (BR-AUTH-11). */
+/**
+ * UC-AUTH-07 bước 2: duyệt, có thể gắn với hồ sơ thành viên có sẵn (BR-AUTH-11).
+ * Tự chọn sẵn hồ sơ chưa gắn tài khoản trùng cả họ tên và ngày sinh nếu chỉ có một; người duyệt vẫn xem lại và đổi được.
+ */
 function ApproveModal({ request, canPickBranch, onClose }: {
   request: JoinRequest; canPickBranch: boolean; onClose: () => void;
 }) {
   const cache = useQueryClient();
-  const [personId, setPersonId] = useState('');
+  const [q, setQ] = useState(request.applicantName ?? '');
+  const [picked, setPicked] = useState<Person | null>(null);
+  const [touched, setTouched] = useState(false);
   const [branchId, setBranchId] = useState(request.branchId ?? '');
   const persons = useQuery({
-    queryKey: ['join-persons', request.familyId],
-    queryFn: () => genealogyApi.persons(request.familyId, { page: 0, size: 100, sort: 'fullName,asc' }),
+    queryKey: ['join-persons', request.familyId, q.trim()],
+    queryFn: () => genealogyApi.persons(request.familyId, { q: q.trim() || undefined, page: 0, size: 100, sort: 'fullName,asc' }),
+    placeholderData: keepPreviousData,
   });
+  // Hồ sơ đã gắn tài khoản khác thì không gắn được nữa (user_id duy nhất), nên không cho chọn.
+  const free = persons.data?.items.filter((p) => !p.userId) ?? [];
+  const sameName = free.filter((p) => plainName(p.fullName) === plainName(request.applicantName));
+  const sameBirth = sameName.filter((p) => p.birthDate === request.applicantDateOfBirth);
+  // Chưa đụng vào ô nào thì dùng hồ sơ gợi ý; đụng vào rồi thì giữ lựa chọn của người duyệt.
+  const suggested = !touched && sameBirth.length === 1 ? sameBirth[0] : null;
+  const chosen = touched ? picked : suggested;
+  const chosenBranch = canPickBranch && suggested?.branchId ? suggested.branchId : branchId;
+  const autoPicked = Boolean(chosen) && sameBirth.length === 1 && chosen?.id === sameBirth[0].id;
+  const options = chosen && !free.some((p) => p.id === chosen.id) ? [chosen, ...free] : free;
+  const more = (persons.data?.meta.total ?? 0) > (persons.data?.items.length ?? 0);
+
+  const freeze = () => {
+    if (touched) return;
+    setTouched(true);
+    setPicked(chosen);
+    setBranchId(chosenBranch);
+  };
+  const choose = (person: Person | null) => {
+    setTouched(true);
+    setPicked(person);
+    if (canPickBranch && person?.branchId) setBranchId(person.branchId);
+  };
+
   const approve = useMutation({
     mutationFn: () => joinRequestsApi.review(request.id, {
-      status: 'APPROVED', personId: personId || null,
-      branchId: canPickBranch && branchId !== (request.branchId ?? '') ? branchId || null : null,
+      status: 'APPROVED', personId: chosen?.id ?? null,
+      branchId: canPickBranch && chosenBranch !== (request.branchId ?? '') ? chosenBranch || null : null,
     }),
     onSuccess: async () => { await cache.invalidateQueries({ queryKey: ['join-requests'] }); onClose(); },
   });
@@ -43,21 +78,35 @@ function ApproveModal({ request, canPickBranch, onClose }: {
     <Modal open title={`Duyệt ${request.applicantName}`} onClose={onClose}
       description="Người này sẽ thành thành viên đã xác minh và xem được dữ liệu gia đình ngay.">
       <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); approve.mutate(); }}>
+        {request.applicantDateOfBirth && (
+          <p className="text-body text-text-secondary">Ngày sinh người xin: {formatDate(request.applicantDateOfBirth)}</p>
+        )}
+        <TextField label="Tìm hồ sơ theo tên" value={q} onChange={(e) => { freeze(); setQ(e.target.value); }} />
         <label className="grid gap-1.5 text-label">Gắn với hồ sơ trong cây gia phả (không bắt buộc)
-          <select className={selectClass} value={personId} onChange={(e) => {
-            setPersonId(e.target.value);
-            const chosen = persons.data?.items.find((p) => p.id === e.target.value);
-            if (canPickBranch && chosen?.branchId) setBranchId(chosen.branchId);
-          }}>
+          <select className={selectClass} value={chosen?.id ?? ''}
+            onChange={(e) => choose(options.find((p) => p.id === e.target.value) ?? null)}>
             <option value="">Không gắn</option>
-            {persons.data?.items.map((p) => (
-              <option key={p.id} value={p.id}>{p.fullName}{p.birthYear ? ` (${p.birthYear})` : ''}</option>
-            ))}
+            {options.map((p) => <option key={p.id} value={p.id}>{personLabel(p)}</option>)}
           </select>
         </label>
+        {autoPicked && (
+          <p className="text-caption text-text-secondary">Đã chọn sẵn hồ sơ trùng họ tên và ngày sinh. Kiểm tra lại trước khi duyệt.</p>
+        )}
+        {!chosen && persons.isSuccess && sameName.length > 0 && sameBirth.length !== 1 && (
+          <p className="text-caption text-text-secondary">
+            Có {sameName.length} hồ sơ trùng họ tên nhưng {sameBirth.length > 1 ? 'trùng cả ngày sinh' : 'khác ngày sinh'}.
+            {' '}Đọc lời nhắn (tên cha mẹ) để chọn đúng người.
+          </p>
+        )}
+        {!chosen && persons.isSuccess && sameName.length === 0 && plainName(q) === plainName(request.applicantName) && (
+          <p className="text-caption text-text-secondary">
+            Chưa có hồ sơ trùng họ tên trên cây. Có thể để Không gắn, duyệt rồi thêm người này lên cây sau.
+          </p>
+        )}
+        {more && <p className="text-caption text-text-secondary">Còn nhiều người hơn, gõ thêm tên để thu hẹp.</p>}
         {persons.isError && <p className="text-caption text-error">Không tải được danh sách thành viên.</p>}
         {canPickBranch && (
-          <BranchSelect familyId={request.familyId} value={branchId} onChange={setBranchId}
+          <BranchSelect familyId={request.familyId} value={chosenBranch} onChange={(v) => { freeze(); setBranchId(v); }}
             label="Chi của thành viên" emptyLabel="Không thuộc chi nào (cả dòng họ)" />
         )}
         {approve.isError && <p role="alert" className="text-body text-error">{errorText(approve.error)}</p>}
@@ -187,7 +236,9 @@ export default function JoinRequestsPage() {
                   <p className="text-body font-semibold">{r.applicantName}</p>
                   <span className="text-caption text-text-secondary">{STATUS_LABEL[r.status] ?? r.status} · {dateText(r.createdAt)}</span>
                 </div>
-                <p className="break-all text-caption text-text-secondary">{r.applicantEmail}</p>
+                <p className="break-all text-caption text-text-secondary">
+                  {r.applicantEmail}{r.applicantDateOfBirth ? ` · Ngày sinh ${formatDate(r.applicantDateOfBirth)}` : ''}
+                </p>
                 {r.message && <p className="whitespace-pre-wrap break-words text-body">“{r.message}”</p>}
                 {r.status === 'REJECTED' && r.rejectReason && (
                   <p className="text-caption text-text-secondary">Lý do từ chối: {r.rejectReason}</p>
