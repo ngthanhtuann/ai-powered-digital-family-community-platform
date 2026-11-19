@@ -11,4 +11,6 @@
 | Other comments | Quyền riêng tư (trẻ em, người đã mất), rủi ro, High Availability mức cơ bản, chi phí LLM | TV1 |
 | Phụ lục | Phân công và đóng góp từng thành viên, tài liệu tham khảo | TV1 |
 
+Tài liệu học hệ thống cho buổi bảo vệ (sơ đồ theo từng người, công nghệ, cách đọc frontend): `huong-dan-hoc-he-thong.md`.
+
 Phần TV1 (chương 1, 2, 6, Other comments): `final-report.md`. Kịch bản demo: `demo-script.md`.
