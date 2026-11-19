@@ -44,7 +44,7 @@ Kết quả truy vấn PostgreSQL ngày 19/11/2026, trước khi thao tác tạo
 | Bình luận | 24 |
 | Reaction | 24 |
 | Sự kiện | 2 |
-| Thông báo | 1 |
+| Thông báo gia đình (announcement) | 1 |
 
 ![Kết quả xác minh seed data](../08-user-guide/screenshots/seed-data-verification.png)
 

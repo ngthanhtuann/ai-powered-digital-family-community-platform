@@ -36,7 +36,7 @@ Mở địa chỉ web của FamilyConnect do nhóm cung cấp (môi trường de
 
 ### 2.3 Tham gia gia đình hoặc lập gia đình mới (web)
 1. Tại **Tham gia gia đình**, lấy mã gia đình hoặc mã chi từ trưởng họ/trưởng chi.
-2. Dán mã vào **Mã gia đình hoặc mã chi**; nhập lời nhắn nếu cần.
+2. Dán mã vào **Mã gia đình hoặc mã chi**; trong lời nhắn nên ghi tên cha mẹ để trưởng họ tìm đúng bạn trên cây gia phả khi có người trùng tên.
 3. Chọn **Gửi yêu cầu**; chờ người quản lý xác minh. Nếu bị từ chối, đọc lý do và gửi lại yêu cầu phù hợp.
 4. Nếu muốn lập gia đình riêng, nhập **Tên gia đình** trong mục **Lập gia đình mới**, chọn **Lập gia đình**. Người tạo trở thành trưởng họ.
 
@@ -51,7 +51,7 @@ Khi đang chờ duyệt, chọn **Kiểm tra lại** để cập nhật trạng 
 ### 2.4 Xác minh yêu cầu (trưởng họ/trưởng chi)
 1. Mở **Duyệt yêu cầu tham gia** (`/join-requests`). Có thể sao chép mã mời ở mục **Mã để mời người thân**.
 2. Chọn trạng thái **Chờ duyệt**, tìm yêu cầu đúng người.
-3. Chọn **Duyệt**, chọn hồ sơ gia phả và chi nếu phù hợp, xác nhận **Duyệt**. Hoặc chọn **Từ chối**, nhập lý do nếu cần, xác nhận.
+3. Chọn **Duyệt**. Hộp thoại hiện ngày sinh người xin và tự chọn sẵn hồ sơ trên cây gia phả trùng cả họ tên và ngày sinh (nếu có đúng một hồ sơ như vậy); kiểm tra lại hồ sơ và chi rồi xác nhận **Duyệt**. Nếu không có hồ sơ chọn sẵn, gõ tên vào **Tìm hồ sơ theo tên** để chọn; khi trùng tên, đọc lời nhắn (tên cha mẹ) để chọn đúng người. Danh sách chỉ hiện hồ sơ chưa gắn tài khoản. Hoặc chọn **Từ chối**, nhập lý do nếu cần, xác nhận.
 4. Người được duyệt đăng nhập lại hoặc làm mới trạng thái để truy cập gia đình. Chỉ duyệt người thân đã được xác minh.
 
 ![Danh sách yêu cầu tham gia và mã mời demo](screenshots/auth-08-join-requests.png)
@@ -60,12 +60,12 @@ Khi đang chờ duyệt, chọn **Kiểm tra lại** để cập nhật trạng 
 
 ![Hộp thoại duyệt thành viên; chưa xác nhận duyệt tài khoản Tú](screenshots/auth-09-approve-member.png)
 
-*Hộp thoại duyệt thành viên; chưa xác nhận duyệt tài khoản Tú.*
+*Hộp thoại duyệt thành viên; chưa xác nhận duyệt tài khoản Tú. Ảnh chụp trước SCRUM-132; hộp thoại hiện tại có thêm dòng ngày sinh người xin và ô **Tìm hồ sơ theo tên** phía trên ô chọn hồ sơ.*
 
 ### 2.5 Hồ sơ, đổi mật khẩu và đăng xuất
 - Mở phần tài khoản (`/profile/account`): cập nhật Họ tên, Ngày sinh, Số điện thoại, chọn **Lưu thay đổi**. Email đăng nhập không đổi được.
 - Mở phần đổi mật khẩu (`/profile/password`): nhập mật khẩu hiện tại, mật khẩu mới và nhập lại mật khẩu mới, chọn **Đổi mật khẩu**. Đăng nhập lại sau khi đổi.
-- Chọn **Đăng xuất** trong giao diện tài khoản khi kết thúc sử dụng, nhất là trên máy dùng chung.
+- Chọn **Đăng xuất** ở cuối thanh menu bên trái (dưới tên gia đình) khi kết thúc sử dụng, nhất là trên máy dùng chung.
 
 ![Hồ sơ tài khoản](screenshots/auth-04-profile.png)
 
