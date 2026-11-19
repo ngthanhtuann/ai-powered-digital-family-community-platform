@@ -6,6 +6,8 @@ export type Post = Community['schemas']['Post'];
 export type Comment = Community['schemas']['Comment'];
 export type Reaction = Community['schemas']['Reaction'];
 export type PostType = Community['schemas']['PostCreateRequest']['type'];
+/** BR-COM-13: người xem bài đăng. */
+export type PostAudience = NonNullable<Community['schemas']['PostCreateRequest']['audience']>;
 export type ReactionType = Community['schemas']['ReactionRequest']['type'];
 export type Media = Community['schemas']['Media'];
 export type Membership = Auth['schemas']['Membership'];
@@ -22,15 +24,21 @@ export const communityApi = {
       ...(type ? { type } : {}),
       ...(familyId ? { familyId } : {}),
     }),
+  /** Một bài theo id, để mở bài từ thông báo hoặc tìm kiếm khi bài không nằm trong trang đầu của bảng tin. */
+  post: (id: string) => api.get<Post>('/posts/' + id),
+  /** Bài của một tài khoản cho trang cá nhân (SCRUM-117); backend vẫn lọc theo phạm vi chi người xem được. */
+  postsByAuthor: (authorId: string, page: number) =>
+    api.list<Post>('/posts', { page, size: 10, sort: 'createdAt,desc', authorId }),
   /** branchId null: cả dòng họ; có giá trị: chi đó và các chi con (BR-COM-03). */
-  createPost: (content: string, type: PostType, branchId: string | null, familyId?: string) =>
+  createPost: (content: string, type: PostType, branchId: string | null, familyId?: string, audience?: PostAudience) =>
     api.post<Post>('/posts' + (familyId ? '?familyId=' + encodeURIComponent(familyId) : ''), {
       content,
       type,
       branchId,
+      audience,
     } satisfies Community['schemas']['PostCreateRequest']),
-  updatePost: (id: string, content: string, branchId: string | null) =>
-    api.patch<Post>('/posts/' + id, { content, branchId } satisfies Community['schemas']['PostUpdateRequest']),
+  updatePost: (id: string, content: string, branchId: string | null, audience?: PostAudience) =>
+    api.patch<Post>('/posts/' + id, { content, branchId, audience } satisfies Community['schemas']['PostUpdateRequest']),
   deletePost: (id: string) => api.delete('/posts/' + id),
   comments: (postId: string, page: number) =>
     api.list<Comment>('/posts/' + postId + '/comments', {
@@ -38,9 +46,11 @@ export const communityApi = {
       size: 20,
       sort: 'createdAt,desc',
     }),
-  createComment: (postId: string, content: string) =>
+  /** parentId: trả lời bình luận đó (BR-COM-14). */
+  createComment: (postId: string, content: string, parentId?: string) =>
     api.post<Comment>('/posts/' + postId + '/comments', {
       content,
+      parentId: parentId ?? null,
     } satisfies Community['schemas']['CommentRequest']),
   updateComment: (id: string, content: string) =>
     api.patch<Comment>('/comments/' + id, {

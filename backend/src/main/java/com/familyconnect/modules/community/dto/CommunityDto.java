@@ -14,14 +14,20 @@ public final class CommunityDto {
     private CommunityDto() {}
 
     public enum PostType { POST, NEWS }
+    /** BR-COM-13: người xem bài đăng. */
+    public enum PostAudience { FAMILY, BRANCH, DESCENDANTS }
     public enum ReactionType { LIKE, LOVE, HAHA, SAD }
-    public record CreatePost(@NotBlank @Size(max=5000) String content, @NotNull PostType type, UUID branchId) {}
+    public record CreatePost(@NotBlank @Size(max=5000) String content, @NotNull PostType type, UUID branchId,
+                             PostAudience audience) {
+        public CreatePost(String content, PostType type, UUID branchId) { this(content, type, branchId, null); }
+    }
     /** Distinguish omitted branchId from explicit null (whole-family scope). */
     public static final class UpdatePost {
         @Size(max=5000)
         private String content;
         private UUID branchId;
         private PostType type;
+        private PostAudience audience;
         private boolean branchSpecified;
 
         public UpdatePost() {}
@@ -34,6 +40,7 @@ public final class CommunityDto {
         public String content() { return content; }
         public UUID branchId() { return branchId; }
         public PostType type() { return type; }
+        public PostAudience audience() { return audience; }
         public boolean branchSpecified() { return branchSpecified; }
         @JsonSetter("content") public void setContent(String value) { content = value; }
         @JsonSetter("branchId") public void setBranchId(UUID value) {
@@ -41,8 +48,12 @@ public final class CommunityDto {
             branchSpecified = true;
         }
         @JsonSetter("type") public void setType(PostType value) { type = value; }
+        @JsonSetter("audience") public void setAudience(PostAudience value) { audience = value; }
     }
-    public record CommentInput(@NotBlank @Size(max=1000) String content) {}
+    /** parentId: trả lời một bình luận (BR-COM-14); bỏ trống là bình luận gốc. */
+    public record CommentInput(@NotBlank @Size(max=1000) String content, UUID parentId) {
+        public CommentInput(String content) { this(content, null); }
+    }
     public record ReactionInput(@NotNull ReactionType type) {}
     /** Schema ContentReportRequest (BR-COM-12). */
     public record ReportInput(
@@ -60,14 +71,15 @@ public final class CommunityDto {
     }
 
     public record PostView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                           UUID familyId, UUID branchId, String content, PostType type,
-                           UUID createdBy, String authorName, boolean canDelete,
+                           UUID familyId, UUID branchId, PostAudience audience, String content, PostType type,
+                           UUID createdBy, String authorName, UUID authorPersonId,
+                           UUID authorAvatarMediaId, boolean canDelete,
                            long commentCount, Map<ReactionType, Long> reactionCounts,
                            ReactionType myReaction, long mediaCount,
                            List<com.familyconnect.modules.community.media.MediaService.MediaView> media) {}
     public record CommentView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                              UUID postId, String content, UUID createdBy, String authorName,
-                              boolean canDelete) {}
+                              UUID postId, UUID parentId, String content, UUID createdBy, String authorName,
+                              UUID authorPersonId, UUID authorAvatarMediaId, boolean canDelete) {}
     public record ReactionView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                                UUID postId, ReactionType type, UUID createdBy) {}
     public record Meta(int page, int size, long total) {}

@@ -16,7 +16,8 @@ import java.util.Set;
  */
 public final class KinshipCalculator {
 
-    static final int MAX_GENERATIONS = 6;
+    /** Đủ cho cả cây của một dòng họ (mục 3.3); trước giới hạn 6 đời nên quan hệ xa báo "chưa hỗ trợ". */
+    static final int MAX_GENERATIONS = 30;
     private static final String FATHER = "FATHER";
     private static final String DIVORCED = "DIVORCED";
     /** Mục 2.4: vợ/chồng của A là ... của B thì A là ... */
@@ -77,17 +78,107 @@ public final class KinshipCalculator {
             String name = pick(gender, "chồng", "vợ", "vợ/chồng") + (DIVORCED.equals(direct.status()) ? " cũ" : "");
             return new Result(true, name, null, null, null, List.of(a, b));
         }
+        // (1) A là vợ/chồng của một người có huyết thống với B (con rể, chị dâu, thím, dượng...).
         for (MarriageLink m : marriages) {
             if (DIVORCED.equals(m.status())) {
                 continue;
             }
             Result viaSpouse = bloodRelation(m.spouseId(), b);
-            String name = viaSpouse == null || !viaSpouse.supported() ? null : IN_LAW.get(viaSpouse.relation());
-            if (name != null) {
-                return new Result(true, name, null, null, null, List.of(a, m.spouseId()));
+            if (viaSpouse != null && viaSpouse.supported()) {
+                List<String> path = new ArrayList<>(List.of(a));
+                path.addAll(viaSpouse.path());
+                return new Result(true, spouseOfRelative(gender, viaSpouse.relation()), null, null, null,
+                        List.copyOf(path)); // mục 3.1: quan hệ qua hôn nhân không có số bước huyết thống
+            }
+        }
+        // (2) A có huyết thống với vợ/chồng của B (bố vợ, anh chồng, bác vợ...).
+        Person pb = graph.person(b);
+        for (MarriageLink m : graph.marriagesOf(b)) {
+            if (DIVORCED.equals(m.status())) {
+                continue;
+            }
+            Result toSpouse = bloodRelation(a, m.spouseId());
+            if (toSpouse != null && toSpouse.supported()) {
+                List<String> path = new ArrayList<>(toSpouse.path());
+                path.add(b);
+                return new Result(true, toSpouse.relation() + " " + pick(pb.gender(), "vợ", "chồng", "vợ/chồng"),
+                        null, null, null, List.copyOf(path));
+            }
+        }
+        // (3) Vợ/chồng hai bên có huyết thống với nhau (thông gia, anh em cột chèo...).
+        for (MarriageLink ma : marriages) {
+            for (MarriageLink mb : graph.marriagesOf(b)) {
+                if (DIVORCED.equals(ma.status()) || DIVORCED.equals(mb.status())) {
+                    continue;
+                }
+                Result between = bloodRelation(ma.spouseId(), mb.spouseId());
+                if (between != null && between.supported()) {
+                    List<String> path = new ArrayList<>(List.of(a));
+                    path.addAll(between.path());
+                    path.add(b);
+                    String rel = between.relation();
+                    boolean siblings = rel.startsWith("anh") || rel.startsWith("chị") || rel.startsWith("em");
+                    String genderB = graph.person(b).gender();
+                    String name = !siblings ? "họ hàng bên vợ/chồng"
+                            : ("FEMALE".equals(gender) && "FEMALE".equals(genderB) ? "chị em dâu"
+                            : "MALE".equals(gender) && "MALE".equals(genderB) ? "anh em cột chèo"
+                            : "anh chị em bên vợ/chồng") + (rel.contains(" họ") ? " họ" : "");
+                    return new Result(true, name, null, null, null, List.copyOf(path));
+                }
+            }
+        }
+        // (4) Qua hôn nhân đã ly hôn: chỉ xét khi không có quan hệ nào ở trên (mục 2.4, SCRUM-117).
+        for (MarriageLink m : marriages) {
+            if (!DIVORCED.equals(m.status())) {
+                continue;
+            }
+            Result viaEx = bloodRelation(m.spouseId(), b);
+            if (viaEx != null && viaEx.supported()) {
+                List<String> path = new ArrayList<>(List.of(a));
+                path.addAll(viaEx.path());
+                return new Result(true, pick(gender, "chồng cũ", "vợ cũ", "vợ/chồng cũ") + " của " + viaEx.relation(),
+                        null, null, null, List.copyOf(path));
+            }
+        }
+        for (MarriageLink m : graph.marriagesOf(b)) {
+            if (!DIVORCED.equals(m.status())) {
+                continue;
+            }
+            Result toEx = bloodRelation(a, m.spouseId());
+            if (toEx != null && toEx.supported()) {
+                List<String> path = new ArrayList<>(toEx.path());
+                path.add(b);
+                return new Result(true, toEx.relation() + " " + pick(pb.gender(), "vợ cũ", "chồng cũ", "vợ/chồng cũ"),
+                        null, null, null, List.copyOf(path));
             }
         }
         return Result.none();
+    }
+
+    /** A là vợ/chồng của người mà B gọi là {@code relative}: tên gọi theo cách xưng hô phổ biến (mục 2.4). */
+    static String spouseOfRelative(String gender, String relative) {
+        String mapped = IN_LAW.get(relative);
+        if (mapped != null) {
+            return mapped;
+        }
+        boolean male = "MALE".equals(gender);
+        String tail = relative.contains(" họ") ? " họ" : "";
+        if (relative.startsWith("con")) return pick(gender, "con rể", "con dâu", "con rể/dâu");
+        if (relative.startsWith("cháu")) return pick(gender, "cháu rể", "cháu dâu", "cháu rể/dâu") + tail;
+        if (relative.startsWith("chắt")) return pick(gender, "chắt rể", "chắt dâu", "chắt rể/dâu") + tail;
+        if (relative.startsWith("cha")) return male ? "cha" : "mẹ kế";
+        if (relative.startsWith("mẹ")) return male ? "cha dượng" : "mẹ";
+        if (relative.startsWith("anh") || relative.startsWith("chị")) return (male ? "anh rể" : "chị dâu") + tail;
+        if (relative.startsWith("em")) return (male ? "em rể" : "em dâu") + tail;
+        if (relative.startsWith("ông") || relative.startsWith("bà")) {
+            int space = relative.indexOf(' ');
+            return pick(gender, "ông", "bà", "ông/bà") + (space < 0 ? "" : relative.substring(space));
+        }
+        if (relative.startsWith("bác")) return male ? "bác" + tail : "bác gái" + tail;
+        if (relative.startsWith("chú")) return "thím" + tail;
+        if (relative.startsWith("cậu")) return "mợ" + tail;
+        if (relative.startsWith("cô") || relative.startsWith("dì")) return "dượng" + tail;
+        return pick(gender, "chồng", "vợ", "vợ/chồng") + " của " + relative;
     }
 
     /** null khi A và B không có tổ tiên chung trong 6 đời. */
@@ -121,7 +212,7 @@ public final class KinshipCalculator {
             case "2,1" -> "cháu";
             case "1,2" -> uncleAuntName(pa, fromB.firstRole(), graph.person(fromB.path().get(1)));
             case "2,2" -> cousinName(pa, pb, fromB.firstRole());
-            default -> null;
+            default -> generalName(pa, pb, sa, sb, fromA, fromB);
         };
         if (name == null) {
             return new Result(false, null, sa, sb, lca, List.of());
@@ -195,6 +286,35 @@ public final class KinshipCalculator {
         }
         Boolean o = older(a, parentOfB);
         return o == null ? "bác/chú" : o ? "bác" : "chú";
+    }
+
+    /**
+     * Mọi khoảng cách thế hệ còn lại (mục 3.3): trực hệ xa (kỵ, chút, chít...) và bàng hệ xa (ông/bà họ, cháu họ,
+     * anh/chị/em họ nhiều đời). sa, sb là số đời từ A, B lên tổ tiên chung.
+     */
+    private static String generalName(Person a, Person b, int sa, int sb, Ancestor fromA, Ancestor fromB) {
+        String sideOfB = " (bên " + side(fromB.firstRole()) + ")";
+        if (sa == 0) {
+            String[] up = {"", "cha", "ông", "cụ", "kỵ", "tiên tổ"};
+            return sb < up.length ? pick(a.gender(), "", "", "") + up[sb] + sideOfB : "tổ tiên " + sb + " đời trên";
+        }
+        if (sb == 0) {
+            String[] down = {"", "con", "cháu", "chắt", "chút", "chít"};
+            return sa < down.length ? down[sa] + " (bên " + side(fromA.firstRole()) + ")" : "hậu duệ đời thứ " + sa;
+        }
+        int diff = sb - sa; // > 0: A ở đời trên B
+        if (diff == 0) {
+            Boolean o = older(a, b);
+            String base = o == null ? "anh/chị/em" : o ? pick(a.gender(), "anh", "chị", "anh/chị") : "em";
+            return base + " họ đời thứ " + sa + sideOfB;
+        }
+        if (diff == 1) return pick(a.gender(), "bác/chú", "cô/dì", "bác/chú/cô") + " họ" + sideOfB;
+        if (diff == 2) return pick(a.gender(), "ông", "bà", "ông/bà") + " họ" + sideOfB;
+        if (diff == 3) return "cụ họ" + sideOfB;
+        if (diff == -1) return "cháu họ" + sideOfB;
+        if (diff == -2) return "cháu họ (gọi bằng ông/bà)" + sideOfB;
+        if (diff == -3) return "chắt họ" + sideOfB;
+        return diff > 0 ? "bậc trên " + diff + " đời (họ)" : "bậc dưới " + (-diff) + " đời (họ)";
     }
 
     private static String cousinName(Person a, Person b, String firstRoleOfB) {

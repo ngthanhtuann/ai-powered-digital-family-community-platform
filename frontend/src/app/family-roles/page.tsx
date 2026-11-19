@@ -5,10 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Table, type TableColumn } from '@/components/ui/Table';
-import { TextField } from '@/components/ui/TextField';
 import { BranchSelect } from '@/components/admin/BranchSelect';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { familyRolesApi, memberRoleLabel, PAGE_SIZE, type FamilyAccount, type MemberRole } from '@/services/admin';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
   + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
@@ -44,7 +44,7 @@ function RoleModal({ familyId, account, onClose }: { familyId: string; account: 
 /** UC-AUTH-14: trưởng họ (BRANCH_ADMIN không gán chi) hoặc quản trị bổ nhiệm, thu quyền trưởng chi. */
 export default function FamilyRolesPage() {
   const access = useHeritageAccess();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const membership = access.membership.data;
   const isHead = membership?.status === 'APPROVED' && membership.role === 'BRANCH_ADMIN' && !membership.branchId;
   const familyId = access.isSystemAdmin ? adminFamily.trim() : (isHead ? membership?.familyId ?? '' : '');
@@ -84,7 +84,7 @@ export default function FamilyRolesPage() {
         </p>
       )}
       {access.isSystemAdmin && (
-        <TextField label="Mã dòng họ" value={adminFamily} placeholder="UUID dòng họ" onChange={(e) => setAdminFamily(e.target.value)} />
+        <AdminFamilyPicker />
       )}
       {list.isPending && list.fetchStatus !== 'idle' && <p className="text-body text-text-secondary">Đang tải danh sách...</p>}
       {list.isError && <p role="alert" className="text-body text-error">{errorText(list.error)}</p>}

@@ -63,6 +63,9 @@ Mỗi cặp (A, B) được quy về hai số, tính từ **tổ tiên chung g�
 
 Bên cha: so tuổi A với **cha của B**. Bảng này đặt trong **cấu hình** để nhóm đổi cách gọi theo gia đình mà không sửa code.
 
+### 2.3b. Họ hàng xa (17/11/2026)
+Cặp (a, b) ngoài bảng mục 2: a = 0 là tổ tiên (cha, ông, cụ, kỵ, tiên tổ, xa hơn "tổ tiên n đời trên"); b = 0 là hậu duệ (con, cháu, chắt, chút, chít, xa hơn "hậu duệ đời thứ n"); còn lại theo chênh lệch d = b − a: d = 0 "anh/chị/em họ đời thứ a", d = 1 "bác/chú" hoặc "cô/dì" họ, d = 2 "ông/bà họ", d = 3 "cụ họ", d = −1 "cháu họ", d = −2 "cháu họ (gọi bằng ông/bà)", d = −3 "chắt họ", xa hơn "bậc trên/dưới n đời (họ)"; kèm "(bên nội/ngoại)" theo bước đầu của B. Mọi cặp có tổ tiên chung đều có tên.
+
 ### 2.4. Lớp mở rộng: quan hệ qua hôn nhân
 Khi A và B **không có quan hệ huyết thống**, hệ thống xét vợ/chồng của A:
 
@@ -75,7 +78,16 @@ Khi A và B **không có quan hệ huyết thống**, hệ thống xét vợ/ch�
 | (A và B là vợ chồng, trạng thái `MARRIED` hoặc `WIDOWED`) | vợ / chồng |
 | (A và B từng là vợ chồng, trạng thái `DIVORCED`) | vợ cũ / chồng cũ |
 
-Chỉ xét vợ/chồng còn hôn nhân (`MARRIED`) hoặc góa (`WIDOWED`); người đã ly hôn không dùng để suy ra mợ, thím... Lớp này **chỉ gọi hàm tính huyết thống** (`bloodRelation`), không gọi lại `relationship` hay chính nó, để không bị đệ quy vô hạn. Các trường hợp khác (chị dâu, em rể, con dâu, con rể...) trả `supported = false`, ghi là hạn chế.
+Chỉ xét vợ/chồng còn hôn nhân (`MARRIED`) hoặc góa (`WIDOWED`); người đã ly hôn không dùng để suy ra mợ, thím... Lớp này **chỉ gọi hàm tính huyết thống** (`bloodRelation`), không gọi lại `relationship` hay chính nó, để không bị đệ quy vô hạn.
+
+**Mở rộng (17/11/2026, SCRUM-117)**, xét lần lượt, gặp trường hợp đầu tiên thì dừng; kết quả để `stepsFromA/B`, `commonAncestorId` là null:
+
+| Trường hợp | Tên gọi A |
+|---|---|
+| (1) Vợ/chồng của A là con, cháu, chắt, anh, chị, em (kể cả họ), cha, mẹ, ông, bà của B | con rể/dâu, cháu rể/dâu, chắt rể/dâu, anh rể/chị dâu, em rể/dâu (thêm "họ" nếu là họ), cha dượng/mẹ kế, ông/bà; ngoài bảng: "chồng/vợ của ..." |
+| (2) A có huyết thống với vợ/chồng của B | tên huyết thống + "vợ"/"chồng" theo giới tính B, ví dụ "cha vợ", "anh chồng", "bác vợ" |
+| (3) Vợ/chồng của A và vợ/chồng của B có huyết thống | anh/chị/em: "chị em dâu" (hai nữ), "anh em cột chèo" (hai nam), "anh chị em bên vợ/chồng", thêm "họ" nếu là họ; còn lại "họ hàng bên vợ/chồng" |
+| (4) Chỉ khi (1)–(3) không có: qua hôn nhân đã ly hôn (`DIVORCED`) | A là vợ/chồng cũ của người thân B: "vợ cũ của cha", "chồng cũ của chị"; B là vợ/chồng cũ của người thân A: tên huyết thống + "vợ cũ"/"chồng cũ" |
 
 ---
 
@@ -86,7 +98,7 @@ Chỉ xét vợ/chồng còn hôn nhân (`MARRIED`) hoặc góa (`WIDOWED`); ng�
 1. Nếu A và B khác gia đình, người dùng chưa xác minh, hoặc không tìm thấy một trong hai người: trả lỗi theo mục 3.2 (xử lý ở tầng API, trước khi chạy thuật toán).
 2. Nếu A = B: trả "cùng một người" (`supported = true`, a = b = 0, `path` chỉ có A).
 3. **Tính huyết thống** bằng hàm `bloodRelation(A, B)`:
-   1. **Tìm tổ tiên** của A và của B bằng truy vấn đệ quy lên `parent_child`, giới hạn **6 đời**. Mỗi tổ tiên lưu: số đời (`depth`), vai trò ở **bước đi lên đầu tiên** (`firstRole`), vai trò ở **bước cuối** vào tổ tiên đó (`lastRole`), đường đi, và các loại cạnh đã đi qua (ruột, nuôi, kế). Bản thân A và B là tổ tiên ở độ sâu 0. Khi duyệt, **luôn đi qua cha (FATHER) trước, rồi mới đến mẹ (MOTHER)**; tổ tiên nào đã gặp ở độ sâu nhỏ hơn thì giữ nguyên (đường ngắn nhất, không ghi đè).
+   1. **Tìm tổ tiên** của A và của B bằng truy vấn đệ quy lên `parent_child`, giới hạn **30 đời** (trước 17/11/2026 là 6 đời). Mỗi tổ tiên lưu: số đời (`depth`), vai trò ở **bước đi lên đầu tiên** (`firstRole`), vai trò ở **bước cuối** vào tổ tiên đó (`lastRole`), đường đi, và các loại cạnh đã đi qua (ruột, nuôi, kế). Bản thân A và B là tổ tiên ở độ sâu 0. Khi duyệt, **luôn đi qua cha (FATHER) trước, rồi mới đến mẹ (MOTHER)**; tổ tiên nào đã gặp ở độ sâu nhỏ hơn thì giữ nguyên (đường ngắn nhất, không ghi đè).
    2. **Chọn LCA:** giao hai tập tổ tiên; chọn người theo thứ tự ưu tiên: (1) **a + b nhỏ nhất**; (2) nếu hòa, người có `lastRole = FATHER` (ưu tiên đường qua cha; `lastRole` tính ở phía A, riêng khi A chính là tổ tiên đó thì tính ở phía B); (3) nếu vẫn hòa, người có **id nhỏ hơn**. Nhờ vậy `commonAncestorId` luôn cố định cho cùng một dữ liệu. Ví dụ An và Tâm có hai tổ tiên cùng độ sâu là Tổ và Cội: chọn **Tổ** vì Tổ là cha.
    3. **Với (1, 1):** nếu có từ 2 tổ tiên chung ở độ sâu 1 thì là anh chị em ruột (hoặc cùng cha mẹ nuôi); chỉ có 1 thì xét `lastRole` của người đó: FATHER ghi "(cùng cha khác mẹ)", MOTHER ghi "(cùng mẹ khác cha)".
    4. **Xác định nội/ngoại** theo mục 2.1; **so tuổi** bằng `birth_date`, nếu trống thì `birth_year` (mục 2.1); xét **giới tính** (kể cả `OTHER`) rồi **tra bảng ánh xạ** (mục 2.2, 2.3).
@@ -486,18 +498,18 @@ Cột "(a, b)" là giá trị trung gian mà thuật toán phải tính ra. Kế
 | 28 | Vinh | An | (2, 2) | Vinh là **em họ (bên ngoại)** của An | Em họ bên ngoại |
 | 29 | Tâm | An | (2, 2) | Tâm là **em họ (bên nội)** của An | Con của cô; bên nội tính theo B |
 | 30 | Bảo | Giang | (2, 2) | Bảo là **anh họ (bên ngoại)** của Giang | Anh họ, bên ngoại tính theo B (Giang) |
-| 31 | Long | Bảo | (3, 3) | `supported=false`, `relation=null`, a=3, b=3 | Họ xa, ngoài bảng ánh xạ |
-| 32 | Hải | Bảo | (1, 3) | `supported=false`, `relation=null`, a=1, b=3 | Quan hệ (1,3) chưa hỗ trợ |
-| 33 | Hương | Bích |  | `supported=false`, `relation=null`, a và b để null | Có hôn nhân nhưng không có huyết thống, không thuộc 5 trường hợp mở rộng |
+| 31 | Long | Bảo | (3, 3) | `supported=true`, `relation=anh họ đời thứ 3 (bên nội)`, a=3, b=3 | Họ xa (mục 2.3b) |
+| 32 | Hải | Bảo | (1, 3) | `supported=true`, `relation=ông họ (bên nội)`, a=1, b=3 | Họ xa (mục 2.3b) |
+| 33 | Hương | Bích |  | `supported=true`, `relation=chị dâu`, a và b để null | Vợ của anh ruột (mục 2.4 (1)) |
 | 34 | An | Hương |  | An là **chồng** của Hương | Vợ chồng trực tiếp |
 | 35 | Hương | An |  | Hương là **vợ** của An | Vợ chồng trực tiếp |
 | 36 | Lan | An |  | Lan là **bác** của An | Mở rộng: vợ của bác |
 | 37 | Yến | An |  | Yến là **thím** của An | Mở rộng: vợ của chú |
 | 38 | Hồng | An |  | Hồng là **mợ** của An | Mở rộng: vợ của cậu |
 | 39 | Sơn | An |  | Sơn là **dượng** của An | Mở rộng: chồng của cô |
-| 40 | Lan | Yến |  | `supported=false`, `relation=null`, a và b để null | không quan hệ, hàm extension không được lặp vô hạn |
-| 41 | Hương | Ngân |  | `supported=false`, `relation=null`, a và b để null | không quan hệ, không treo |
-| 42 | Sơn | Phương |  | `supported=false`, `relation=null`, a và b để null | không quan hệ, không treo |
+| 40 | Lan | Yến |  | `supported=true`, `relation=chị em dâu`, a và b để null | Chồng là anh em ruột (mục 2.4 (3)) |
+| 41 | Hương | Ngân |  | `supported=true`, `relation=chị em dâu họ`, a và b để null | Chồng là anh em họ (mục 2.4 (3)) |
+| 42 | Sơn | Phương |  | `supported=true`, `relation=anh chị em bên vợ/chồng`, a và b để null | mục 2.4 (3) |
 | 43 | An | Hạnh | (1, 1) | An là **anh (cùng mẹ khác cha)** của Hạnh | cùng mẹ khác cha |
 | 44 | Hạnh | An | (1, 1) | Hạnh là **em (cùng mẹ khác cha)** của An | cùng mẹ khác cha, A nhỏ hơn |
 | 45 | Mây | Giang | (1, 1) | Mây là **anh/chị** của Giang | giới tính OTHER, dùng tên trung tính |
@@ -509,6 +521,7 @@ Cột "(a, b)" là giá trị trung gian mà thuật toán phải tính ra. Kế
 | 51 | (xem mục đích) | (xem mục đích) | | Trả lỗi `PERM_001` | Tầng API: A thuộc gia đình khác với người gọi |
 | 52 | (xem mục đích) | (xem mục đích) | | Trả lỗi `PERM_002` | Tầng API: người gọi chưa được xác minh |
 | 53 | (xem mục đích) | (xem mục đích) | | Trả lỗi `NOT_FOUND_001` | Tầng API: id của A hoặc B không tồn tại |
+| 54 | Mai | Hải |  | `supported=true`, `relation=vợ cũ của em`, a và b để null | Qua hôn nhân đã ly hôn (mục 2.4 (4)) |
 
 **Phân bố:** quan hệ trực hệ (cha mẹ, con, ông bà, cháu, cố, chắt, kể cả cùng một người) 15 ca; anh chị em (ruột, cùng cha hoặc cùng mẹ, nuôi, OTHER, thiếu tuổi) 9 ca; bác, chú, cô, cậu, dì 5 ca; cháu của anh chị em B 1 ca; anh em họ 6 ca; không có quan hệ và họ xa chưa hỗ trợ 6 ca; vợ chồng và lớp mở rộng 8 ca; lỗi ở tầng API 3 ca.
 
@@ -520,8 +533,8 @@ Cột "(a, b)" là giá trị trung gian mà thuật toán phải tính ra. Kế
 - Kết quả chỉ chứa `id` và `fullName` trong `path`; test nên kiểm tra không có trường nhạy cảm (ngày sinh, địa chỉ).
 
 ## 8. Hạn chế đã biết
-- Chưa hỗ trợ họ hàng xa từ (3, 3), (1, 3) trở đi (ví dụ anh em họ đời thứ hai, ông bác); các cặp này trả `supported = false` kèm a, b.
-- Quan hệ qua hôn nhân chỉ hỗ trợ các trường hợp ở mục 2.4 (bác, thím, mợ, dượng, vợ, chồng, vợ cũ, chồng cũ).
+- Họ hàng xa (mục 2.3b) dùng tên chung ("ông họ", "anh họ đời thứ 3"), chưa phân biệt ông bác/ông chú.
+- Quan hệ qua hôn nhân chỉ đi qua một cuộc hôn nhân mỗi bên (mục 2.4); hôn nhân đã ly hôn chỉ xét ở bước (4) và không xét hai bên cùng ly hôn; còn lại trả `supported = false`.
 - Cách gọi theo thứ (Hai, Ba) và các biến thể vùng miền khác miền Nam cần chỉnh trong bảng cấu hình.
 - Quan hệ "bên nội/ngoại" của anh em họ xét theo bước đầu của B, là cách đơn giản hóa.
 - Với cặp có nhiều đường nối, thuật toán chỉ chọn một đường (đường ngắn nhất, ưu tiên qua cha) và không báo các đường còn lại.

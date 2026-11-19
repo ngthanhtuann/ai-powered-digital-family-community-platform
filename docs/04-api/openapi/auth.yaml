@@ -805,6 +805,11 @@ paths:
         in: query
         description: Người thực hiện.
         schema: {type: string, format: uuid}
+      - name: familyId
+        in: query
+        required: false
+        description: Chỉ hoạt động trong gia đình này (theo dõi hoạt động, SCRUM-117); chỉ hành động, không có nội dung riêng tư.
+        schema: { type: string, format: uuid }
       - name: action
         in: query
         description: Mã hành động, khớp chính xác.

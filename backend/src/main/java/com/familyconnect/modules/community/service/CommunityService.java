@@ -13,9 +13,11 @@ import com.familyconnect.modules.community.service.CommunityPlatformPort.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.familyconnect.modules.auth.api.GenealogyPort;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -29,6 +31,14 @@ public class CommunityService implements SummarySource {
     /** Số ảnh xem trước của mỗi bài trên bảng tin; xem đủ qua GET /posts/{id}/media. */
     static final int MEDIA_PREVIEW = 4;
     private final MediaRepository mediaRepository;
+
+    /** Thông báo bình luận (BR-COM-14); null trong unit test dựng service bằng tay thì bỏ qua thông báo. */
+    private NotificationService notifications;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setNotifications(NotificationService notifications) {
+        this.notifications = notifications;
+    }
 
     public CommunityService(CommunityStore store, CommunityPlatformPort platform, MediaRepository mediaRepository) {
         this.store = store;
@@ -64,7 +74,24 @@ public class CommunityService implements SummarySource {
     private Post readablePost(Actor actor, UUID id) {
         Post post = store.findPost(id).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND_001));
         platform.requireCanRead(actor, post.familyId(), post.branchId());
+        // BR-COM-13: bài "con cháu của tôi" chỉ người đăng, con cháu và vợ/chồng của con cháu xem được.
+        if (post.audience() == PostAudience.DESCENDANTS) {
+            java.util.Set<UUID> authors = platform.descendantsAudienceAuthors(actor);
+            if (authors != null && !authors.contains(post.createdBy())) throw new ApiException(ErrorCode.PERM_001);
+        }
         return post;
+    }
+    /** BR-COM-13: không gửi audience thì suy ra từ branch như trước; kiểm audience khớp branch. */
+    private PostAudience audience(Actor actor, PostAudience requested, UUID branch) {
+        PostAudience audience = requested != null ? requested : branch != null ? PostAudience.BRANCH : PostAudience.FAMILY;
+        if ((audience == PostAudience.BRANCH) != (branch != null)) {
+            throw ApiException.invalidField("audience", audience == PostAudience.BRANCH
+                    ? "Chọn chi khi người xem là chi của tôi" : "Người xem này không đi kèm chi");
+        }
+        if (audience == PostAudience.DESCENDANTS && !platform.hasGenealogyProfile(actor.userId())) {
+            throw ApiException.invalidField("audience", "Tài khoản chưa gắn hồ sơ gia phả nên chưa chọn được con cháu của tôi");
+        }
+        return audience;
     }
     /** Một trang bài: đếm bình luận, reaction, tên tác giả theo lô (số truy vấn cố định). */
     private List<PostView> views(List<Post> posts, Actor user) {
@@ -73,13 +100,18 @@ public class CommunityService implements SummarySource {
         Map<UUID,Long> comments = store.commentCounts(ids);
         Map<UUID,Map<ReactionType,Long>> reactions = store.reactionCounts(ids);
         Map<UUID,ReactionType> mine = store.myReactions(ids,user.userId());
-        Map<UUID,String> names = platform.authorNames(posts.stream().map(Post::createdBy).collect(Collectors.toSet()));
+        Set<UUID> authorIds = posts.stream().map(Post::createdBy).collect(Collectors.toSet());
+        Map<UUID,String> names = platform.authorNames(authorIds);
+        Map<UUID,GenealogyPort.PersonCard> cards = platform.authorPersons(authorIds);
         Map<UUID,Long> mediaCounts = mediaRepository.countByOwners("POST", ids);
         Map<UUID,List<MediaRepository.Media>> previews = mediaRepository.latestByOwners("POST", ids, MEDIA_PREVIEW);
         Map<UUID,Boolean> moderatable = new HashMap<>();
         return posts.stream().map(post -> new PostView(post.id(),post.createdAt(),post.updatedAt(),
-            post.familyId(),post.branchId(),post.content(),post.type(),post.createdBy(),
-            names.get(post.createdBy()),canDelete(user,post,post.createdBy(),moderatable),
+            post.familyId(),post.branchId(),post.audience(),post.content(),post.type(),post.createdBy(),
+            names.get(post.createdBy()),
+            Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::personId).orElse(null),
+            Optional.ofNullable(cards.get(post.createdBy())).map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
+            canDelete(user,post,post.createdBy(),moderatable),
             comments.getOrDefault(post.id(),0L),reactions.get(post.id()),mine.get(post.id()),
             mediaCounts.getOrDefault(post.id(),0L),
             previews.getOrDefault(post.id(),List.of()).stream().map(MediaService.MediaView::of).toList())).toList();
@@ -88,12 +120,20 @@ public class CommunityService implements SummarySource {
         return views(List.of(post),user).get(0);
     }
     private List<CommentView> commentViews(List<Comment> comments, Post post, Actor user) {
-        Map<UUID,String> names = platform.authorNames(
-            comments.stream().map(Comment::createdBy).collect(Collectors.toSet()));
+        Set<UUID> authorIds = comments.stream().map(Comment::createdBy).collect(Collectors.toSet());
+        Map<UUID,String> names = platform.authorNames(authorIds);
+        // Hồ sơ gia phả của người bình luận để mở trang cá nhân (SCRUM-130), lấy theo lô như bài đăng.
+        Map<UUID,GenealogyPort.PersonCard> cards = platform.authorPersons(authorIds);
         Map<UUID,Boolean> moderatable = new HashMap<>();
-        return comments.stream().map(comment -> new CommentView(comment.id(),comment.createdAt(),
-            comment.updatedAt(),comment.postId(),comment.content(),comment.createdBy(),
-            names.get(comment.createdBy()),canDelete(user,post,comment.createdBy(),moderatable))).toList();
+        return comments.stream().map(comment -> {
+            Optional<GenealogyPort.PersonCard> card = Optional.ofNullable(cards.get(comment.createdBy()));
+            return new CommentView(comment.id(),comment.createdAt(),
+                comment.updatedAt(),comment.postId(),comment.parentId(),comment.content(),comment.createdBy(),
+                names.get(comment.createdBy()),
+                card.map(GenealogyPort.PersonCard::personId).orElse(null),
+                card.map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
+                canDelete(user,post,comment.createdBy(),moderatable));
+        }).toList();
     }
     /** BR-COM-05, BR-COM-06; nhớ kết quả theo chi để một trang không hỏi Gia phả lặp lại. */
     private boolean canDelete(Actor user, Post post, UUID owner, Map<UUID,Boolean> moderatable) {
@@ -140,14 +180,16 @@ public class CommunityService implements SummarySource {
         if (input.type() == PostType.NEWS && user.role() == Role.MEMBER) throw new ApiException(ErrorCode.PERM_001);
         String content = nonBlank(input.content(),5000,"content");
         canPublish(user,family,input.branchId());
-        Post created = store.insertPost(family,input.branchId(),content,input.type(),user.userId());
+        Post created = store.insertPost(family,input.branchId(),content,input.type(),user.userId(),
+                                        audience(user,input.audience(),input.branchId()));
         platform.logContentSaved(true,"POST",created.id(),family);
         platform.postChanged(created.id(),family);
         return asView(created,user);
     }
 
     @Transactional(readOnly=true)
-    public PageSuccess<PostView> posts(UUID familyId, UUID branchId, PostType type, int page, int size, String sort) {
+    public PageSuccess<PostView> posts(UUID familyId, UUID branchId, PostType type, UUID authorId,
+                                      int page, int size, String sort) {
         Actor user = actor();
         UUID family = family(user,familyId);
         pagination(page,size);
@@ -157,7 +199,8 @@ public class CommunityService implements SummarySource {
             || (user.role() == Role.BRANCH_ADMIN && user.branchId() == null);
         List<UUID> visible = allBranches ? List.of() : store.postBranchIds(family).stream()
             .filter(branch -> platform.canRead(user,family,branch)).toList();
-        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,page,size,order);
+        Page<Post> found = store.posts(family,allBranches,visible,branchId,type,authorId,
+                platform.descendantsAudienceAuthors(user),page,size,order);
         return PageSuccess.of(views(found.items(),user),
                               page,size,found.total());
     }
@@ -200,7 +243,9 @@ public class CommunityService implements SummarySource {
         String content = input.content() == null ? post.content() : nonBlank(input.content(),5000,"content");
         UUID branch = input.branchSpecified() ? input.branchId() : post.branchId();
         canPublish(user,post.familyId(),branch);
-        Post updated = store.updatePost(id,content,branch,user.userId());
+        PostAudience audience = input.audience() == null && !input.branchSpecified() ? post.audience()
+                : audience(user,input.audience(),branch);
+        Post updated = store.updatePost(id,content,branch,user.userId(),audience);
         platform.logContentSaved(false,"POST",id,post.familyId());
         platform.postChanged(id,post.familyId());
         return asView(updated,user);
@@ -229,12 +274,39 @@ public class CommunityService implements SummarySource {
         return PageSuccess.of(commentViews(found.items(),post,user),page,size,found.total());
     }
 
+    /** BR-COM-14: báo người đăng bài và người có bình luận được trả lời; không báo chính mình, không báo hai lần. */
+    private void notifyComment(Post post, Comment repliedTo, UUID actorId, String content) {
+        if (notifications == null) return;
+        String name = platform.authorNames(List.of(actorId)).get(actorId);
+        String snippet = content.length() > 120 ? content.substring(0,117) + "..." : content;
+        UUID replyTarget = repliedTo == null ? null : repliedTo.createdBy();
+        if (replyTarget != null && !replyTarget.equals(actorId)) {
+            notifications.sendComment(replyTarget,post.familyId(),post.id(),"COMMENT_REPLIED",
+                name + " đã trả lời bình luận của bạn",snippet,actorId);
+        }
+        if (!post.createdBy().equals(actorId) && !post.createdBy().equals(replyTarget)) {
+            notifications.sendComment(post.createdBy(),post.familyId(),post.id(),"POST_COMMENTED",
+                name + " đã bình luận bài viết của bạn",snippet,actorId);
+        }
+    }
+
     @Transactional
     public CommentView createComment(UUID postId, CommentInput input) {
         Actor user = actor();
         Post post = readablePost(user,postId);
-        Comment created = store.insertComment(postId,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        String content = nonBlank(input == null ? null : input.content(),1000,"content");
+        // BR-COM-14: trả lời 1 cấp; trả lời một câu trả lời thì gắn vào bình luận gốc của nó.
+        Comment parent = null;
+        if (input.parentId() != null) {
+            parent = store.findComment(input.parentId())
+                .filter(c -> c.postId().equals(postId))
+                .orElseThrow(() -> ApiException.invalidField("parentId","Bình luận được trả lời không thuộc bài này"));
+            if (parent.parentId() != null) parent = store.findComment(parent.parentId()).orElse(parent);
+        }
+        Comment created = store.insertComment(postId,parent == null ? null : parent.id(),content,user.userId());
         platform.logContentSaved(true,"COMMENT",created.id(),post.familyId());
+        notifyComment(post,input.parentId() == null ? null : store.findComment(input.parentId()).orElse(null),
+                      user.userId(),content);
         return commentViews(List.of(created),post,user).get(0);
     }
 

@@ -227,6 +227,8 @@ Sơ đồ thể hiện 4 actor theo hệ thống: `MEMBER`, `BRANCH_ADMIN`, `SYS
 | BR-EVT-05 | Nhắc nhở chỉ hướng đến người đã RSVP `GOING` hoặc `MAYBE`; nhắc vào 24 giờ và 1 giờ trước `start_at` (đã chốt 9/10/2026). Mỗi mốc nhắc có loại riêng (`EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`) nên ràng buộc duy nhất `(user_id, ref_id, type)` khi có `ref_id` vừa chống gửi trùng vừa cho phép đủ 2 lần nhắc; nếu sau này đổi mốc nhắc thì đổi tên loại tương ứng. Kênh gửi: thông báo trong ứng dụng (bản ghi `notification`, web và mobile cùng đọc qua `GET /notifications`); push notification trên mobile là phần mở rộng, không thuộc phạm vi cam kết. Mỗi người nhận có một bản ghi `notification` riêng (bảng có `user_id` và `is_read` theo từng người). |
 | BR-COM-11 | Khi bài đăng được tạo/sửa/xóa, module thông báo cho module `ai` qua interface `AiGateway` để cập nhật embedding; không gọi REST nội bộ. |
 | BR-EVT-06 | Khi sự kiện được tạo/sửa/xóa, module thông báo cho module `ai` qua interface `AiGateway` để cập nhật embedding; không gọi REST nội bộ. |
+| BR-COM-13 | **Người xem bài đăng** (18/11/2026, SCRUM-121): `post.audience` là `FAMILY` (cả dòng họ, `branch_id` NULL), `BRANCH` (chi của tôi: chi `branch_id` và các chi con, theo BR-COM-03) hoặc `DESCENDANTS` (con cháu của tôi, `branch_id` NULL). Bài `DESCENDANTS` chỉ hiện với người đăng, con cháu của người đăng theo `parent_child` (mọi đời, gồm con nuôi, con riêng) và vợ/chồng (hôn nhân chưa ly hôn) của con cháu; danh sách tính lúc xem qua `GenealogyPort.ancestorAccountIds`. `SYSTEM_ADMIN` vẫn thấy để kiểm duyệt; Trưởng chi, Trưởng họ không có ngoại lệ. Người đăng chưa gắn hồ sơ gia phả không chọn được `DESCENDANTS` (400 `VALID_001`). Bài `DESCENDANTS` không đưa vào chỉ mục AI (không xuất hiện trong trợ lý, tìm kiếm, gợi ý). Request không gửi `audience` thì suy ra từ `branchId` như trước. |
+| BR-COM-14 | **Trả lời bình luận và thông báo** (18/11/2026, SCRUM-123): `comment.parent_id` trỏ tới bình luận gốc cùng bài; chỉ 1 cấp, trả lời một câu trả lời thì gắn vào bình luận gốc của nó; `parentId` không thuộc bài trả 400 `VALID_001`. Khi có bình luận, người đăng bài nhận thông báo `POST_COMMENTED`; khi có trả lời, người viết bình luận được trả lời nhận `COMMENT_REPLIED` (`ref_type=POST`, `ref_id` là bài). Không báo cho chính người viết, mỗi người tối đa một thông báo cho mỗi bình luận. |
 | BR-COM-12 | Báo cáo nội dung vi phạm (SCRUM-50; `auth.md` UC-AUTH-09, BR-AUTH-15). Thành viên đã xác minh được báo cáo bài đăng, bình luận, sự kiện, thông báo trong phạm vi mình xem được; mỗi người chỉ báo cáo một lần cho mỗi nội dung, báo cáo trùng trả HTTP 409 `CONFLICT_001`. Báo cáo lưu ở bảng `content_report`. Mỗi người gửi tối đa 20 báo cáo mỗi giờ, vượt thì HTTP 429 `RATE_001` kèm `Retry-After` (`conventions.md` mục 7.1). Module Community cài đặt interface `ContentModerationPort` (`findReports`, `hideContent`, `dismissReport`, `restoreContent`; `auth.md` mục 6.3) để module admin đọc và xử lý. Hàng đợi gộp theo nội dung (mỗi nội dung một dòng, kèm số lượt báo cáo và chủ nội dung). Quyết định áp cho cả nội dung: ẩn thì đặt `hidden_at` và mọi báo cáo `PENDING` của nội dung sang `HIDDEN`; bỏ qua thì mọi báo cáo `PENDING` sang `DISMISSED`; khôi phục (ẩn nhầm) thì đặt `hidden_at` về NULL và báo cáo `HIDDEN` sang `DISMISSED`. Community ghi nhật ký `CONTENT_HIDDEN`, `REPORT_DISMISSED`, `CONTENT_RESTORED` (kèm chủ nội dung) và cập nhật chỉ mục AI (BR-AI-15). Cập nhật 2/11/2026 theo SCRUM-50. Khi trưởng chi hoặc quản trị gỡ nội dung của người khác, module gọi `AuditLogger.log` với action `CONTENT_DELETED`. Theo SCRUM-53, nội dung bị ẩn/khôi phục sẽ gửi notification cho người đăng; các báo cáo cùng nội dung được xử lý sẽ gửi notification cho từng người báo cáo. Quy ước bổ sung của SCRUM-53: `CONTENT_HIDDEN`, `CONTENT_RESTORED`, `REPORT_HIDDEN`, `REPORT_DISMISSED`, `REPORT_RESTORED` với `ref_type=CONTENT_REPORT`, `ref_id` là UUID bản ghi báo cáo tương ứng. |
 
 Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộc gia đình A gọi dữ liệu gia đình B phải bị từ chối. Các thao tác xóa bài, bình luận và sự kiện phải phát sinh audit log qua cơ chế chung của hệ thống.
@@ -254,6 +256,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 | id | UUID | PK | Mã bài đăng |
 | family_id | UUID | NOT NULL | Gia đình sở hữu bài đăng; kiểm tra ở service, không FK sang module khác |
 | branch_id | UUID | NULL | NULL = cả gia đình; có giá trị = chi/phạm vi chi |
+| audience | VARCHAR(20) | NOT NULL, CHECK, DEFAULT `FAMILY` | Người xem: `FAMILY`, `BRANCH`, `DESCENDANTS` (BR-COM-13) |
 | content | TEXT | NOT NULL | Nội dung bài đăng |
 | type | VARCHAR(20) | NOT NULL, CHECK | `POST` hoặc `NEWS` |
 | created_by | UUID | NOT NULL | Người tạo bài đăng |
@@ -269,6 +272,7 @@ Mọi API cần có kiểm thử quyền truy cập chéo: người dùng thuộ
 |---|---|---|---|
 | id | UUID | PK | Mã bình luận |
 | post_id | UUID | NOT NULL, FK | Bài đăng được bình luận |
+| parent_id | UUID | NULL, FK | Bình luận gốc được trả lời (1 cấp, BR-COM-14) |
 | content | TEXT | NOT NULL | Nội dung bình luận |
 | created_by | UUID | NOT NULL | Người tạo |
 | updated_by | UUID | NULL | Người cập nhật |
@@ -339,7 +343,7 @@ API trả `contentType` ← `file_type`, `fileSize` ← `file_size`; `contentUrl
 | family_id | UUID | NOT NULL, INDEX | Gia đình liên quan; kiểm tra ở service, không FK chéo module (cập nhật SCRUM-53) |
 | ref_type | VARCHAR(30) | NULL | Loại tài nguyên tham chiếu, ví dụ EVENT hoặc ANNOUNCEMENT |
 | ref_id | UUID | NULL | ID tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | `EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`, `ANNOUNCEMENT`, `CONTENT_HIDDEN`, `CONTENT_RESTORED`, `REPORT_HIDDEN`, `REPORT_DISMISSED`, `REPORT_RESTORED` |
+| type | VARCHAR(50) | NOT NULL, CHECK | `EVENT_REMINDER_24H`, `EVENT_REMINDER_1H`, `ANNOUNCEMENT`, `CONTENT_HIDDEN`, `CONTENT_RESTORED`, `REPORT_HIDDEN`, `REPORT_DISMISSED`, `REPORT_RESTORED`; bình luận (BR-COM-14): `POST_COMMENTED`, `COMMENT_REPLIED` |
 | title | VARCHAR(255) | NOT NULL | Tiêu đề |
 | content | TEXT | NOT NULL | Nội dung |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE | Trạng thái đã đọc |
@@ -434,7 +438,7 @@ Hiện tài liệu chưa xác định mã lỗi nghiệp vụ riêng cho Communi
 | Phương thức | Đường dẫn | Mô tả | Quyền (role) |
 |---|---|---|---|
 | POST | `/api/v1/posts` | Tạo bài đăng thường/tin tức | MEMBER đã xác minh (`POST`); BRANCH_ADMIN trở lên (`NEWS`) |
-| GET | `/api/v1/posts` | Danh sách bài đăng; lọc `type`, `branchId`, phân trang | Thành viên có quyền xem |
+| GET | `/api/v1/posts` | Danh sách bài đăng; lọc `type`, `branchId`, `authorId` (trang cá nhân), phân trang; mỗi bài kèm `authorPersonId`, `authorAvatarMediaId` | Thành viên có quyền xem |
 | GET | `/api/v1/posts/{id}` | Chi tiết bài đăng | Thành viên có quyền xem |
 | PATCH | `/api/v1/posts/{id}` | Sửa nội dung bài đăng, không đổi `type` | Người tạo |
 | DELETE | `/api/v1/posts/{id}` | Xóa mềm bài đăng | Người tạo; BRANCH_ADMIN trong phạm vi; SYSTEM_ADMIN |

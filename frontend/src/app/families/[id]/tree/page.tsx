@@ -39,6 +39,18 @@ function pathPairs(relation: Relationship | null) {
   return { ids: new Set(ids), pairs };
 }
 
+/** Mở cây thì đưa ô của mình (hoặc người mở từ trang cá nhân) vào giữa, một lần, khi ô đó đã hiện (SCRUM-120). */
+function FocusOnce({ id }: { id?: string }) {
+  const { fitView } = useReactFlow();
+  const done = useRef(false);
+  useEffect(() => {
+    if (!id || done.current) return;
+    done.current = true;
+    void fitView({ nodes: [{ id }], maxZoom: 1, duration: 400 });
+  }, [id, fitView]);
+  return null;
+}
+
 /** Đưa đường quan hệ vừa tra vào giữa khung nhìn (chỉ những người đang hiện trên cây). */
 function FitToPath({ ids }: { ids: string }) {
   const { fitView } = useReactFlow();
@@ -52,7 +64,10 @@ function FitToPath({ ids }: { ids: string }) {
 export default function FamilyTreePage() {
   const { id: familyId } = useParams<{ id: string }>();
   const access = useHeritageAccess();
-  const first = useQuery({ queryKey: ['tree', familyId], queryFn: () => genealogyApi.tree(familyId) });
+  // Mở từ người tổ, sẵn 10 đời để thấy cả dòng họ (góp ý 16/11/2026).
+  const first = useQuery({ queryKey: ['tree', familyId], queryFn: () => genealogyApi.tree(familyId, { depth: 10 }) });
+  // Hồ sơ của chính mình để tô nổi trên cây; admin hoặc tài khoản chưa gắn hồ sơ thì 404, bỏ qua.
+  const myPersonId = useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false }).data?.id;
   // Nhánh đã mở giữ theo id gốc, để khi thêm quan hệ (invalidate ['tree']) thì mọi nhánh tải lại.
   const [branchRoots, setBranchRoots] = useState<string[]>([]);
   const branches = useQueries({
@@ -62,7 +77,9 @@ export default function FamilyTreePage() {
     })),
   });
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<string | null>(null);
+  // Từ trang cá nhân "Xem trên gia phả" (?focus=): mở sẵn panel của người đó.
+  const focusParam = useSearchParams().get('focus');
+  const [selected, setSelected] = useState<string | null>(focusParam);
   const [relation, setRelation] = useState<Relationship | null>(null);
   // SCRUM-56: tra quan hệ với người chưa hiện trên cây thì tải thêm cây từ tổ tiên chung, đủ sâu tới cả hai người.
   const [focusRoots, setFocusRoots] = useState<{ rootId: string; depth: number }[]>([]);
@@ -148,6 +165,7 @@ export default function FamilyTreePage() {
         collapsed: collapsed.has(person.id ?? ''),
         loading: loading.has(person.id ?? ''),
         selected: selected === person.id,
+        isMe: myPersonId === person.id,
         onPath: relation ? path.ids.has(person.id ?? '') : undefined,
         onToggle,
         onSelect,
@@ -171,7 +189,7 @@ export default function FamilyTreePage() {
       };
     });
     return { nodes: flowNodes, edges: flowEdges };
-  }, [graph, collapsed, first.data?.rootId, loadingKey, relation, selected, onToggle, onSelect]);
+  }, [graph, collapsed, first.data?.rootId, loadingKey, relation, selected, myPersonId, onToggle, onSelect]);
 
   const error = (first.error as Error | null)?.message
     ?? ([...branches, ...focus].find((b) => b.error)?.error as Error | undefined)?.message;
@@ -210,6 +228,7 @@ export default function FamilyTreePage() {
               <Controls showInteractive={false} className="[&_button]:!h-11 [&_button]:!w-11" />
               <MiniMap pannable zoomable nodeClassName="fill-border-strong" ariaLabel="Bản đồ thu nhỏ của cây" />
               <Background gap={16} />
+              <FocusOnce id={[focusParam, myPersonId].find((id) => id && flow.nodes.some((n) => n.id === id)) ?? undefined} />
               <FitToPath ids={relation?.path?.map((step) => step.id).filter((id) => flow.nodes.some((n) => n.id === id)).join(',') ?? ''} />
             </ReactFlow>
           </div>

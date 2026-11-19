@@ -23,7 +23,8 @@ import java.util.Map;
 public class JdbcContentReportStore {
 
     /** Nội dung bị báo cáo: phạm vi để kiểm quyền xem, chủ nội dung và văn bản. */
-    public record Target(UUID familyId, UUID branchId, UUID ownerId, String text) {
+    /** aiIndexable: false với bài "con cháu của tôi" (BR-COM-13), khôi phục cũng không đưa lại vào chỉ mục AI. */
+    public record Target(UUID familyId, UUID branchId, UUID ownerId, String text, boolean aiIndexable) {
     }
 
     public record Page(List<ContentReportView> items, long total) {
@@ -47,7 +48,8 @@ public class JdbcContentReportStore {
     private static final RowMapper<ContentReportView> GROUPED = (rs, n) -> view(rs, rs.getInt("report_count"));
 
     private static final RowMapper<Target> TARGET = (rs, n) -> new Target(rs.getObject("family_id", UUID.class),
-            rs.getObject("branch_id", UUID.class), rs.getObject("created_by", UUID.class), rs.getString("text"));
+            rs.getObject("branch_id", UUID.class), rs.getObject("created_by", UUID.class), rs.getString("text"),
+            rs.getBoolean("ai_indexable"));
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -62,16 +64,18 @@ public class JdbcContentReportStore {
     public Optional<Target> findTarget(ContentType type, UUID id, boolean visibleOnly) {
         String hidden = visibleOnly ? " AND hidden_at IS NULL" : "";
         String sql = switch (type) {
-            case POST -> "SELECT family_id, branch_id, created_by, content AS text FROM post "
+            case POST -> "SELECT family_id, branch_id, created_by, content AS text, "
+                    + "audience <> 'DESCENDANTS' AS ai_indexable FROM post "
                     + "WHERE id=:id AND deleted_at IS NULL" + hidden;
-            case COMMENT -> "SELECT p.family_id, p.branch_id, c.created_by, c.content AS text FROM comment c "
+            case COMMENT -> "SELECT p.family_id, p.branch_id, c.created_by, c.content AS text, TRUE AS ai_indexable "
+                    + "FROM comment c "
                     + "JOIN post p ON p.id = c.post_id WHERE c.id=:id AND c.deleted_at IS NULL"
                     + (visibleOnly ? " AND c.hidden_at IS NULL" : "")
                     + " AND p.deleted_at IS NULL AND p.hidden_at IS NULL";
-            case EVENT -> "SELECT family_id, branch_id, created_by, "
+            case EVENT -> "SELECT family_id, branch_id, created_by, TRUE AS ai_indexable, "
                     + "title || ' ' || COALESCE(description, '') AS text FROM event "
                     + "WHERE id=:id AND deleted_at IS NULL" + hidden;
-            case ANNOUNCEMENT -> "SELECT family_id, branch_id, created_by, "
+            case ANNOUNCEMENT -> "SELECT family_id, branch_id, created_by, TRUE AS ai_indexable, "
                     + "title || ' ' || content AS text FROM announcement "
                     + "WHERE id=:id AND deleted_at IS NULL" + hidden;
         };

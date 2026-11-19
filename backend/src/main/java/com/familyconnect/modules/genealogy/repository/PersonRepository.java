@@ -20,6 +20,29 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
 
     Optional<Person> findByUserIdAndDeletedAtIsNull(UUID userId);
 
+    List<Person> findAllByUserIdInAndDeletedAtIsNull(Collection<UUID> userIds);
+
+    /** BR-COM-13: tài khoản của tổ tiên của mình và của vợ/chồng mình (giới hạn 30 đời để chặn dữ liệu vòng). */
+    @org.springframework.data.jpa.repository.Query(value = """
+            WITH RECURSIVE me(id) AS (
+                SELECT id FROM person WHERE user_id = :userId AND deleted_at IS NULL
+                UNION
+                SELECT CASE WHEN m.person1_id = p.id THEN m.person2_id ELSE m.person1_id END
+                FROM person p JOIN marriage m ON (m.person1_id = p.id OR m.person2_id = p.id)
+                WHERE p.user_id = :userId AND p.deleted_at IS NULL
+                  AND m.deleted_at IS NULL AND m.status <> 'DIVORCED'
+            ), up(id, depth) AS (
+                SELECT pc.parent_id, 1 FROM parent_child pc JOIN me ON pc.child_id = me.id
+                WHERE pc.deleted_at IS NULL
+                UNION
+                SELECT pc.parent_id, up.depth + 1 FROM parent_child pc JOIN up ON pc.child_id = up.id
+                WHERE pc.deleted_at IS NULL AND up.depth < 30
+            )
+            SELECT DISTINCT p.user_id FROM up JOIN person p ON p.id = up.id
+            WHERE p.user_id IS NOT NULL AND p.deleted_at IS NULL
+            """, nativeQuery = true)
+    List<UUID> findAncestorAccountIds(@org.springframework.data.repository.query.Param("userId") UUID userId);
+
     /** Cả gia đình trong một truy vấn; dùng khi tính quan hệ cho nhiều người (xuất CSV, UC-DSH-02). */
     List<Person> findAllByFamilyIdAndDeletedAtIsNull(UUID familyId);
 

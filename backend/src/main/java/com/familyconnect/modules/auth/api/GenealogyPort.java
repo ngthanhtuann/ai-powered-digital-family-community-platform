@@ -9,6 +9,23 @@ import java.util.UUID;
  */
 public interface GenealogyPort {
 
+    /** Hồ sơ gia phả gắn với một tài khoản: id hồ sơ và ảnh đại diện (SCRUM-117, trang cá nhân). */
+    record PersonCard(UUID personId, UUID avatarMediaId) {
+    }
+
+    /**
+     * BR-COM-13: tài khoản của mọi tổ tiên (mọi đời, mọi loại cha mẹ) của hồ sơ gắn với userId và của vợ/chồng
+     * (hôn nhân chưa ly hôn) của hồ sơ đó. Người dùng xem được bài "con cháu của tôi" của những tài khoản này.
+     */
+    default java.util.Set<UUID> ancestorAccountIds(UUID userId) {
+        return java.util.Set.of();
+    }
+
+    /** Theo lô; tài khoản chưa gắn hồ sơ thì không có trong kết quả. */
+    default java.util.Map<UUID, PersonCard> personsByUserIds(java.util.Collection<UUID> userIds) {
+        return java.util.Map.of();
+    }
+
     /** Rỗng nếu gia đình không tồn tại. */
     Optional<String> findFamilyName(UUID familyId);
 

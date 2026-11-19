@@ -10,13 +10,14 @@ import { TextField } from '@/components/ui/TextField';
 import { ApiError } from '@/lib/api';
 import { directoryApi } from '@/services/directory';
 import { heritageApi, type OutstandingMember } from '@/services/heritage';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const PAGE_SIZE = 20;
 
 export default function OutstandingMembersPage() {
   const access = useHeritageAccess();
   const queryClient = useQueryClient();
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const [page, setPage] = useState(0);
   const [personId, setPersonId] = useState('');
   const [achievement, setAchievement] = useState('');
@@ -142,15 +143,7 @@ export default function OutstandingMembersPage() {
       </div>
       {access.isSystemAdmin && access.isReady && (
         <div className="mt-5 max-w-xl">
-          <TextField
-            label="Family ID (SYSTEM_ADMIN)"
-            value={adminFamily}
-            onChange={(event) => {
-              setAdminFamily(event.target.value);
-              setPage(0);
-            }}
-            placeholder="UUID gia đình"
-          />
+          <AdminFamilyPicker />
         </div>
       )}
       {dataError && (

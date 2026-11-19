@@ -26,10 +26,11 @@ public class CommunityController {
         @RequestParam(required=false) UUID familyId,
         @RequestParam(required=false) UUID branchId,
         @RequestParam(required=false) PostType type,
+        @RequestParam(required=false) UUID authorId,
         @RequestParam(defaultValue="0") int page,
         @RequestParam(defaultValue="20") int size,
         @RequestParam(defaultValue="createdAt,desc") String sort) {
-        return service.posts(familyId,branchId,type,page,size,sort);
+        return service.posts(familyId,branchId,type,authorId,page,size,sort);
     }
     @GetMapping("/posts/{id}")
     public ApiResponse<PostView> post(@PathVariable UUID id) {

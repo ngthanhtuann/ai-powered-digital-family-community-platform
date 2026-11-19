@@ -11,6 +11,7 @@ import { branchesOf } from '@/services/admin';
 import { genealogyApi } from '@/services/genealogy';
 import { JOIN_PAGE_SIZE, joinRequestsApi, type JoinRequest, type JoinRequestStatus } from '@/services/join-requests';
 import { formatDateTime } from '@/lib/datetime';
+import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
   + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
@@ -130,7 +131,7 @@ function InviteCodes({ familyId, myBranchId }: { familyId: string; myBranchId: s
 export default function JoinRequestsPage() {
   const access = useHeritageAccess();
   const [status, setStatus] = useState<JoinRequestStatus>('PENDING');
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const [page, setPage] = useState(0);
   const [approving, setApproving] = useState<JoinRequest | null>(null);
   const [rejecting, setRejecting] = useState<JoinRequest | null>(null);
@@ -169,8 +170,7 @@ export default function JoinRequestsPage() {
               </select>
             </label>
             {access.isSystemAdmin && (
-              <TextField label="Lọc theo mã gia đình (không bắt buộc)" value={adminFamily} placeholder="UUID gia đình"
-                onChange={(e) => { setPage(0); setAdminFamily(e.target.value); }} />
+              <AdminFamilyPicker />
             )}
           </div>
           {list.isPending && list.fetchStatus !== 'idle' && <p className="text-body text-text-secondary">Đang tải yêu cầu...</p>}

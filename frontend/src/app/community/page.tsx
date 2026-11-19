@@ -1,41 +1,29 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   useInfiniteQuery, useMutation, useQuery, useQueryClient,
   type InfiniteData, type QueryKey,
 } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { dashboardApi } from '@/services/dashboard';
 import { ImagePicker } from '@/components/community/ImagePicker';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
 import { Announcements } from '@/components/community/Announcements';
-import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
+import { communityApi, type Post, type ReactionType } from '@/services/community/posts';
 import { branchesOf } from '@/services/admin';
+import { genealogyApi } from '@/services/genealogy';
 import { AiSummaryPanel } from '@/components/ai/AiSummaryPanel';
 import { RecommendationsPanel } from '@/components/ai/RecommendationsPanel';
-import { formatDateTime } from '@/lib/datetime';
+import Link from 'next/link';
+import { Avatar } from '@/components/genealogy/PersonNode';
+import { Comments, ReportButton, dateText, errorText, inputClass, linkButtonClass, reactions } from '@/components/community/PostInteractions';
+import { setAdminFamily, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 type FeedPage = Awaited<ReturnType<typeof communityApi.posts>>;
 type FeedCache = InfiniteData<FeedPage, number>;
 
-const reactions: { type: ReactionType; label: string }[] = [
-  { type: 'LIKE', label: '👍 Thích' },
-  { type: 'LOVE', label: '❤️ Yêu thích' },
-  { type: 'HAHA', label: '😄 Vui' },
-  { type: 'SAD', label: '😢 Buồn' },
-];
-
-const dateText = (value: string) => formatDateTime(value);
-const errorText = (error: unknown) => error instanceof Error ? error.message : 'Có lỗi xảy ra.';
-// Cùng kiểu ô nhập với TextField và StoryForm (design-system.md mục 4).
-const inputClass = 'w-full rounded-control border border-border-strong bg-surface-muted px-3 py-2 text-body '
-  + 'text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info';
-// Nút dạng chữ vẫn đủ vùng chạm 44px.
-const linkButtonClass = 'min-h-11 px-1 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-60';
-
-type ReportTarget = { targetType: 'POST' | 'COMMENT'; targetId: string; label: string };
 type BranchNode = { id?: string; name?: string; parentBranchId?: string | null };
 
 /** branch là ancestor hoặc nằm dưới ancestor (đi theo parentBranchId). */
@@ -48,9 +36,17 @@ function within(parents: Map<string, string | null>, branch: string, ancestor: s
   return false;
 }
 
-const scopeHint = (branchId: string, label: string) => branchId
-  ? `Chỉ người trong ${label} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
-  : 'Mọi thành viên trong dòng họ đều thấy.';
+// Giá trị trong ô "Ai được xem": '' cả dòng họ, DESCENDANTS con cháu của tôi, còn lại là id chi (BR-COM-13).
+const DESCENDANTS = 'DESCENDANTS';
+const scopeHint = (scope: string, label: string) => scope === DESCENDANTS
+  ? 'Chỉ con, cháu, chắt... của bạn (theo cây gia phả) và vợ/chồng của họ thấy. Trưởng chi, trưởng họ cũng không thấy.'
+  : scope
+    ? `Chỉ người trong ${label} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
+    : 'Mọi thành viên trong dòng họ đều thấy.';
+/** Đổi giá trị ô chọn sang branchId và audience gửi lên API. */
+const toAudience = (scope: string) => scope === DESCENDANTS
+  ? { branchId: null, audience: 'DESCENDANTS' as const }
+  : scope ? { branchId: scope, audience: 'BRANCH' as const } : { branchId: null, audience: 'FAMILY' as const };
 
 /** Chi được chọn khi đăng bài: cùng quy tắc đọc với backend (BR-COM-03, ModulePlatformAdapter.canRead). */
 function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch: string | null, branchAdmin: boolean) {
@@ -61,165 +57,33 @@ function postableBranches(branches: BranchNode[], wholeFamily: boolean, myBranch
     && (within(parents, myBranch, b.id) || (branchAdmin && within(parents, b.id, myBranch))));
 }
 
-/** BR-COM-12: thành viên báo cáo nội dung vi phạm; quản trị hệ thống xử lý ở /admin. */
-function ReportButton({ target }: { target: ReportTarget }) {
-  const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState('');
-  const report = useMutation({
-    mutationFn: () => communityApi.report(target.targetType, target.targetId, reason.trim()),
-  });
-  const close = () => { setOpen(false); setReason(''); report.reset(); };
-  return (
-    <>
-      <button type="button" className={linkButtonClass + ' text-text-secondary'} onClick={() => setOpen(true)}>
-        Báo cáo
-      </button>
-      {open && (
-        <Modal open title={`Báo cáo ${target.label}`} onClose={close}
-          description="Quản trị hệ thống sẽ xem xét và ẩn nội dung nếu vi phạm.">
-          {report.isSuccess ? (
-            <div className="space-y-4">
-              <p role="status" className="text-body">Đã gửi báo cáo. Cảm ơn bạn.</p>
-              <Button onClick={close}>Đóng</Button>
-            </div>
-          ) : (
-            <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); report.mutate(); }}>
-              <label htmlFor={'report-' + target.targetId} className="block font-medium">Lý do</label>
-              <textarea id={'report-' + target.targetId} className={inputClass} maxLength={255} required
-                value={reason} onChange={(event) => setReason(event.target.value)}
-                placeholder="Ví dụ: quảng cáo, nội dung xúc phạm..." />
-              <p className="text-xs text-text-secondary">{reason.length}/255</p>
-              {report.isError && <p role="alert" className="text-error">{errorText(report.error)}</p>}
-              <Button type="submit" loading={report.isPending} disabled={!reason.trim()}>Gửi báo cáo</Button>
-            </form>
-          )}
-        </Modal>
-      )}
-    </>
-  );
+/** Đọc ?item= mỗi lần URL đổi (bấm thông báo khi đang ở bảng tin); useSearchParams cần Suspense khi dựng trang tĩnh. */
+function TargetFromUrl({ onChange }: { onChange: (id: string | null) => void }) {
+  const id = useSearchParams().get('item');
+  useEffect(() => onChange(id), [id, onChange]);
+  return null;
 }
 
-function Comments({ postId, userId, canReport }: { postId: string; userId?: string; canReport: boolean }) {
-  const client = useQueryClient();
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const query = useInfiniteQuery({
-    queryKey: ['community-comments', postId],
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => communityApi.comments(postId, pageParam),
-    getNextPageParam: (last) =>
-      (last.meta.page + 1) * last.meta.size < last.meta.total ? last.meta.page + 1 : undefined,
-  });
-  const refresh = async () => {
-    await client.invalidateQueries({ queryKey: ['community-comments', postId] });
-    await client.invalidateQueries({ queryKey: ['community-posts'] });
-  };
-  const add = useMutation({
-    mutationFn: () => communityApi.createComment(postId, draft),
-    onSuccess: async () => { setDraft(''); await refresh(); },
-  });
-  const update = useMutation({
-    mutationFn: () => communityApi.updateComment(editing!, editContent),
-    onSuccess: async () => { setEditing(null); await refresh(); },
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => communityApi.deleteComment(id),
-    onSuccess: refresh,
-  });
-  const comments = query.data?.pages.flatMap((page) => page.items) ?? [];
-  return (
-    <section className="mt-4 border-t border-border pt-4" aria-label="Bình luận">
-      <h3 className="mb-3 font-semibold">Bình luận</h3>
-      {query.isPending && <p className="text-text-secondary">Đang tải bình luận...</p>}
-      {query.isError && (
-        <div role="alert" className="space-y-2">
-          <p className="break-words text-error">{errorText(query.error)}</p>
-          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
-        </div>
-      )}
-      <ul className="space-y-3">
-        {comments.map((comment: Comment) => (
-          <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
-            <p className="text-xs text-text-secondary">
-              {comment.authorName} · {dateText(comment.createdAt)}
-            </p>
-            {editing === comment.id ? (
-              <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
-                <textarea className={inputClass} maxLength={1000} required value={editContent}
-                  onChange={(event) => setEditContent(event.target.value)} />
-                <div className="flex gap-2">
-                  <Button type="submit" fullWidth={false} loading={update.isPending} disabled={!editContent.trim()}>Lưu</Button>
-                  <Button variant="secondary" fullWidth={false} onClick={() => setEditing(null)}>Hủy</Button>
-                </div>
-              </form>
-            ) : (
-              <p className="mt-2 whitespace-pre-wrap break-words">{comment.content}</p>
-            )}
-            {(comment.createdBy === userId || comment.canDelete || canReport) && editing !== comment.id && (
-              <div className="mt-2 flex gap-3 text-sm text-text-secondary">
-                {canReport && comment.createdBy !== userId && (
-                  <ReportButton target={{ targetType: 'COMMENT', targetId: comment.id, label: 'bình luận' }} />
-                )}
-                {comment.createdBy === userId && (
-                  <button type="button" className={linkButtonClass} onClick={() => {
-                    setEditing(comment.id); setEditContent(comment.content);
-                  }}>Sửa</button>
-                )}
-                {comment.canDelete && (
-                  <button type="button" className={linkButtonClass + ' text-error'} disabled={remove.isPending}
-                    onClick={() => { if (window.confirm('Xóa bình luận này?')) remove.mutate(comment.id); }}>
-                    Xóa
-                  </button>
-                )}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-      {query.hasNextPage && (
-        <button className={'mt-3 ' + linkButtonClass} type="button" disabled={query.isFetchingNextPage}
-          onClick={() => query.fetchNextPage()}>
-          {query.isFetchingNextPage ? 'Đang tải...' : 'Xem thêm bình luận'}
-        </button>
-      )}
-      {!query.isPending && !query.isError && comments.length === 0 &&
-        <p className="text-text-secondary">Chưa có bình luận.</p>}
-      <form className="mt-4 space-y-2" onSubmit={(event) => { event.preventDefault(); add.mutate(); }}>
-        <label htmlFor={'comment-' + postId} className="block font-medium">Viết bình luận</label>
-        <textarea id={'comment-' + postId} className={inputClass} maxLength={1000}
-          value={draft} required onChange={(event) => setDraft(event.target.value)}
-          placeholder="Nhập bình luận..." />
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-text-secondary">{draft.length}/1000</span>
-          <Button type="submit" fullWidth={false} loading={add.isPending} disabled={!draft.trim()}>Gửi bình luận</Button>
-        </div>
-        {(add.isError || update.isError || remove.isError) && (
-          <p role="alert" className="text-error">
-            {errorText(add.error || update.error || remove.error)}
-          </p>
-        )}
-      </form>
-    </section>
-  );
-}
-
-function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }: {
-  post: Post; userId?: string; canReport: boolean;
-  scopeOptions: BranchNode[]; labelOf: (branchId?: string | null) => string;
+function PostCard({ post, userId, canReport, canDescendants, scopeOptions, onReaction }: {
+  post: Post; userId?: string; canReport: boolean; canDescendants: boolean;
+  scopeOptions: BranchNode[];
   onReaction: (post: Post, next: ReactionType | null) => void;
 }) {
   const client = useQueryClient();
   const [showComments, setShowComments] = useState(false);
+  const [showAi, setShowAi] = useState(false);
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(post.content);
-  const currentScope = post.branchId ?? '';
+  const currentScope = post.audience === 'DESCENDANTS' ? DESCENDANTS : post.branchId ?? '';
   const [editScope, setEditScope] = useState(currentScope);
   // Giữ phạm vi hiện tại trong danh sách dù người đăng đã chuyển chi, để sửa nội dung không vô tình đổi phạm vi.
-  const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope
-    ? scopeOptions : [...scopeOptions, { id: currentScope, name: labelOf(currentScope) }];
+  const editOptions = scopeOptions.some((b) => b.id === currentScope) || !currentScope || currentScope === DESCENDANTS
+    ? scopeOptions : [...scopeOptions, { id: currentScope, name: 'Giữ người xem hiện tại' }];
   const update = useMutation({
-    mutationFn: () => communityApi.updatePost(post.id, content, editScope || null),
+    mutationFn: () => {
+      const target = toAudience(editScope);
+      return communityApi.updatePost(post.id, content, target.branchId, target.audience);
+    },
     onSuccess: async () => { setEditing(false); await client.invalidateQueries({ queryKey: ['community-posts'] }); },
   });
   const remove = useMutation({
@@ -229,19 +93,24 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
   return (
     <article id={`post-${post.id}`} className="min-w-0 rounded-xl border border-border bg-surface p-4 shadow-sm md:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 max-w-full">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 max-w-full items-start gap-3">
+          <Avatar mediaId={post.authorAvatarMediaId} name={post.authorName ?? ''} />
+          <div className="min-w-0">
+          {post.authorPersonId
+            ? <Link href={`/persons/${post.authorPersonId}`} className="break-words text-sm font-semibold hover:underline">{post.authorName}</Link>
+            : <p className="break-words text-sm font-semibold">{post.authorName}</p>}
+          <p className="break-words text-xs text-text-secondary">{dateText(post.createdAt)}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <span className="rounded-full bg-surface-muted px-3 py-1 text-xs font-medium">
               {post.type === 'NEWS' ? 'Tin tức gia đình' : 'Bài đăng'}
             </span>
             <span className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
               title="Phạm vi người được xem bài">
-              {labelOf(post.branchId)}
+              {post.audience === 'DESCENDANTS' ? 'Người xem: con cháu của người đăng'
+                : post.branchId ? 'Người xem: chi của người đăng' : 'Người xem: cả dòng họ'}
             </span>
           </div>
-          <p className="mt-2 break-words text-xs text-text-secondary">
-            {post.authorName} · {dateText(post.createdAt)}
-          </p>
+          </div>
         </div>
         {(post.createdBy === userId || post.canDelete || canReport) && (
           <div className="flex flex-wrap gap-2">
@@ -270,10 +139,11 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
             aria-describedby={'scope-help-' + post.id} onChange={(event) => setEditScope(event.target.value)}>
             <option value="">Cả dòng họ</option>
             {editOptions.map((b) => <option key={b.id} value={b.id ?? ''}>{b.name}</option>)}
+            {(canDescendants || currentScope === DESCENDANTS) && <option value={DESCENDANTS}>Con cháu của tôi</option>}
           </select>
           {editScope !== currentScope && (
             <p id={'scope-help-' + post.id} className="text-xs text-text-secondary">
-              Sau khi lưu: {scopeHint(editScope, labelOf(editScope))}
+              Sau khi lưu: {scopeHint(editScope, 'chi của bạn')}
             </p>
           )}
           <div className="flex gap-2">
@@ -284,8 +154,15 @@ function PostCard({ post, userId, canReport, scopeOptions, labelOf, onReaction }
       ) : (
         <p className="whitespace-pre-wrap break-words">{post.content}</p>
       )}
-      {!editing && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
-      {!editing && <RecommendationsPanel contextType="POST" contextId={post.id} deferred />}
+      {/* Công cụ AI gom vào một nút, chỉ tải khi mở, để bảng tin gọn như mạng xã hội (góp ý 16/11/2026). */}
+      {!editing && (
+        <button type="button" className={'mt-2 ' + linkButtonClass} aria-expanded={showAi}
+          onClick={() => setShowAi((value) => !value)}>
+          {showAi ? 'Ẩn công cụ AI' : '⋯ Tóm tắt AI, nội dung liên quan'}
+        </button>
+      )}
+      {!editing && showAi && <AiSummaryPanel sourceType="POST" sourceId={post.id} />}
+      {!editing && showAi && <RecommendationsPanel contextType="POST" contextId={post.id} />}
       <ProtectedPostImages postId={post.id} preview={post.media ?? []} total={post.mediaCount ?? 0} />
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Reaction">
         {reactions.map(({ type, label }) => (
@@ -318,7 +195,7 @@ export default function CommunityPage() {
   const [uploadProgress, setUploadProgress] = useState<number>();
   const [pendingPostId, setPendingPostId] = useState<string | null>(null);
   const [uploadedCount, setUploadedCount] = useState(0);
-  const [adminFamily, setAdminFamily] = useState('');
+  const adminFamily = useAdminFamily() ?? ''; // gia đình chung chọn ở header (SCRUM-118)
   const membership = useQuery({ queryKey: ['me-membership'], queryFn: communityApi.membership });
   const me = useQuery({ queryKey: ['me-user'], queryFn: communityApi.user });
   const systemAdmin = me.data?.roles.includes('SYSTEM_ADMIN') ?? false;
@@ -335,15 +212,17 @@ export default function CommunityPage() {
     enabled: ready && /^[0-9a-f-]{36}$/i.test(branchFamily),
     queryFn: () => branchesOf(branchFamily),
   });
-  const branchName = useMemo(
-    () => new Map((branches.data?.items ?? []).map((b) => [b.id ?? '', b.name ?? ''])), [branches.data]);
+  // Chỉ 3 lựa chọn (góp ý 18/11/2026): Cả dòng họ / Chi của tôi / Con cháu của tôi; không liệt kê tên từng chi.
   const scopeOptions = useMemo(() => postableBranches(branches.data?.items ?? [],
-    systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin), [branches.data, systemAdmin, branchAdmin, myBranch]);
+    systemAdmin || (branchAdmin && !myBranch), myBranch, branchAdmin)
+    .filter((b) => b.id === myBranch).map((b) => ({ ...b, name: 'Chi của tôi' })),
+  [branches.data, systemAdmin, branchAdmin, myBranch]);
   // Mặc định là chi của mình; muốn cả họ thấy thì người đăng chọn "Cả dòng họ". '' là cả dòng họ.
+  // "Con cháu của tôi" cần hồ sơ gia phả gắn tài khoản (BR-COM-13); chưa gắn thì /persons/me trả 404.
+  const canDescendants = Boolean(useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false }).data);
   const [scopeChoice, setScopeChoice] = useState<string>();
   const wanted = scopeChoice ?? myBranch ?? '';
-  const scope = scopeOptions.some((b) => b.id === wanted) ? wanted : '';
-  const scopeLabel = (branchId?: string | null) => branchId ? branchName.get(branchId) ?? 'Một chi' : 'Cả dòng họ';
+  const scope = (wanted === DESCENDANTS && canDescendants) || scopeOptions.some((b) => b.id === wanted) ? wanted : '';
 
   const feedKey = useMemo(() => ['community-posts', tab, familyId ?? 'own'], [tab, familyId]);
   const feed = useInfiniteQuery({
@@ -359,7 +238,8 @@ export default function CommunityPage() {
       // Mỗi request /posts/{id}/media nhận 1 file, theo OpenAPI. Nhiều ảnh tải lần lượt.
       let postId = pendingPostId;
       if (!postId) {
-        postId = (await communityApi.createPost(draft, postType, scope || null, familyId)).id;
+        const target = toAudience(scope);
+        postId = (await communityApi.createPost(draft, postType, target.branchId, familyId, target.audience)).id;
         setPendingPostId(postId);
       }
       for (let i = uploadedCount; i < selectedImages.length; i++) {
@@ -389,7 +269,7 @@ export default function CommunityPage() {
       await client.cancelQueries({ queryKey: ['community-posts'] });
       const previous = client.getQueriesData<FeedCache>({ queryKey: ['community-posts'] });
       client.setQueriesData<FeedCache>({ queryKey: ['community-posts'] }, (data) => {
-        if (!data) return data;
+        if (!data?.pages) return data; // bỏ qua bài ghim (một bài, không phân trang)
         return {
           ...data,
           pages: data.pages.map((page) => ({
@@ -414,16 +294,23 @@ export default function CommunityPage() {
   });
 
   const posts = useMemo(() => feed.data?.pages.flatMap((page) => page.items) ?? [], [feed.data]);
+  const targetInFeed = Boolean(targetPostId && posts.some((post) => post.id === targetPostId));
+  // Bài cũ không nằm trong trang đầu: tải riêng và ghim lên đầu danh sách.
+  const pinned = useQuery({
+    queryKey: ['community-posts', 'item', targetPostId],
+    enabled: ready && Boolean(targetPostId) && feed.isSuccess && !targetInFeed,
+    queryFn: () => communityApi.post(targetPostId!),
+    retry: false,
+  });
+  const pinnedPost = !targetInFeed ? pinned.data : undefined;
   useEffect(() => {
-    setTargetPostId(new URLSearchParams(window.location.search).get('item'));
-  }, []);
-  useEffect(() => {
-    if (targetPostId && posts.some((post) => post.id === targetPostId)) {
+    if (targetPostId && (targetInFeed || pinnedPost)) {
       document.getElementById(`post-${targetPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [targetPostId, posts]);
+  }, [targetPostId, targetInFeed, pinnedPost]);
   return (
     <main className="mx-auto max-w-3xl min-w-0 space-y-6 px-3 py-6 md:px-4 md:py-8">
+      <Suspense><TargetFromUrl onChange={setTargetPostId} /></Suspense>
       <header>
         <h1 className="text-page-title">Bảng tin gia đình</h1>
         <p className="mt-1 text-text-secondary">Bài đăng và tin tức trong phạm vi gia đình của bạn.</p>
@@ -489,13 +376,14 @@ export default function CommunityPage() {
               onChange={(event) => setScopeChoice(event.target.value)}>
               <option value="">Cả dòng họ</option>
               {scopeOptions.map((b) => (
-                <option key={b.id} value={b.id ?? ''}>{b.name}{b.id === myBranch ? ' (chi của tôi)' : ''}</option>
+                <option key={b.id} value={b.id ?? ''}>{b.name}</option>
               ))}
+              {canDescendants && <option value={DESCENDANTS}>Con cháu của tôi</option>}
             </select>
             <p id="post-scope-help" className="text-xs text-text-secondary">
               {branches.isPending ? 'Đang tải danh sách chi...'
                 : branches.isError ? 'Không tải được danh sách chi. Vui lòng thử lại trước khi đăng bài.'
-                  : scopeHint(scope, scopeLabel(scope))}
+                  : scopeHint(scope, 'chi của bạn')}
             </p>
             {branches.isError && (
               <div role="alert">
@@ -539,9 +427,16 @@ export default function CommunityPage() {
             )}
             {!feed.isPending && !feed.isError && posts.length === 0 &&
               <p className="rounded-lg bg-surface p-6 text-text-secondary">Chưa có bài đăng.</p>}
+            {targetPostId && !targetInFeed && pinned.isError &&
+              <p role="alert" className="text-error">Bài viết đã bị xóa hoặc bạn không có quyền xem.</p>}
+            {pinnedPost && (
+              <PostCard post={pinnedPost} userId={me.data?.id} canReport={!systemAdmin}
+                canDescendants={canDescendants} scopeOptions={scopeOptions}
+                onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
+            )}
             {posts.map((post) => (
               <PostCard key={post.id} post={post} userId={me.data?.id} canReport={!systemAdmin}
-                scopeOptions={scopeOptions} labelOf={scopeLabel}
+                canDescendants={canDescendants} scopeOptions={scopeOptions}
                 onReaction={(target, next) => optimisticReaction.mutate({ post: target, next })} />
             ))}
             {optimisticReaction.isError &&

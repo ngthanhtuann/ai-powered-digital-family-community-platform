@@ -76,6 +76,13 @@ public class NotificationService implements CommunityNotificationPort {
         }
     }
 
+    /** BR-COM-14: bình luận bài của mình (POST_COMMENTED) hoặc trả lời bình luận của mình (COMMENT_REPLIED); ref là bài đăng. */
+    @Transactional
+    public void sendComment(UUID userId, UUID familyId, UUID postId, String type, String title, String content,
+                            UUID actorId) {
+        store.send(userId,familyId,"POST",postId,type,title,content,actorId);
+    }
+
     /** Gửi trong cùng transaction xử lý content_report; ref_id là reportId, tránh trùng khi job/request chạy lại. */
     @Transactional
     public void sendModeration(UUID userId, UUID familyId, UUID reportId,

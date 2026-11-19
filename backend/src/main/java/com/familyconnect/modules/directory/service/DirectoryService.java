@@ -89,9 +89,16 @@ public class DirectoryService {
                 : professionRepository.findAllByPersonIdInAndDeletedAtIsNull(personIds)
                         .stream().collect(Collectors.toMap(
                                 ProfessionProfile::getPersonId, ProfessionProfile::getJobTitle));
+        // Quan hệ "người trong danh bạ là gì của người xem" (OpenAPI PersonSearchResult.relationship);
+        // người xem chưa gắn hồ sơ trong gia đình này thì để null.
+        Map<UUID, String> relationships = personIds.isEmpty() ? Map.of()
+                : genealogyQuery.findDirectoryPersonByUserId(actorId)
+                        .filter(viewer -> familyId.equals(viewer.familyId()))
+                        .map(viewer -> genealogyQuery.relationshipLabels(viewer.id(), personIds))
+                        .orElse(Map.of());
         List<PersonSearchResult> members = result.people().stream().map(person -> {
             boolean child = isChild(person, today);
-            return new PersonSearchResult(person.id(), person.fullName(), null, person.birthYear(),
+            return new PersonSearchResult(person.id(), person.fullName(), relationships.get(person.id()), person.birthYear(),
                     child ? null : person.generation(),
                     child ? null : jobTitles.get(person.id()),
                     child ? null : person.currentProvince());
@@ -168,6 +175,13 @@ public class DirectoryService {
         UUID actorId = CurrentUser.require().id();
         requireFamilyRead(person.familyId());
         MembershipView membership = membershipQuery.getMembership(actorId);
+        if (person.userId() != null) {
+            // BR-DIR-03 (18/11/2026): hồ sơ đã có tài khoản chỉ chính chủ sửa, kể cả quản trị hệ thống.
+            if (person.userId().equals(actorId)) {
+                return actorId;
+            }
+            throw new ApiException(ErrorCode.PERM_001);
+        }
         if (membership.role() == EffectiveRole.SYSTEM_ADMIN) {
             return actorId;
         }

@@ -40,7 +40,7 @@ export const adminApi = {
   createBackup: () => api.post<BackupFile>('/admin/backups'),
   restore: (backupId: string, confirmText: 'RESTORE') =>
     api.post<RestoreResult>('/admin/restores', { backupId, confirmText } satisfies Schemas['RestoreCreateRequest']),
-  auditLogs: (params: { actorUserId?: string; action?: string; from?: string; to?: string; page: number }) =>
+  auditLogs: (params: { actorUserId?: string; familyId?: string; action?: string; from?: string; to?: string; page: number }) =>
     api.list<AuditLog>('/admin/audit-logs', { ...params, size: PAGE_SIZE, sort: 'createdAt,desc' }),
   /** UC-AUTH-12: số khóa nhỏ nên API không phân trang. */
   configs: () => api.list<SystemConfig>('/admin/configs'),
