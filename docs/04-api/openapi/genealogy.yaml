@@ -439,7 +439,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ
+          description: GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ, GEN_010 người được chọn đang hoặc đã từng là vợ/chồng của con
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -448,6 +448,7 @@ paths:
                 ancestorCycle: { value: { success: false, error: { code: GEN_006, message: Quan hệ này tạo vòng lặp tổ tiên, details: [] } } }
                 parentBornAfter: { value: { success: false, error: { code: GEN_007, message: Cha/mẹ phải sinh trước con, details: [] } } }
                 duplicate: { value: { success: false, error: { code: GEN_008, message: Quan hệ đã tồn tại, details: [] } } }
+                spouse: { value: { success: false, error: { code: GEN_010, message: Không được kết hôn giữa người thân, details: [] } } }
 
   /persons/{personId}/parents/{parentId}:
     parameters:
