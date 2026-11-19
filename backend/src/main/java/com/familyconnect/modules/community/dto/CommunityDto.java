@@ -50,7 +50,10 @@ public final class CommunityDto {
         @JsonSetter("type") public void setType(PostType value) { type = value; }
         @JsonSetter("audience") public void setAudience(PostAudience value) { audience = value; }
     }
-    public record CommentInput(@NotBlank @Size(max=1000) String content) {}
+    /** parentId: trả lời một bình luận (BR-COM-14); bỏ trống là bình luận gốc. */
+    public record CommentInput(@NotBlank @Size(max=1000) String content, UUID parentId) {
+        public CommentInput(String content) { this(content, null); }
+    }
     public record ReactionInput(@NotNull ReactionType type) {}
     /** Schema ContentReportRequest (BR-COM-12). */
     public record ReportInput(
@@ -75,8 +78,8 @@ public final class CommunityDto {
                            ReactionType myReaction, long mediaCount,
                            List<com.familyconnect.modules.community.media.MediaService.MediaView> media) {}
     public record CommentView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                              UUID postId, String content, UUID createdBy, String authorName,
-                              boolean canDelete) {}
+                              UUID postId, UUID parentId, String content, UUID createdBy, String authorName,
+                              UUID authorPersonId, UUID authorAvatarMediaId, boolean canDelete) {}
     public record ReactionView(UUID id, OffsetDateTime createdAt, OffsetDateTime updatedAt,
                                UUID postId, ReactionType type, UUID createdBy) {}
     public record Meta(int page, int size, long total) {}

@@ -1,50 +1,18 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
-import { useFamilyBranches } from '../components/community-ui';
+import { toUploadAsset, useFamilyBranches } from '../components/community-ui';
 import { Button, Card, Notice, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import {
-  communityApi,
-  postableBranches,
-  scopeLabel,
-  type UploadAsset,
-} from '../services/community';
+import { communityApi, postableBranches, type UploadAsset } from '../services/community';
+import { genealogyApi } from '../services/genealogy';
 import { useSession } from '../session/SessionContext';
 import { colors, radius, text } from '../theme';
 
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
-
-function toUploadAsset(asset: ImagePicker.ImagePickerAsset): UploadAsset {
-  const extension = (asset.fileName ?? asset.uri).split('?')[0].split('.').pop()?.toLowerCase();
-  const type =
-    asset.mimeType ??
-    (extension === 'jpg' || extension === 'jpeg'
-      ? 'image/jpeg'
-      : extension === 'png'
-        ? 'image/png'
-        : extension === 'webp'
-          ? 'image/webp'
-          : '');
-  if (!IMAGE_MIMES.includes(type)) {
-    throw new Error(
-      'Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP. Ảnh HEIC cần chuyển sang JPG trước khi chọn.',
-    );
-  }
-  if (asset.fileSize && asset.fileSize > IMAGE_MAX_BYTES) {
-    throw new Error('Mỗi ảnh được chọn phải nhỏ hơn hoặc bằng 5 MB.');
-  }
-  const suffix = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
-  const name =
-    asset.fileName && asset.fileName.toLowerCase().endsWith(`.${suffix}`)
-      ? asset.fileName
-      : `anh-${Date.now()}.${suffix}`;
-  return { uri: asset.uri, name, mimeType: type };
-}
+const DESCENDANTS = 'DESCENDANTS';
 
 export function CreatePostScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -71,7 +39,17 @@ export function CreatePostScreen() {
   );
   const [scopeChoice, setScopeChoice] = useState<string | null | undefined>(undefined);
   const wanted = scopeChoice === undefined ? myBranch : scopeChoice;
-  const scope = wanted && scopeOptions.some((b) => b.id === wanted) ? wanted : null;
+  // 3 lựa chọn như web (SCRUM-124): Cả dòng họ / Chi của tôi / Con cháu của tôi (cần hồ sơ gia phả).
+  const canDescendants = !!useQuery({
+    queryKey: ['person', 'me'],
+    queryFn: genealogyApi.myPerson,
+    retry: false,
+  }).data;
+  const scope =
+    (wanted === DESCENDANTS && canDescendants) ||
+    (wanted && scopeOptions.some((b) => b.id === wanted && b.id === myBranch))
+      ? wanted
+      : null;
 
   const addAssets = (selected: ImagePicker.ImagePickerAsset[]) => {
     try {
@@ -121,7 +99,11 @@ export function CreatePostScreen() {
       if (!id) {
         const familyId =
           session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
-        id = (await communityApi.create(content.trim(), scope, familyId)).id;
+        id = (
+          scope === DESCENDANTS
+            ? await communityApi.create(content.trim(), null, familyId, 'DESCENDANTS')
+            : await communityApi.create(content.trim(), scope, familyId)
+        ).id;
         setPostId(id);
       }
       // Nếu tải ảnh lỗi, chỉ tải lại ảnh còn thiếu, không tạo bài trùng.
@@ -173,11 +155,11 @@ export function CreatePostScreen() {
         <View accessibilityRole="radiogroup" style={{ gap: 6 }}>
           {[{ id: null as string | null, label: 'Cả dòng họ' }]
             .concat(
-              scopeOptions.map((b) => ({
-                id: b.id ?? null,
-                label: `${b.name}${b.id === myBranch ? ' (chi của tôi)' : ''}`,
-              })),
+              scopeOptions
+                .filter((b) => b.id === myBranch)
+                .map(() => ({ id: myBranch, label: 'Chi của tôi' })),
             )
+            .concat(canDescendants ? [{ id: DESCENDANTS, label: 'Con cháu của tôi' }] : [])
             .map((option) => (
               <Pressable
                 key={option.id ?? 'family'}
@@ -204,9 +186,11 @@ export function CreatePostScreen() {
             ? 'Đang tải danh sách chi...'
             : branches.query.isError
               ? 'Không tải được danh sách chi, bài sẽ hiển thị cho cả dòng họ.'
-              : scope
-                ? `Chỉ người trong ${scopeLabel(scope, branches.names)} và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.`
-                : 'Mọi thành viên trong dòng họ đều thấy.'}
+              : scope === DESCENDANTS
+                ? 'Chỉ con, cháu, chắt... của bạn và vợ/chồng của họ thấy.'
+                : scope
+                  ? 'Chỉ người trong chi của bạn và các chi con thấy, cùng trưởng chi, trưởng họ quản lý.'
+                  : 'Mọi thành viên trong dòng họ đều thấy.'}
         </Text>
         <Button
           title="Chọn ảnh từ thư viện"

@@ -32,6 +32,14 @@ public class CommunityService implements SummarySource {
     static final int MEDIA_PREVIEW = 4;
     private final MediaRepository mediaRepository;
 
+    /** Thông báo bình luận (BR-COM-14); null trong unit test dựng service bằng tay thì bỏ qua thông báo. */
+    private NotificationService notifications;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setNotifications(NotificationService notifications) {
+        this.notifications = notifications;
+    }
+
     public CommunityService(CommunityStore store, CommunityPlatformPort platform, MediaRepository mediaRepository) {
         this.store = store;
         this.platform = platform;
@@ -112,12 +120,20 @@ public class CommunityService implements SummarySource {
         return views(List.of(post),user).get(0);
     }
     private List<CommentView> commentViews(List<Comment> comments, Post post, Actor user) {
-        Map<UUID,String> names = platform.authorNames(
-            comments.stream().map(Comment::createdBy).collect(Collectors.toSet()));
+        Set<UUID> authorIds = comments.stream().map(Comment::createdBy).collect(Collectors.toSet());
+        Map<UUID,String> names = platform.authorNames(authorIds);
+        // Hồ sơ gia phả của người bình luận để mở trang cá nhân (SCRUM-130), lấy theo lô như bài đăng.
+        Map<UUID,GenealogyPort.PersonCard> cards = platform.authorPersons(authorIds);
         Map<UUID,Boolean> moderatable = new HashMap<>();
-        return comments.stream().map(comment -> new CommentView(comment.id(),comment.createdAt(),
-            comment.updatedAt(),comment.postId(),comment.content(),comment.createdBy(),
-            names.get(comment.createdBy()),canDelete(user,post,comment.createdBy(),moderatable))).toList();
+        return comments.stream().map(comment -> {
+            Optional<GenealogyPort.PersonCard> card = Optional.ofNullable(cards.get(comment.createdBy()));
+            return new CommentView(comment.id(),comment.createdAt(),
+                comment.updatedAt(),comment.postId(),comment.parentId(),comment.content(),comment.createdBy(),
+                names.get(comment.createdBy()),
+                card.map(GenealogyPort.PersonCard::personId).orElse(null),
+                card.map(GenealogyPort.PersonCard::avatarMediaId).orElse(null),
+                canDelete(user,post,comment.createdBy(),moderatable));
+        }).toList();
     }
     /** BR-COM-05, BR-COM-06; nhớ kết quả theo chi để một trang không hỏi Gia phả lặp lại. */
     private boolean canDelete(Actor user, Post post, UUID owner, Map<UUID,Boolean> moderatable) {
@@ -258,12 +274,39 @@ public class CommunityService implements SummarySource {
         return PageSuccess.of(commentViews(found.items(),post,user),page,size,found.total());
     }
 
+    /** BR-COM-14: báo người đăng bài và người có bình luận được trả lời; không báo chính mình, không báo hai lần. */
+    private void notifyComment(Post post, Comment repliedTo, UUID actorId, String content) {
+        if (notifications == null) return;
+        String name = platform.authorNames(List.of(actorId)).get(actorId);
+        String snippet = content.length() > 120 ? content.substring(0,117) + "..." : content;
+        UUID replyTarget = repliedTo == null ? null : repliedTo.createdBy();
+        if (replyTarget != null && !replyTarget.equals(actorId)) {
+            notifications.sendComment(replyTarget,post.familyId(),post.id(),"COMMENT_REPLIED",
+                name + " đã trả lời bình luận của bạn",snippet,actorId);
+        }
+        if (!post.createdBy().equals(actorId) && !post.createdBy().equals(replyTarget)) {
+            notifications.sendComment(post.createdBy(),post.familyId(),post.id(),"POST_COMMENTED",
+                name + " đã bình luận bài viết của bạn",snippet,actorId);
+        }
+    }
+
     @Transactional
     public CommentView createComment(UUID postId, CommentInput input) {
         Actor user = actor();
         Post post = readablePost(user,postId);
-        Comment created = store.insertComment(postId,nonBlank(input == null ? null : input.content(),1000,"content"),user.userId());
+        String content = nonBlank(input == null ? null : input.content(),1000,"content");
+        // BR-COM-14: trả lời 1 cấp; trả lời một câu trả lời thì gắn vào bình luận gốc của nó.
+        Comment parent = null;
+        if (input.parentId() != null) {
+            parent = store.findComment(input.parentId())
+                .filter(c -> c.postId().equals(postId))
+                .orElseThrow(() -> ApiException.invalidField("parentId","Bình luận được trả lời không thuộc bài này"));
+            if (parent.parentId() != null) parent = store.findComment(parent.parentId()).orElse(parent);
+        }
+        Comment created = store.insertComment(postId,parent == null ? null : parent.id(),content,user.userId());
         platform.logContentSaved(true,"COMMENT",created.id(),post.familyId());
+        notifyComment(post,input.parentId() == null ? null : store.findComment(input.parentId()).orElse(null),
+                      user.userId(),content);
         return commentViews(List.of(created),post,user).get(0);
     }
 

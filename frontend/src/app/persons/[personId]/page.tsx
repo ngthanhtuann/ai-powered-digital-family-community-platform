@@ -148,7 +148,6 @@ export default function PersonPage() {
             <>
               <Button fullWidth={false} variant="secondary" onClick={() => setEditing(true)}>Chỉnh sửa hồ sơ</Button>
               <AvatarUpload personId={personId} person={p} />
-              <Link href={`/directory/members/${p.id}`} className={buttonClass}>Sửa nghề nghiệp, học vấn</Link>
             </>
           )}
           {isMe && <Link href="/profile/account" className={buttonClass}>Tài khoản đăng nhập</Link>}
@@ -229,7 +228,10 @@ export default function PersonPage() {
           )}
         </section>
       </div>
-      {editing && <PersonFormModal familyId={p.familyId ?? ''} person={p} onClose={() => setEditing(false)} />}
+      {editing && (
+        <PersonFormModal familyId={p.familyId ?? ''} person={p} onClose={() => setEditing(false)}
+          career={{ profession: profession.data ?? null, education: education.data ?? null }} />
+      )}
     </div>
   );
 }

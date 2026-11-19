@@ -16,7 +16,12 @@ function Call([string]$Method, [string]$Path, $Body = $null, [string]$Token = $n
     $params = @{ Method = $Method; Uri = "$Api$Path"; ContentType = 'application/json; charset=utf-8'; Headers = @{} }
     if ($Token) { $params.Headers.Authorization = "Bearer $Token" }
     if ($null -ne $Body) { $params.Body = [Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 6 -Compress)) }
-    try { return (Invoke-RestMethod @params).data }
+    # PowerShell 5.1 đọc JSON không ghi charset theo ISO-8859-1 nên tiếng Việt bị méo ("Nguyá»n");
+    # gửi ngược dữ liệu đọc về (như PUT /persons) sẽ ghi tên méo vào DB. Vì vậy tự giải mã UTF-8.
+    try {
+        $res = Invoke-WebRequest @params -UseBasicParsing
+        return ([Text.Encoding]::UTF8.GetString($res.RawContentStream.ToArray()) | ConvertFrom-Json).data
+    }
     catch { throw "$Method $Path that bai: $($_.ErrorDetails.Message)" }
 }
 function Login([string]$Key) { (Call POST '/auth/login' @{ email = "$Key@demo.familyconnect.vn"; password = $Password }).accessToken }
@@ -118,17 +123,146 @@ function Seed-Heritage([string]$Token, [string]$FamilyId, $ToPersonId = $null) {
     } finally { Remove-Item -Recurse -Force $dir }
 }
 
+# --- Hồ sơ cá nhân và bài đăng có tương tác (SCRUM-129): toàn bộ là dữ liệu giả, địa chỉ ghi rõ "(giả)". ---
+function Post-File([string]$Path, [string]$File, [string]$Mime, [hashtable]$Fields, [string]$Token) {
+    # Multipart cho ảnh đại diện (/media, ownerType PERSON) và ảnh bài đăng (/posts/{id}/media).
+    $client = New-Object System.Net.Http.HttpClient
+    try {
+        $client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $Token)
+        $form = New-Object System.Net.Http.MultipartFormDataContent
+        $bytes = New-Object System.Net.Http.ByteArrayContent(, [IO.File]::ReadAllBytes($File))
+        $bytes.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse($Mime)
+        $form.Add($bytes, 'file', [IO.Path]::GetFileName($File))
+        foreach ($k in $Fields.Keys) { $form.Add((New-Object System.Net.Http.StringContent($Fields[$k])), $k) }
+        $res = $client.PostAsync("$Api$Path", $form).Result
+        $text = $res.Content.ReadAsStringAsync().Result
+        if (-not $res.IsSuccessStatusCode) { throw "POST $Path that bai: $text" }
+        return ($text | ConvertFrom-Json).data.id
+    } finally { $client.Dispose() }
+}
+
+function New-DemoAvatar([string]$Path, [string]$Name, [int]$Variant) {
+    # Ảnh đại diện vẽ sẵn: nền màu, chữ cái đầu của tên; không dùng ảnh người thật.
+    $tones = @(@(44, 24, 16), @(92, 138, 110), @(122, 99, 72), @(184, 122, 158), @(21, 101, 192), @(191, 68, 0))
+    $t = $tones[$Variant % $tones.Count]
+    $bmp = New-Object System.Drawing.Bitmap 400, 400
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    try {
+        $g.SmoothingMode = 'AntiAlias'; $g.TextRenderingHint = 'AntiAlias'
+        $g.Clear([System.Drawing.Color]::FromArgb($t[0], $t[1], $t[2]))
+        $letter = ($Name.Trim() -split '\s+')[-1].Substring(0, 1).ToUpper()
+        $format = New-Object System.Drawing.StringFormat
+        $format.Alignment = 'Center'; $format.LineAlignment = 'Center'
+        $g.DrawString($letter, (New-Object System.Drawing.Font('Segoe UI', 150, [System.Drawing.FontStyle]::Bold)),
+            (New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(245, 230, 200))),
+            (New-Object System.Drawing.RectangleF 0, 0, 400, 400), $format)
+        $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally { $g.Dispose(); $bmp.Dispose() }
+}
+
+function Seed-Social {
+    $t = @{}
+    foreach ($k in @('phuc','hung','minh','ha','lan','khoa')) { $t[$k] = Login $k }
+    if ((Call GET '/persons/me' $null $t.ha).avatarMediaId) {
+        Write-Host '  Ho so ca nhan va bai dang tuong tac da co, bo qua.'
+        return
+    }
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('fc-social-' + [Guid]::NewGuid())
+    New-Item -ItemType Directory $dir | Out-Null
+    try {
+        # Mỗi dòng: tài khoản, quê, nơi ở, địa chỉ, giới thiệu, nghề (null là giữ nghề đã có), trường, bằng, năm tốt nghiệp.
+        $profiles = @(
+            @('phuc', 'Hải Hậu, Nam Định', 'Nam Định', 'Xóm 3, xã Hải Đông (địa chỉ giả)', 'Trưởng họ Nguyễn, giáo viên đã nghỉ hưu, phụ trách quỹ khuyến học.', @('Giáo viên (đã nghỉ hưu)', 'Trường THCS Demo', 'Nam Định'), 'Đại học Sư phạm Hà Nội', 'Cử nhân', 1972),
+            @('hung', 'Hải Hậu, Nam Định', 'Hà Nội', 'Số 12 ngõ Demo, Cầu Giấy (địa chỉ giả)', 'Trưởng Chi 2. Thích câu cá và chơi cờ tướng cuối tuần.', $null, 'Đại học Xây dựng', 'Kỹ sư', 1994),
+            @('minh', 'Hải Hậu, Nam Định', 'Nam Định', 'Phố Demo, TP. Nam Định (địa chỉ giả)', 'Dạy Toán, mở lớp bồi dưỡng miễn phí cho các cháu trong họ dịp hè.', $null, 'Đại học Sư phạm Hà Nội', 'Thạc sĩ', 2002),
+            @('ha', 'Hà Nội', 'Hà Nội', 'Chung cư Demo, Hà Đông (địa chỉ giả)', 'Làm dữ liệu ở ngân hàng, mẹ của bé My. Hay chụp ảnh các buổi họp họ.', $null, 'Đại học Kinh tế Quốc dân', 'Cử nhân', 2016),
+            @('lan', 'Hà Nội', 'Hải Phòng', 'Phố Demo, Lê Chân (địa chỉ giả)', 'Thiết kế đồ họa tự do, phụ trách làm thiệp mời giỗ Tổ.', @('Nhà thiết kế đồ họa', 'Studio Demo', 'Hải Phòng'), 'Đại học Mỹ thuật Công nghiệp', 'Cử nhân', 2018),
+            @('khoa', 'Cần Thơ', 'TP. Hồ Chí Minh', 'Đường Demo, Thủ Đức (địa chỉ giả)', 'Con rể họ Nguyễn, quê Cần Thơ, mê bóng đá.', $null, 'Đại học Bách khoa TP.HCM', 'Kỹ sư', 2015)
+        )
+        $i = 0
+        foreach ($pr in $profiles) {
+            $tok = $t[$pr[0]]
+            $me = Call GET '/persons/me' $null $tok
+            $img = Join-Path $dir "avatar-$($pr[0]).png"
+            New-DemoAvatar $img $me.fullName $i
+            $avatar = Post-File '/media' $img 'image/png' @{ ownerType = 'PERSON'; ownerId = $me.id } $tok
+            # PUT ghi đè mọi trường: gửi lại trường không đổi (BR-GEN-20: chính chủ tự sửa).
+            $null = Call PUT "/persons/$($me.id)" @{
+                fullName = $me.fullName; gender = $me.gender; birthDate = $me.birthDate
+                birthYear = $(if ($me.birthDate) { $null } else { $me.birthYear })
+                birthplace = $pr[1]; currentProvince = $pr[2]; currentAddress = $pr[3]; note = $pr[4]
+                branchId = $me.branchId; isDeceased = [bool]$me.isDeceased; deathDate = $me.deathDate
+                burialPlace = $me.burialPlace; avatarMediaId = $avatar
+            } $tok
+            if ($pr[5]) {
+                $null = Call PUT "/directory/members/$($me.id)/profession-profile" @{ jobTitle = $pr[5][0]; company = $pr[5][1]; workLocation = $pr[5][2] } $tok
+            }
+            $null = Call PUT "/directory/members/$($me.id)/education-profile" @{ school = $pr[6]; degree = $pr[7]; graduationYear = $pr[8] } $tok
+            $i++
+        }
+
+        $branch = @{}
+        foreach ($k in @('hung','lan')) { $branch[$k] = (Call GET '/users/me/membership' $null $t[$k]).branchId }
+        # Mỗi bài: người đăng, nội dung, chi của ai (null là cả dòng họ), tiêu đề ảnh (null là không ảnh), bình luận, cảm xúc.
+        # Bình luận: @(người, nội dung, số thứ tự bình luận được trả lời hoặc -1).
+        $posts = @(
+            @('ha', 'Hôm nay bé My nhà em tròn 5 tuổi. Cảm ơn ông bà, cô chú đã gửi quà, cả nhà chúc bé ngoan và khỏe nhé!', $null, 'Sinh nhật bé My 5 tuổi',
+                @(@('phuc', 'Bác chúc cháu My mạnh khỏe, học giỏi, ngoan ngoãn!', -1), @('lan', 'Bé My xinh quá chị ơi, hôm nào cho em qua chơi với bé.', -1),
+                  @('ha', 'Con cảm ơn bác ạ, Tết con đưa cháu về chúc Tết bác.', 0), @('hung', 'Ông ngoại chúc cháu gái lớn nhanh!', -1), @('ha', 'Hẹn em cuối tuần nhé.', 1)),
+                @(@('phuc','LOVE'), @('lan','LOVE'), @('hung','LIKE'), @('minh','LIKE'), @('khoa','HAHA'))),
+            @('minh', 'Tin vui: cháu Nguyễn Văn Nam đạt giải Nhì môn Toán cấp tỉnh năm nay. Giỗ Tổ sắp tới họ sẽ trao thưởng từ quỹ khuyến học.', $null, 'Giải Nhì Toán cấp tỉnh',
+                @(@('phuc', 'Họ ta tự hào lắm. Bác sẽ chuẩn bị phần thưởng cho cháu.', -1), @('ha', 'Em Nam giỏi quá, chị chúc mừng em!', -1),
+                  @('minh', 'Con cảm ơn bố, em Nam sẽ cố gắng thi quốc gia.', 0), @('khoa', 'Chúc mừng em, năm sau thi quốc gia nhé.', -1)),
+                @(@('phuc','LOVE'), @('ha','LOVE'), @('hung','LIKE'), @('lan','LIKE'), @('khoa','LIKE'))),
+            @('phuc', 'Nhà thờ họ đã lợp lại mái xong, kịp trước giỗ Tổ. Cảm ơn các chi đã góp công góp của.', $null, 'Nhà thờ họ sau khi sửa mái',
+                @(@('hung', 'Mái mới đẹp quá anh. Chi 2 xin góp thêm tiền sơn lại cổng.', -1), @('minh', 'Hôm lợp mái Chi 1 có 6 người phụ, vui lắm bố ạ.', -1),
+                  @('phuc', 'Được, Hùng gom tiền rồi báo anh nhé.', 0), @('khoa', 'Lần đầu cháu thấy nhà thờ họ, Tết này cháu xin về phụ ạ.', -1)),
+                @(@('hung','LIKE'), @('minh','LOVE'), @('ha','LIKE'), @('lan','LIKE'), @('khoa','LIKE'))),
+            @('hung', 'Chi 2 chốt danh sách đóng quỹ khuyến học năm nay. Nhà nào đóng rồi bình luận để mình ghi sổ nhé.', 'hung', $null,
+                @(@('ha', 'Nhà con đóng rồi bố ạ.', -1), @('khoa', 'Tối nay con chuyển khoản bố nhé.', -1), @('hung', 'Bố ghi rồi.', 0),
+                  @('lan', 'Nhà con đóng chung với chị Hà rồi bố.', -1)),
+                @(@('ha','LIKE'), @('lan','LIKE'), @('khoa','LIKE'))),
+            @('khoa', 'Mùa nước nổi ở quê mình Cần Thơ đang đẹp. Cả họ ai rảnh dịp cuối năm vào chơi, con dẫn đi chợ nổi Cái Răng.', $null, 'Chợ nổi Cái Răng',
+                @(@('ha', 'Tết này nhà chị vào nhé, bé My mê đi thuyền lắm.', -1), @('lan', 'Nhớ món lẩu mắm quá anh ơi.', -1),
+                  @('khoa', 'Chị vào thì báo em ra bến đón ạ.', 0), @('phuc', 'Hay quá, bác cũng muốn một lần vào miền Tây.', -1)),
+                @(@('ha','LOVE'), @('lan','HAHA'), @('phuc','LIKE'), @('hung','LIKE'))),
+            @('lan', 'Chi 2a cuối tuần này gặp mặt mừng sinh nhật bé Bin ở nhà em, mọi người nhớ đến sớm phụ nấu ăn nhé.', 'lan', $null,
+                @(@('khoa', 'Anh mang bánh kem với nước ngọt nhé.', -1), @('hung', 'Bố mẹ đến từ sáng phụ con.', -1), @('lan', 'Dạ con cảm ơn bố ạ.', 1)),
+                @(@('khoa','LOVE'), @('hung','LIKE')))
+        )
+        $n = 0
+        foreach ($ps in $posts) {
+            $tok = $t[$ps[0]]
+            $branchId = $(if ($ps[2]) { $branch[$ps[2]] } else { $null })
+            $post = Call POST '/posts' @{ content = $ps[1]; type = 'POST'; branchId = $branchId; audience = $(if ($branchId) { 'BRANCH' } else { 'FAMILY' }) } $tok
+            if ($ps[3]) {
+                $img = Join-Path $dir "post-$n.png"
+                New-DemoImage $img $ps[3] $n
+                $null = Post-File "/posts/$($post.id)/media" $img 'image/png' @{} $tok
+            }
+            $ids = @()
+            foreach ($c in $ps[4]) {
+                $parent = $(if ($c[2] -ge 0) { $ids[$c[2]] } else { $null })
+                $ids += (Call POST "/posts/$($post.id)/comments" @{ content = $c[1]; parentId = $parent } $t[$c[0]]).id
+            }
+            foreach ($r in $ps[5]) { $null = Call POST "/posts/$($post.id)/reactions" @{ type = $r[1] } $t[$r[0]] }
+            $n++
+        }
+        Write-Host "  Ho so: $($profiles.Count) tai khoan co anh dai dien, que, noi o, hoc van. Bai dang tuong tac: $($posts.Count)."
+    } finally { Remove-Item -Recurse -Force $dir }
+}
+
 $existing = $null
 try { $existing = Login 'phuc' } catch { }
 if ($existing) {
-    # Demo đã nạp trước SCRUM-114: chỉ bổ sung Di sản nếu đang trống, phần khác giữ nguyên.
+    # Demo đã nạp trước: chỉ bổ sung phần còn thiếu (Di sản SCRUM-114, hồ sơ và bài tương tác SCRUM-129), phần khác giữ nguyên.
     $famId = (Call GET '/users/me/membership' $null $existing).familyId
     if (@(Call GET '/heritage/stories?page=0&size=1' $null $existing).Count -eq 0) {
         Write-Host 'Du lieu demo da co san, bo sung phan Di san...'
         Seed-Heritage $existing $famId
-    } else {
-        Write-Host 'Du lieu demo da co san (dang nhap duoc tai khoan phuc). Khong nap lai.'
     }
+    Write-Host 'Du lieu demo da co san, bo sung ho so ca nhan va bai dang tuong tac...'
+    Seed-Social
     exit 0
 }
 
@@ -306,6 +440,9 @@ foreach ($j in @(@('hung','Kỹ sư xây dựng','Công ty Xây dựng Demo','H�
 
 Write-Host '7/8 Tao du lieu Di san (cau chuyen, tai lieu, anh minh hoa gia)...'
 Seed-Heritage $tok.phuc $fam $p['to']
+
+Write-Host '7b/8 Ho so ca nhan, anh dai dien va bai dang co binh luan...'
+Seed-Social
 
 Write-Host '8/8 Tu kiem tra...'
 $all = @(Call GET "/families/$fam/persons?page=0&size=100" $null $tok.phuc)

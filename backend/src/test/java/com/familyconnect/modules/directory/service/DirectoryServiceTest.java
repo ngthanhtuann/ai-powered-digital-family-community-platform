@@ -91,7 +91,7 @@ class DirectoryServiceTest {
     void updateProfessionProfileCreatesProfileForOwnPerson() {
         DirectoryPerson person = person(PERSON_ID, ACTOR_ID, LocalDate.of(1990, 1, 1), false);
         when(genealogyQuery.findDirectoryPerson(PERSON_ID)).thenReturn(Optional.of(person));
-        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
+        lenient().when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
         when(professionRepository.findByPersonIdAndDeletedAtIsNull(PERSON_ID)).thenReturn(Optional.empty());
         when(professionRepository.saveAndFlush(any(ProfessionProfile.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -211,7 +211,7 @@ class DirectoryServiceTest {
     void graduationYearCannotExceedTenYearsAhead() {
         DirectoryPerson person = person(PERSON_ID, ACTOR_ID, LocalDate.of(1990, 1, 1), false);
         when(genealogyQuery.findDirectoryPerson(PERSON_ID)).thenReturn(Optional.of(person));
-        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
+        lenient().when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(Optional.of(person));
 
         ApiException error = assertThrows(ApiException.class, () -> service.updateEducationProfile(
                 PERSON_ID, new EducationProfileRequest("University", null, 2037)));
@@ -240,6 +240,25 @@ class DirectoryServiceTest {
         assertNull(result.data().get(1).location());
         assertNull(result.data().get(1).generation());
         assertNull(result.data().get(1).relationship());
+    }
+
+    @Test
+    void memberSearchShowsRelationshipToViewerIncludingChildren() {
+        UUID viewerPersonId = UUID.randomUUID();
+        DirectoryPerson viewer = person(viewerPersonId, ACTOR_ID, LocalDate.of(1990, 1, 1), false);
+        DirectoryPerson adult = person(PERSON_ID, null, LocalDate.of(1960, 1, 1), false);
+        DirectoryPerson child = person(UUID.randomUUID(), null, LocalDate.now(CLOCK).minusYears(5), false);
+        when(genealogyQuery.searchDirectoryPeople(eq(FAMILY_ID), any(), any(), any(), any(), any(),
+                eq(false), eq("fullName"), eq(true), eq(0), eq(20)))
+                .thenReturn(new DirectoryPage(List.of(adult, child), 2));
+        when(genealogyQuery.findDirectoryPersonByUserId(ACTOR_ID)).thenReturn(java.util.Optional.of(viewer));
+        when(genealogyQuery.relationshipLabels(viewerPersonId, List.of(PERSON_ID, child.id())))
+                .thenReturn(java.util.Map.of(PERSON_ID, "cha", child.id(), "con"));
+
+        var result = service.searchMembers(null, null, null, null, null, 0, 20, "fullName,asc");
+
+        assertEquals("cha", result.data().get(0).relationship());
+        assertEquals("con", result.data().get(1).relationship());
     }
 
     @Test

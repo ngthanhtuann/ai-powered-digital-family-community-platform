@@ -193,6 +193,27 @@ class CommunityServiceTest {
         verifyNoInteractions(store);
     }
 
+    @Test void commentsCarryAuthorPersonForProfileLinkInOneBatch() {
+        when(platform.requireAuthenticatedActor()).thenReturn(member());
+        when(store.findPost(postId)).thenReturn(java.util.Optional.of(otherPost()));
+        UUID personId = UUID.randomUUID();
+        UUID avatarId = UUID.randomUUID();
+        var linked = new CommunityStore.Comment(UUID.randomUUID(),postId,"Có hồ sơ",authorId,now,now);
+        var unlinked = new CommunityStore.Comment(UUID.randomUUID(),postId,"Chưa gắn hồ sơ",memberId,now,now);
+        when(store.comments(eq(postId),eq(0),eq(20),anyString()))
+            .thenReturn(new CommunityStore.Page<>(List.of(linked,unlinked),2));
+        when(platform.authorNames(any())).thenReturn(Map.of(authorId,"Người khác",memberId,"Tôi"));
+        when(platform.authorPersons(any())).thenReturn(Map.of(authorId,
+            new com.familyconnect.modules.auth.api.GenealogyPort.PersonCard(personId,avatarId)));
+
+        var items = service.comments(postId,0,20,"createdAt,asc").data();
+
+        assertEquals(personId,items.get(0).authorPersonId());
+        assertEquals(avatarId,items.get(0).authorAvatarMediaId());
+        org.junit.jupiter.api.Assertions.assertNull(items.get(1).authorPersonId());
+        verify(platform,times(1)).authorPersons(any());
+    }
+
     @Test void feedReturnsAuthorNamesAndCanDeletePerViewerUsingBatchQueries() {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         Post mine = new Post(UUID.randomUUID(),familyA,null,"Của tôi",PostType.POST,memberId,now,now);

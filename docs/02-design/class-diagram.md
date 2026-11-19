@@ -18,9 +18,9 @@ Sơ đồ lớp mức thực thể (lớp dữ liệu) của từng module, dùn
 
 Quy ước chung:
 
-- Thuộc tính lấy theo `data-dictionary.md` (30 bảng), đổi tên cột sang camelCase.
+- Thuộc tính lấy theo `data-dictionary.md` (32 bảng; 2 bảng kỹ thuật `ha_rate_limit_*` không vẽ thành lớp), đổi tên cột sang camelCase.
 - Không vẽ các cột chuẩn `createdAt`, `updatedAt`, `deletedAt`, `createdBy`, `updatedBy`; ngoại lệ ghi ở chú thích từng sơ đồ.
-- Ngăn phương thức chỉ ghi phương thức nghiệp vụ đã có trong entity của code tại commit `4403ce0`, không ghi getter/setter. Lớp chưa có trong code thì để trống.
+- Ngăn phương thức chỉ ghi phương thức nghiệp vụ có trong entity JPA của code (`develop` ngày 19/11/2026, SCRUM-131), không ghi getter/setter. Lớp đọc ghi bằng JDBC (record, không có entity) thì để trống.
 - File ảnh xuất từ draw.io, kèm dữ liệu sơ đồ: mở bằng draw.io để sửa rồi xuất lại cùng tên.
 
 ## 2. Auth và quản trị (auth, admin)

@@ -49,11 +49,11 @@ Theo tài liệu SRS mục 3, các yêu cầu chức năng thuộc phạm vi 3 m
 | :--- | :--- |
 | **Mã UC / FR** | UC-DIR-02 / FR-DIR-02, FR-DIR-03 |
 | **Actor** | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN |
-| **Tiền điều kiện** | Chỉ sửa hồ sơ của chính mình (`person.user_id` = người đăng nhập) hoặc cha mẹ sửa cho con dưới 16 tuổi (quan hệ `parent_child`). BRANCH_ADMIN chỉ nhập thay cho người **chưa có tài khoản** trong chi (BR-DIR-03, BR-GEN-14). SYSTEM_ADMIN sửa cho người trong toàn gia đình. |
+| **Tiền điều kiện** | Chỉ sửa hồ sơ của chính mình (`person.user_id` = người đăng nhập) hoặc cha mẹ sửa cho con dưới 16 tuổi (quan hệ `parent_child`). BRANCH_ADMIN chỉ nhập thay cho người **chưa có tài khoản** trong chi (BR-DIR-03, BR-GEN-14). SYSTEM_ADMIN cũng chỉ nhập cho người chưa có tài khoản. |
 | **Luồng chính** | 1. Người dùng chọn cập nhật thông tin.<br>2. Hệ thống kiểm tra quyền sửa.<br>3. Validate dữ liệu.<br>4. Lưu/ghi đè bản ghi duy nhất của người dùng vào bảng. |
 | **Luồng lỗi** | - Dữ liệu không hợp lệ: 400 VALID_001.<br>- Sửa hồ sơ người khác không có quyền: 403 PERM_001.<br>- Chưa xác minh gia đình: 403 PERM_002.<br>- Không tìm thấy thành viên: 404 NOT_FOUND_001. |
 | **Hậu điều kiện** | Dữ liệu hồ sơ cá nhân được đồng bộ và lưu trữ. |
-| **Quy tắc** | **BR-DIR-02:** Mỗi người chỉ có 1 dòng hồ sơ đang active. Năm tốt nghiệp không vượt quá năm hiện tại + 10.<br>**BR-DIR-03** (16/11/2026): hồ sơ của người đã gắn tài khoản (`person.user_id` khác NULL) chỉ chính chủ sửa (cha mẹ vẫn sửa cho con dưới 16 tuổi); Trưởng chi, Trưởng họ không sửa được. |
+| **Quy tắc** | **BR-DIR-02:** Mỗi người chỉ có 1 dòng hồ sơ đang active. Năm tốt nghiệp không vượt quá năm hiện tại + 10.<br>**BR-DIR-03** (16/11/2026): hồ sơ của người đã gắn tài khoản (`person.user_id` khác NULL) chỉ chính chủ sửa (cha mẹ vẫn sửa cho con dưới 16 tuổi); Trưởng chi, Trưởng họ, SYSTEM_ADMIN không sửa được (cập nhật 18/11/2026). |
 
 | Tên Use Case | UC-HER-01: Quản lý tài liệu lịch sử |
 | :--- | :--- |
