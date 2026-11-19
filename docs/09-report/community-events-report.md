@@ -103,16 +103,16 @@ Tiêu chí Jira: người mới làm theo hướng dẫn dùng được hệ th�
 
 | ID | Nội dung kiểm tra | Kết quả mong đợi | Kết quả thực tế / trạng thái |
 |---|---|---|---|
-| UG-01 | Đăng ký, đăng nhập, đăng xuất, hồ sơ | Hiểu được các bước và truy cập đúng quyền | Chờ TV1 |
-| UG-02 | Tham gia, chờ duyệt, duyệt/từ chối tài khoản thử | Trạng thái và quyền truy cập đúng | Chờ TV1 |
-| UG-03 | Bảng tin, tạo/sửa/xóa bài thử kèm ảnh, phạm vi người xem | Nội dung và ảnh hiển thị đúng phạm vi | Chờ TV1 |
-| UG-04 | Bình luận, trả lời, cảm xúc, tin tức, thông báo | Thao tác được theo quyền đã mô tả | Chờ TV1 |
-| UG-05 | Tạo/sửa/hủy sự kiện thử | Sự kiện và trạng thái cập nhật đúng | Chờ TV1 |
-| UG-06 | RSVP, người tham dự, gallery | Phản hồi, danh sách và ảnh được cập nhật | Chờ TV1 |
-| UG-07 | Chuông thông báo, đánh dấu đã đọc | Thông báo hiển thị và trạng thái đọc đổi đúng | Chờ TV1 |
-| UG-08 | Đối chiếu seed theo mục 4 | Tạo được bài đăng, bình luận và sự kiện từ script demo hiện có | TV3 đã đối chiếu số lượng; chờ TV1 |
+| UG-01 | Đăng ký, đăng nhập, đăng xuất, hồ sơ | Hiểu được các bước và truy cập đúng quyền | Đạt 7/7 (API): đăng ký, đăng nhập, sửa hồ sơ, đổi mật khẩu rồi đăng nhập lại, đăng xuất; sai mật khẩu trả 401 `AUTH_001` |
+| UG-02 | Tham gia, chờ duyệt, duyệt/từ chối tài khoản thử | Trạng thái và quyền truy cập đúng | Đạt 6/6 (API): tài khoản chưa xác minh bị chặn 403; gửi yêu cầu bằng mã gia đình, trạng thái PENDING; trưởng họ thấy và từ chối kèm lý do; người xin thấy REJECTED. Không duyệt tài khoản thử để giữ dữ liệu demo |
+| UG-03 | Bảng tin, tạo/sửa/xóa bài thử kèm ảnh, phạm vi người xem | Nội dung và ảnh hiển thị đúng phạm vi | Đạt 5/5 (API): tạo bài, đính kèm ảnh PNG, ảnh GIF bị từ chối 415, sửa bài, xóa bài thử. Chưa kiểm hiển thị ảnh trên giao diện |
+| UG-04 | Bình luận, trả lời, cảm xúc, tin tức, thông báo | Thao tác được theo quyền đã mô tả | Đạt 7/7 (API): bình luận, trả lời, thả và bỏ cảm xúc; trưởng họ đăng thông báo ghim; thành viên thường đăng thông báo bị 403; xóa thông báo thử |
+| UG-05 | Tạo/sửa/hủy sự kiện thử | Sự kiện và trạng thái cập nhật đúng | Đạt 5/5 (API): tạo, sửa, hủy sự kiện thử; giờ kết thúc trước giờ bắt đầu bị từ chối 400; sự kiện đã hủy không còn trong danh sách |
+| UG-06 | RSVP, người tham dự, gallery | Phản hồi, danh sách và ảnh được cập nhật | Đạt 4/4 (API): RSVP Tham dự, đổi sang Có thể, danh sách người tham dự cập nhật, tải ảnh sự kiện |
+| UG-07 | Chuông thông báo, đánh dấu đã đọc | Thông báo hiển thị và trạng thái đọc đổi đúng | Đạt 2/2 (API): xem danh sách thông báo, đánh dấu một thông báo đã đọc |
+| UG-08 | Đối chiếu seed theo mục 4 | Tạo được bài đăng, bình luận và sự kiện từ script demo hiện có | Đạt (truy vấn chỉ đọc lúc 20:47): 12 bài đăng, 2 sự kiện, 1 thông báo gia đình khớp số liệu seed. Tài khoản, bình luận, cảm xúc cao hơn số trong bảng mục 4 do các lần thử trên giao diện và lần kiểm tra này |
 
-Người kiểm tra: chưa ghi nhận. Ngày kiểm tra: chưa ghi nhận. Kết luận: chưa có kết quả nghiệm thu độc lập. Nếu người mới gặp khó khăn, bổ sung/sửa hướng dẫn rồi kiểm tra lại.
+Người kiểm tra: TV1 (AI chạy kịch bản kiểm thử API theo từng bước của hướng dẫn, theo yêu cầu của TV1). Ngày kiểm tra: 19/11/2026, `develop` `de1b63b`, dữ liệu seed. Kết luận: 36/36 bước đạt ở mức API; dữ liệu thử đã được xóa hoặc hủy sau khi kiểm (trừ một tài khoản thử bị từ chối và một thông báo đã đánh dấu đọc). Chưa có người mới tự làm theo hướng dẫn trên giao diện, nên tiêu chí "người mới làm theo được" mới kiểm ở mức chức năng. Nếu người mới gặp khó khăn, bổ sung/sửa hướng dẫn rồi kiểm tra lại.
 
 ## 9. Tài liệu tham chiếu
 - `docs/01-srs/use-cases/community-events.md`, `docs/04-api/openapi/community-events.yaml`, `docs/09-report/requirements-traceability.md`.
