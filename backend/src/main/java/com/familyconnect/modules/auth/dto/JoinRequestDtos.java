@@ -6,6 +6,7 @@ import com.familyconnect.modules.auth.entity.VerificationStatus;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -26,14 +27,16 @@ public final class JoinRequestDtos {
                                 UUID branchId) {
     }
 
-    /** Schema JoinRequest: email người xin chỉ hiện cho người duyệt và chính người đó (BR-AUTH-19). */
-    public record JoinRequestData(UUID id, UUID userId, String applicantName, String applicantEmail, String message,
+    /** Schema JoinRequest: email, ngày sinh người xin chỉ hiện cho người duyệt và chính người đó (BR-AUTH-19). */
+    public record JoinRequestData(UUID id, UUID userId, String applicantName, String applicantEmail,
+                                  LocalDate applicantDateOfBirth, String message,
                                   UUID familyId, UUID branchId, VerificationStatus status, String rejectReason,
                                   UUID reviewedBy, OffsetDateTime reviewedAt, OffsetDateTime createdAt,
                                   OffsetDateTime updatedAt) {
         public static JoinRequestData of(MemberVerification mv, User applicant) {
             return new JoinRequestData(mv.getId(), mv.getUserId(), applicant == null ? null : applicant.getFullName(),
-                    applicant == null ? null : applicant.getEmail(), mv.getMessage(), mv.getFamilyId(),
+                    applicant == null ? null : applicant.getEmail(),
+                    applicant == null ? null : applicant.getDateOfBirth(), mv.getMessage(), mv.getFamilyId(),
                     mv.getBranchId(), mv.getStatus(), mv.getRejectReason(), mv.getReviewedBy(), mv.getReviewedAt(),
                     mv.getCreatedAt(), mv.getUpdatedAt());
         }

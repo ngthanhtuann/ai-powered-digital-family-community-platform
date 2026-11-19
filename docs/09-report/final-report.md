@@ -1,6 +1,6 @@
 # Báo cáo cuối kỳ FamilyConnect: chương 1, 2, 6 và Other comments (SCRUM-71)
 
-**Người viết:** TV1 Tuấn | **Reviewer:** TV4 | **Đối chiếu:** `develop` tại `0e52bb8` (19/11/2026)
+**Người viết:** TV1 Tuấn | **Reviewer:** TV4 | **Đối chiếu:** `develop` tại `c558794` (19/11/2026)
 
 Tài liệu này là phần TV1 phụ trách trong dàn ý `report-outline.md`. Chương 3 (phân tích, thiết kế), 4 (cài đặt) và 5 (kiểm thử) lấy từ các tài liệu đã có, liệt kê ở mục 4. Bảng đối chiếu đề tài nằm ở `requirements-traceability.md`.
 
@@ -16,7 +16,7 @@ Tài liệu này là phần TV1 phụ trách trong dàn ý `report-outline.md`. 
 
 | Lĩnh vực | Lý thuyết chính | Áp dụng trong FamilyConnect |
 |---|---|---|
-| Software Engineering | Quy trình Scrum: sprint, backlog, review, nghiệm thu theo tiêu chí hoàn thành | Các sprint trên Jira (SCRUM-1 đến SCRUM-127), nhánh Git theo mã task, Pull Request có reviewer chéo, CI chạy `mvn -B verify` và build web (`docs/00-process/quy-trinh-lam-viec.md`) |
+| Software Engineering | Quy trình Scrum: sprint, backlog, review, nghiệm thu theo tiêu chí hoàn thành | Các sprint trên Jira (SCRUM-1 đến SCRUM-131), nhánh Git theo mã task, Pull Request có reviewer chéo, CI chạy `mvn -B verify` và build web (`docs/00-process/quy-trinh-lam-viec.md`) |
 | OOAD | Phân tích use case, mô hình miền, đóng gói, đa hình, nguyên lý SOLID | Use case và quy tắc nghiệp vụ BR theo module (`docs/01-srs/use-cases/`), sơ đồ lớp (`class-diagram.md`); service tách Controller, Service, Repository, DTO |
 | Software Architecture | Modular monolith, ranh giới module, phụ thuộc qua interface (port/adapter) | 5 module Auth/Admin, Genealogy, Community/Events, Heritage/Directory/Dashboard, AI; gọi nhau chỉ qua interface như `MembershipQuery`, `GenealogyPort`, `AiGateway` (`architecture.md`) |
 | Enterprise Information Systems | Hệ thống nhiều vai trò, phân quyền, nhật ký kiểm toán, sao lưu, cấu hình vận hành | 4 vai trò, duyệt thành viên, audit log, backup/restore, cấu hình hệ thống áp dụng trong 1 phút |
@@ -26,7 +26,7 @@ Tài liệu này là phần TV1 phụ trách trong dàn ý `report-outline.md`. 
 | Mobile Application Development | Ứng dụng đa nền tảng, điều hướng stack/drawer, lưu token an toàn | Expo SDK 58, React Navigation, token trong `expo-secure-store` (`mobile.md`, `adr-mobile.md`) |
 | RESTful API Design | Tài nguyên, phương thức HTTP, mã trạng thái, phân trang, đặc tả OpenAPI | Tiền tố `/api/v1`, envelope `success/data/error`, mã lỗi chung, OpenAPI theo module; kiểu TypeScript sinh từ OpenAPI (`conventions.md`) |
 | Authentication & Authorization | JWT, refresh token, băm mật khẩu, RBAC, chống IDOR | JWT + refresh token, BCrypt, giới hạn đăng nhập; RBAC kiểm tra ở service; mọi truy vấn lọc theo `family_id`; test ma trận quyền và IDOR |
-| Software Testing | Kiểm thử đơn vị, tích hợp, hồi quy, hiệu năng, kiểm thử theo rủi ro | 481 test backend (JUnit, Mockito, test tích hợp trên PostgreSQL thật); đo tải k6; kiểm thử hồi quy toàn hệ thống (`docs/06-test/`) |
+| Software Testing | Kiểm thử đơn vị, tích hợp, hồi quy, hiệu năng, kiểm thử theo rủi ro | 484 test backend (JUnit, Mockito, test tích hợp trên PostgreSQL thật); đo tải k6; kiểm thử hồi quy toàn hệ thống (`docs/06-test/`) |
 | Information Retrieval | Biểu diễn vector, độ tương đồng cosine, chỉ mục ANN, đánh giá theo top-k | Embedding `gemini-embedding-001` 768 chiều, pgvector HNSW, ngưỡng cosine; tìm kiếm ngữ nghĩa đạt 15/15 truy vấn (`semantic-search-evaluation.md`) |
 | LLM Integration | Retrieval-Augmented Generation, prompt có ràng buộc, chống bịa (grounding), trích nguồn | Chỉ đưa ngữ cảnh người hỏi được xem; quan hệ do thuật toán tính sẵn; trả "Không tìm thấy thông tin." khi thiếu dữ kiện; chat đạt 40/40 câu (`ai-quality-scrum-69.md`, `ai-rag.md`) |
 
