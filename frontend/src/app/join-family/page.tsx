@@ -71,7 +71,8 @@ export default function JoinFamilyPage() {
               error={joinForm.formState.errors.code?.message} {...joinForm.register('code')} />
             <label className="grid gap-1.5 text-label">Lời nhắn cho người duyệt (không bắt buộc)
               <textarea className={textareaClass} rows={3} maxLength={255}
-                placeholder="Ví dụ: con gái ông Nguyễn Văn Bình, chi trưởng" {...joinForm.register('message')} />
+                placeholder="Ví dụ: con gái ông Nguyễn Văn Bình và bà Trần Thị Mai, chi trưởng" {...joinForm.register('message')} />
+              <span className="text-caption text-text-secondary">Ghi tên cha mẹ để trưởng họ tìm đúng bạn trên cây gia phả khi có người trùng tên.</span>
               {joinForm.formState.errors.message && (
                 <span className="text-caption text-error">{joinForm.formState.errors.message.message}</span>
               )}

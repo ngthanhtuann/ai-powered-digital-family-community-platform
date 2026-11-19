@@ -102,6 +102,7 @@ class JoinRequestApiIntegrationTest {
         assertThat(created.getStatus()).isEqualTo(201);
         assertThat(body(created).at("/data/status").asText()).isEqualTo("PENDING");
         assertThat(body(created).at("/data/applicantEmail").asText()).isEqualTo(email);
+        assertThat(body(created).at("/data/applicantDateOfBirth").asText()).isEqualTo("1990-01-01");
         UUID requestId = createdId(created);
         JsonNode membership = body(send(HttpMethod.GET, "/api/v1/users/me/membership", applicant, null)).get("data");
         assertThat(membership.get("status").asText()).isEqualTo("PENDING");
