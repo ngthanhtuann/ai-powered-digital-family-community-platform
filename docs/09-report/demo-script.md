@@ -71,9 +71,10 @@ Mật khẩu chung của tài khoản seed: `Demo@2026` (chỉ dùng trên máy 
 | Lần | Ngày | Người chạy | Môi trường | Thời gian | Vấn đề ghi nhận |
 |---|---|---|---|---|---|
 | 1 | 19/11/2026 | TV1 | Stack Docker tạm, `develop` `0e52bb8` + nhánh SCRUM-126, dữ liệu seed | Chưa bấm giờ | Danh bạ hiện "Chưa có thông tin quan hệ" cho mọi người (API luôn trả `relationship = null`); bài cũ mở từ thông báo không hiện. Cả hai đã sửa ở SCRUM-126 |
-| 2 | Chưa chạy | Cả nhóm | Máy demo | | |
+| 2 | 19/11/2026 | AI (theo yêu cầu TV1) | Stack Docker, `develop` `2dc939f`, dữ liệu seed | 13,2 giây và 1,7 giây (2 lượt liên tiếp, gọi API tự động) | Không có lỗi. 11/11 luồng đạt ở cả 2 lượt: cây 53 người, tra quan hệ Hà–Tổ "cháu nội", bảng tin, sự kiện, danh bạ, di sản, Dashboard chặn MEMBER và cho trưởng họ, duyệt yêu cầu, tài khoản chưa xác minh bị chặn, AI trả lời "Tôi là ai?" |
+| 3 | Chưa chạy | Cả nhóm | Máy demo | | |
 
-Lần 1 chỉ chạy các bước Web của mục 3 với tài khoản `ha` (bảng tin, thông báo, trả lời bình luận, chọn người xem, danh bạ, trang cá nhân, form hồ sơ); chưa bấm giờ, chưa chạy Mobile, Dashboard, Quản trị. Lần 2 chạy cả nhóm trên máy demo, bấm giờ và điền bảng.
+Lần 1 chỉ chạy các bước Web của mục 3 với tài khoản `ha` (bảng tin, thông báo, trả lời bình luận, chọn người xem, danh bạ, trang cá nhân, form hồ sơ); chưa bấm giờ, chưa chạy Mobile, Dashboard, Quản trị. Lần 2 là kiểm thử khói qua API, không thay thế buổi tập: thời gian ghi ở bảng là thời gian máy gọi API, không phải thời lượng thuyết trình. Lần 3 chạy cả nhóm trên máy demo theo mục 3, bấm giờ và điền bảng.
 
 ## 7. Phần trình bày của TV1 và 3 câu hỏi khó (SCRUM-73)
 

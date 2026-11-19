@@ -16,7 +16,7 @@ Tài liệu này là phần TV1 phụ trách trong dàn ý `report-outline.md`. 
 
 | Lĩnh vực | Lý thuyết chính | Áp dụng trong FamilyConnect |
 |---|---|---|
-| Software Engineering | Quy trình Scrum: sprint, backlog, review, nghiệm thu theo tiêu chí hoàn thành | Các sprint trên Jira (SCRUM-1 đến SCRUM-131), nhánh Git theo mã task, Pull Request có reviewer chéo, CI chạy `mvn -B verify` và build web (`docs/00-process/quy-trinh-lam-viec.md`) |
+| Software Engineering | Quy trình Scrum: sprint, backlog, review, nghiệm thu theo tiêu chí hoàn thành | Các sprint trên Jira (SCRUM-1 đến SCRUM-132), nhánh Git theo mã task, Pull Request có reviewer chéo, CI chạy `mvn -B verify` và build web (`docs/00-process/quy-trinh-lam-viec.md`) |
 | OOAD | Phân tích use case, mô hình miền, đóng gói, đa hình, nguyên lý SOLID | Use case và quy tắc nghiệp vụ BR theo module (`docs/01-srs/use-cases/`), sơ đồ lớp (`class-diagram.md`); service tách Controller, Service, Repository, DTO |
 | Software Architecture | Modular monolith, ranh giới module, phụ thuộc qua interface (port/adapter) | 5 module Auth/Admin, Genealogy, Community/Events, Heritage/Directory/Dashboard, AI; gọi nhau chỉ qua interface như `MembershipQuery`, `GenealogyPort`, `AiGateway` (`architecture.md`) |
 | Enterprise Information Systems | Hệ thống nhiều vai trò, phân quyền, nhật ký kiểm toán, sao lưu, cấu hình vận hành | 4 vai trò, duyệt thành viên, audit log, backup/restore, cấu hình hệ thống áp dụng trong 1 phút |
