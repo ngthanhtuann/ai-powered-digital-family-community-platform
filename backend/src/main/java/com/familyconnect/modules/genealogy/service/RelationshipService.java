@@ -69,9 +69,9 @@ public class RelationshipService {
             throw new ApiException(ErrorCode.PERM_001); // UC-GEN-04 tiền điều kiện: cùng gia đình
         }
 
-        // Chặn trường hợp vợ/chồng lại được gán làm cha/mẹ của nhau
-        if (isMarriedTo(parent.getId(), childId)) {
-            throw new ApiException(ErrorCode.GEN_010); // Xung đột hôn nhân và huyết thống trực hệ
+        // BR-GEN-07: người đang hoặc đã từng là vợ/chồng (mọi trạng thái) không làm cha/mẹ của nhau.
+        if (everMarried(parent.getId(), childId)) {
+            throw new ApiException(ErrorCode.GEN_010);
         }
 
         ParentKind kind = input.kind() == null ? ParentKind.BIOLOGICAL : input.kind();
@@ -257,9 +257,9 @@ public class RelationshipService {
                 m.getEndDate(), at(m.getCreatedAt()), at(m.getUpdatedAt()));
     }
 
-    /** Kiểm tra xem 2 người có đang kết hôn với nhau hay không. */
-    private boolean isMarriedTo(UUID person1Id, UUID person2Id) {
-        return marriageRepository.findMarriedByPersonId(person1Id).stream()
+    /** Hai người có hôn nhân chưa xóa với nhau, kể cả DIVORCED, WIDOWED. */
+    private boolean everMarried(UUID person1Id, UUID person2Id) {
+        return marriageRepository.findAllByPersonId(person1Id).stream()
                 .anyMatch(m -> m.getPerson1Id().equals(person2Id) || m.getPerson2Id().equals(person2Id));
     }
 }
