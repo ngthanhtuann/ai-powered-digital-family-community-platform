@@ -1168,12 +1168,13 @@ components:
         membership: {$ref: '#/components/schemas/Membership'}
     JoinRequest:
       type: object
-      required: [id, userId, applicantName, applicantEmail, message, familyId, branchId, status, rejectReason, reviewedBy, reviewedAt, createdAt, updatedAt]
+      required: [id, userId, applicantName, applicantEmail, applicantDateOfBirth, message, familyId, branchId, status, rejectReason, reviewedBy, reviewedAt, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         userId: {type: string, format: uuid}
         applicantName: {type: string}
         applicantEmail: {type: string, format: email}
+        applicantDateOfBirth: {type: string, format: date, nullable: true, description: 'Ngày sinh khai khi đăng ký; màn duyệt dùng cùng họ tên để chọn sẵn hồ sơ trên cây (UC-AUTH-07). Null nếu tài khoản đã bị xóa.'}
         message: {type: string, nullable: true}
         familyId: {type: string, format: uuid}
         branchId: {type: string, format: uuid, description: Chi người xin chọn; null là xin vào cả gia đình., nullable: true}

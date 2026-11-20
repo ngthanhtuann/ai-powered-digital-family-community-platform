@@ -590,6 +590,11 @@ export interface components {
             applicantName: string;
             /** Format: email */
             applicantEmail: string;
+            /**
+             * Format: date
+             * @description Ngày sinh khai khi đăng ký; màn duyệt dùng cùng họ tên để chọn sẵn hồ sơ trên cây (UC-AUTH-07). Null nếu tài khoản đã bị xóa.
+             */
+            applicantDateOfBirth: string | null;
             message: string | null;
             /** Format: uuid */
             familyId: string;

@@ -35,6 +35,8 @@ export function FamilyTreeScreen({
   const { session } = useSession();
   const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
   const familyName = session.status === 'signedIn' ? session.membership.familyName : null;
+  // Ô của chính mình được tô màu và gắn nhãn "Bạn" như web; chưa gắn hồ sơ thì /persons/me trả 404.
+  const me = useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false });
   // undefined: gốc mặc định của API (hồ sơ của tài khoản, không có thì người tổ).
   const [rootId, setRootId] = useState<string | undefined>();
   const [branchRoots, setBranchRoots] = useState<string[]>([]);
@@ -154,6 +156,7 @@ export function FamilyTreeScreen({
             loading={loadingBranch.has(item.id)}
             onToggle={toggle}
             onOpen={openPerson}
+            isMe={item.id === me.data?.id}
           />
         )}
       />
@@ -184,7 +187,9 @@ function TreeRowItem({
   loading,
   onToggle,
   onOpen,
+  isMe,
 }: {
+  isMe: boolean;
   row: TreeRow;
   graph: Graph;
   expanded: boolean;
@@ -219,9 +224,9 @@ function TreeRowItem({
           flex: 1,
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.border,
+          backgroundColor: isMe ? colors.infoSoft : colors.surface,
+          borderWidth: isMe ? 2 : 1,
+          borderColor: isMe ? colors.info : colors.border,
           borderRadius: radius.card,
           paddingVertical: 8,
           paddingLeft: 12,
@@ -235,7 +240,10 @@ function TreeRowItem({
         >
           <PersonAvatar name={node.fullName} gender={node.gender} mediaId={node.avatarMediaId} />
           <View style={{ flex: 1 }}>
-            <Text style={[text.label, { color: colors.textPrimary }]}>{node.fullName}</Text>
+            <Text style={[text.label, { color: colors.textPrimary }]}>
+              {node.fullName}
+              {isMe ? <Text style={{ color: colors.info }}> · Bạn</Text> : null}
+            </Text>
             {meta ? (
               <Text style={[text.caption, { color: colors.textSecondary }]}>{meta}</Text>
             ) : null}

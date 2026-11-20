@@ -411,6 +411,11 @@ class GenealogyApiIntegrationTest {
         Map<String, Object> relink = person("Đổi tên", LocalDate.of(1990, 2, 2));
         relink.put("userId", userId(otherEmail).toString());
         call(put("/api/v1/persons/" + personId), token(memberEmail), relink).andExpect(status().isForbidden());
+        // SCRUM-122: quản trị hệ thống cũng không sửa thông tin cá nhân của hồ sơ đã gắn tài khoản.
+        String adminEmail = newUser();
+        jdbc.update("insert into user_role(user_id, role_id) select ?, id from role where code = 'SYSTEM_ADMIN'", userId(adminEmail));
+        call(put("/api/v1/persons/" + personId), token(adminEmail), person("Admin đổi", LocalDate.of(1990, 2, 2)))
+                .andExpect(status().isForbidden());
         // SCRUM-119: chính chủ tự tải ảnh đại diện và gán; Trưởng họ không tải ảnh vào hồ sơ đã gắn tài khoản.
         UUID photo = uploadAvatar(token(memberEmail), "PERSON", personId);
         Map<String, Object> withPhoto = person("Đổi tên", LocalDate.of(1990, 2, 2));
@@ -470,5 +475,36 @@ class GenealogyApiIntegrationTest {
         // Chưa gắn hồ sơ gia phả thì không chọn được "con cháu của tôi".
         call(post("/api/v1/posts"), headToken,
                 Map.of("content", "Thử", "type", "POST", "audience", "DESCENDANTS")).andExpect(status().isBadRequest());
+    }
+
+    // ---- BR-COM-14 (SCRUM-123): trả lời bình luận 1 cấp và thông báo ----
+
+    @Test
+    void commentRepliesStayOneLevelAndNotifyPostAuthorAndRepliedUser() throws Exception {
+        Object[] o = owner();
+        UUID familyId = (UUID) o[1];
+        String author = newUser(), commenter = newUser();
+        member(author, familyId, null, "MEMBER");
+        member(commenter, familyId, null, "MEMBER");
+        UUID postId = id(call(post("/api/v1/posts"), token(author), Map.of("content", "Bài thử", "type", "POST"))
+                .andExpect(status().isCreated()));
+        UUID root = id(call(post("/api/v1/posts/" + postId + "/comments"), token(commenter), Map.of("content", "Hay quá"))
+                .andExpect(status().isCreated()));
+        UUID reply = id(call(post("/api/v1/posts/" + postId + "/comments"), token(author),
+                Map.of("content", "Cảm ơn", "parentId", root.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.parentId").value(root.toString())));
+        // Trả lời một câu trả lời vẫn gắn vào bình luận gốc.
+        call(post("/api/v1/posts/" + postId + "/comments"), token(commenter), Map.of("content", "Dạ", "parentId", reply.toString()))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.parentId").value(root.toString()));
+
+        Integer commented = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'POST_COMMENTED'",
+                Integer.class, userId(author));
+        Integer replied = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'COMMENT_REPLIED'",
+                Integer.class, userId(commenter));
+        org.assertj.core.api.Assertions.assertThat(commented).isEqualTo(1); // "Dạ" trả lời tác giả: chỉ COMMENT_REPLIED
+        org.assertj.core.api.Assertions.assertThat(replied).isEqualTo(1);
+        Integer replyToAuthor = jdbc.queryForObject("select count(*) from notification where user_id = ? and type = 'COMMENT_REPLIED'",
+                Integer.class, userId(author));
+        org.assertj.core.api.Assertions.assertThat(replyToAuthor).isEqualTo(1);
     }
 }

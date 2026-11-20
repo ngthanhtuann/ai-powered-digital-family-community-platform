@@ -118,6 +118,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/persons/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hồ sơ gia phả gắn với tài khoản đang đăng nhập (trang cá nhân của tôi, SCRUM-117)
+         * @description Chưa gắn hồ sơ thì 404 NOT_FOUND_001; chưa xác minh gia đình thì 403 PERM_002.
+         */
+        get: operations["getMyPerson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/persons/{personId}": {
         parameters: {
             query?: never;
@@ -236,7 +256,7 @@ export interface paths {
         };
         /**
          * Lấy cây gia phả dạng nodes/edges cho React Flow (UC-GEN-06)
-         * @description rootId không bắt buộc, mặc định là hồ sơ gắn với tài khoản hiện tại, nếu không có thì người tổ.
+         * @description rootId không bắt buộc, mặc định là người tổ (đời cao nhất) để thấy cả dòng họ (đổi 17/11/2026).
          *     depth là số đời tải mỗi lần, tính cả người gốc (mặc định 3, ngoài 1 đến 10 trả 400 VALID_001).
          *     Trả hậu duệ của người gốc kèm vợ/chồng của họ; node ở đời cuối còn con có hasMoreChildren = true,
          *     lazy-load nhánh bằng cách gọi lại với rootId là node đó. rootId không thuộc gia đình trả 404.
@@ -425,6 +445,13 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /**
+             * Format: uuid
+             * @description Tài khoản gắn với hồ sơ (chỉ đọc, SCRUM-117) để trang cá nhân lấy bài qua GET /posts?authorId=; null với trẻ dưới 16 tuổi bị giới hạn (BR-GEN-10).
+             */
+            userId?: string | null;
+            /** @description Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN). */
+            canEdit?: boolean;
         };
         PersonResponse: {
             success?: boolean;
@@ -1291,6 +1318,29 @@ export interface operations {
             };
         };
     };
+    getMyPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Thành công */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     getPerson: {
         parameters: {
             query?: never;
@@ -1511,7 +1561,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ */
+            /** @description GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ, GEN_010 người được chọn đang hoặc đã từng là vợ/chồng của con */
             409: {
                 headers: {
                     [name: string]: unknown;

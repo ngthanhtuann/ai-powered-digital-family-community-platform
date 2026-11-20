@@ -1561,7 +1561,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ */
+            /** @description GEN_005 đủ cha/mẹ ruột, GEN_006 vòng lặp tổ tiên, GEN_007 cha/mẹ sinh sau con, GEN_008 trùng quan hệ, GEN_010 người được chọn đang hoặc đã từng là vợ/chồng của con */
             409: {
                 headers: {
                     [name: string]: unknown;

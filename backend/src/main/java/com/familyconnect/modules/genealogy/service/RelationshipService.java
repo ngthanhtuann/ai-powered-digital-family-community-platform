@@ -59,13 +59,21 @@ public class RelationshipService {
         UUID familyId = child.getFamilyId();
         Viewer viewer = access.requireRead(familyId);
         access.requireManage(viewer, familyId, child.getBranchId());
+
         if (childId.equals(input.parentId())) {
             throw new ApiException(ErrorCode.GEN_008); // BR-GEN-05: trùng người
         }
+
         Person parent = find(input.parentId());
         if (!familyId.equals(parent.getFamilyId())) {
             throw new ApiException(ErrorCode.PERM_001); // UC-GEN-04 tiền điều kiện: cùng gia đình
         }
+
+        // BR-GEN-07: người đang hoặc đã từng là vợ/chồng (mọi trạng thái) không làm cha/mẹ của nhau.
+        if (everMarried(parent.getId(), childId)) {
+            throw new ApiException(ErrorCode.GEN_010);
+        }
+
         ParentKind kind = input.kind() == null ? ParentKind.BIOLOGICAL : input.kind();
         if (parentChildRepository.existsByParentIdAndChildIdAndDeletedAtIsNull(parent.getId(), childId)) {
             throw new ApiException(ErrorCode.GEN_008);
@@ -81,6 +89,7 @@ public class RelationshipService {
         if (bornNotBefore(parent, child)) {
             throw new ApiException(ErrorCode.GEN_007); // BR-GEN-04
         }
+
         ParentChild relation = new ParentChild();
         relation.setParentId(parent.getId());
         relation.setChildId(childId);
@@ -246,5 +255,11 @@ public class RelationshipService {
     private static MarriageData toData(Marriage m) {
         return new MarriageData(m.getId(), m.getPerson1Id(), m.getPerson2Id(), m.getStatus(), m.getStartDate(),
                 m.getEndDate(), at(m.getCreatedAt()), at(m.getUpdatedAt()));
+    }
+
+    /** Hai người có hôn nhân chưa xóa với nhau, kể cả DIVORCED, WIDOWED. */
+    private boolean everMarried(UUID person1Id, UUID person2Id) {
+        return marriageRepository.findAllByPersonId(person1Id).stream()
+                .anyMatch(m -> m.getPerson1Id().equals(person2Id) || m.getPerson2Id().equals(person2Id));
     }
 }

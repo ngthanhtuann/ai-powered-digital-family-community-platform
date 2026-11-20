@@ -588,6 +588,11 @@ export interface components {
              * @example 550e8400-e29b-41d4-a716-446655440000
              */
             postId: string;
+            /**
+             * Format: uuid
+             * @description Bình luận gốc được trả lời (BR-COM-14); null là bình luận gốc.
+             */
+            parentId?: string | null;
             /** @example Mình sẽ tham gia. */
             content: string;
             /**
@@ -600,6 +605,16 @@ export interface components {
              * @example Nguyễn Văn An
              */
             authorName: string;
+            /**
+             * Format: uuid
+             * @description Hồ sơ gia phả gắn với tài khoản người bình luận (qua GenealogyPort), để mở trang cá nhân (SCRUM-130); null nếu chưa gắn.
+             */
+            authorPersonId?: string | null;
+            /**
+             * Format: uuid
+             * @description Ảnh đại diện của hồ sơ người bình luận; tải qua endpoint media có kiểm tra quyền.
+             */
+            authorAvatarMediaId?: string | null;
             /** @description Người đang xem được xóa bình luận này (người viết, BRANCH_ADMIN trong phạm vi chi, SYSTEM_ADMIN; BR-COM-06). */
             canDelete: boolean;
         };
@@ -835,7 +850,7 @@ export interface components {
              * @example EVENT_REMINDER_24H
              * @enum {string}
              */
-            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED";
+            type: "EVENT_REMINDER_24H" | "EVENT_REMINDER_1H" | "ANNOUNCEMENT" | "CONTENT_HIDDEN" | "CONTENT_RESTORED" | "REPORT_HIDDEN" | "REPORT_DISMISSED" | "REPORT_RESTORED" | "POST_COMMENTED" | "COMMENT_REPLIED";
             /** @example Nhắc sự kiện: Họp mặt gia đình */
             title: string;
             /** @example EVENT */
@@ -929,6 +944,11 @@ export interface components {
         CommentRequest: {
             /** @example Mình sẽ tham gia. */
             content: string;
+            /**
+             * Format: uuid
+             * @description Trả lời bình luận này (BR-COM-14, 1 cấp); bỏ trống là bình luận gốc. Chỉ dùng khi tạo, khi sửa bỏ qua.
+             */
+            parentId?: string | null;
         };
         ReactionRequest: {
             /**

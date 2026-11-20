@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { communityApi, type Comment, type Post, type ReactionType } from '@/services/community/posts';
 import { formatDateTime } from '@/lib/datetime';
+import Link from 'next/link';
+import { Avatar } from '@/components/genealogy/PersonNode';
 
 // Bình luận, báo cáo vi phạm và cảm xúc dùng chung cho Bảng tin và trang cá nhân (SCRUM-120).
 
@@ -69,6 +71,8 @@ export function Comments({ postId, userId, canReport }: { postId: string; userId
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
   const query = useInfiniteQuery({
     queryKey: ['community-comments', postId],
     initialPageParam: 0,
@@ -85,6 +89,10 @@ export function Comments({ postId, userId, canReport }: { postId: string; userId
     mutationFn: () => communityApi.createComment(postId, draft),
     onSuccess: async () => { setDraft(''); await refresh(); },
   });
+  const reply = useMutation({
+    mutationFn: () => communityApi.createComment(postId, replyDraft, replyTo!.id),
+    onSuccess: async () => { setReplyTo(null); setReplyDraft(''); await refresh(); },
+  });
   const update = useMutation({
     mutationFn: () => communityApi.updateComment(editing!, editContent),
     onSuccess: async () => { setEditing(null); await refresh(); },
@@ -94,22 +102,32 @@ export function Comments({ postId, userId, canReport }: { postId: string; userId
     onSuccess: refresh,
   });
   const comments = query.data?.pages.flatMap((page) => page.items) ?? [];
-  return (
-    <section className="mt-4 border-t border-border pt-4" aria-label="Bình luận">
-      <h3 className="mb-3 font-semibold">Bình luận</h3>
-      {query.isPending && <p className="text-text-secondary">Đang tải bình luận...</p>}
-      {query.isError && (
-        <div role="alert" className="space-y-2">
-          <p className="break-words text-error">{errorText(query.error)}</p>
-          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
-        </div>
-      )}
-      <ul className="space-y-3">
-        {comments.map((comment: Comment) => (
+  const ids = new Set(comments.map((c) => c.id));
+  // Câu trả lời mà bình luận gốc chưa tải (trang sau) thì hiện như bình luận thường.
+  const roots = comments.filter((c) => !c.parentId || !ids.has(c.parentId));
+  const repliesOf = new Map<string, Comment[]>();
+  for (const c of comments) {
+    if (c.parentId && ids.has(c.parentId)) repliesOf.set(c.parentId, [...(repliesOf.get(c.parentId) ?? []), c]);
+  }
+  // Bảng tin xếp mới nhất trước; câu trả lời đọc theo thứ tự thời gian.
+  repliesOf.forEach((list) => list.sort((a, b) => a.createdAt.localeCompare(b.createdAt)));
+  // Trả lời 1 cấp (BR-COM-14): câu trả lời hiện thụt vào dưới bình luận gốc.
+  const renderComment = (comment: Comment) => (
           <li key={comment.id} className="rounded-lg bg-surface-muted p-3">
-            <p className="text-xs text-text-secondary">
-              {comment.authorName} · {dateText(comment.createdAt)}
-            </p>
+            {/* Bấm tên hoặc ảnh người bình luận để mở trang cá nhân (SCRUM-130); chưa gắn hồ sơ thì chỉ hiện tên. */}
+            <div className="flex items-center gap-2">
+              {comment.authorPersonId ? (
+                <Link href={`/persons/${comment.authorPersonId}`} aria-label={`Trang cá nhân ${comment.authorName}`}>
+                  <Avatar mediaId={comment.authorAvatarMediaId} name={comment.authorName ?? ''} size="h-8 w-8" />
+                </Link>
+              ) : <Avatar mediaId={comment.authorAvatarMediaId} name={comment.authorName ?? ''} size="h-8 w-8" />}
+              <p className="min-w-0 text-xs text-text-secondary">
+                {comment.authorPersonId
+                  ? <Link href={`/persons/${comment.authorPersonId}`} className="font-semibold text-text-primary hover:underline">{comment.authorName}</Link>
+                  : <span className="font-semibold text-text-primary">{comment.authorName}</span>}
+                {' · '}{dateText(comment.createdAt)}
+              </p>
+            </div>
             {editing === comment.id ? (
               <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); update.mutate(); }}>
                 <textarea className={inputClass} maxLength={1000} required value={editContent}
@@ -140,8 +158,45 @@ export function Comments({ postId, userId, canReport }: { postId: string; userId
                 )}
               </div>
             )}
+            {editing !== comment.id && (
+              <button type="button" className={linkButtonClass + ' text-info'}
+                onClick={() => { setReplyTo(comment); setReplyDraft(''); }}>
+                Trả lời
+              </button>
+            )}
+            {(repliesOf.get(comment.id) ?? []).length > 0 && (
+              <ul className="ml-4 mt-3 space-y-2 border-l-2 border-border pl-3" aria-label="Các câu trả lời">
+                {(repliesOf.get(comment.id) ?? []).map(renderComment)}
+              </ul>
+            )}
+            {replyTo && (replyTo.id === comment.id || replyTo.parentId === comment.id) && (
+              <form className="ml-4 mt-3 space-y-2" onSubmit={(event) => { event.preventDefault(); reply.mutate(); }}>
+                <label htmlFor={'reply-' + comment.id} className="block text-sm font-medium">
+                  Trả lời {replyTo.authorName}
+                </label>
+                <textarea id={'reply-' + comment.id} className={inputClass} maxLength={1000} required autoFocus
+                  value={replyDraft} onChange={(event) => setReplyDraft(event.target.value)} />
+                <div className="flex gap-2">
+                  <Button type="submit" fullWidth={false} loading={reply.isPending} disabled={!replyDraft.trim()}>Gửi trả lời</Button>
+                  <Button variant="secondary" fullWidth={false} onClick={() => setReplyTo(null)}>Hủy</Button>
+                </div>
+                {reply.isError && <p role="alert" className="text-error">{errorText(reply.error)}</p>}
+              </form>
+            )}
           </li>
-        ))}
+  );
+  return (
+    <section className="mt-4 border-t border-border pt-4" aria-label="Bình luận">
+      <h3 className="mb-3 font-semibold">Bình luận</h3>
+      {query.isPending && <p className="text-text-secondary">Đang tải bình luận...</p>}
+      {query.isError && (
+        <div role="alert" className="space-y-2">
+          <p className="break-words text-error">{errorText(query.error)}</p>
+          <Button variant="secondary" fullWidth={false} onClick={() => void query.refetch()}>Thử lại</Button>
+        </div>
+      )}
+      <ul className="space-y-3">
+        {roots.map(renderComment)}
       </ul>
       {query.hasNextPage && (
         <button className={'mt-3 ' + linkButtonClass} type="button" disabled={query.isFetchingNextPage}

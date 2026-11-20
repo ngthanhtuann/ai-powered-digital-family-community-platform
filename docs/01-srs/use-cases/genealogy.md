@@ -92,9 +92,9 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | Mô tả ngắn | Gắn hoặc gỡ quan hệ cha/mẹ và con (ruột, nuôi, kế). |
 | Tiền điều kiện | Cả cha/mẹ và con đã là thành viên của cùng một gia đình. |
 | Luồng chính (thêm quan hệ) | 1. Chọn thành viên làm "con", chọn "Thêm cha/mẹ".<br>2. Chọn người cha hoặc mẹ, chọn vai trò (`FATHER`/`MOTHER`) và loại (`BIOLOGICAL` ruột / `ADOPTED` nuôi / `STEP` kế).<br>3. Hệ thống kiểm tra: cùng gia đình, chưa vượt số cha/mẹ ruột, không vòng lặp, ngày sinh hợp lý (BR-GEN-02 đến 05).<br>4. Tạo bản ghi `parent_child`.<br>5. Ghi audit log, làm mới cây. |
-| Luồng thay thế / ngoại lệ | 3a. Con đã có đủ cha và mẹ ruột (cùng vai trò): lỗi `GEN_005`.<br>3b. Thêm quan hệ làm người này thành tổ tiên của chính mình: lỗi `GEN_006`.<br>3c. Cha/mẹ sinh sau hoặc cùng ngày với con: lỗi `GEN_007`. Chênh lệch dưới 15 năm: giao diện cảnh báo và yêu cầu người nhập xác nhận trước khi gửi; backend không chặn **[Đã chốt 9/10/2026]**.<br>3d. Cha và con trùng người, hoặc quan hệ đã tồn tại: lỗi `GEN_008`.<br>Gỡ quan hệ: cho phép, ghi audit log; cây tự cập nhật. |
+| Luồng thay thế / ngoại lệ | 3a. Con đã có đủ cha và mẹ ruột (cùng vai trò): lỗi `GEN_005`.<br>3b. Thêm quan hệ làm người này thành tổ tiên của chính mình: lỗi `GEN_006`.<br>3c. Cha/mẹ sinh sau hoặc cùng ngày với con: lỗi `GEN_007`. Chênh lệch dưới 15 năm: giao diện cảnh báo và yêu cầu người nhập xác nhận trước khi gửi; backend không chặn **[Đã chốt 9/10/2026]**.<br>3d. Cha và con trùng người, hoặc quan hệ đã tồn tại: lỗi `GEN_008`.<br>Gỡ quan hệ: cho phép, ghi audit log; cây tự cập nhật.<br>3e. Người được chọn làm cha/mẹ đang hoặc đã từng là vợ/chồng của con (mọi trạng thái hôn nhân): lỗi `GEN_010` (BR-GEN-07, SCRUM-74). |
 | Hậu điều kiện | Đồ thị gia đình có thêm hoặc bớt một cạnh cha-con, vẫn là đồ thị không chu trình. |
-| Quy tắc nghiệp vụ | BR-GEN-02, 03, 04, 05, 06, 11, 14 |
+| Quy tắc nghiệp vụ | BR-GEN-02, 03, 04, 05, 06, 07, 11, 14 |
 
 ### UC-GEN-05: Quản lý hôn nhân
 | Mục | Nội dung |
@@ -156,7 +156,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | BR-GEN-04 | Ngày sinh cha/mẹ phải **trước** ngày sinh con. Chênh lệch dưới 15 năm thì giao diện cảnh báo và yêu cầu người nhập xác nhận trước khi gửi; backend chỉ từ chối khi cha/mẹ sinh sau hoặc cùng ngày với con (`GEN_007`), vì gia phả đời xưa có trường hợp cha mẹ rất trẻ **[Đã chốt 9/10/2026]**. |
 | BR-GEN-05 | Không tạo quan hệ cha-mẹ-con giữa một người và chính mình, hoặc trùng quan hệ đã tồn tại. |
 | BR-GEN-06 | Vai trò `FATHER`/`MOTHER` mặc định theo giới tính của người được chọn; người nhập có thể đổi khi cần. |
-| BR-GEN-07 | Một người chỉ có **một hôn nhân `MARRIED` tại một thời điểm**. Tái hôn chỉ được khi hôn nhân trước là `DIVORCED` hoặc `WIDOWED`. Không cho kết hôn giữa người có quan hệ trực hệ hoặc anh chị em ruột. |
+| BR-GEN-07 | Một người chỉ có **một hôn nhân `MARRIED` tại một thời điểm**. Tái hôn chỉ được khi hôn nhân trước là `DIVORCED` hoặc `WIDOWED`. Không cho kết hôn giữa người có quan hệ trực hệ hoặc anh chị em ruột; ngược lại, người đang hoặc đã từng là vợ/chồng của nhau (mọi trạng thái) không được gán làm cha/mẹ của nhau (SCRUM-74). |
 | BR-GEN-08 | **Người đã mất:** có `is_deceased` và `death_date` (không trước ngày sinh). Không thêm hôn nhân mới cho người đã mất. Khi một bên được đánh dấu mất, hôn nhân `MARRIED` của họ tự chuyển `WIDOWED`, `end_date` = ngày mất. Hồ sơ vẫn hiển thị và vẫn giữ quan hệ cha-con. Không lưu nguyên nhân tử vong chi tiết. |
 | BR-GEN-09 | **Xóa mềm** (đặt `deleted_at`), không xóa vật lý. Không xóa thành viên đang có quan hệ cha-mẹ-con hoặc hôn nhân khi chưa gỡ. Không xóa gia đình còn thành viên, không xóa chi còn thành viên hoặc chi con. |
 | BR-GEN-10 | **Riêng tư** (theo `privacy.md`, mục "Ai được xem gì" và "Trẻ em và người đã mất"). `MEMBER` đã xác minh: thấy họ tên, năm sinh, quan hệ, nghề nghiệp; **không** thấy ngày sinh đầy đủ (trừ của mình); địa chỉ chi tiết chỉ thấy tỉnh/thành. **Trẻ em dưới 16 tuổi** (tính từ ngày sinh): `MEMBER` chỉ thấy tên, quan hệ, năm sinh; `BRANCH_ADMIN`, `SYSTEM_ADMIN` thấy đủ. **Người đã mất:** hiển thị họ tên, năm sinh, ngày mất, nơi an táng cho thành viên đã xác minh. Số điện thoại, email thuộc hồ sơ người dùng (module `user`), không nằm trong `person`. Quy tắc áp dụng cho mọi response: chi tiết, danh sách, cây, tra quan hệ. **[Đã chốt 9/10/2026: ngưỡng 16 tuổi, theo `privacy.md` mục 4 "Trẻ em và người đã mất"]** |
@@ -169,7 +169,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | BR-GEN-17 | Người **còn sống** phải có ngày sinh đầy đủ (`birth_date`) để hệ thống tính tuổi áp dụng BR-GEN-10. Người đã mất (tổ tiên) có thể chỉ biết năm sinh: lưu vào `birth_year`. |
 | BR-GEN-18 | **Dữ liệu cho AI** (`privacy.md`, mục "Dữ liệu gửi cho AI"): người dưới 16 tuổi chỉ đưa họ tên và quan hệ vào ngữ cảnh; không gửi ngày sinh đầy đủ, địa chỉ chi tiết. Khi thành viên hoặc quan hệ thay đổi, module `ai` cập nhật embedding qua interface Java (mục 9). |
 | BR-GEN-19 | **Một nguồn sự thật về gia đình của tài khoản** (BR-AUTH-11, BR-AUTH-14; chốt 16/10/2026, X15 trong `erd.md`): `member_verification` của module auth quyết định tài khoản thuộc gia đình nào. Chỉ gắn `person.user_id` khi `person.family_id` bằng `family_id` của bản ghi `APPROVED` của tài khoản đó; module Gia phả kiểm tra qua `MembershipQuery` ở cả UC-GEN-03 (sửa hồ sơ, gán tài khoản) và `GenealogyPort.linkAccount`, sai thì trả `GEN_014`. Khi quản trị chuyển người dùng sang gia đình khác, module auth gọi `GenealogyPort.unlinkAccount(userId)` trong cùng giao dịch để đặt `person.user_id = NULL` ở hồ sơ đang gắn tài khoản đó; hồ sơ vẫn giữ nguyên trong gia đình cũ. |
-| BR-GEN-20 | **Chính chủ sửa hồ sơ của mình** (16/11/2026): thành viên đã gắn tài khoản (`person.user_id`) tự sửa thông tin của mình qua `PUT /persons/{id}`; Trưởng chi, Trưởng họ chỉ sửa hồ sơ **chưa gắn tài khoản** (tổ tiên, trẻ nhỏ) trong phạm vi chi; SYSTEM_ADMIN sửa được mọi hồ sơ. Ai sửa được hồ sơ thì tải được ảnh đại diện (`POST /media`, ownerType PERSON). Quan hệ, hôn nhân, xóa vẫn theo BR-GEN-14. |
+| BR-GEN-20 | **Chính chủ sửa hồ sơ của mình** (16/11/2026): thành viên đã gắn tài khoản (`person.user_id`) tự sửa thông tin của mình qua `PUT /persons/{id}`; Trưởng chi, Trưởng họ chỉ sửa hồ sơ **chưa gắn tài khoản** (tổ tiên, trẻ nhỏ) trong phạm vi chi; SYSTEM_ADMIN cũng chỉ sửa hồ sơ chưa gắn tài khoản (đổi 18/11/2026). Thêm, xóa người, nối quan hệ, kiểm duyệt vẫn theo quyền quản lý. Ai sửa được hồ sơ thì tải được ảnh đại diện (`POST /media`, ownerType PERSON). Quan hệ, hôn nhân, xóa vẫn theo BR-GEN-14. |
 
 ---
 
@@ -368,7 +368,7 @@ Mã chung dùng nguyên: `VALID_001` (400), `NOT_FOUND_001` (404), `PERM_001` (4
 | GEN_007 | Cha/mẹ sinh sau hoặc cùng ngày với con | BR-GEN-04 |
 | GEN_008 | Quan hệ cha-mẹ-con đã tồn tại hoặc trùng người | BR-GEN-05 |
 | GEN_009 | Đang có hôn nhân `MARRIED` khác | BR-GEN-07 |
-| GEN_010 | Không được kết hôn giữa người thân | BR-GEN-07 |
+| GEN_010 | Không được kết hôn giữa người thân; cũng dùng khi gán vợ/chồng (kể cả đã ly hôn, góa) làm cha/mẹ của nhau | BR-GEN-07 |
 | GEN_011 | Người đã mất, không thêm hôn nhân mới | BR-GEN-08 |
 | GEN_012 | Người dưới 16 tuổi không được gán tài khoản | BR-GEN-16 |
 | GEN_013 | Người dùng đã thuộc một gia đình | BR-GEN-15 |

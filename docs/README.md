@@ -26,6 +26,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `04-api/openapi/*.yaml` | Đặc tả OpenAPI từng module | chủ module | reviewer module | SCRUM-26, 18, 20, 22, 34 |
 | `05-ui/` | Design system, link Figma | TV5 + từng người | | SCRUM-25, 29, 30, 32, 84 |
 | `06-test/test-plan.md` | Kế hoạch kiểm thử | TV1 Tuấn | TV4 | SCRUM-27 |
+| `06-test/ai-demo-scrum-80.md`, `09-report/ai-report-scrum-80.md` | Kịch bản demo, đáp án dự phòng và báo cáo AI | SCRUM-80 | | |
 | `decisions/` | Ghi quyết định kỹ thuật (ADR) | người quyết định | | SCRUM-24, 31, 84 |
 | `07-deploy/`, `08-user-guide/`, `09-report/` | Triển khai, hướng dẫn sử dụng, báo cáo cuối | Sprint 7-8 | | |
 

@@ -143,6 +143,26 @@ class RelationshipApiIntegrationTest {
     }
 
     @Test
+    void spouseOrFormerSpouseCannotBecomeParentOfEachOther() throws Exception {
+        Object[] a = owner();
+        String t = (String) a[0];
+        UUID fam = (UUID) a[1];
+        UUID husband = person(t, fam, "Chồng", "MALE", "1960-01-01", null);
+        UUID wife = person(t, fam, "Vợ", "FEMALE", "1985-01-01", null);
+        UUID marriage = id(marry(t, husband, wife).andExpect(status().isCreated()));
+
+        addParent(t, wife, husband, "FATHER", "ADOPTED")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("GEN_010"));
+        call(put("/api/v1/marriages/" + marriage), t, Map.of("status", "DIVORCED", "endDate", "2020-05-01"))
+                .andExpect(status().isOk());
+        // Đã ly hôn vẫn chặn (BR-GEN-07, SCRUM-74).
+        addParent(t, wife, husband, "FATHER", "ADOPTED")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("GEN_010"));
+        UUID stranger = person(t, fam, "Người khác", "MALE", "1950-01-01", null);
+        addParent(t, wife, stranger, "FATHER", null).andExpect(status().isCreated());
+    }
+
+    @Test
     void marriageRulesFollowBrGen07And08() throws Exception {
         Object[] a = owner();
         String t = (String) a[0];

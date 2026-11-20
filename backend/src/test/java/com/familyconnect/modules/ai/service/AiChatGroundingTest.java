@@ -53,6 +53,7 @@ class AiChatGroundingTest {
         when(model.isConfigured()).thenReturn(true); when(model.answer(anyString())).thenAnswer(call -> {
             String prompt = call.getArgument(0);
             assertTrue(prompt.contains("Chỉ dùng dữ kiện trực tiếp có trong NGỮ CẢNH"));
+            assertTrue(prompt.contains("'Tỉnh/thành' là tỉnh/thành người đó đang sống hiện nay"));
             assertTrue(prompt.contains("Hồ sơ giả: Nguyễn An sinh năm 1950."));
             return "Theo hồ sơ giả, Nguyễn An sinh năm 1950.";
         });
@@ -136,6 +137,85 @@ class AiChatGroundingTest {
         assertEquals("Không tìm thấy thông tin.", response.answer());
         assertTrue(response.sources().isEmpty());
         verify(model, never()).answer(anyString());
+    }
+
+    // SCRUM-133, BR-AI-18: câu hỏi thống kê trả lời từ dữ liệu gia phả, tối đa một lần gọi LLM.
+    private static GenealogyQuery.DirectoryPerson member(String name, int year, boolean deceased, String gender, String province) {
+        return new GenealogyQuery.DirectoryPerson(UUID.randomUUID(), null, null, name, java.time.LocalDate.of(year, 1, 1),
+                null, province, deceased, null, gender, 2);
+    }
+
+    private void withFamily(GenealogyQuery.DirectoryPerson... people) {
+        service.setGenealogy(genealogy);
+        when(genealogy.searchDirectoryPeople(eq(familyId), isNull(), isNull(), isNull(), any(), isNull(), eq(false),
+                anyString(), anyBoolean(), anyInt(), anyInt()))
+                .thenReturn(new GenealogyQuery.DirectoryPage(List.of(people), people.length));
+    }
+
+    private ChatResponse chat(String question) {
+        return service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest(question, null, null));
+    }
+
+    private void withThreeMembers() {
+        withFamily(member("Nguyễn Văn Tổ", 1925, true, "MALE", "Nam Định"),
+                member("Nguyễn Thị Hà", 1994, false, "FEMALE", "Hà Nội"),
+                member("Nguyễn Văn Nam", 1998, false, "MALE", "Hà Nội"));
+    }
+
+    @Test void plainTotalQuestionIsAnsweredWithoutAnyAiCall() {
+        withThreeMembers();
+        var response = chat("Gia đình có mấy thành viên?");
+        assertEquals("Gia phả của dòng họ hiện có 3 thành viên.", response.answer());
+        verify(embeddings, never()).createEmbedding(anyString());
+        verify(model, never()).answer(anyString());
+        verify(model, never()).answerJson(anyString(), anyMap());
+    }
+
+    @Test void filteredCountUsesOneJsonCallAndCountsOnTheServer() {
+        withThreeMembers();
+        when(model.answerJson(anyString(), anyMap())).thenReturn("{\"kind\":\"QUERY\",\"intent\":\"COUNT\",\"deceased\":true}");
+        var response = chat("Dòng họ có bao nhiêu người đã mất?");
+        assertEquals("Gia phả có 1 người đã mất.", response.answer());
+        verify(model, times(1)).answerJson(contains("kind=QUERY"), anyMap());
+        verify(model, never()).answer(anyString());
+    }
+
+    @Test void repeatedStatisticsQuestionReusesTheParsedQuery() {
+        withThreeMembers();
+        when(model.answerJson(anyString(), anyMap()))
+                .thenReturn("{\"kind\":\"QUERY\",\"intent\":\"COUNT\",\"province\":\"Hà Nội\"}");
+        assertEquals("Gia phả có 2 người đang sống ở Hà Nội.", chat("Dòng họ có bao nhiêu người sống ở Hà Nội?").answer());
+        assertEquals("Gia phả có 2 người đang sống ở Hà Nội.", chat("dòng họ có bao nhiêu người sống ở hà nội").answer());
+        verify(model, times(1)).answerJson(anyString(), anyMap());
+    }
+
+    @Test void listDoesNotNameMinors() {
+        var kid = member("Lê Gia Bin", 2020, false, "MALE", "TP. Hồ Chí Minh");
+        withFamily(member("Nguyễn Thị Lan", 1996, false, "FEMALE", "TP. Hồ Chí Minh"), kid);
+        when(genealogy.findMinorPersonIds(eq(familyId), any())).thenReturn(List.of(kid.id()));
+        when(model.answerJson(anyString(), anyMap()))
+                .thenReturn("{\"kind\":\"QUERY\",\"intent\":\"LIST\",\"province\":\"TP. Hồ Chí Minh\"}");
+        var response = chat("Liệt kê những người sống ở TP. Hồ Chí Minh");
+        assertEquals("Có 2 người đang sống ở TP. Hồ Chí Minh: Nguyễn Thị Lan (sinh năm 1996). "
+                + "Không hiển thị tên 1 trẻ dưới 16 tuổi.", response.answer());
+        assertEquals(1, response.sources().size());
+    }
+
+    @Test void oldestMemberComesFromBirthDates() {
+        withThreeMembers();
+        when(model.answerJson(anyString(), anyMap())).thenReturn("{\"kind\":\"QUERY\",\"intent\":\"OLDEST\"}");
+        assertEquals("Người lớn tuổi nhất là Nguyễn Văn Tổ (sinh năm 1925).", chat("Ai lớn tuổi nhất dòng họ?").answer());
+    }
+
+    @Test void questionOutsideTheWhitelistStaysNotFound() {
+        withThreeMembers();
+        when(model.answerJson(anyString(), anyMap()))
+                .thenReturn("{\"kind\":\"ANSWER\",\"text\":\"Không tìm thấy thông tin.\"}")
+                .thenReturn("không phải JSON")
+                .thenReturn("{\"kind\":\"QUERY\",\"intent\":\"COUNT\",\"gender\":\"X\"}");
+        assertEquals("Không tìm thấy thông tin.", chat("Có bao nhiêu người tham dự giỗ Tổ?").answer());
+        assertEquals("Không tìm thấy thông tin.", chat("Quỹ khuyến học hiện có bao nhiêu tiền?").answer());
+        assertEquals("Không tìm thấy thông tin.", chat("Dòng họ có bao nhiêu người giới tính khác?").answer());
     }
 
     @Test void rejectsUnverifiedAccountBeforeRateLimit() {
@@ -244,5 +324,56 @@ class AiChatGroundingTest {
     @Test void yearComparisonGoesToModel() {
         ask("Ai sinh trước năm 1960?", person("Họ tên: Nguyễn Văn Phúc. Năm sinh: 1950."));
         verify(model).answer(anyString());
+    }
+
+    // ---- BR-AI-17 (SCRUM-125): câu hỏi về chính người hỏi ----
+
+    private GenealogyQuery.DirectoryPerson asker() {
+        return new GenealogyQuery.DirectoryPerson(UUID.fromString("00000000-0000-0000-0000-0000000000a1"), familyId, null,
+                "Nguyễn Thị Hà", java.time.LocalDate.of(1994, 4, 9), 1994, "Hà Nội", false, userId, "FEMALE", 4);
+    }
+
+    @Test void selfQuestionUsesAskerProfileAndComputedRelations() {
+        GenealogyQuery.DirectoryPerson me = asker();
+        GenealogyQuery.DirectoryPerson father = new GenealogyQuery.DirectoryPerson(UUID.randomUUID(), familyId, null,
+                "Nguyễn Văn Minh", null, 1960, null, false, null, "MALE", 3);
+        when(genealogy.findDirectoryPersonByUserId(userId)).thenReturn(java.util.Optional.of(me));
+        when(genealogy.findMinorPersonIds(any(), any())).thenReturn(List.of());
+        when(genealogy.searchDirectoryPeople(eq(familyId), any(), any(), any(), any(), any(), eq(false), eq("fullName"), eq(true), eq(0), eq(500)))
+                .thenReturn(new GenealogyQuery.DirectoryPage(List.of(me, father), 2));
+        when(genealogy.relationshipLabels(eq(me.id()), anyList())).thenReturn(java.util.Map.of(father.id(), "cha"));
+        org.mockito.Mockito.doAnswer(call -> {
+            String prompt = call.getArgument(0);
+            assertTrue(prompt.contains("Họ tên: Nguyễn Thị Hà. Năm sinh: 1994. Đời thứ 4"));
+            assertTrue(prompt.contains("Quan hệ với người hỏi (đã tính bằng thuật toán gia phả): Nguyễn Văn Minh là cha."));
+            assertTrue(prompt.contains("cháu họ không tính): không có người nào được phép hiển thị (trẻ dưới 16 tuổi không hiển thị)."));
+            return "Cha của bạn là Nguyễn Văn Minh.";
+        }).when(model).answer(anyString());
+        service.setGenealogy(genealogy);
+
+        var response = service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Cha tôi là ai?", null, null));
+
+        assertEquals("Cha của bạn là Nguyễn Văn Minh.", response.answer());
+        // Tìm chunk theo họ tên người hỏi thay vì chữ "tôi".
+        org.mockito.Mockito.verify(embeddings).createEmbedding("Cha Nguyễn Thị Hà là ai?");
+    }
+
+    @Test void descendantLabelsExcludeInLawsNephewsAndCollateralCousins() {
+        for (String yes : List.of("con", "con (nuôi)", "cháu nội", "cháu ngoại", "chắt nội", "chút (bên nội)", "hậu duệ đời thứ 6")) {
+            assertTrue(ChatService.isDescendant(yes), yes);
+        }
+        for (String no : List.of("con rể", "con dâu", "cháu", "cháu rể", "cháu họ (bên nội)", "chắt họ (bên nội)", "cha", "chú")) {
+            org.junit.jupiter.api.Assertions.assertFalse(ChatService.isDescendant(no), no);
+        }
+    }
+
+    @Test void selfQuestionWithoutLinkedProfileExplainsInsteadOfNotFound() {
+        when(genealogy.findDirectoryPersonByUserId(userId)).thenReturn(java.util.Optional.empty());
+        service.setGenealogy(genealogy);
+
+        var response = service.chat(new AuthenticatedUser(userId, List.of("MEMBER")), new ChatRequest("Tôi là ai?", null, null));
+
+        assertEquals(ChatService.NO_PROFILE, response.answer());
+        org.mockito.Mockito.verify(model, org.mockito.Mockito.never()).answer(anyString());
     }
 }

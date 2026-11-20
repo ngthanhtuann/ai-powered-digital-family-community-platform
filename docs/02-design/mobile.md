@@ -16,9 +16,9 @@ Quyền trong từng chức năng theo `srs.md` Phụ lục A, giống web (ví 
 |---|---|---|---|
 | Đăng nhập, đăng ký, đăng xuất, hồ sơ, đổi mật khẩu | Có | FR-AUTH-01, FR-AUTH-03 | UC-AUTH-01 đến 05 |
 | Xin tham gia gia đình, chờ duyệt, tạo gia đình | Có | FR-AUTH-04, FR-GEN-01 | UC-AUTH-06, UC-GEN-01 (luồng sau đăng nhập, mục 3) |
-| Bảng tin, bài đăng, bình luận, reaction, ảnh, thông báo ghim | Có | FR-COM-01 đến FR-COM-05 | UC-COM-01 đến 06 |
+| Bảng tin, bài đăng, bình luận, reaction, ảnh, thông báo ghim | Có | FR-COM-01 đến FR-COM-05 | UC-COM-01 đến 06. Sửa, xóa bài và bình luận của mình, báo cáo vi phạm, thả cảm xúc ngay trên thẻ bài (SCRUM-128) |
 | Sự kiện, RSVP, người tham dự, ảnh sự kiện, nhắc nhở | Có | FR-EVT-01 đến FR-EVT-05 | UC-EVT-01 đến 05. Nhắc nhở hiển thị trong màn Thông báo (BR-EVT-05); push notification là phần mở rộng |
-| Danh sách thành viên, cây gia phả, tra quan hệ | Có (xem) | FR-GEN-03 (xem), FR-GEN-06, FR-GEN-07, FR-GEN-08 | UC-GEN-03 (xem), 06, 07, 08. Thêm, sửa thành viên và quan hệ làm trên web |
+| Danh sách thành viên, cây gia phả, tra quan hệ | Có (xem) | FR-GEN-03 (xem), FR-GEN-06, FR-GEN-07, FR-GEN-08 | UC-GEN-03 (xem), 06, 07, 08. Ô của chính mình tô màu "Bạn"; chính chủ sửa hồ sơ của mình, nghề nghiệp, học vấn, ảnh đại diện (BR-GEN-20, SCRUM-128). Thêm, sửa người khác và quan hệ làm trên web |
 | Trợ lý AI, tìm kiếm, tóm tắt, giải thích quan hệ, gợi ý | Có | FR-AI-01 đến FR-AI-05 | UC-AI-01 đến 05 |
 | Danh bạ, hồ sơ nghề nghiệp và học vấn | Có (SCRUM-92) | FR-DIR-01 đến FR-DIR-04 | UC-DIR-01, 02. Tìm không dấu, lọc nghề, nơi ở, thế hệ; xem hồ sơ có học vấn |
 | Di sản: tài liệu, câu chuyện, thư viện ảnh | Có (SCRUM-92, SCRUM-109) | FR-HER-01, FR-HER-02, FR-HER-04, FR-HER-05 | UC-HER-01 đến 04 (xem). Tài liệu PDF mở bằng trình xem của máy (SCRUM-109). Người tiêu biểu (FR-HER-03) và thêm, sửa nội dung di sản chỉ trên web |

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import type * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { ApiMeta } from '../services/api-types';
 import { API_BASE_URL } from '../services/api';
-import { communityApi, type Media } from '../services/community';
+import { communityApi, type Media, type UploadAsset } from '../services/community';
 import { useSession } from '../session/SessionContext';
 import { tokenStorage } from '../services/token-storage';
 import { colors, text } from '../theme';
@@ -121,4 +122,35 @@ export function MediaGallery({ media }: { media: Media[] }) {
       ))}
     </ScrollView>
   );
+}
+
+/** Ảnh chọn từ máy thành tệp tải lên: chỉ JPG, PNG, WebP, tối đa 5 MB (conventions.md mục 7). Dùng cho bài đăng và ảnh đại diện. */
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+
+export function toUploadAsset(asset: ImagePicker.ImagePickerAsset): UploadAsset {
+  const extension = (asset.fileName ?? asset.uri).split('?')[0].split('.').pop()?.toLowerCase();
+  const type =
+    asset.mimeType ??
+    (extension === 'jpg' || extension === 'jpeg'
+      ? 'image/jpeg'
+      : extension === 'png'
+        ? 'image/png'
+        : extension === 'webp'
+          ? 'image/webp'
+          : '');
+  if (!IMAGE_MIMES.includes(type)) {
+    throw new Error(
+      'Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP. Ảnh HEIC cần chuyển sang JPG trước khi chọn.',
+    );
+  }
+  if (asset.fileSize && asset.fileSize > IMAGE_MAX_BYTES) {
+    throw new Error('Mỗi ảnh được chọn phải nhỏ hơn hoặc bằng 5 MB.');
+  }
+  const suffix = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
+  const name =
+    asset.fileName && asset.fileName.toLowerCase().endsWith(`.${suffix}`)
+      ? asset.fileName
+      : `anh-${Date.now()}.${suffix}`;
+  return { uri: asset.uri, name, mimeType: type };
 }
