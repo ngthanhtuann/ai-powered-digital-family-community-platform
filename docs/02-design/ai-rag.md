@@ -98,6 +98,33 @@ Các placeholder phải được thay bằng dữ liệu đã lọc và đã ki�
 - `ai_summary_cache` chỉ dùng khi `family_id`, nguồn, hash phiên bản, quyền truy cập và tham số tóm tắt khớp; cache hết hạn hoặc nguồn đổi thì không sử dụng.
 - Hạn mức Gemini Free Tier có thể chặn demo; không lặp gọi để vượt quota. Chi phí thực tế cho nhóm cần tính sau khi ghi token usage và số lượt gọi; không tự điền con số khi chưa có dữ liệu.
 
+### 5.3. Câu hỏi thống kê về thành viên (SCRUM-133, BR-AI-18)
+
+RAG chỉ tìm được đoạn văn của từng người hoặc từng bài, nên câu "Dòng họ có bao nhiêu người đã mất?" không có đoạn nào trả lời được. Luồng thống kê giữ nguyên số lần gọi LLM so với RAG thường:
+
+```mermaid
+flowchart TD
+  Q[Câu hỏi] --> N[Chuẩn hóa: bỏ dấu, chữ thường]
+  N --> F{Mẫu tổng số rõ ràng<br/>hoặc đã có trong bộ nhớ đệm?}
+  F -- Có --> X[Máy chủ đếm bằng GenealogyQuery<br/>0 lần gọi LLM]
+  F -- Không --> A{Có dấu hiệu tổng hợp?<br/>bao nhiêu, liệt kê, ... nhất}
+  A -- Không --> R[RAG như cũ<br/>1 lần gọi LLM, trả văn bản]
+  A -- Có --> J[RAG + 1 lần gọi LLM<br/>ép trả JSON theo schema]
+  J --> K{kind}
+  K -- QUERY hợp lệ --> X
+  K -- ANSWER --> T[Câu trả lời từ ngữ cảnh, kèm nguồn]
+  K -- Sai schema hoặc bộ lọc lạ --> NF[Không tìm thấy thông tin.]
+  X --> V[Câu trả lời dựng theo khuôn<br/>không nêu tên trẻ dưới 16 tuổi]
+```
+
+**Đọc sơ đồ bằng lời.** Câu hỏi được chuẩn hóa trước. Nếu là câu hỏi tổng số viết rõ ràng, hoặc câu giống hệt đã được phân tích trong 1 giờ qua, máy chủ tự đếm luôn, không gọi Gemini. Nếu câu không có dấu hiệu tổng hợp, mọi thứ chạy như RAG cũ. Nếu có dấu hiệu tổng hợp, Gemini được gọi đúng một lần và phải trả JSON: hoặc là câu trả lời từ ngữ cảnh, hoặc là truy vấn với bộ lọc trong danh sách cho phép (còn sống/đã mất, giới tính, tỉnh/thành, đời, khoảng năm sinh). Máy chủ kiểm truy vấn rồi tự đếm, nên con số luôn lấy từ cơ sở dữ liệu. JSON sai hoặc bộ lọc lạ thì trả "Không tìm thấy thông tin.", không đoán.
+
+| Trường hợp | Gọi embedding | Gọi LLM |
+|---|---|---|
+| Câu hỏi thường | 1 | 0 hoặc 1 (như cũ) |
+| Câu tổng số rõ ràng, hoặc đã nhớ đệm | 0 | 0 |
+| Câu thống kê mới | 1 | 1 |
+
 ## 6. Quyền dữ liệu
 1. Tài khoản chưa xác minh không được gọi AI: HTTP 403 `PERM_002`.
 2. Trước khi truy xuất, xác định `family_id`, vai trò và các chi người dùng được xem (qua `MembershipQuery`); áp dụng filter `family_id` và `branch_id` ngay trong retrieval (nội dung theo chi chỉ hiện cho chi đó và chi con, BR-COM-03).

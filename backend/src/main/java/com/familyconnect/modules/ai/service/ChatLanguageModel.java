@@ -22,10 +22,22 @@ public class ChatLanguageModel {
     public String modelName() { return model; }
     public boolean isConfigured() { return apiKey != null && !apiKey.isBlank(); }
     public String answer(String prompt) {
+        return generate(prompt, generationConfig(model));
+    }
+
+    /** Một lần gọi, ép Gemini trả JSON theo schema (SCRUM-133, BR-AI-18). */
+    public String answerJson(String prompt, Map<String, Object> schema) {
+        Map<String, Object> config = new java.util.HashMap<>(generationConfig(model));
+        config.put("responseMimeType", "application/json");
+        config.put("responseSchema", schema);
+        return generate(prompt, config);
+    }
+
+    private String generate(String prompt, Map<String, Object> generationConfig) {
         JsonNode response = client.post().uri("/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))),
-                        "generationConfig", generationConfig(model)))
+                        "generationConfig", generationConfig))
                 .retrieve().body(JsonNode.class);
         String text = response == null ? "" : response.path("candidates").path(0).path("content").path("parts").path(0).path("text").asText("");
         if (text.isBlank()) throw new IllegalStateException("Empty model response");
