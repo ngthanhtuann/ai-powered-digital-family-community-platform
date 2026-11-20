@@ -64,6 +64,7 @@ class AiChatGroundingTest {
         when(chats.saveExchange(any(), any(), anyString(), anyString(), anyList(), any(), anyLong())).thenReturn(UUID.randomUUID());
         service = new ChatService(embeddings, model, chunks, chats, scopes(), limiter, audit,
                 Clock.fixed(Instant.parse("2026-11-03T00:00:00Z"), ZoneOffset.UTC), SystemConfigQuery.defaults(), 5, .55, 30, true);
+        service.setGenealogy(genealogy);
     }
 
     /** Đoạn chỉ mục giả, khớp docs/06-test/ai-chat-5-06.md mục 1. */
@@ -136,6 +137,20 @@ class AiChatGroundingTest {
         assertEquals("Không tìm thấy thông tin.", response.answer());
         assertTrue(response.sources().isEmpty());
         verify(model, never()).answer(anyString());
+    }
+
+    @Test void answersFamilyMemberCountFromGenealogyInsteadOfSemanticIndex() {
+        when(genealogy.getDashboardDemographics(eq(familyId), isNull(), any()))
+                .thenReturn(new GenealogyQuery.DashboardDemographics(42, List.of(), List.of(),
+                        0, 0, 0, List.of(), List.of(), List.of()));
+
+        var response = service.chat(new AuthenticatedUser(userId, List.of("MEMBER")),
+                new ChatRequest("Gia đình có mấy thành viên", null, null));
+
+        assertEquals("Gia đình hiện có 42 thành viên.", response.answer());
+        assertTrue(response.sources().isEmpty());
+        verify(genealogy).getDashboardDemographics(eq(familyId), isNull(), any());
+        verifyNoInteractions(embeddings, model, chunks);
     }
 
     @Test void rejectsUnverifiedAccountBeforeRateLimit() {

@@ -39,6 +39,9 @@ public class ChatService {
     static final String NO_PROFILE = "Tài khoản của bạn chưa gắn với hồ sơ trong gia phả, nên mình chưa biết bạn là ai.";
     private static final Pattern DESCENDANT = Pattern.compile("(con(?! (rể|dâu))|(cháu|chắt) (nội|ngoại)|chút|chít|hậu duệ)");
     private static final Pattern SELF = Pattern.compile("(?<!\\p{L})(tôi|mình|tớ)(?!\\p{L})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern MEMBER_COUNT = Pattern.compile(
+            "(?iu)(?:gia đình|nhà mình|dòng họ).{0,30}?(?:có\\s*)?(?:mấy|bao nhiêu)\\s*(?:thành viên|người)"
+                    + "|(?:mấy|bao nhiêu)\\s*(?:thành viên|người).{0,30}?(?:trong\\s+)?(?:gia đình|nhà mình|dòng họ)");
     private static final int MAX_RELATIVES = 80;
 
     /** Hồ sơ gia phả của người hỏi (BR-AI-17); null trong unit test dựng service bằng tay. */
@@ -96,6 +99,13 @@ public class ChatService {
         try {
             String question = request.question().trim();
             List<ChatRepository.HistoryMessage> history = chats.recentMessages(sessionId, 6);
+            if (genealogy != null && MEMBER_COUNT.matcher(question).find()) {
+                long total = genealogy.getDashboardDemographics(familyId, null, LocalDate.now(clock)).totalMembers();
+                String answer = "Gia đình hiện có " + total + " thành viên.";
+                long latency = Math.max(0, (System.nanoTime() - started) / 1_000_000);
+                UUID messageId = chats.saveExchange(sessionId, user.id(), question, answer, List.of(), null, latency);
+                return new ChatResponse(finalSessionId, messageId, answer, List.of(), latency);
+            }
             List<UUID> branches = scopes.visibleBranches(scope);
             // Ngữ cảnh gửi cho LLM bên ngoài: ẩn trẻ em với mọi vai trò (privacy.md mục 6).
             List<UUID> hiddenPeople = scopes.hiddenMinors(scope, true);
