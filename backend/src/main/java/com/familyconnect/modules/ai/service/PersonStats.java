@@ -51,7 +51,35 @@ final class PersonStats {
             "(?<![a-z])(?:bao nhieu|may nguoi|may thanh vien|co may|liet ke|danh sach|nhung ai|nhung nguoi nao|tong so"
                     + "|(?:lon tuoi|nhieu tuoi|it tuoi|tre|gia|sinh som|sinh muon) nhat)(?![a-z])");
 
+    /** Từ khóa rõ nghĩa trên câu hỏi còn dấu; "nam" viết thường để không nhầm "Nam Định", "năm". */
+    private static final Pattern MALE = Pattern.compile("(?<!\\p{L})(?:nam|đàn ông|con trai|nam giới)(?!\\p{L})");
+    private static final Pattern FEMALE = Pattern.compile("(?<!\\p{L})(?:nữ|phụ nữ|đàn bà|con gái|nữ giới)(?!\\p{L})",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern DEAD = Pattern.compile("(?<!\\p{L})(?:đã mất|qua đời|đã chết|đã khuất|quá cố)(?!\\p{L})",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    private static final Pattern ALIVE = Pattern.compile("(?<!\\p{L})(?:còn sống|còn tại thế)(?!\\p{L})",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
     private PersonStats() {
+    }
+
+    /**
+     * LLM đôi khi bỏ sót bộ lọc (đánh giá 21/11/2026: "người nam" ra tổng số). Câu hỏi có từ khóa rõ nghĩa mà truy vấn
+     * để trống thì máy chủ tự điền; không bao giờ ghi đè giá trị LLM đã điền.
+     */
+    static Query reconcile(Query q, String question) {
+        if (q == null || question == null) return q;
+        String gender = q.gender();
+        if (gender == null) {
+            boolean male = MALE.matcher(question).find(), female = FEMALE.matcher(question).find();
+            if (male != female) gender = male ? "MALE" : "FEMALE";
+        }
+        Boolean deceased = q.deceased();
+        if (deceased == null) {
+            boolean dead = DEAD.matcher(question).find(), alive = ALIVE.matcher(question).find();
+            if (dead != alive) deceased = dead;
+        }
+        return new Query(q.intent(), deceased, gender, q.province(), q.generation(), q.bornFrom(), q.bornTo());
     }
 
     /** Chữ thường, bỏ dấu, gộp khoảng trắng, bỏ dấu câu cuối: khóa so khớp và khóa bộ nhớ đệm. */

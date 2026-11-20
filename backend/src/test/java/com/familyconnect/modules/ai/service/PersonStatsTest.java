@@ -47,6 +47,25 @@ class PersonStatsTest {
         assertEquals(new PersonStats.Query(PersonStats.Intent.LIST, null, "FEMALE", "Hà Nội", null, 1980, 1989), query);
     }
 
+    @Test
+    void fillsFiltersTheModelLeftOut() {
+        PersonStats.Query bare = new PersonStats.Query(PersonStats.Intent.COUNT, null, null, null, null, null, null);
+        assertEquals("MALE", PersonStats.reconcile(bare, "Có bao nhiêu người nam trong dòng họ?").gender());
+        assertEquals("FEMALE", PersonStats.reconcile(bare, "Dòng họ có bao nhiêu nữ?").gender());
+        assertEquals(Boolean.FALSE, PersonStats.reconcile(bare, "Ai lớn tuổi nhất trong những người còn sống?").deceased());
+        assertEquals(Boolean.TRUE, PersonStats.reconcile(bare, "Có mấy người đã qua đời?").deceased());
+    }
+
+    @Test
+    void doesNotMistakePlacesOrYearsForFilters() {
+        PersonStats.Query bare = new PersonStats.Query(PersonStats.Intent.COUNT, null, null, null, null, null, null);
+        assertNull(PersonStats.reconcile(bare, "Có bao nhiêu người sống ở Nam Định?").gender());
+        assertNull(PersonStats.reconcile(bare, "Có bao nhiêu người sinh năm 1950?").gender());
+        assertNull(PersonStats.reconcile(bare, "Bao nhiêu người đang sống ở Hà Nội?").deceased());
+        PersonStats.Query female = new PersonStats.Query(PersonStats.Intent.COUNT, null, "FEMALE", null, null, null, null);
+        assertEquals("FEMALE", PersonStats.reconcile(female, "người nam và nữ").gender());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"{\"kind\":\"ANSWER\",\"text\":\"x\"}", "{\"kind\":\"QUERY\",\"intent\":\"DELETE\"}",
             "{\"kind\":\"QUERY\",\"intent\":\"COUNT\",\"gender\":\"X\"}",

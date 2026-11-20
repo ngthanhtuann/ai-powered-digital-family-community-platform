@@ -148,7 +148,7 @@ public class ChatService {
                 } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
                     json = null;
                 }
-                PersonStats.Query query = PersonStats.parse(json);
+                PersonStats.Query query = PersonStats.reconcile(PersonStats.parse(json), question);
                 if (query != null) {
                     if (cacheable) rememberQuery(normalized, query, now);
                     PersonStats.Answer stats = PersonStats.answer(genealogy, familyId, LocalDate.now(clock), hiddenPeople, query);
