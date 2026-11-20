@@ -53,6 +53,7 @@ class AiChatGroundingTest {
         when(model.isConfigured()).thenReturn(true); when(model.answer(anyString())).thenAnswer(call -> {
             String prompt = call.getArgument(0);
             assertTrue(prompt.contains("Chỉ dùng dữ kiện trực tiếp có trong NGỮ CẢNH"));
+            assertTrue(prompt.contains("'Tỉnh/thành' là tỉnh/thành người đó đang sống hiện nay"));
             assertTrue(prompt.contains("Hồ sơ giả: Nguyễn An sinh năm 1950."));
             return "Theo hồ sơ giả, Nguyễn An sinh năm 1950.";
         });

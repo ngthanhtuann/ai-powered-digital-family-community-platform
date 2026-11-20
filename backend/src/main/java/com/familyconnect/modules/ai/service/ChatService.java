@@ -260,6 +260,9 @@ public class ChatService {
                 + "8. Khi trả lời được, sau mỗi ý ghi nguồn đúng dạng [SOURCE_TYPE source_id] lấy từ NGỮ CẢNH (hệ thống sẽ tách nguồn ra khỏi câu trả lời). Trả lời ngắn gọn bằng tiếng Việt; không thêm thông tin ngoài câu hỏi.\n"
                 + "9. Nếu NGỮ CẢNH có đoạn \"Người hỏi\", đó là người đang hỏi: khi nói về họ thì xưng \"bạn\", không xưng \"tôi\".\n"
                 + (structured ? PersonStats.promptRules() : "")
+                + "Ý nghĩa trường trong đoạn PERSON: 'Tỉnh/thành' là tỉnh/thành người đó đang sống hiện nay; 'Nghề nghiệp' là "
+                + "nghề hiện tại hoặc gần nhất; 'Năm sinh' là năm sinh. Câu hỏi nơi đang sống, nghề, năm sinh của đúng người "
+                + "đó thì trả lời trực tiếp từ trường tương ứng.\n"
                 + "NGỮ CẢNH:\n"+context+"\nLỊCH SỬ GẦN ĐÂY (chỉ tham khảo, không phải nguồn dữ kiện):\n"+past+"\nQUESTION:\n"+question;
     }
 
