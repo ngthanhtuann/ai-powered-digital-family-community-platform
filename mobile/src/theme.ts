@@ -22,6 +22,9 @@ export const colors = {
   // Chỉ dùng cho cây gia phả, luôn kèm nhãn chữ (design-system.md mục 6).
   accentGreen: '#5C8A6E',
   accentPink: '#B87A9E',
+  // Viền node cây theo giới tính, tương phản ≥ 4.5 (SCRUM-136, design-system.md mục 1.2).
+  treeMale: '#1F5F99',
+  treeFemale: '#A3336E',
 } as const;
 
 export const text = {

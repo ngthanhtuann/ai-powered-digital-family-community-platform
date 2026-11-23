@@ -579,6 +579,33 @@ class GenealogyApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child2)).isEqualTo(chosen);
     }
 
+    // ---- SCRUM-136: node cây có năm mất và huy hiệu trưởng họ ----
+
+    @Test
+    void treeNodeShowsDeathYearAndFamilyHeadBadge() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID headId = jdbc.queryForObject("select user_id from member_verification where family_id = ? and role = 'BRANCH_ADMIN'",
+                UUID.class, familyId);
+        String persons = "/api/v1/families/" + familyId + "/persons";
+        Map<String, Object> head = person("Trưởng họ", LocalDate.of(1960, 1, 1));
+        head.put("userId", headId.toString());
+        UUID headPerson = id(call(post(persons), token, head));
+        Map<String, Object> dead = person("Cụ tổ", LocalDate.of(1900, 1, 1));
+        dead.put("isDeceased", true);
+        dead.put("deathDate", "1980-05-05");
+        UUID deadPerson = id(call(post(persons), token, dead));
+
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", headPerson.toString()).param("depth", "1"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes[0].leaderRole").value("FAMILY_HEAD"));
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", deadPerson.toString()).param("depth", "1"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes[0].deathYear").value(1980))
+                .andExpect(jsonPath("$.data.nodes[0].leaderRole").doesNotExist());
+    }
+
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
 
     @Test

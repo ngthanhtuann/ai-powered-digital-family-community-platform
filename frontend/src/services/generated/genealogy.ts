@@ -200,7 +200,7 @@ export interface paths {
         put?: never;
         /**
          * Thêm cha/mẹ cho thành viên (UC-GEN-04)
-         * @description personId là người con. Kiểm tra BR-GEN-02 đến 05.
+         * @description personId là người con. Kiểm tra BR-GEN-02 đến 05. Con chưa có chi thì tự vào chi của cha/mẹ, ưu tiên chi của cha (BR-GEN-22).
          */
         post: operations["addParent"];
         delete?: never;
@@ -584,6 +584,13 @@ export interface components {
              * @description Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)
              */
             avatarMediaId?: string | null;
+            /** @description Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất */
+            deathYear?: number | null;
+            /**
+             * @description Người còn sống có tài khoản đang là trưởng họ (BRANCH_ADMIN không gán chi) hoặc trưởng chi; để hiện huy hiệu trên cây (SCRUM-136)
+             * @enum {string|null}
+             */
+            leaderRole?: "FAMILY_HEAD" | "BRANCH_HEAD" | null;
         };
         TreeEdge: {
             id?: string;
