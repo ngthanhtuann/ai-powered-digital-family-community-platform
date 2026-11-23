@@ -410,6 +410,31 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
               example: { success: false, error: { code: GEN_004, message: 'Thành viên còn quan hệ, hãy gỡ quan hệ trước', details: [] } }
 
+  /persons/{personId}/death:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    put:
+      operationId: setPersonDeath
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Đánh dấu đã mất hoặc khôi phục khi báo nhầm (UC-GEN-03, BR-GEN-21)
+      description: "Người quản lý chi (trong phạm vi chi), trưởng họ, SYSTEM_ADMIN; áp dụng cả hồ sơ đã gắn tài khoản. isDeceased=true: hôn nhân chuyển WIDOWED, khóa tài khoản gắn với hồ sơ (BR-AUTH-23), gửi thông báo DEATH_NOTICE (BR-COM-15). isDeceased=false: khôi phục khi báo nhầm (mở khóa tài khoản, thu hồi thông báo). Không tự báo mất cho chính mình: 403 PERM_001."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeathInput' }
+            example: { isDeceased: true, deathDate: '2026-11-20', deathTime: '14:30', burialPlace: Nghĩa trang quê nhà }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /persons/{personId}/parents:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -807,6 +832,17 @@ components:
         updatedAt: { type: string, format: date-time }
         userId: { type: string, format: uuid, nullable: true, description: "Tài khoản gắn với hồ sơ (chỉ đọc, SCRUM-117) để trang cá nhân lấy bài qua GET /posts?authorId=; null với trẻ dưới 16 tuổi bị giới hạn (BR-GEN-10)." }
         canEdit: { type: boolean, description: "Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN)." }
+        canManage: { type: boolean, description: "Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21." }
+        deathTime: { type: string, nullable: true, example: '14:30', description: "Giờ mất HH:mm (giờ địa phương), SCRUM-134." }
+    DeathInput:
+      type: object
+      required: [isDeceased]
+      description: BR-GEN-21. isDeceased=true bắt buộc deathDate; deathTime cần deathDate. isDeceased=false bỏ qua các trường còn lại.
+      properties:
+        isDeceased: { type: boolean }
+        deathDate: { type: string, format: date, nullable: true }
+        deathTime: { type: string, nullable: true, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', example: '14:30' }
+        burialPlace: { type: string, nullable: true, maxLength: 255 }
     PersonResponse:
       type: object
       properties:

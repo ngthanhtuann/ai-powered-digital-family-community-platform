@@ -1,0 +1,9 @@
+-- SCRUM-134 (BR-GEN-21, BR-COM-15): giờ mất và thông báo tang.
+ALTER TABLE person ADD COLUMN death_time TIME;
+
+ALTER TABLE notification DROP CONSTRAINT notification_type_check;
+ALTER TABLE notification ADD CONSTRAINT notification_type_check CHECK (type IN (
+    'EVENT_REMINDER_24H', 'EVENT_REMINDER_1H', 'ANNOUNCEMENT',
+    'CONTENT_HIDDEN', 'CONTENT_RESTORED',
+    'REPORT_HIDDEN', 'REPORT_DISMISSED', 'REPORT_RESTORED',
+    'POST_COMMENTED', 'COMMENT_REPLIED', 'DEATH_NOTICE'));

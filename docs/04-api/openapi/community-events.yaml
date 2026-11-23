@@ -2318,6 +2318,7 @@ components:
           - REPORT_RESTORED
           - POST_COMMENTED
           - COMMENT_REPLIED
+          - DEATH_NOTICE
           example: EVENT_REMINDER_24H
         title:
           type: string

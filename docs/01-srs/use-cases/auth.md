@@ -359,6 +359,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | BR-AUTH-20 | **Quản trị viên đầu tiên.** Khi khởi động mà chưa có tài khoản `SYSTEM_ADMIN`, nếu có biến môi trường `BOOTSTRAP_ADMIN_EMAIL` và `BOOTSTRAP_ADMIN_PASSWORD` thì tạo tài khoản đó; không đặt mật khẩu mặc định trong migration hay Git (`conventions.md` mục 7.2). Tài khoản demo từng vai trò (`deploy.md`) nạp bằng dữ liệu mẫu. |
 | BR-AUTH-21 | **Xóa mềm.** Các bảng nghiệp vụ dùng `deleted_at` (`architecture.md` mục 7, quyết định 4). Phiên bản này không có API xóa tài khoản; quản trị khóa tài khoản thay vì xóa. |
 | BR-AUTH-22 | **Bổ nhiệm trưởng chi** (UC-AUTH-14, Phụ lục A bổ sung 2/11/2026). Trưởng họ (`BRANCH_ADMIN` có `branch_id` NULL) và `SYSTEM_ADMIN` đổi `role` và `branch_id` trong bản ghi `APPROVED` của tài khoản cùng dòng họ; trưởng chi có gán chi không được bổ nhiệm. Chi phải thuộc dòng họ. Không tự đổi vai trò của mình; dòng họ luôn còn ít nhất một trưởng họ (`ADM_001`). Danh sách tài khoản chỉ trả họ tên, vai trò, chi (không email, số điện thoại). Giao diện gọi `BRANCH_ADMIN` không gán chi là "Trưởng họ", có gán chi là "Trưởng chi" kèm tên chi. |
+| BR-AUTH-23 | **Khóa tài khoản người đã mất** (23/11/2026, SCRUM-134). Khi module Gia phả đánh dấu đã mất một hồ sơ có gắn tài khoản (BR-GEN-21), gọi `MembershipCommand.lockDeceasedAccount`: khóa tài khoản với lý do cố định "Đã mất", thu hồi mọi refresh token, ghi `USER_LOCKED`. Khôi phục khi báo nhầm gọi `unlockDeceasedAccount`: chỉ mở khóa khi lý do khóa đúng là "Đã mất" (tài khoản bị quản trị khóa vì lý do khác giữ nguyên), ghi `USER_UNLOCKED`. Không áp dụng cho `SYSTEM_ADMIN`. |
 
 ---
 
@@ -612,12 +613,15 @@ public interface MembershipQuery {
     void requireVerified(UUID userId);                         // ném PERM_002 nếu chưa xác minh; SYSTEM_ADMIN luôn qua
     void requireFamilyAccess(UUID userId, UUID familyId);      // PERM_002 nếu chưa xác minh, PERM_001 nếu khác gia đình
     List<UUID> findVerifiedUserIds(UUID familyId);             // gửi thông báo cho cả gia đình
+    List<MembershipView> findVerifiedMembers(UUID familyId);   // kèm vai trò, chi để chọn người nhận thông báo tang (BR-COM-15)
 }
 public record MembershipView(UUID userId, UUID familyId, UUID branchId, EffectiveRole role, boolean verified) {}
 public enum EffectiveRole { MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN }   // familyId null với SYSTEM_ADMIN
 
 public interface MembershipCommand {
     void assignFamilyOwner(UUID userId, UUID familyId);        // Gia phả gọi ở UC-GEN-01 bước 4, cùng giao dịch tạo family (BR-AUTH-12)
+    void lockDeceasedAccount(UUID userId, UUID actorId);       // Gia phả gọi khi báo mất (BR-AUTH-23)
+    void unlockDeceasedAccount(UUID userId, UUID actorId);     // Gia phả gọi khi khôi phục do báo nhầm (BR-AUTH-23)
 }
 
 public interface UserDirectory {

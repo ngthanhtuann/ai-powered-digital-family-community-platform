@@ -165,6 +165,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/persons/{personId}/death": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Đánh dấu đã mất hoặc khôi phục khi báo nhầm (UC-GEN-03, BR-GEN-21)
+         * @description Người quản lý chi (trong phạm vi chi), trưởng họ, SYSTEM_ADMIN; áp dụng cả hồ sơ đã gắn tài khoản. isDeceased=true: hôn nhân chuyển WIDOWED, khóa tài khoản gắn với hồ sơ (BR-AUTH-23), gửi thông báo DEATH_NOTICE (BR-COM-15). isDeceased=false: khôi phục khi báo nhầm (mở khóa tài khoản, thu hồi thông báo). Không tự báo mất cho chính mình: 403 PERM_001.
+         */
+        put: operations["setPersonDeath"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/persons/{personId}/parents": {
         parameters: {
             query?: never;
@@ -452,6 +474,22 @@ export interface components {
             userId?: string | null;
             /** @description Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN). */
             canEdit?: boolean;
+            /** @description Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21. */
+            canManage?: boolean;
+            /**
+             * @description Giờ mất HH:mm (giờ địa phương), SCRUM-134.
+             * @example 14:30
+             */
+            deathTime?: string | null;
+        };
+        /** @description BR-GEN-21. isDeceased=true bắt buộc deathDate; deathTime cần deathDate. isDeceased=false bỏ qua các trường còn lại. */
+        DeathInput: {
+            isDeceased: boolean;
+            /** Format: date */
+            deathDate?: string | null;
+            /** @example 14:30 */
+            deathTime?: string | null;
+            burialPlace?: string | null;
         };
         PersonResponse: {
             success?: boolean;
@@ -1511,6 +1549,44 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+        };
+    };
+    setPersonDeath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "isDeceased": true,
+                 *       "deathDate": "2026-11-20",
+                 *       "deathTime": "14:30",
+                 *       "burialPlace": "Nghĩa trang quê nhà"
+                 *     }
+                 */
+                "application/json": components["schemas"]["DeathInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     addParent: {

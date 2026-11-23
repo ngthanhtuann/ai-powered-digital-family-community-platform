@@ -24,7 +24,7 @@ public final class GenealogyResponses {
                              Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince,
                              String currentAddress, boolean isDeceased, LocalDate deathDate, String burialPlace,
                              UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                             UUID userId, boolean canEdit) {
+                             UUID userId, boolean canEdit, String deathTime, boolean canManage) {
     }
 
     public record PaginationMeta(int page, int size, long total) {

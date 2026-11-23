@@ -55,6 +55,9 @@ public class Person {
     @Column(name = "death_date")
     private LocalDate deathDate;
 
+    @Column(name = "death_time")
+    private java.time.LocalTime deathTime;
+
     @Column(name = "burial_place", length = 255)
     private String burialPlace;
 
@@ -111,6 +114,8 @@ public class Person {
     public void setDeceased(boolean deceased) { this.deceased = deceased; }
     public LocalDate getDeathDate() { return deathDate; }
     public void setDeathDate(LocalDate deathDate) { this.deathDate = deathDate; }
+    public java.time.LocalTime getDeathTime() { return deathTime; }
+    public void setDeathTime(java.time.LocalTime deathTime) { this.deathTime = deathTime; }
     public String getBurialPlace() { return burialPlace; }
     public void setBurialPlace(String burialPlace) { this.burialPlace = burialPlace; }
     public UUID getAvatarMediaId() { return avatarMediaId; }

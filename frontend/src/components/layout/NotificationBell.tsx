@@ -90,6 +90,12 @@ export function NotificationBell() {
                     Xem bài viết
                   </Link>
                 )}
+                {item.refType === 'PERSON' && item.refId && (
+                  <Link href={`/persons/${item.refId}`} className="mt-2 inline-flex min-h-9 items-center text-body text-info underline"
+                    onClick={() => { if (!item.isRead) mark.mutate(item.id); setOpen(false); }}>
+                    Xem hồ sơ
+                  </Link>
+                )}
                 {!item.isRead && (
                   <button
                     type="button"

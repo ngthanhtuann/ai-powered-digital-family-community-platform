@@ -220,6 +220,7 @@ Người sở hữu: **TV2 Trí**
 | current_address | VARCHAR(255) |  | Địa chỉ nơi ở hiện tại |
 | is_deceased | BOOLEAN | NOT NULL DEFAULT FALSE |  |
 | death_date | DATE | NULL, CHECK (death_date >= birth_date) |  |
+| death_time | TIME | NULL | Giờ mất theo giờ địa phương; chỉ có khi có death_date (SCRUM-134) |
 | burial_place | VARCHAR(255) | NULL | Nơi an táng |
 | avatar_media_id | UUID | NULL | Ảnh đại diện, tham chiếu media → `media` (tham chiếu logic) |
 | user_id | UUID | NULL, UNIQUE (WHERE user_id IS NOT NULL AND deleted_at IS NULL) | Tài khoản nối với thành viên → `users` (tham chiếu logic) |
@@ -399,9 +400,9 @@ Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHER
 | id | UUID | PK | Khóa chính |
 | user_id | UUID | NOT NULL | Người nhận → `users` (tham chiếu logic) |
 | family_id | UUID | NOT NULL, INDEX | Gia đình của thông báo → `family` (tham chiếu logic, SCRUM-53) |
-| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT |
+| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT, POST, PERSON |
 | ref_id | UUID | NULL | Tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận (SCRUM-123): POST_COMMENTED, COMMENT_REPLIED |
+| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận (SCRUM-123): POST_COMMENTED, COMMENT_REPLIED; tang (SCRUM-134): DEATH_NOTICE |
 | title | VARCHAR(255) | NOT NULL |  |
 | content | TEXT | NOT NULL |  |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE |  |

@@ -20,4 +20,7 @@ public interface MembershipQuery {
 
     /** Người dùng đã xác minh của gia đình (ví dụ để gửi thông báo cho cả gia đình). */
     List<UUID> findVerifiedUserIds(UUID familyId);
+
+    /** Thành viên đã xác minh kèm vai trò, chi; chọn người nhận thông báo tang (BR-COM-15). */
+    List<MembershipView> findVerifiedMembers(UUID familyId);
 }

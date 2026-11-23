@@ -2,7 +2,9 @@ package com.familyconnect.modules.community.service;
 
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
+import com.familyconnect.modules.auth.api.EffectiveRole;
 import com.familyconnect.modules.auth.api.MembershipQuery;
+import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.community.api.CommunityNotificationPort;
 import com.familyconnect.modules.community.dto.CommunityDto.PageSuccess;
 import com.familyconnect.modules.community.repository.JdbcNotificationStore;
@@ -74,6 +76,25 @@ public class NotificationService implements CommunityNotificationPort {
         if (current.verified() && familyId.equals(current.familyId())) {
             store.send(userId,familyId,"EVENT",eventId,type.name(),title,content,null);
         }
+    }
+
+    @Override
+    @Transactional
+    public void sendDeathNotice(UUID familyId, java.util.Collection<UUID> branchIds, UUID personId, UUID deceasedUserId,
+                                String title, String content, UUID actorId) {
+        for (MembershipView m : membership.findVerifiedMembers(familyId)) {
+            boolean familyHead = m.role() == EffectiveRole.BRANCH_ADMIN && m.branchId() == null;
+            boolean inBranch = branchIds == null || (m.branchId() != null && branchIds.contains(m.branchId()));
+            if (!m.userId().equals(deceasedUserId) && (familyHead || inBranch)) {
+                store.send(m.userId(), familyId, "PERSON", personId, "DEATH_NOTICE", title, content, actorId);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void retractDeathNotice(UUID personId) {
+        store.retract(personId, "DEATH_NOTICE");
     }
 
     /** BR-COM-14: bình luận bài của mình (POST_COMMENTED) hoặc trả lời bình luận của mình (COMMENT_REPLIED); ref là bài đăng. */

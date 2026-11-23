@@ -56,6 +56,7 @@ public class EndpointRoles {
             Map.entry("GET /persons/{}", SIGNED_IN),
             // BR-GEN-20: thành viên sửa hồ sơ của chính mình; quyền chi tiết kiểm ở PersonService.
             Map.entry("PUT /persons/{}", SIGNED_IN),
+            Map.entry("PUT /persons/{}/death", ADMINS),
             Map.entry("DELETE /persons/{}", ADMINS),
             Map.entry("POST /persons/{}/parents", ADMINS),
             Map.entry("DELETE /persons/{}/parents/{}", ADMINS),

@@ -99,4 +99,23 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
             """, nativeQuery = true)
     int widowMarriages(@Param("personId") UUID personId, @Param("deathDate") LocalDate deathDate,
                        @Param("actor") UUID actor);
+
+    /**
+     * BR-GEN-21 báo nhầm: hôn nhân đã chuyển WIDOWED vì lần báo mất đó (end_date = ngày mất) quay lại MARRIED,
+     * trừ khi người kia cũng đã mất hoặc đã có hôn nhân MARRIED khác.
+     */
+    @Modifying
+    @Query(value = """
+            UPDATE marriage m SET status = 'MARRIED', end_date = NULL, updated_by = :actor, updated_at = now()
+            WHERE (m.person1_id = :personId OR m.person2_id = :personId)
+              AND m.status = 'WIDOWED' AND m.end_date = :deathDate AND m.deleted_at IS NULL
+              AND NOT EXISTS (SELECT 1 FROM person o
+                  WHERE o.id = CASE WHEN m.person1_id = :personId THEN m.person2_id ELSE m.person1_id END
+                    AND o.is_deceased)
+              AND NOT EXISTS (SELECT 1 FROM marriage x
+                  WHERE x.id <> m.id AND x.status = 'MARRIED' AND x.deleted_at IS NULL
+                    AND (x.person1_id IN (m.person1_id, m.person2_id) OR x.person2_id IN (m.person1_id, m.person2_id)))
+            """, nativeQuery = true)
+    int reviveMarriages(@Param("personId") UUID personId, @Param("deathDate") LocalDate deathDate,
+                        @Param("actor") UUID actor);
 }

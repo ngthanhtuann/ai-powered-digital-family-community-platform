@@ -8,7 +8,10 @@ import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.directory.api.DirectoryQuery;
 import com.familyconnect.modules.genealogy.api.PersonSearchIndex;
+import com.familyconnect.modules.auth.api.MembershipCommand;
 import com.familyconnect.modules.auth.api.MembershipQuery;
+import com.familyconnect.modules.community.api.CommunityNotificationPort;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
@@ -27,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,12 +57,17 @@ public class PersonService implements PersonSearchIndex {
     private final AiGateway aiGateway;
     private final CommunityQuery communityQuery;
     private final DirectoryQuery directoryQuery;
+    private final MembershipCommand membershipCommand;
+    private final CommunityNotificationPort notifications;
     private final Clock clock;
 
     public PersonService(PersonRepository personRepository, FamilyRepository familyRepository,
                          BranchRepository branchRepository, GenealogyAccess access, MembershipQuery membershipQuery,
                          AuditLogger auditLogger, AiGateway aiGateway, CommunityQuery communityQuery,
-                         DirectoryQuery directoryQuery, Clock clock) {
+                         DirectoryQuery directoryQuery, MembershipCommand membershipCommand,
+                         CommunityNotificationPort notifications, Clock clock) {
+        this.membershipCommand = membershipCommand;
+        this.notifications = notifications;
         this.personRepository = personRepository;
         this.familyRepository = familyRepository;
         this.branchRepository = branchRepository;
@@ -132,16 +142,116 @@ public class PersonService implements PersonSearchIndex {
         }
         validate(familyId, personId, input);
         boolean becameDeceased = !person.isDeceased() && input.deceased();
+        boolean revived = person.isDeceased() && !input.deceased();
+        LocalDate oldDeathDate = person.getDeathDate();
         apply(person, input);
         person.setUpdatedBy(viewer.userId());
         personRepository.saveAndFlush(person);
         if (becameDeceased) {
-            personRepository.widowMarriages(personId, person.getDeathDate(), viewer.userId()); // BR-GEN-08
+            onDeath(person, viewer.userId());
+        } else if (revived) {
+            onRevive(person, oldDeathDate, viewer.userId());
         }
         auditLogger.log("PERSON_UPDATED", "PERSON", personId, familyId, Map.of());
         indexAfterCommit(person);
         return toData(person, viewer);
     }
+
+    /** BR-GEN-21: người quản lý chi báo mất (kể cả hồ sơ đã gắn tài khoản) hoặc khôi phục khi báo nhầm. */
+    @Transactional
+    public PersonData setDeath(UUID personId, DeathInput input) {
+        Person person = find(personId);
+        UUID familyId = person.getFamilyId();
+        Viewer viewer = access.requireRead(familyId);
+        access.requireManage(viewer, familyId, person.getBranchId());
+        if (viewer.userId().equals(person.getUserId())) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        boolean wasDeceased = person.isDeceased();
+        LocalDate oldDeathDate = person.getDeathDate();
+        if (input.deceased()) {
+            validateDeathDate(person, input.deathDate());
+            person.setDeceased(true);
+            person.setDeathDate(input.deathDate());
+            person.setDeathTime(input.deathTime() == null || input.deathTime().isBlank() ? null : LocalTime.parse(input.deathTime()));
+            person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
+        } else {
+            if (wasDeceased && person.getBirthDate() == null) {
+                throw ApiException.invalidField("birthDate", "Người còn sống cần ngày sinh, hãy nhập ngày sinh trước khi khôi phục");
+            }
+            person.setDeceased(false);
+            person.setDeathDate(null);
+            person.setDeathTime(null);
+            person.setBurialPlace(null);
+        }
+        person.setUpdatedBy(viewer.userId());
+        personRepository.saveAndFlush(person);
+        String action = "PERSON_UPDATED";
+        if (input.deceased() && !wasDeceased) {
+            onDeath(person, viewer.userId());
+            action = "PERSON_DECEASED";
+        } else if (!input.deceased() && wasDeceased) {
+            onRevive(person, oldDeathDate, viewer.userId());
+            action = "PERSON_DECEASED_REVERTED";
+        }
+        auditLogger.log(action, "PERSON", personId, familyId, Map.of());
+        indexAfterCommit(person);
+        return toData(person, viewer);
+    }
+
+    private void validateDeathDate(Person person, LocalDate deathDate) {
+        if (deathDate == null) {
+            throw ApiException.invalidField("deathDate", "Cần nhập ngày mất");
+        }
+        if (deathDate.isAfter(LocalDate.now(clock))) {
+            throw ApiException.invalidField("deathDate", "Ngày mất không được sau hôm nay");
+        }
+        Integer birthYear = birthYear(person);
+        if ((person.getBirthDate() != null && deathDate.isBefore(person.getBirthDate()))
+                || (birthYear != null && deathDate.getYear() < birthYear)) {
+            throw ApiException.invalidField("deathDate", "Ngày mất không được trước ngày sinh");
+        }
+    }
+
+    /** Hệ quả khi chuyển sang đã mất: BR-GEN-08 góa, BR-AUTH-23 khóa tài khoản, BR-COM-15 thông báo tang. */
+    private void onDeath(Person person, UUID actor) {
+        personRepository.widowMarriages(person.getId(), person.getDeathDate(), actor);
+        if (person.getUserId() != null) {
+            membershipCommand.lockDeceasedAccount(person.getUserId(), actor);
+        }
+        List<UUID> branches = person.getBranchId() == null ? null
+                : branchRepository.findBranchAndDescendants(person.getFamilyId(), person.getBranchId());
+        notifications.sendDeathNotice(person.getFamilyId(), branches, person.getId(), person.getUserId(),
+                "Báo tang: " + person.getFullName(), deathNoticeText(person), actor);
+    }
+
+    /** Báo nhầm (BR-GEN-21): hoàn lại góa, mở khóa tài khoản, thu hồi thông báo tang. */
+    private void onRevive(Person person, LocalDate oldDeathDate, UUID actor) {
+        if (oldDeathDate != null) {
+            personRepository.reviveMarriages(person.getId(), oldDeathDate, actor);
+        }
+        if (person.getUserId() != null) {
+            membershipCommand.unlockDeceasedAccount(person.getUserId(), actor);
+        }
+        notifications.retractDeathNotice(person.getId());
+    }
+
+    static String deathNoticeText(Person person) {
+        StringBuilder text = new StringBuilder(person.getFullName()).append(" đã mất");
+        if (person.getDeathDate() != null) {
+            text.append(" ngày ").append(person.getDeathDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        }
+        if (person.getDeathTime() != null) {
+            text.append(" lúc ").append(person.getDeathTime().format(HH_MM));
+        }
+        text.append('.');
+        if (person.getBurialPlace() != null) {
+            text.append(" Nơi an táng: ").append(person.getBurialPlace()).append('.');
+        }
+        return text.toString();
+    }
+
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional
     public void delete(UUID personId) {
@@ -226,6 +336,9 @@ public class PersonService implements PersonSearchIndex {
         person.setBranchId(input.branchId());
         person.setDeceased(input.deceased());
         person.setDeathDate(input.deathDate());
+        if (!input.deceased()) {
+            person.setDeathTime(null);
+        }
         person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
         person.setAvatarMediaId(input.avatarMediaId());
         // Response không trả userId nên client không gửi lại được: để trống thì giữ liên kết (BR-GEN-19).
@@ -247,13 +360,14 @@ public class PersonService implements PersonSearchIndex {
         if (!full && isChild(p.isDeceased(), p.getBirthDate(), LocalDate.now(clock))) {
             return new PersonData(p.getId(), p.getFamilyId(), null, p.getFullName(), p.getGender(), birthYear,
                     null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt(),
-                    null, false);
+                    null, false, null, false);
         }
         return new PersonData(p.getId(), p.getFamilyId(), p.getBranchId(), p.getFullName(), p.getGender(), birthYear,
                 full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(),
                 full ? p.getCurrentAddress() : null, p.isDeceased(), p.getDeathDate(), p.getBurialPlace(),
                 p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt(),
-                p.getUserId(), canEdit(p, viewer));
+                p.getUserId(), canEdit(p, viewer), p.getDeathTime() == null ? null : p.getDeathTime().format(HH_MM),
+                access.canManage(viewer, p.getFamilyId(), p.getBranchId()));
     }
 
     private static Integer birthYear(Person p) {

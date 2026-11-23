@@ -2,6 +2,7 @@ package com.familyconnect.modules.genealogy.controller;
 
 import com.familyconnect.common.api.ApiResponse;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.BranchInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.FamilyInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyResponses.BranchData;
@@ -124,6 +125,11 @@ public class GenealogyController {
     @PutMapping("/persons/{personId}")
     public ApiResponse<PersonData> updatePerson(@PathVariable UUID personId, @Valid @RequestBody PersonInput input) {
         return ApiResponse.ok(personService.update(personId, input));
+    }
+
+    @PutMapping("/persons/{personId}/death")
+    public ApiResponse<PersonData> setPersonDeath(@PathVariable UUID personId, @Valid @RequestBody DeathInput input) {
+        return ApiResponse.ok(personService.setDeath(personId, input));
     }
 
     @DeleteMapping("/persons/{personId}")

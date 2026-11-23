@@ -57,6 +57,19 @@ public final class GenealogyRequests {
         }
     }
 
+    /** PUT /persons/{personId}/death (genealogy.yaml DeathInput, BR-GEN-21). */
+    public record DeathInput(
+            @NotNull(message = "Chưa chọn đã mất hay còn sống") Boolean isDeceased,
+            LocalDate deathDate,
+            @jakarta.validation.constraints.Pattern(regexp = "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                    message = "Giờ mất theo dạng HH:mm") String deathTime,
+            @Size(max = 255, message = "Nơi an táng tối đa 255 ký tự") String burialPlace) {
+
+        public boolean deceased() {
+            return Boolean.TRUE.equals(isDeceased);
+        }
+    }
+
     /** POST /persons/{personId}/parents (genealogy.yaml ParentInput); kind mặc định BIOLOGICAL. */
     public record ParentInput(
             @NotNull(message = "Chưa chọn cha/mẹ") UUID parentId,
