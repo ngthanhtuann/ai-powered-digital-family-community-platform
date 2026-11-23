@@ -27,6 +27,10 @@ public final class GenealogyResponses {
                              UUID userId, boolean canEdit, String deathTime, boolean canManage) {
     }
 
+    /** genealogy.yaml AccountCandidate (BR-GEN-23): chỉ họ tên. */
+    public record AccountCandidate(UUID userId, String fullName) {
+    }
+
     public record PaginationMeta(int page, int size, long total) {
     }
 

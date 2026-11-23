@@ -374,6 +374,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | BR-AUTH-22 | **Bổ nhiệm trưởng chi** (UC-AUTH-14, Phụ lục A bổ sung 2/11/2026). Trưởng họ (`BRANCH_ADMIN` có `branch_id` NULL) và `SYSTEM_ADMIN` đổi `role` và `branch_id` trong bản ghi `APPROVED` của tài khoản cùng dòng họ; trưởng chi có gán chi không được bổ nhiệm. Chi phải thuộc dòng họ. Không tự đổi vai trò của mình; dòng họ luôn còn ít nhất một trưởng họ (`ADM_001`). Danh sách tài khoản chỉ trả họ tên, vai trò, chi (không email, số điện thoại). Giao diện gọi `BRANCH_ADMIN` không gán chi là "Trưởng họ", có gán chi là "Trưởng chi" kèm tên chi. |
 | BR-AUTH-23 | **Khóa tài khoản người đã mất** (23/11/2026, SCRUM-134). Khi module Gia phả đánh dấu đã mất một hồ sơ có gắn tài khoản (BR-GEN-21), gọi `MembershipCommand.lockDeceasedAccount`: khóa tài khoản với lý do cố định "Đã mất", thu hồi mọi refresh token, ghi `USER_LOCKED`. Khôi phục khi báo nhầm gọi `unlockDeceasedAccount`: chỉ mở khóa khi lý do khóa đúng là "Đã mất" (tài khoản bị quản trị khóa vì lý do khác giữ nguyên), ghi `USER_UNLOCKED`. Không áp dụng cho `SYSTEM_ADMIN`. |
 | BR-AUTH-24 | **Mã đặt lại mật khẩu** (23/11/2026, SCRUM-139, UC-AUTH-15). Chỉ trưởng họ (cho tài khoản đã xác minh cùng dòng họ, trừ trưởng họ khác và quản trị) và `SYSTEM_ADMIN` (mọi tài khoản trừ chính mình) cấp được. Mã 8 ký tự, ngẫu nhiên bằng `SecureRandom`, lưu BCrypt, hết hạn 30 phút, dùng một lần; mỗi tài khoản chỉ có một mã còn hiệu lực. Sai 5 lần thì hủy. Không ghi mã vào nhật ký, log hay phản hồi nào khác ngoài phản hồi cấp mã. |
+| BR-AUTH-25 | **Thay tài khoản** (23/11/2026, SCRUM-140, BR-GEN-23). Module Gia phả gọi `MembershipCommand.replaceAccount(old, new, actor, reason)` trong cùng giao dịch: (1) tài khoản mới nhận vai trò và chi quản lý của tài khoản cũ nếu tài khoản cũ là `BRANCH_ADMIN`; (2) bản ghi `APPROVED` của tài khoản cũ chuyển `REMOVED`; (3) khóa tài khoản cũ với lý do "Thay tài khoản: <lý do>", thu hồi mọi refresh token; (4) gọi mọi bản cài đặt `AccountContentTransfer` để chuyển quyền sở hữu nội dung công khai; (5) ghi `ACCOUNT_REPLACED`. **Không chuyển** lịch sử chat AI, thông báo cá nhân, nhật ký kiểm toán. Không xóa tài khoản cũ. |
 
 ---
 
@@ -656,6 +657,7 @@ public interface MembershipCommand {
     void assignFamilyOwner(UUID userId, UUID familyId);        // Gia phả gọi ở UC-GEN-01 bước 4, cùng giao dịch tạo family (BR-AUTH-12)
     void lockDeceasedAccount(UUID userId, UUID actorId);       // Gia phả gọi khi báo mất (BR-AUTH-23)
     void unlockDeceasedAccount(UUID userId, UUID actorId);     // Gia phả gọi khi khôi phục do báo nhầm (BR-AUTH-23)
+    void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason);   // Gia phả gọi khi thay tài khoản (BR-AUTH-25)
 }
 
 public interface UserDirectory {
@@ -689,6 +691,10 @@ public interface GenealogyPort {                               // module Gia ph�
     void linkAccount(UUID familyId, UUID personId, UUID userId);                    // đặt person.user_id; person phải thuộc familyId (BR-AUTH-11); ném lỗi GEN_xxx nếu không hợp lệ
 }
 
+public interface AccountContentTransfer {                     // Community, Sự kiện, Di sản cài đặt (BR-AUTH-25, SCRUM-140)
+    void transferContent(UUID fromUserId, UUID toUserId);      // chuyển người tạo nội dung công khai; trùng thì giữ bản của tài khoản mới
+}
+
 public interface ContentModerationPort {                       // module Community (TV3) cài đặt
     Page<ContentReportView> findReports(ReportStatus status, ContentType type, Pageable pageable);  // mỗi nội dung một dòng, kèm số lượt báo cáo, chủ nội dung
     ContentReportView hideContent(UUID reportId, UUID adminUserId);     // ẩn nội dung; mọi báo cáo PENDING của nội dung -> HIDDEN
@@ -712,7 +718,7 @@ Tên hành động `UPPER_SNAKE_CASE`. Nhóm hành động của module này (c�
 
 | Nhóm | Hành động | Khi nào |
 |---|---|---|
-| Auth | `USER_REGISTERED`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGIN_BLOCKED`, `LOGOUT`, `PASSWORD_CHANGED`, `PROFILE_UPDATED`, `PASSWORD_RESET_CODE_ISSUED`, `PASSWORD_RESET` | UC-AUTH-01 đến 05, 15 (không ghi mã); `LOGIN_FAILED` che bớt email |
+| Auth | `USER_REGISTERED`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGIN_BLOCKED`, `LOGOUT`, `PASSWORD_CHANGED`, `PROFILE_UPDATED`, `PASSWORD_RESET_CODE_ISSUED`, `PASSWORD_RESET`, `ACCOUNT_REPLACED` | UC-AUTH-01 đến 05, 15 (không ghi mã), BR-AUTH-25; `LOGIN_FAILED` che bớt email |
 | Xác minh | `JOIN_REQUESTED`, `JOIN_CANCELLED`, `JOIN_APPROVED`, `JOIN_REJECTED` | UC-AUTH-06, 07 |
 | Quản trị | `USER_LOCKED`, `USER_UNLOCKED`, `ROLE_CHANGED`, `MEMBERSHIP_CHANGED` | UC-AUTH-08 (ghi giá trị cũ và mới) |
 | Quản trị | `CONTENT_HIDDEN`, `REPORT_DISMISSED`, `CONTENT_RESTORED` | UC-AUTH-09 (ghi người xử lý và chủ nội dung) |

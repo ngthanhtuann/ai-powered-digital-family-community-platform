@@ -435,6 +435,54 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /persons/{personId}/account-candidates:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    get:
+      operationId: listAccountCandidates
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Tài khoản có thể gắn thay cho hồ sơ (BR-GEN-23)
+      description: Người quản lý chi của hồ sơ. Chỉ họ tên các tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào, sắp theo họ tên.
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountCandidateListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /persons/{personId}/account-replacements:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: replacePersonAccount
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Thay tài khoản gắn với hồ sơ khi mất tài khoản (UC-GEN-03, BR-GEN-23)
+      description: "Khóa và cho tài khoản cũ rời dòng họ (không xóa), gắn tài khoản mới, chuyển vai trò trưởng họ/chi và quyền sở hữu nội dung công khai (BR-AUTH-25). Hồ sơ chưa gắn tài khoản hoặc tài khoản mới trùng tài khoản cũ: 400 VALID_001; tài khoản mới khác dòng họ hoặc chưa xác minh: 409 GEN_014; đã gắn hồ sơ khác: 409 CONFLICT_001; tự thay tài khoản của mình: 403 PERM_001."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountReplacementInput' }
+            example: { newUserId: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, reason: Mất điện thoại và email cũ }
+      responses:
+        '200':
+          description: Đã thay tài khoản
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: GEN_014 tài khoản mới không thuộc dòng họ; CONFLICT_001 tài khoản mới đã gắn hồ sơ khác
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
   /persons/{personId}/parents:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -834,6 +882,22 @@ components:
         canEdit: { type: boolean, description: "Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN)." }
         canManage: { type: boolean, description: "Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21." }
         deathTime: { type: string, nullable: true, example: '14:30', description: "Giờ mất HH:mm (giờ địa phương), SCRUM-134." }
+    AccountReplacementInput:
+      type: object
+      required: [newUserId, reason]
+      properties:
+        newUserId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 255 }
+    AccountCandidate:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+    AccountCandidateListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: array, items: { $ref: '#/components/schemas/AccountCandidate' } }
     DeathInput:
       type: object
       required: [isDeceased]

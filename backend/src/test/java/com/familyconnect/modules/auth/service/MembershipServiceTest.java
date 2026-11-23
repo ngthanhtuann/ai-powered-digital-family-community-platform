@@ -61,7 +61,7 @@ class MembershipServiceTest {
         service = new MembershipService(verifications, userRoles, provider,
                 mock(com.familyconnect.modules.auth.repository.UserRepository.class),
                 mock(com.familyconnect.modules.auth.repository.RefreshTokenRepository.class),
-                mock(ObjectProvider.class), clock);
+                mock(ObjectProvider.class), mock(ObjectProvider.class), clock);
     }
 
     /** Bản ghi member_verification với trạng thái và vai trò cho trước. */

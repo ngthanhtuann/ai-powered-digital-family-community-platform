@@ -57,6 +57,13 @@ public final class GenealogyRequests {
         }
     }
 
+    /** POST /persons/{personId}/account-replacements (AccountReplacementInput, BR-GEN-23). */
+    public record AccountReplacementInput(
+            @NotNull(message = "Chưa chọn tài khoản mới") UUID newUserId,
+            @NotBlank(message = "Cần nhập lý do thay tài khoản")
+            @Size(max = 255, message = "Lý do tối đa 255 ký tự") String reason) {
+    }
+
     /** PUT /persons/{personId}/death (genealogy.yaml DeathInput, BR-GEN-21). */
     public record DeathInput(
             @NotNull(message = "Chưa chọn đã mất hay còn sống") Boolean isDeceased,

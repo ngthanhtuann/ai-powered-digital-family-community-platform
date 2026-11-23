@@ -187,6 +187,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/persons/{personId}/account-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tài khoản có thể gắn thay cho hồ sơ (BR-GEN-23)
+         * @description Người quản lý chi của hồ sơ. Chỉ họ tên các tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào, sắp theo họ tên.
+         */
+        get: operations["listAccountCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/persons/{personId}/account-replacements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Thay tài khoản gắn với hồ sơ khi mất tài khoản (UC-GEN-03, BR-GEN-23)
+         * @description Khóa và cho tài khoản cũ rời dòng họ (không xóa), gắn tài khoản mới, chuyển vai trò trưởng họ/chi và quyền sở hữu nội dung công khai (BR-AUTH-25). Hồ sơ chưa gắn tài khoản hoặc tài khoản mới trùng tài khoản cũ: 400 VALID_001; tài khoản mới khác dòng họ hoặc chưa xác minh: 409 GEN_014; đã gắn hồ sơ khác: 409 CONFLICT_001; tự thay tài khoản của mình: 403 PERM_001.
+         */
+        post: operations["replacePersonAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/persons/{personId}/parents": {
         parameters: {
             query?: never;
@@ -481,6 +525,20 @@ export interface components {
              * @example 14:30
              */
             deathTime?: string | null;
+        };
+        AccountReplacementInput: {
+            /** Format: uuid */
+            newUserId: string;
+            reason: string;
+        };
+        AccountCandidate: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+        };
+        AccountCandidateListResponse: {
+            success?: boolean;
+            data?: components["schemas"]["AccountCandidate"][];
         };
         /** @description BR-GEN-21. isDeceased=true bắt buộc deathDate; deathTime cần deathDate. isDeceased=false bỏ qua các trường còn lại. */
         DeathInput: {
@@ -1594,6 +1652,76 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listAccountCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCandidateListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    replacePersonAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "newUserId": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
+                 *       "reason": "Mất điện thoại và email cũ"
+                 *     }
+                 */
+                "application/json": components["schemas"]["AccountReplacementInput"];
+            };
+        };
+        responses: {
+            /** @description Đã thay tài khoản */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description GEN_014 tài khoản mới không thuộc dòng họ; CONFLICT_001 tài khoản mới đã gắn hồ sơ khác */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     addParent: {

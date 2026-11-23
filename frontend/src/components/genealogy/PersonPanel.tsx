@@ -29,6 +29,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId) });
   const [mode, setMode] = useState<RelationMode | null>(null);
   const [deathOpen, setDeathOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
   const [otherId, setOtherId] = useState('');
   const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
   const relation = useMutation({
@@ -79,6 +80,9 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
             {p.isDeceased ? 'Sửa thông tin mất / báo nhầm' : 'Báo mất'}
           </Button>
         )}
+        {p.canManage && p.userId && !p.isDeceased && (
+          <Button variant="secondary" onClick={() => setReplaceOpen(true)}>Thay tài khoản (mất tài khoản)</Button>
+        )}
         <form className="grid gap-2 border-t border-border pt-4" onSubmit={(e) => { e.preventDefault(); relation.mutate(); }}>
           <label className="grid gap-1 text-label">{p.fullName} là gì của
             <select className={selectClass} value={otherId} onChange={(e) => setOtherId(e.target.value)}>
@@ -111,6 +115,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
       </>}
       {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} onClose={() => setMode(null)} />}
       {deathOpen && p && <DeathModal person={p} onClose={() => setDeathOpen(false)} />}
+      {replaceOpen && p && <ReplaceAccountModal person={p} onClose={() => setReplaceOpen(false)} />}
     </aside>
   );
 }
@@ -164,6 +169,49 @@ function DeathModal({ person, onClose }: { person: Person; onClose: () => void }
             </Button>
           </div>
         )}
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * BR-GEN-23 (SCRUM-140): người thân mất tài khoản đăng ký tài khoản mới và được duyệt vào dòng họ, rồi người quản lý gắn tài khoản
+ * mới vào hồ sơ. Tài khoản cũ bị khóa (không xóa); vai trò và nội dung công khai chuyển sang tài khoản mới.
+ */
+function ReplaceAccountModal({ person, onClose }: { person: Person; onClose: () => void }) {
+  const cache = useQueryClient();
+  const [newUserId, setNewUserId] = useState('');
+  const [reason, setReason] = useState('');
+  const candidates = useQuery({
+    queryKey: ['account-candidates', person.id],
+    queryFn: () => genealogyApi.accountCandidates(person.id!),
+  });
+  const save = useMutation({
+    mutationFn: () => genealogyApi.replaceAccount(person.id!, { newUserId, reason: reason.trim() }),
+    onSuccess: async () => {
+      await Promise.all(['person', 'tree', 'members', 'family-accounts'].map((key) => cache.invalidateQueries({ queryKey: [key] })));
+      onClose();
+    },
+  });
+  return (
+    <Modal open title={`Thay tài khoản cho ${person.fullName}`} onClose={onClose}>
+      <form className="grid gap-4 p-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <p className="text-body text-text-secondary">
+          Dùng khi người này mất tài khoản cũ. Trước tiên họ đăng ký tài khoản mới và được duyệt vào dòng họ. Tài khoản cũ sẽ bị khóa
+          (không xóa); vai trò trưởng họ/chi, bài đăng, bình luận, sự kiện, tài liệu chuyển sang tài khoản mới.
+        </p>
+        {candidates.isPending && <p className="text-body text-text-secondary">Đang tải danh sách tài khoản...</p>}
+        {candidates.isError && <p role="alert" className="text-body text-error">{errorText(candidates.error)}</p>}
+        <label className="grid gap-1 text-label">Tài khoản mới
+          <select className={selectClass} value={newUserId} required onChange={(e) => setNewUserId(e.target.value)}>
+            <option value="">{candidates.data?.length ? 'Chọn tài khoản' : 'Chưa có tài khoản nào chưa gắn hồ sơ'}</option>
+            {candidates.data?.map((c) => <option key={c.userId} value={c.userId}>{c.fullName}</option>)}
+          </select>
+        </label>
+        <TextField label="Lý do" required maxLength={255} value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="Ví dụ: mất điện thoại và email cũ" />
+        {save.isError && <p role="alert" className="text-body text-error">{errorText(save.error)}</p>}
+        <Button type="submit" loading={save.isPending} disabled={!newUserId || !reason.trim()}>Thay tài khoản</Button>
       </form>
     </Modal>
   );

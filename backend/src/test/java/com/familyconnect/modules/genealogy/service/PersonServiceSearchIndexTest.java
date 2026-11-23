@@ -48,7 +48,8 @@ class PersonServiceSearchIndexTest {
                 mock(GenealogyAccess.class), mock(MembershipQuery.class), mock(AuditLogger.class), ai,
                 mock(CommunityQuery.class), directory,
                 mock(com.familyconnect.modules.auth.api.MembershipCommand.class),
-                mock(com.familyconnect.modules.community.api.CommunityNotificationPort.class), CLOCK);
+                mock(com.familyconnect.modules.community.api.CommunityNotificationPort.class),
+                mock(com.familyconnect.modules.auth.api.UserDirectory.class), CLOCK);
     }
 
     private Person person(String name, LocalDate birthDate) {

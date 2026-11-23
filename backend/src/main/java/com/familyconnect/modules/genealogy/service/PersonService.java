@@ -12,6 +12,9 @@ import com.familyconnect.modules.auth.api.MembershipCommand;
 import com.familyconnect.modules.auth.api.MembershipQuery;
 import com.familyconnect.modules.community.api.CommunityNotificationPort;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.AccountReplacementInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyResponses.AccountCandidate;
+import com.familyconnect.modules.auth.api.UserDirectory;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
@@ -59,13 +62,15 @@ public class PersonService implements PersonSearchIndex {
     private final DirectoryQuery directoryQuery;
     private final MembershipCommand membershipCommand;
     private final CommunityNotificationPort notifications;
+    private final UserDirectory userDirectory;
     private final Clock clock;
 
     public PersonService(PersonRepository personRepository, FamilyRepository familyRepository,
                          BranchRepository branchRepository, GenealogyAccess access, MembershipQuery membershipQuery,
                          AuditLogger auditLogger, AiGateway aiGateway, CommunityQuery communityQuery,
                          DirectoryQuery directoryQuery, MembershipCommand membershipCommand,
-                         CommunityNotificationPort notifications, Clock clock) {
+                         CommunityNotificationPort notifications, UserDirectory userDirectory, Clock clock) {
+        this.userDirectory = userDirectory;
         this.membershipCommand = membershipCommand;
         this.notifications = notifications;
         this.personRepository = personRepository;
@@ -195,6 +200,58 @@ public class PersonService implements PersonSearchIndex {
             action = "PERSON_DECEASED_REVERTED";
         }
         auditLogger.log(action, "PERSON", personId, familyId, Map.of());
+        indexAfterCommit(person);
+        return toData(person, viewer);
+    }
+
+    /** BR-GEN-23: tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào; chỉ trả họ tên. */
+    @Transactional(readOnly = true)
+    public List<AccountCandidate> accountCandidates(UUID personId) {
+        Person person = find(personId);
+        Viewer viewer = access.requireRead(person.getFamilyId());
+        access.requireManage(viewer, person.getFamilyId(), person.getBranchId());
+        List<UUID> verified = membershipQuery.findVerifiedMembers(person.getFamilyId()).stream().map(MembershipView::userId).toList();
+        Set<UUID> linked = new java.util.HashSet<>();
+        personRepository.findAllByUserIdInAndDeletedAtIsNull(verified).forEach(p -> linked.add(p.getUserId()));
+        List<UUID> free = verified.stream().filter(id -> !linked.contains(id)).toList();
+        Map<UUID, String> names = userDirectory.getFullNames(free);
+        return free.stream().filter(names::containsKey)
+                .map(id -> new AccountCandidate(id, names.get(id)))
+                .sorted(java.util.Comparator.comparing(AccountCandidate::fullName))
+                .toList();
+    }
+
+    /** BR-GEN-23, BR-AUTH-25: thay tài khoản gắn với hồ sơ; tài khoản cũ không bị xóa. */
+    @Transactional
+    public PersonData replaceAccount(UUID personId, AccountReplacementInput input) {
+        Person person = find(personId);
+        UUID familyId = person.getFamilyId();
+        Viewer viewer = access.requireRead(familyId);
+        access.requireManage(viewer, familyId, person.getBranchId());
+        UUID oldUserId = person.getUserId();
+        if (oldUserId == null) {
+            throw ApiException.invalidField("newUserId", "Hồ sơ chưa gắn tài khoản; hãy gắn khi duyệt yêu cầu tham gia");
+        }
+        if (oldUserId.equals(input.newUserId())) {
+            throw ApiException.invalidField("newUserId", "Tài khoản mới trùng tài khoản đang gắn");
+        }
+        if (viewer.userId().equals(oldUserId)) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        MembershipView newer = membershipQuery.getMembership(input.newUserId());
+        if (!newer.verified() || !familyId.equals(newer.familyId())) {
+            throw new ApiException(ErrorCode.GEN_014);
+        }
+        if (personRepository.findByUserIdAndDeletedAtIsNull(input.newUserId()).isPresent()) {
+            throw new ApiException(ErrorCode.CONFLICT_001, "Tài khoản mới đã gắn với hồ sơ khác");
+        }
+        person.setUserId(null);
+        personRepository.saveAndFlush(person);
+        membershipCommand.replaceAccount(oldUserId, input.newUserId(), viewer.userId(), input.reason().trim());
+        person.setUserId(input.newUserId());
+        person.setUpdatedBy(viewer.userId());
+        personRepository.saveAndFlush(person);
+        auditLogger.log("PERSON_ACCOUNT_REPLACED", "PERSON", personId, familyId, Map.of("reason", input.reason().trim()));
         indexAfterCommit(person);
         return toData(person, viewer);
     }

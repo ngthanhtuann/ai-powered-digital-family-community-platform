@@ -606,6 +606,56 @@ class GenealogyApiIntegrationTest {
                 .andExpect(jsonPath("$.data.nodes[0].leaderRole").doesNotExist());
     }
 
+    // ---- BR-GEN-23, BR-AUTH-25, BR-COM-16 (SCRUM-140): thay tài khoản cho hồ sơ ----
+
+    @Test
+    void headReplacesLostAccountTransferringRoleAndContent() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi thay")));
+        String oldEmail = newUser();
+        member(oldEmail, familyId, branch, "BRANCH_ADMIN");
+        String newEmail = newUser();
+        member(newEmail, familyId, branch, "MEMBER");
+        UUID oldId = userId(oldEmail);
+        UUID newId = userId(newEmail);
+        Map<String, Object> linked = person("Người mất tài khoản", LocalDate.of(1980, 1, 1));
+        linked.put("userId", oldId.toString());
+        linked.put("branchId", branch.toString());
+        UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, linked));
+        UUID postId = jdbc.queryForObject("insert into post(family_id, type, content, created_by) values (?, 'POST', 'Bài cũ', ?) returning id",
+                UUID.class, familyId, oldId);
+        jdbc.update("insert into reaction(post_id, type, created_by) values (?, 'LIKE', ?)", postId, oldId);
+        jdbc.update("insert into reaction(post_id, type, created_by) values (?, 'LOVE', ?)", postId, newId);
+
+        call(get("/api/v1/persons/" + personId + "/account-candidates"), headToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.userId == '" + newId + "')]").exists())
+                .andExpect(jsonPath("$.data[?(@.userId == '" + oldId + "')]").doesNotExist());
+        String url = "/api/v1/persons/" + personId + "/account-replacements";
+        call(post(url), headToken, Map.of("newUserId", newId.toString())).andExpect(status().isBadRequest());
+        call(post(url), token(newEmail), Map.of("newUserId", newId.toString(), "reason", "x")).andExpect(status().isForbidden());
+        call(post(url), headToken, Map.of("newUserId", newId.toString(), "reason", "Mất điện thoại"))
+                .andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId))
+                .isEqualTo(newId);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select status || '|' || lock_reason from users where id = ?",
+                String.class, oldId)).isEqualTo("LOCKED|Thay tài khoản: Mất điện thoại");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, oldId))
+                .isEqualTo(1); // không xóa tài khoản cũ
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select role || '|' || branch_id from member_verification where user_id = ? and status = 'APPROVED'", String.class, newId))
+                .isEqualTo("BRANCH_ADMIN|" + branch);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from member_verification where user_id = ?", String.class, oldId)).isEqualTo("REMOVED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select created_by from post where id = ?", UUID.class, postId))
+                .isEqualTo(newId);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select string_agg(type, ',') from reaction where post_id = ? and deleted_at is null", String.class, postId))
+                .isEqualTo("LOVE"); // trùng thì giữ cảm xúc của tài khoản mới
+    }
+
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
 
     @Test

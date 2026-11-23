@@ -54,6 +54,7 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
     private final RefreshTokenRepository refreshTokenRepository;
     // AuditLogger phụ thuộc MembershipQuery nên lấy trễ để tránh vòng phụ thuộc.
     private final ObjectProvider<AuditLogger> auditLogger;
+    private final ObjectProvider<com.familyconnect.modules.auth.api.AccountContentTransfer> contentTransfers;
     private final Clock clock;
 
     /** BR-AUTH-23: lý do khóa cố định để chỉ mở khóa đúng tài khoản bị khóa vì báo mất. */
@@ -65,7 +66,9 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
                              UserRepository userRepository,
                              RefreshTokenRepository refreshTokenRepository,
                              ObjectProvider<AuditLogger> auditLogger,
+                             ObjectProvider<com.familyconnect.modules.auth.api.AccountContentTransfer> contentTransfers,
                              Clock clock) {
+        this.contentTransfers = contentTransfers;
         this.verificationRepository = verificationRepository;
         this.userRoleRepository = userRoleRepository;
         this.genealogyPort = genealogyPort;
@@ -144,6 +147,36 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
             auditLogger.getObject().log("USER_LOCKED", "USER", userId, null,
                     Map.of("oldStatus", "ACTIVE", "newStatus", "LOCKED", "reason", DECEASED_LOCK_REASON));
         });
+    }
+
+    @Override
+    @Transactional
+    public void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason) {
+        MemberVerification newer = verificationRepository.findByUserIdAndStatusIn(newUserId, EnumSet.of(VerificationStatus.APPROVED))
+                .orElseThrow(() -> new ApiException(ErrorCode.GEN_014));
+        Optional<MemberVerification> old = verificationRepository.findByUserIdAndStatusIn(oldUserId, EnumSet.of(VerificationStatus.APPROVED));
+        Map<String, Object> detail = new HashMap<>();
+        detail.put("newUserId", newUserId);
+        detail.put("reason", reason);
+        if (old.isPresent()) {
+            MemberVerification current = old.get();
+            if (current.getRole() == MemberRole.BRANCH_ADMIN) {
+                // Nhận vai trò trước khi bỏ bản ghi cũ để dòng họ luôn còn trưởng họ.
+                newer.changeRole(MemberRole.BRANCH_ADMIN, current.getBranchId(), actorId);
+                verificationRepository.saveAndFlush(newer);
+                detail.put("roleTransferred", true);
+            }
+            current.remove(actorId);
+            verificationRepository.saveAndFlush(current);
+        }
+        userRepository.findById(oldUserId).filter(u -> u.getStatus() == UserStatus.ACTIVE).ifPresent(user -> {
+            String lockReason = ("Thay tài khoản: " + reason);
+            user.lock(lockReason.length() > 255 ? lockReason.substring(0, 255) : lockReason, actorId);
+            userRepository.saveAndFlush(user);
+        });
+        refreshTokenRepository.revokeAllForUser(oldUserId, OffsetDateTime.now(clock));
+        contentTransfers.orderedStream().forEach(t -> t.transferContent(oldUserId, newUserId));
+        auditLogger.getObject().log("ACCOUNT_REPLACED", "USER", oldUserId, newer.getFamilyId(), detail);
     }
 
     @Override

@@ -6,6 +6,8 @@ type Schemas = components['schemas'];
 export type Person = Schemas['Person'];
 export type PersonInput = Schemas['PersonInput'];
 export type DeathInput = Schemas['DeathInput'];
+export type AccountCandidate = Schemas['AccountCandidate'];
+export type AccountReplacementInput = Schemas['AccountReplacementInput'];
 export type ParentInput = Schemas['ParentInput'];
 export type MarriageInput = Schemas['MarriageInput'];
 export type MarriageUpdate = Schemas['MarriageUpdate'];
@@ -24,6 +26,10 @@ export const genealogyApi = {
   updatePerson: (personId: string, input: PersonInput) => api.put<Person>(`/persons/${personId}`, input),
   /** BR-GEN-21: người quản lý báo mất hoặc khôi phục khi báo nhầm. */
   setDeath: (personId: string, input: DeathInput) => api.put<Person>(`/persons/${personId}/death`, input),
+  /** BR-GEN-23: thay tài khoản khi người thân mất tài khoản. */
+  accountCandidates: (personId: string) => api.get<AccountCandidate[]>(`/persons/${personId}/account-candidates`),
+  replaceAccount: (personId: string, input: AccountReplacementInput) =>
+    api.post<Person>(`/persons/${personId}/account-replacements`, input),
   addParent: (childId: string, input: ParentInput) => api.post<ParentChild>(`/persons/${childId}/parents`, input),
   removeParent: (childId: string, parentId: string) => api.delete(`/persons/${childId}/parents/${parentId}`),
   createMarriage: (input: MarriageInput) => api.post<Marriage>('/marriages', input),
