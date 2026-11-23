@@ -34,6 +34,21 @@ public class ChatLanguageModel {
     }
 
     private String generate(String prompt, Map<String, Object> generationConfig) {
+        try {
+            return generateOnce(prompt, generationConfig);
+        } catch (org.springframework.web.client.HttpServerErrorException.ServiceUnavailable e) {
+            // Gemini hay trả 503 khi quá tải (thử 23/11/2026); thử lại một lần sau 1 giây rồi mới báo AI_001.
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw e;
+            }
+            return generateOnce(prompt, generationConfig);
+        }
+    }
+
+    private String generateOnce(String prompt, Map<String, Object> generationConfig) {
         JsonNode response = client.post().uri("/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))),
@@ -51,9 +66,18 @@ public class ChatLanguageModel {
         if (candidate != null && "MAX_TOKENS".equals(candidate.path("finishReason").asText())) {
             throw new IllegalStateException("Model response truncated (MAX_TOKENS)");
         }
-        String text = candidate == null ? "" : candidate.path("content").path("parts").path(0).path("text").asText("");
-        if (text.isBlank()) throw new IllegalStateException("Empty model response");
-        return text.trim();
+        // SCRUM-141: Gemini có thể chia câu trả lời thành nhiều part ("Nguyễn Thị Hà có quan hệ là ... của An," rồi phần còn lại),
+        // nên ghép mọi part văn bản; bỏ part suy nghĩ (thought=true).
+        StringBuilder text = new StringBuilder();
+        if (candidate != null) {
+            for (JsonNode part : candidate.path("content").path("parts")) {
+                if (!part.path("thought").asBoolean(false)) {
+                    text.append(part.path("text").asText(""));
+                }
+            }
+        }
+        if (text.toString().isBlank()) throw new IllegalStateException("Empty model response");
+        return text.toString().trim();
     }
 
     /** 700 từng không đủ khi Gemini 3 suy nghĩ trước khi trả lời (câu trả lời bị cắt). */
