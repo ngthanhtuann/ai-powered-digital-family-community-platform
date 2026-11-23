@@ -8,7 +8,7 @@
 
 Mở địa chỉ web của FamilyConnect do nhóm cung cấp (môi trường demo local: `http://localhost:3000`). Sử dụng trình duyệt trên máy tính. Người mới cần có tài khoản, mã mời nếu muốn tham gia gia đình và được trưởng họ/trưởng chi duyệt trước khi sử dụng bảng tin hoặc sự kiện.
 
-Để thực hành trên bộ dữ liệu giả, có thể dùng tài khoản demo do người triển khai cung cấp: `ha@demo.familyconnect.vn` (thành viên Chi 2), `phuc@demo.familyconnect.vn` (trưởng họ), `tu@demo.familyconnect.vn` (đang chờ duyệt). Mật khẩu demo chung được ghi trong `docs/09-report/demo-script.md` của nhóm. Không dùng tài khoản demo cho dữ liệu thật.
+Để thực hành trên bộ dữ liệu giả, có thể dùng tài khoản demo do người triển khai cung cấp: `ha@demo.familyconnect.vn` (thành viên Chi 3), `phuc@demo.familyconnect.vn` (trưởng họ), `tu@demo.familyconnect.vn` (đang chờ duyệt). Mật khẩu demo chung được ghi trong `docs/09-report/demo-script.md` của nhóm. Không dùng tài khoản demo cho dữ liệu thật.
 
 ## 2. Auth — tài khoản và xác minh thành viên
 

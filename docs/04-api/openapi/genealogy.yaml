@@ -554,6 +554,36 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/relatives:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: addRelative
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Thêm người thân mới (con, cha/mẹ, vợ/chồng) và nối quan hệ trong một lần lưu (BR-GEN-26)
+      description: "Tạo hồ sơ như POST /families/{familyId}/persons rồi nối với người {personId}; một bước lỗi (VALID_001, GEN_005 đến GEN_011, PERM_001) thì không lưu gì. Người mới chưa chọn chi thì vào chi của {personId}."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RelativeInput' }
+            example: { relation: CHILD, person: { fullName: Nguyễn Văn Bình, gender: MALE, birthDate: '1985-06-01' } }
+      responses:
+        '201':
+          description: Đã tạo người mới và nối quan hệ; trả hồ sơ người mới
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: GEN_005 đến GEN_011 vi phạm quy tắc quan hệ (đã đủ cha/mẹ ruột, vòng lặp, cha mẹ không lớn tuổi hơn con...)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
   /persons/{personId}/parents:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -909,6 +939,16 @@ components:
         data: { type: array, items: { $ref: '#/components/schemas/Branch' } }
         meta: { $ref: '#/components/schemas/Meta' }
 
+    RelativeInput:
+      type: object
+      required: [relation, person]
+      description: BR-GEN-26
+      properties:
+        relation: { type: string, enum: [CHILD, PARENT, SPOUSE], description: "Người mới là con, cha/mẹ hay vợ/chồng của {personId}" }
+        person: { $ref: '#/components/schemas/PersonInput' }
+        kind: { type: string, enum: [BIOLOGICAL, ADOPTED, STEP], nullable: true, description: CHILD/PARENT; mặc định BIOLOGICAL }
+        parentRole: { type: string, enum: [FATHER, MOTHER], nullable: true, description: Chỉ cần khi người làm cha/mẹ có giới tính OTHER }
+        startDate: { type: string, format: date, nullable: true, description: SPOUSE; ngày kết hôn }
     PersonInput:
       type: object
       required: [fullName, gender]
@@ -991,7 +1031,8 @@ components:
         expiresAt: { type: string, format: date-time }
         canConfirm: { type: boolean }
         successorPersonId: { type: string, format: uuid, nullable: true }
-        successorName: { type: string, nullable: true, description: Gợi ý kế nhiệm khi người mất là trưởng họ/chi }
+        successorName: { type: string, nullable: true, description: Gợi ý kế nhiệm khi người mất là trưởng họ/chi (BR-GEN-25) }
+        successorHasAccount: { type: boolean, description: Người được gợi ý đã có tài khoản chưa; chưa có thì giao diện gợi ý mời }
     DeathReportResponse:
       type: object
       properties:
@@ -1083,7 +1124,7 @@ components:
         generation: { type: integer, nullable: true, description: "Thế hệ theo genealogy.md mục 6.8 (đời 1 là tổ). Null với trẻ dưới 16 tuổi khi người xem là MEMBER" }
         avatarMediaId: { type: string, format: uuid, nullable: true, description: "Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)" }
         deathYear: { type: integer, nullable: true, description: "Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất" }
-        leaderRole: { type: string, enum: [FAMILY_HEAD, BRANCH_HEAD], nullable: true, description: "Người còn sống có tài khoản đang là trưởng họ (BRANCH_ADMIN không gán chi) hoặc trưởng chi; để hiện huy hiệu trên cây (SCRUM-136)" }
+        leaderRole: { type: string, enum: [FAMILY_HEAD, BRANCH_HEAD], nullable: true, description: "Người còn sống là trưởng họ hoặc trưởng chi: theo vai trò tài khoản (BRANCH_ADMIN không gán chi là trưởng họ) hoặc theo dòng (BR-GEN-25, không cần tài khoản); để hiện huy hiệu trên cây (SCRUM-136, 142). Anh em trong mảng nodes xếp theo ngày sinh." }
     TreeEdge:
       type: object
       properties:

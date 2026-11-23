@@ -30,7 +30,8 @@ public final class GenealogyResponses {
     /** genealogy.yaml DeathReport (BR-GEN-24). */
     public record DeathReportData(UUID id, UUID personId, String personName, String reportedByName, LocalDate deathDate,
                                   String deathTime, String burialPlace, String status, OffsetDateTime expiresAt,
-                                  boolean canConfirm, UUID successorPersonId, String successorName) {
+                                  boolean canConfirm, UUID successorPersonId, String successorName,
+                                  boolean successorHasAccount) {
     }
 
     /** genealogy.yaml AccountCandidate (BR-GEN-23): chỉ họ tên. */

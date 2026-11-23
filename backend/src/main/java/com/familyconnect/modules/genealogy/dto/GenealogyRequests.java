@@ -85,6 +85,17 @@ public final class GenealogyRequests {
         }
     }
 
+    /** POST /persons/{personId}/relatives (RelativeInput, BR-GEN-26). */
+    public record RelativeInput(
+            @NotNull(message = "Chưa chọn quan hệ") RelativeKind relation,
+            @NotNull(message = "Thiếu thông tin người mới") @jakarta.validation.Valid PersonInput person,
+            ParentKind kind,
+            ParentRole parentRole,
+            LocalDate startDate) {
+    }
+
+    public enum RelativeKind { CHILD, PARENT, SPOUSE }
+
     /** POST /persons/{personId}/parents (genealogy.yaml ParentInput); kind mặc định BIOLOGICAL. */
     public record ParentInput(
             @NotNull(message = "Chưa chọn cha/mẹ") UUID parentId,

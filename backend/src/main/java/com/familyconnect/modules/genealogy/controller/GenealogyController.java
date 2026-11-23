@@ -4,6 +4,7 @@ import com.familyconnect.common.api.ApiResponse;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.BranchInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathReportInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.RelativeInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyResponses.DeathReportData;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.AccountReplacementInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.FamilyInput;
@@ -38,10 +39,13 @@ public class GenealogyController {
     private final FamilyService familyService;
     private final BranchService branchService;
     private final PersonService personService;
+    private final com.familyconnect.modules.genealogy.service.RelativeService relativeService;
     private final com.familyconnect.modules.genealogy.service.DeathReportService deathReportService;
 
     public GenealogyController(FamilyService familyService, BranchService branchService, PersonService personService,
-                               com.familyconnect.modules.genealogy.service.DeathReportService deathReportService) {
+                               com.familyconnect.modules.genealogy.service.DeathReportService deathReportService,
+                               com.familyconnect.modules.genealogy.service.RelativeService relativeService) {
+        this.relativeService = relativeService;
         this.deathReportService = deathReportService;
         this.familyService = familyService;
         this.branchService = branchService;
@@ -131,6 +135,12 @@ public class GenealogyController {
     @PutMapping("/persons/{personId}")
     public ApiResponse<PersonData> updatePerson(@PathVariable UUID personId, @Valid @RequestBody PersonInput input) {
         return ApiResponse.ok(personService.update(personId, input));
+    }
+
+    @PostMapping("/persons/{personId}/relatives")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public ApiResponse<PersonData> addRelative(@PathVariable UUID personId, @Valid @RequestBody RelativeInput input) {
+        return ApiResponse.ok(relativeService.addRelative(personId, input));
     }
 
     @PostMapping("/persons/{personId}/death-reports")

@@ -48,8 +48,11 @@ export function layoutTree(
     const extra = guests.get(id)?.length ?? 0;
     g.setNode(id, { width: width + extra * (width + GAP), height });
   }
-  for (const e of edges) {
-    if (e.type !== 'PARENT_CHILD') continue;
+  // SCRUM-142: thêm cạnh theo thứ tự con trong nodes (server xếp anh em theo ngày sinh) để con cả đứng trước.
+  const order = new Map(nodes.map((n, i) => [n.id ?? '', i]));
+  const parentEdges = edges.filter((e) => e.type === 'PARENT_CHILD')
+    .sort((a, b) => (order.get(a.target ?? '') ?? 0) - (order.get(b.target ?? '') ?? 0));
+  for (const e of parentEdges) {
     const source = anchors.get(e.source ?? '') ?? e.source ?? '';
     const target = e.target ?? '';
     if (source !== target && g.hasNode(source) && g.hasNode(target)) g.setEdge(source, target);

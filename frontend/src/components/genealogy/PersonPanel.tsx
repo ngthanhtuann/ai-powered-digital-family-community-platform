@@ -29,6 +29,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId) });
   const [mode, setMode] = useState<RelationMode | null>(null);
   const [deathOpen, setDeathOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [otherId, setOtherId] = useState('');
   const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
@@ -70,9 +71,14 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
         <Link href={`/persons/${p.id}`} className="inline-block text-body text-info underline">Xem hồ sơ đầy đủ</Link>
         {canManage && (
           <div className="grid gap-2">
-            <Button variant="secondary" onClick={() => setMode('parent')}>Thêm cha/mẹ</Button>
-            <Button variant="secondary" onClick={() => setMode('child')}>Thêm con</Button>
-            <Button variant="secondary" onClick={() => setMode('spouse')}>Thêm vợ/chồng</Button>
+            <Button variant="secondary" aria-expanded={adding} onClick={() => setAdding(!adding)}>Thêm người thân</Button>
+            {adding && (
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label={`Thêm người thân cho ${p.fullName}`}>
+                <Button variant="secondary" onClick={() => setMode('child')}>Con</Button>
+                <Button variant="secondary" onClick={() => setMode('parent')}>Cha/mẹ</Button>
+                <Button variant="secondary" onClick={() => setMode('spouse')}>Vợ/chồng</Button>
+              </div>
+            )}
           </div>
         )}
         {p.canManage && (
