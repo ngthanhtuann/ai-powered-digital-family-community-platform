@@ -7,6 +7,8 @@ export type Person = Schemas['Person'];
 export type PersonInput = Schemas['PersonInput'];
 export type DeathInput = Schemas['DeathInput'];
 export type AccountCandidate = Schemas['AccountCandidate'];
+export type DeathReport = Schemas['DeathReport'];
+export type DeathReportInput = Schemas['DeathReportInput'];
 export type AccountReplacementInput = Schemas['AccountReplacementInput'];
 export type ParentInput = Schemas['ParentInput'];
 export type MarriageInput = Schemas['MarriageInput'];
@@ -27,6 +29,10 @@ export const genealogyApi = {
   /** BR-GEN-21: người quản lý báo mất hoặc khôi phục khi báo nhầm. */
   setDeath: (personId: string, input: DeathInput) => api.put<Person>(`/persons/${personId}/death`, input),
   /** BR-GEN-23: thay tài khoản khi người thân mất tài khoản. */
+  /** BR-GEN-24: con ruột báo mất, người khác xác nhận. */
+  reportDeath: (personId: string, input: DeathReportInput) => api.post<DeathReport>(`/persons/${personId}/death-reports`, input),
+  latestDeathReport: (personId: string) => api.get<DeathReport | null>(`/persons/${personId}/death-reports/latest`),
+  confirmDeathReport: (reportId: string) => api.post<DeathReport>(`/death-reports/${reportId}/confirmations`),
   accountCandidates: (personId: string) => api.get<AccountCandidate[]>(`/persons/${personId}/account-candidates`),
   replaceAccount: (personId: string, input: AccountReplacementInput) =>
     api.post<Person>(`/persons/${personId}/account-replacements`, input),

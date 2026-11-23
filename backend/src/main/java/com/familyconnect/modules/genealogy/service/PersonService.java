@@ -33,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -178,7 +177,7 @@ public class PersonService implements PersonSearchIndex {
             validateDeathDate(person, input.deathDate());
             person.setDeceased(true);
             person.setDeathDate(input.deathDate());
-            person.setDeathTime(input.deathTime() == null || input.deathTime().isBlank() ? null : LocalTime.parse(input.deathTime()));
+            person.setDeathTime(input.deathTime() == null || input.deathTime().isBlank() ? null : input.deathTime());
             person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
         } else {
             if (wasDeceased && person.getBirthDate() == null) {
@@ -256,7 +255,20 @@ public class PersonService implements PersonSearchIndex {
         return toData(person, viewer);
     }
 
-    private void validateDeathDate(Person person, LocalDate deathDate) {
+    /** BR-GEN-24: xác nhận báo mất của con ruột dùng chung hệ quả với BR-GEN-21. */
+    void markDeceasedByReport(Person person, LocalDate deathDate, String deathTime, String burialPlace, UUID actor) {
+        person.setDeceased(true);
+        person.setDeathDate(deathDate);
+        person.setDeathTime(deathTime);
+        person.setBurialPlace(burialPlace);
+        person.setUpdatedBy(actor);
+        personRepository.saveAndFlush(person);
+        onDeath(person, actor);
+        auditLogger.log("PERSON_DECEASED", "PERSON", person.getId(), person.getFamilyId(), Map.of("deathReport", true));
+        indexAfterCommit(person);
+    }
+
+    void validateDeathDate(Person person, LocalDate deathDate) {
         if (deathDate == null) {
             throw ApiException.invalidField("deathDate", "Cần nhập ngày mất");
         }
@@ -273,6 +285,9 @@ public class PersonService implements PersonSearchIndex {
     /** Hệ quả khi chuyển sang đã mất: BR-GEN-08 góa, BR-AUTH-23 khóa tài khoản, BR-COM-15 thông báo tang. */
     private void onDeath(Person person, UUID actor) {
         personRepository.widowMarriages(person.getId(), person.getDeathDate(), actor);
+        // BR-GEN-24: đã đánh dấu mất thì báo mất đang chờ coi như đã xác nhận, thu hồi thông báo cần xác nhận.
+        personRepository.confirmPendingDeathReports(person.getId(), actor);
+        notifications.retractDeathReport(person.getId());
         if (person.getUserId() != null) {
             membershipCommand.lockDeceasedAccount(person.getUserId(), actor);
         }
@@ -299,7 +314,7 @@ public class PersonService implements PersonSearchIndex {
             text.append(" ngày ").append(person.getDeathDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
         }
         if (person.getDeathTime() != null) {
-            text.append(" lúc ").append(person.getDeathTime().format(HH_MM));
+            text.append(" lúc ").append(person.getDeathTime());
         }
         text.append('.');
         if (person.getBurialPlace() != null) {
@@ -308,7 +323,6 @@ public class PersonService implements PersonSearchIndex {
         return text.toString();
     }
 
-    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional
     public void delete(UUID personId) {
@@ -417,14 +431,16 @@ public class PersonService implements PersonSearchIndex {
         if (!full && isChild(p.isDeceased(), p.getBirthDate(), LocalDate.now(clock))) {
             return new PersonData(p.getId(), p.getFamilyId(), null, p.getFullName(), p.getGender(), birthYear,
                     null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt(),
-                    null, false, null, false);
+                    null, false, null, false, false);
         }
         return new PersonData(p.getId(), p.getFamilyId(), p.getBranchId(), p.getFullName(), p.getGender(), birthYear,
                 full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(),
                 full ? p.getCurrentAddress() : null, p.isDeceased(), p.getDeathDate(), p.getBurialPlace(),
                 p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt(),
-                p.getUserId(), canEdit(p, viewer), p.getDeathTime() == null ? null : p.getDeathTime().format(HH_MM),
-                access.canManage(viewer, p.getFamilyId(), p.getBranchId()));
+                p.getUserId(), canEdit(p, viewer), p.getDeathTime(),
+                access.canManage(viewer, p.getFamilyId(), p.getBranchId()),
+                !p.isDeceased() && !viewer.userId().equals(p.getUserId())
+                        && personRepository.isBiologicalChildAccount(p.getId(), viewer.userId()));
     }
 
     private static Integer birthYear(Person p) {

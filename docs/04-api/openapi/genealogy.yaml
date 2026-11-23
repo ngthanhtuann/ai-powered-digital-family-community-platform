@@ -483,6 +483,77 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/death-reports:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: reportDeath
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Con ruột báo mất cha/mẹ, chờ xác nhận (BR-GEN-24)
+      description: "Chỉ người có tài khoản gắn với hồ sơ là con ruột của người còn sống; người khác 403 PERM_001. Đã mất hoặc đã có báo mất đang chờ: 409 CONFLICT_001. Người xác nhận nhận thông báo DEATH_REPORT; hết hạn sau 7 ngày."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeathReportInput' }
+            example: { deathDate: '2026-11-20', deathTime: '14:30', burialPlace: Nghĩa trang quê nhà }
+      responses:
+        '201':
+          description: Đã gửi báo mất
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: CONFLICT_001 đã mất hoặc đã có báo mất đang chờ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/death-reports/latest:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    get:
+      operationId: getLatestDeathReport
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Báo mất đang chờ hoặc đã xác nhận gần nhất (BR-GEN-24)
+      description: data null nếu không có. Báo mất quá hạn được chuyển EXPIRED khi đọc. canConfirm cho biết người xem có xác nhận được không.
+      responses:
+        '200':
+          description: Báo mất hoặc null
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /death-reports/{reportId}/confirmations:
+    parameters:
+      - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: confirmDeathReport
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Xác nhận báo mất (BR-GEN-24)
+      description: "Một người xác nhận là đủ: hồ sơ chuyển đã mất với hệ quả của BR-GEN-21. Không có quyền xác nhận: 403 PERM_001; đã xác nhận hoặc hết hạn: 409 CONFLICT_001. Người mất là trưởng họ/chi thì trả kèm gợi ý kế nhiệm."
+      responses:
+        '200':
+          description: Đã xác nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: CONFLICT_001 đã xác nhận hoặc hết hạn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
   /persons/{personId}/parents:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -881,6 +952,7 @@ components:
         userId: { type: string, format: uuid, nullable: true, description: "Tài khoản gắn với hồ sơ (chỉ đọc, SCRUM-117) để trang cá nhân lấy bài qua GET /posts?authorId=; null với trẻ dưới 16 tuổi bị giới hạn (BR-GEN-10)." }
         canEdit: { type: boolean, description: "Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN)." }
         canManage: { type: boolean, description: "Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21." }
+        canReportDeath: { type: boolean, description: "Người đang xem là con ruột có tài khoản của người còn sống này: được gửi báo mất chờ xác nhận (BR-GEN-24)." }
         deathTime: { type: string, nullable: true, example: '14:30', description: "Giờ mất HH:mm (giờ địa phương), SCRUM-134." }
     AccountReplacementInput:
       type: object
@@ -898,6 +970,33 @@ components:
       properties:
         success: { type: boolean }
         data: { type: array, items: { $ref: '#/components/schemas/AccountCandidate' } }
+    DeathReportInput:
+      type: object
+      required: [deathDate]
+      properties:
+        deathDate: { type: string, format: date }
+        deathTime: { type: string, nullable: true, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        burialPlace: { type: string, nullable: true, maxLength: 255 }
+    DeathReport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        personId: { type: string, format: uuid }
+        personName: { type: string }
+        reportedByName: { type: string, nullable: true }
+        deathDate: { type: string, format: date }
+        deathTime: { type: string, nullable: true }
+        burialPlace: { type: string, nullable: true }
+        status: { type: string, enum: [PENDING, CONFIRMED, EXPIRED] }
+        expiresAt: { type: string, format: date-time }
+        canConfirm: { type: boolean }
+        successorPersonId: { type: string, format: uuid, nullable: true }
+        successorName: { type: string, nullable: true, description: Gợi ý kế nhiệm khi người mất là trưởng họ/chi }
+    DeathReportResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { allOf: [{ $ref: '#/components/schemas/DeathReport' }], nullable: true }
     DeathInput:
       type: object
       required: [isDeceased]

@@ -80,9 +80,9 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | Mô tả ngắn | Thêm, sửa, xóa mềm hồ sơ thành viên (`person`). |
 | Tiền điều kiện | Gia đình đã tồn tại; người dùng có quyền. |
 | Luồng chính (thêm thành viên) | 1. Chọn "Thêm thành viên".<br>2. Nhập họ tên, giới tính (bắt buộc); ngày sinh đầy đủ (bắt buộc với người còn sống), nơi sinh, tỉnh/thành và địa chỉ hiện tại, chi họ, ghi chú (tùy chọn); đánh dấu đã mất kèm ngày mất, nơi an táng nếu có.<br>3. Hệ thống kiểm tra hợp lệ (BR-GEN-04, 08, 16, 17).<br>4. Hệ thống tạo `person` thuộc gia đình hiện tại.<br>5. Ghi audit log, trả về hồ sơ; module `ai` được báo để cập nhật embedding (mục 9). |
-| Luồng thay thế / ngoại lệ | 3a. Ngày mất trước ngày sinh: lỗi `VALID_001`.<br>3b. Người còn sống thiếu ngày sinh: lỗi `VALID_001`.<br>3c. Chi họ không thuộc gia đình: lỗi `VALID_001`.<br>3d. Họ tên và ngày sinh trùng người đã có: cảnh báo, cho phép xác nhận tiếp tục.<br>3e. Gán tài khoản cho người dưới 16 tuổi: lỗi `GEN_012`.<br>3f. Gán tài khoản cho hồ sơ mà `family_id` khác gia đình của tài khoản đó (bản ghi `APPROVED` trong `member_verification`, kiểm tra qua `MembershipQuery`): lỗi `GEN_014` (BR-GEN-19).<br>3g. Ảnh đại diện: tải bằng `POST /media` với `ownerType = PERSON`, `ownerId` là id hồ sơ, rồi gán `avatarMediaId` bằng PUT; vì vậy khi tạo hồ sơ chưa gán được ảnh. Ảnh không tồn tại hoặc thuộc hồ sơ khác: lỗi `VALID_001`.<br>3h. Sửa hồ sơ không gửi `userId` (hoặc gửi null): giữ nguyên tài khoản đang gắn; gỡ liên kết do module auth thực hiện (BR-GEN-19).<br>3i. Đánh dấu đã mất (kể cả hồ sơ đã gắn tài khoản) và khôi phục khi báo nhầm: người quản lý dùng `PUT /persons/{id}/death` (BR-GEN-21).<br>3j. Mất tài khoản: người quản lý thay tài khoản gắn với hồ sơ bằng tài khoản mới (BR-GEN-23).<br>**Sửa:** cập nhật các trường cho phép. Nếu chuyển sang "đã mất", hôn nhân `MARRIED` của người đó tự chuyển `WIDOWED` (BR-GEN-08).<br>**Xóa:** xóa mềm. Nếu còn quan hệ cha-mẹ-con hoặc hôn nhân, từ chối và yêu cầu gỡ quan hệ trước (lỗi `GEN_004`). |
+| Luồng thay thế / ngoại lệ | 3a. Ngày mất trước ngày sinh: lỗi `VALID_001`.<br>3b. Người còn sống thiếu ngày sinh: lỗi `VALID_001`.<br>3c. Chi họ không thuộc gia đình: lỗi `VALID_001`.<br>3d. Họ tên và ngày sinh trùng người đã có: cảnh báo, cho phép xác nhận tiếp tục.<br>3e. Gán tài khoản cho người dưới 16 tuổi: lỗi `GEN_012`.<br>3f. Gán tài khoản cho hồ sơ mà `family_id` khác gia đình của tài khoản đó (bản ghi `APPROVED` trong `member_verification`, kiểm tra qua `MembershipQuery`): lỗi `GEN_014` (BR-GEN-19).<br>3g. Ảnh đại diện: tải bằng `POST /media` với `ownerType = PERSON`, `ownerId` là id hồ sơ, rồi gán `avatarMediaId` bằng PUT; vì vậy khi tạo hồ sơ chưa gán được ảnh. Ảnh không tồn tại hoặc thuộc hồ sơ khác: lỗi `VALID_001`.<br>3h. Sửa hồ sơ không gửi `userId` (hoặc gửi null): giữ nguyên tài khoản đang gắn; gỡ liên kết do module auth thực hiện (BR-GEN-19).<br>3i. Đánh dấu đã mất (kể cả hồ sơ đã gắn tài khoản) và khôi phục khi báo nhầm: người quản lý dùng `PUT /persons/{id}/death` (BR-GEN-21).<br>3j. Mất tài khoản: người quản lý thay tài khoản gắn với hồ sơ bằng tài khoản mới (BR-GEN-23).<br>3k. Con ruột báo mất cha/mẹ, người khác xác nhận, hết hạn sau 7 ngày, gợi ý người kế nhiệm (BR-GEN-24).<br>**Sửa:** cập nhật các trường cho phép. Nếu chuyển sang "đã mất", hôn nhân `MARRIED` của người đó tự chuyển `WIDOWED` (BR-GEN-08).<br>**Xóa:** xóa mềm. Nếu còn quan hệ cha-mẹ-con hoặc hôn nhân, từ chối và yêu cầu gỡ quan hệ trước (lỗi `GEN_004`). |
 | Hậu điều kiện | Hồ sơ được tạo, cập nhật hoặc ẩn; có audit log. |
-| Quy tắc nghiệp vụ | BR-GEN-01, 04, 08, 09, 10, 11, 14, 16, 17, 18, 19, 21, 23 |
+| Quy tắc nghiệp vụ | BR-GEN-01, 04, 08, 09, 10, 11, 14, 16, 17, 18, 19, 21, 23, 24 |
 
 ### UC-GEN-04: Quản lý quan hệ cha-mẹ-con
 | Mục | Nội dung |
@@ -173,6 +173,7 @@ Hệ thống chỉ có 4 vai trò (SRS Phụ lục A): `GUEST`, `MEMBER`, `BRANC
 | BR-GEN-21 | **Báo mất do người quản lý** (23/11/2026, SCRUM-134): Trưởng chi (trong phạm vi chi theo BR-GEN-14), Trưởng họ và SYSTEM_ADMIN đánh dấu một người đã mất qua `PUT /persons/{id}/death`, **kể cả hồ sơ đã gắn tài khoản** (ngoại lệ của BR-GEN-20), không cần ai xác nhận. Ngày mất bắt buộc (không sau hôm nay, không trước ngày sinh), giờ mất (`death_time`) và nơi an táng tùy chọn; không tự báo mất cho chính mình (`PERM_001`). Khi chuyển sang đã mất: hôn nhân `MARRIED` chuyển `WIDOWED` (BR-GEN-08); tài khoản gắn với hồ sơ bị khóa (BR-AUTH-23); gửi thông báo tang (BR-COM-15); không tự tạo bài đăng. Người đã mất gửi lại chỉ để sửa ngày giờ, nơi an táng, không gửi lại thông báo. **Báo nhầm:** cùng những người đó gửi `isDeceased=false`: xóa ngày giờ mất và nơi an táng; hôn nhân `WIDOWED` có ngày kết thúc bằng ngày mất của người này mà người kia còn sống chuyển lại `MARRIED`; mở khóa tài khoản nếu bị khóa vì đã mất; thu hồi thông báo tang. Nhật ký: `PERSON_DECEASED`, `PERSON_DECEASED_REVERTED`. |
 | BR-GEN-22 | **Con thuộc chi của cha mẹ** (23/11/2026, SCRUM-138): khi nối cha/mẹ (`POST /persons/{id}/parents`), người con chưa thuộc chi nào thì tự vào chi của cha/mẹ vừa nối (nếu cha/mẹ có chi). Ưu tiên cha: con đang ở chi của mẹ mà nối cha thuộc chi khác thì chuyển sang chi của cha. Con đã ở chi khác (do người quản lý chọn) thì giữ nguyên. Người quản lý vẫn đổi chi bằng tay theo BR-GEN-14. Nhờ đó trưởng chi quản lý được con cháu mới thêm. |
 | BR-GEN-23 | **Thay tài khoản cho hồ sơ** (23/11/2026, SCRUM-140): người mất tài khoản (quên email, mất điện thoại) đăng ký tài khoản mới và được duyệt vào dòng họ; Trưởng chi (trong phạm vi chi), Trưởng họ hoặc SYSTEM_ADMIN gọi `POST /persons/{id}/account-replacements` với tài khoản mới và lý do (bắt buộc, tối đa 255 ký tự). Tài khoản mới phải đã xác minh cùng dòng họ (`GEN_014`) và chưa gắn hồ sơ khác (`409 CONFLICT_001`); hồ sơ phải đang gắn tài khoản (`VALID_001`); không tự thay tài khoản của chính mình (`PERM_001`). Tài khoản cũ **không bị xóa**: module auth khóa, cho rời dòng họ, chuyển vai trò trưởng họ/chi và quyền sở hữu nội dung công khai sang tài khoản mới (BR-AUTH-25); hồ sơ gắn tài khoản mới. Danh sách gợi ý `GET /persons/{id}/account-candidates` chỉ trả họ tên các tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ. Nhật ký `PERSON_ACCOUNT_REPLACED` (kèm lý do). |
+| BR-GEN-24 | **Con ruột báo mất, người khác xác nhận** (23/11/2026, SCRUM-135; đợt 1 là BR-GEN-21). Người có tài khoản gắn với hồ sơ là **con ruột** (`parent_child.kind = BIOLOGICAL`; con nuôi, con kế không tính) của một người còn sống được gửi báo mất (`POST /persons/{id}/death-reports`, ngày mất bắt buộc, giờ mất và nơi an táng tùy chọn); người khác: `403 PERM_001`. Mỗi hồ sơ chỉ một báo mất đang chờ (`409 CONFLICT_001`). **Người xác nhận:** (a) người mất là trưởng họ hoặc trưởng chi (tài khoản `BRANCH_ADMIN`): các con ruột khác có tài khoản; nếu không còn ai thì vợ/chồng (hôn nhân `MARRIED`) hoặc anh chị em ruột có tài khoản; (b) người khác: trưởng chi quản lý chi của người mất và trưởng họ. Người quản lý chi (BR-GEN-14) luôn xác nhận được. Người báo và chính người mất không tự xác nhận. Chỉ cần **một** người xác nhận (`POST /death-reports/{id}/confirmations`): hồ sơ chuyển đã mất với đủ hệ quả của BR-GEN-21 (góa, khóa tài khoản, thông báo tang). Người xác nhận nhận thông báo `DEATH_REPORT` (BR-COM-15). Không ai xác nhận trong **7 ngày** thì báo mất hết hạn (`EXPIRED`, tính khi đọc hoặc gửi báo mới) và thông báo bị thu hồi. Người quản lý đánh dấu trực tiếp (BR-GEN-21) thì báo đang chờ coi như đã xác nhận. **Gợi ý kế nhiệm** khi xác nhận mất trưởng họ/chi: con trai ruột lớn tuổi nhất còn sống có tài khoản; nếu không có thì con trai ruột lớn nhất còn sống có tài khoản của con trai trưởng (cháu đích tôn). Chỉ là gợi ý hiện trên hồ sơ người mất; trưởng họ hoặc quản trị phân công ở UC-AUTH-14. Nhật ký: `DEATH_REPORTED`, `DEATH_REPORT_CONFIRMED`. |
 
 ---
 
@@ -191,6 +192,7 @@ Dùng PostgreSQL, thay đổi schema qua Flyway migration (NFR-07). Khóa chính
 | person | Thành viên (người) | SCRUM-37 |
 | parent_child | Quan hệ cha/mẹ - con (ruột/nuôi/kế) | SCRUM-44 |
 | marriage | Hôn nhân (ngày cưới, ly hôn) | SCRUM-44 |
+| death_report | Báo mất do con ruột gửi, chờ xác nhận (BR-GEN-24) | SCRUM-135 |
 
 ### 6.1 Bảng `family`
 | Cột | Kiểu | Ràng buộc | Ghi chú |
@@ -285,6 +287,28 @@ Ràng buộc: `CHECK (parent_id <> child_id)`; `UNIQUE (parent_id, child_id) WHE
 
 Ràng buộc: `CHECK (person1_id <> person2_id)`. Các quy tắc "một hôn nhân `MARRIED` tại một thời điểm", "không cho kết hôn người thân" và "hai người cùng gia đình" kiểm tra ở tầng service (DB không biểu diễn gọn). Index: `(person1_id)`, `(person2_id)`, `(created_by)`.
 
+### 6.5a Bảng `death_report` (SCRUM-135, BR-GEN-24)
+| Cột | Kiểu | Ràng buộc | Ghi chú |
+|---|---|---|---|
+| id | UUID | PK | |
+| family_id | UUID | FK `family(id)`, NOT NULL | |
+| person_id | UUID | FK `person(id)`, NOT NULL | Người được báo mất |
+| death_date | DATE | NOT NULL | |
+| death_time | TIME | NULL | |
+| burial_place | VARCHAR(255) | NULL | |
+| status | VARCHAR(10) | NOT NULL, CHECK IN ('PENDING','CONFIRMED','EXPIRED') | |
+| expires_at | TIMESTAMPTZ | NOT NULL | Tạo + 7 ngày |
+| confirmed_by | UUID | NULL; tham chiếu `users(id)` (không FK) | |
+| confirmed_at | TIMESTAMPTZ | NULL | |
+| successor_person_id | UUID | FK `person(id)`, NULL | Gợi ý kế nhiệm khi người mất là trưởng họ/chi |
+| created_by | UUID | NOT NULL; tham chiếu `users(id)` (không FK) | Người báo (con ruột) |
+| updated_by | UUID | NULL | |
+| created_at | TIMESTAMPTZ | NOT NULL | |
+| updated_at | TIMESTAMPTZ | NOT NULL | |
+| deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+
+Index: `UNIQUE (person_id) WHERE status = 'PENDING' AND deleted_at IS NULL`; `(family_id)`.
+
 ### 6.6 Vì sao dùng bảng quan hệ `parent_child` thay vì cột `parent_id` trong `person`
 1. **Một người có hai cha mẹ.** Một cột `parent_id` chỉ lưu được một người. Dùng hai cột `father_id`, `mother_id` thì không biểu diễn được cha mẹ nuôi hoặc cha mẹ kế.
 2. **Phân loại quan hệ.** Bảng quan hệ cho thêm cột `kind` (ruột, nuôi, kế) và `parent_role` mà không đổi bảng `person`.
@@ -351,6 +375,9 @@ Tất cả API nằm dưới `/api/v1`, tên tài nguyên số nhiều, theo `do
 | PUT | `/persons/{personId}/death` | Đánh dấu đã mất hoặc khôi phục khi báo nhầm | UC-GEN-03 | BRANCH_ADMIN (trong phạm vi chi), SYSTEM_ADMIN theo BR-GEN-21 |
 | GET | `/persons/{personId}/account-candidates` | Tài khoản có thể gắn thay (họ tên) | UC-GEN-03 | BRANCH_ADMIN (trong phạm vi chi), SYSTEM_ADMIN theo BR-GEN-23 |
 | POST | `/persons/{personId}/account-replacements` | Thay tài khoản gắn với hồ sơ | UC-GEN-03 | BRANCH_ADMIN (trong phạm vi chi), SYSTEM_ADMIN theo BR-GEN-23 |
+| POST | `/persons/{personId}/death-reports` | Con ruột báo mất | UC-GEN-03 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN theo BR-GEN-24 |
+| GET | `/persons/{personId}/death-reports/latest` | Báo mất đang chờ hoặc đã xác nhận gần nhất | UC-GEN-03 | MEMBER đã xác minh trở lên |
+| POST | `/death-reports/{reportId}/confirmations` | Xác nhận báo mất | UC-GEN-03 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN theo BR-GEN-24 |
 | DELETE | `/persons/{personId}` | Xóa mềm thành viên | UC-GEN-03 | BRANCH_ADMIN, SYSTEM_ADMIN |
 | POST | `/persons/{personId}/parents` | Thêm cha/mẹ cho thành viên | UC-GEN-04 | BRANCH_ADMIN, SYSTEM_ADMIN |
 | DELETE | `/persons/{personId}/parents/{parentId}` | Gỡ quan hệ cha-mẹ-con | UC-GEN-04 | BRANCH_ADMIN, SYSTEM_ADMIN |

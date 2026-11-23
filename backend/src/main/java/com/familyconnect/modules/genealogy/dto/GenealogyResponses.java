@@ -24,7 +24,13 @@ public final class GenealogyResponses {
                              Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince,
                              String currentAddress, boolean isDeceased, LocalDate deathDate, String burialPlace,
                              UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                             UUID userId, boolean canEdit, String deathTime, boolean canManage) {
+                             UUID userId, boolean canEdit, String deathTime, boolean canManage, boolean canReportDeath) {
+    }
+
+    /** genealogy.yaml DeathReport (BR-GEN-24). */
+    public record DeathReportData(UUID id, UUID personId, String personName, String reportedByName, LocalDate deathDate,
+                                  String deathTime, String burialPlace, String status, OffsetDateTime expiresAt,
+                                  boolean canConfirm, UUID successorPersonId, String successorName) {
     }
 
     /** genealogy.yaml AccountCandidate (BR-GEN-23): chỉ họ tên. */

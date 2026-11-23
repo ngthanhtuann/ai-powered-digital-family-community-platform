@@ -55,8 +55,13 @@ public class Person {
     @Column(name = "death_date")
     private LocalDate deathDate;
 
-    @Column(name = "death_time")
-    private java.time.LocalTime deathTime;
+    /**
+     * Giờ mất "HH:mm" (giờ địa phương). Đọc/ghi qua SQL vì hibernate.jdbc.time_zone=UTC làm Hibernate dời giờ của LocalTime
+     * khi ghi cột TIME (06:15 thành 22:15).
+     */
+    @Column(name = "death_time", columnDefinition = "time")
+    @org.hibernate.annotations.ColumnTransformer(read = "to_char(death_time, 'HH24:MI')", write = "CAST(? AS time)")
+    private String deathTime;
 
     @Column(name = "burial_place", length = 255)
     private String burialPlace;
@@ -114,8 +119,8 @@ public class Person {
     public void setDeceased(boolean deceased) { this.deceased = deceased; }
     public LocalDate getDeathDate() { return deathDate; }
     public void setDeathDate(LocalDate deathDate) { this.deathDate = deathDate; }
-    public java.time.LocalTime getDeathTime() { return deathTime; }
-    public void setDeathTime(java.time.LocalTime deathTime) { this.deathTime = deathTime; }
+    public String getDeathTime() { return deathTime; }
+    public void setDeathTime(String deathTime) { this.deathTime = deathTime; }
     public String getBurialPlace() { return burialPlace; }
     public void setBurialPlace(String burialPlace) { this.burialPlace = burialPlace; }
     public UUID getAvatarMediaId() { return avatarMediaId; }

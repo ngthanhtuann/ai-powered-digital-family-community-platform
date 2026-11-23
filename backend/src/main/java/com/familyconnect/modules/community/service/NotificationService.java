@@ -97,6 +97,21 @@ public class NotificationService implements CommunityNotificationPort {
         store.retract(personId, "DEATH_NOTICE");
     }
 
+    @Override
+    @Transactional
+    public void sendDeathReport(java.util.Collection<UUID> userIds, UUID familyId, UUID personId, String title, String content,
+                                UUID actorId) {
+        for (UUID user : userIds) {
+            store.send(user, familyId, "PERSON", personId, "DEATH_REPORT", title, content, actorId);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void retractDeathReport(UUID personId) {
+        store.retract(personId, "DEATH_REPORT");
+    }
+
     /** BR-COM-14: bình luận bài của mình (POST_COMMENTED) hoặc trả lời bình luận của mình (COMMENT_REPLIED); ref là bài đăng. */
     @Transactional
     public void sendComment(UUID userId, UUID familyId, UUID postId, String type, String title, String content,
