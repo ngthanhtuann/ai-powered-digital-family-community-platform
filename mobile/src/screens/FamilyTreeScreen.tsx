@@ -164,6 +164,14 @@ export function FamilyTreeScreen({
   );
 }
 
+function Badge({ label, bg, fg }: { label: string; bg: string; fg: string }) {
+  return (
+    <Text style={[text.caption, { backgroundColor: bg, color: fg, fontWeight: '600', paddingHorizontal: 8, borderRadius: 999, overflow: 'hidden' }]}>
+      {label}
+    </Text>
+  );
+}
+
 function Legend() {
   const item = (color: string, label: string) => (
     <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -176,6 +184,9 @@ function Legend() {
       {item(genderColor('MALE'), 'Nam')}
       {item(genderColor('FEMALE'), 'Nữ')}
       {item(colors.accentGreen, 'Đường nối cha mẹ – con')}
+      {item(colors.textSecondary, 'Đã mất (nền xám)')}
+      {item(colors.secondary, 'Trưởng họ')}
+      {item(colors.primary, 'Trưởng chi')}
     </View>
   );
 }
@@ -201,7 +212,7 @@ function TreeRowItem({
   if (!node) return null;
   const spouses = spouseLabels(graph, row.id);
   const meta = [
-    lifeSpan(node.birthYear, node.isDeceased),
+    lifeSpan(node.birthYear, node.isDeceased, node.deathYear ? String(node.deathYear) : null),
     node.generation ? `Đời ${node.generation}` : '',
   ]
     .filter(Boolean)
@@ -224,9 +235,12 @@ function TreeRowItem({
           flex: 1,
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: isMe ? colors.infoSoft : colors.surface,
+          backgroundColor: isMe ? colors.infoSoft : node.isDeceased ? colors.surfaceMuted : colors.surface,
           borderWidth: isMe ? 2 : 1,
           borderColor: isMe ? colors.info : colors.border,
+          // SCRUM-136: vạch trái dày theo màu giới tính, nét đứt không hỗ trợ từng cạnh nên đã mất dùng nền xám + nhãn
+          borderLeftWidth: 5,
+          borderLeftColor: genderColor(node.gender),
           borderRadius: radius.card,
           paddingVertical: 8,
           paddingLeft: 12,
@@ -244,6 +258,13 @@ function TreeRowItem({
               {node.fullName}
               {isMe ? <Text style={{ color: colors.info }}> · Bạn</Text> : null}
             </Text>
+            {node.isDeceased || node.leaderRole ? (
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
+                {node.isDeceased ? <Badge label="Đã mất" bg={colors.textSecondary} fg={colors.surface} /> : null}
+                {node.leaderRole === 'FAMILY_HEAD' ? <Badge label="Trưởng họ" bg={colors.secondary} fg={colors.primary} /> : null}
+                {node.leaderRole === 'BRANCH_HEAD' ? <Badge label="Trưởng chi" bg={colors.primary} fg={colors.creamOnDark} /> : null}
+              </View>
+            ) : null}
             {meta ? (
               <Text style={[text.caption, { color: colors.textSecondary }]}>{meta}</Text>
             ) : null}

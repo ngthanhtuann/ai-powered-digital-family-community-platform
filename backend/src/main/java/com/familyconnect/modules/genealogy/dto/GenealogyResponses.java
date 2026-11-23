@@ -24,7 +24,17 @@ public final class GenealogyResponses {
                              Integer birthYear, LocalDate birthDate, String birthplace, String currentProvince,
                              String currentAddress, boolean isDeceased, LocalDate deathDate, String burialPlace,
                              UUID avatarMediaId, String note, OffsetDateTime createdAt, OffsetDateTime updatedAt,
-                             UUID userId, boolean canEdit) {
+                             UUID userId, boolean canEdit, String deathTime, boolean canManage, boolean canReportDeath) {
+    }
+
+    /** genealogy.yaml DeathReport (BR-GEN-24). */
+    public record DeathReportData(UUID id, UUID personId, String personName, String reportedByName, LocalDate deathDate,
+                                  String deathTime, String burialPlace, String status, OffsetDateTime expiresAt,
+                                  boolean canConfirm, UUID successorPersonId, String successorName) {
+    }
+
+    /** genealogy.yaml AccountCandidate (BR-GEN-23): chỉ họ tên. */
+    public record AccountCandidate(UUID userId, String fullName) {
     }
 
     public record PaginationMeta(int page, int size, long total) {
@@ -48,7 +58,8 @@ public final class GenealogyResponses {
 
     /** genealogy.yaml TreeNode; gender, generation, avatarMediaId null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10). */
     public record TreeNode(UUID id, String fullName, String gender, Integer birthYear, boolean isDeceased,
-                           boolean hasMoreChildren, Integer generation, UUID avatarMediaId) {
+                           boolean hasMoreChildren, Integer generation, UUID avatarMediaId,
+                           Integer deathYear, String leaderRole) {
     }
 
     /** genealogy.yaml TreeEdge: PARENT_CHILD (source là cha/mẹ, kèm kind) hoặc MARRIAGE (kèm status). */

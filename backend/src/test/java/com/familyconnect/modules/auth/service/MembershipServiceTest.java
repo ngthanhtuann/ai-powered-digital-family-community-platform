@@ -58,7 +58,10 @@ class MembershipServiceTest {
         when(provider.getIfAvailable()).thenReturn(genealogy);
         when(userRoles.findRoleCodes(USER)).thenReturn(List.of(Role.MEMBER));
         Clock clock = Clock.fixed(Instant.parse("2026-10-19T03:00:00Z"), ZoneOffset.UTC);
-        service = new MembershipService(verifications, userRoles, provider, clock);
+        service = new MembershipService(verifications, userRoles, provider,
+                mock(com.familyconnect.modules.auth.repository.UserRepository.class),
+                mock(com.familyconnect.modules.auth.repository.RefreshTokenRepository.class),
+                mock(ObjectProvider.class), mock(ObjectProvider.class), clock);
     }
 
     /** Bản ghi member_verification với trạng thái và vai trò cho trước. */

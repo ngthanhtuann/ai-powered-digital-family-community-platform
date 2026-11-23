@@ -2,6 +2,10 @@ package com.familyconnect.modules.genealogy.controller;
 
 import com.familyconnect.common.api.ApiResponse;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.BranchInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathReportInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyResponses.DeathReportData;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.AccountReplacementInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.FamilyInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
 import com.familyconnect.modules.genealogy.dto.GenealogyResponses.BranchData;
@@ -34,8 +38,11 @@ public class GenealogyController {
     private final FamilyService familyService;
     private final BranchService branchService;
     private final PersonService personService;
+    private final com.familyconnect.modules.genealogy.service.DeathReportService deathReportService;
 
-    public GenealogyController(FamilyService familyService, BranchService branchService, PersonService personService) {
+    public GenealogyController(FamilyService familyService, BranchService branchService, PersonService personService,
+                               com.familyconnect.modules.genealogy.service.DeathReportService deathReportService) {
+        this.deathReportService = deathReportService;
         this.familyService = familyService;
         this.branchService = branchService;
         this.personService = personService;
@@ -124,6 +131,39 @@ public class GenealogyController {
     @PutMapping("/persons/{personId}")
     public ApiResponse<PersonData> updatePerson(@PathVariable UUID personId, @Valid @RequestBody PersonInput input) {
         return ApiResponse.ok(personService.update(personId, input));
+    }
+
+    @PostMapping("/persons/{personId}/death-reports")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public ApiResponse<DeathReportData> reportDeath(@PathVariable UUID personId, @Valid @RequestBody DeathReportInput input) {
+        return ApiResponse.ok(deathReportService.report(personId, input));
+    }
+
+    @GetMapping("/persons/{personId}/death-reports/latest")
+    public ApiResponse<DeathReportData> latestDeathReport(@PathVariable UUID personId) {
+        return ApiResponse.ok(deathReportService.latest(personId));
+    }
+
+    @PostMapping("/death-reports/{reportId}/confirmations")
+    public ApiResponse<DeathReportData> confirmDeathReport(@PathVariable UUID reportId) {
+        return ApiResponse.ok(deathReportService.confirm(reportId));
+    }
+
+    @GetMapping("/persons/{personId}/account-candidates")
+    public ApiResponse<java.util.List<com.familyconnect.modules.genealogy.dto.GenealogyResponses.AccountCandidate>> accountCandidates(
+            @PathVariable UUID personId) {
+        return ApiResponse.ok(personService.accountCandidates(personId));
+    }
+
+    @PostMapping("/persons/{personId}/account-replacements")
+    public ApiResponse<PersonData> replacePersonAccount(@PathVariable UUID personId,
+                                                        @Valid @RequestBody AccountReplacementInput input) {
+        return ApiResponse.ok(personService.replaceAccount(personId, input));
+    }
+
+    @PutMapping("/persons/{personId}/death")
+    public ApiResponse<PersonData> setPersonDeath(@PathVariable UUID personId, @Valid @RequestBody DeathInput input) {
+        return ApiResponse.ok(personService.setDeath(personId, input));
     }
 
     @DeleteMapping("/persons/{personId}")

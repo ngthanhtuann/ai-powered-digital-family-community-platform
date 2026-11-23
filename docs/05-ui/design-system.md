@@ -36,6 +36,10 @@ Mọi cặp màu chữ/nền dưới đây đã được tính tỉ lệ tương
 | Error background | `#FCE4EC` | Nền thông báo lỗi |
 | Warning background | `#FFF3E0` | Nền thông báo cảnh báo, badge "Chờ xác nhận" |
 | Info background | `#E3F2FD` | Nền thông báo thông tin, badge "Đã cập nhật" |
+| Tree male | `#1F5F99` | Viền node **nam** trên cây gia phả, nền chữ cái đầu ảnh đại diện nam (SCRUM-136); luôn kèm nhãn "Nam" |
+| Tree female | `#A3336E` | Viền node **nữ** trên cây gia phả, nền chữ cái đầu ảnh đại diện nữ (SCRUM-136); luôn kèm nhãn "Nữ" |
+
+**Node cây gia phả** (SCRUM-136, góp ý dùng thử 23/11/2026): viền 4px màu giới tính; người đã mất viền nét đứt, nền Surface muted, huy hiệu "Đã mất" (nền Text secondary, chữ trắng) và năm sinh – năm mất; trưởng họ có huy hiệu "Trưởng họ" (nền vàng, chữ nâu), trưởng chi có "Trưởng chi" (nền nâu, chữ kem). Trang cây có chú giải màu, MiniMap tô node theo màu giới tính để nhìn tổng quát vẫn phân biệt được.
 
 ### 1.3. Tỉ lệ tương phản đã kiểm tra
 
@@ -56,6 +60,9 @@ Mọi cặp màu chữ/nền dưới đây đã được tính tỉ lệ tương
 | Chữ trắng | Warning `#BF4400` | 5.2 | Đạt |
 | Border strong `#9C8560` | Surface `#FFFFFF` | 3.5 | Đạt (≥ 3) |
 | Border strong `#9C8560` | Background `#F5F0E8` | 3.1 | Đạt (≥ 3) |
+| Tree male `#1F5F99` | Surface `#FFFFFF` / Surface muted / Info background | 6.7 / 6.2 / 5.8 | Đạt (cả chữ ≥ 4.5) |
+| Tree female `#A3336E` | Surface `#FFFFFF` / Surface muted / Info background | 6.4 / 6.0 / 5.6 | Đạt (cả chữ ≥ 4.5) |
+| Chữ trắng | Text secondary `#7A6348` (huy hiệu "Đã mất") | 5.7 | Đạt |
 
 Không dùng cặp: vàng `#C9A84C` làm chữ trên nền sáng (2.0 đến 2.3); Border `#D4C4A8` làm viền duy nhất của ô nhập (1.5 đến 1.7).
 
@@ -171,6 +178,8 @@ export default {
         "accent-green": "#5C8A6E", // chỉ cho cây gia phả, kèm nhãn chữ
         "accent-pink": "#B87A9E",
         "accent-pink-soft": "#E8A0C0",
+        "tree-male": "#1F5F99", // viền node nam trên cây (SCRUM-136)
+        "tree-female": "#A3336E", // viền node nữ trên cây (SCRUM-136)
       },
 
       fontFamily: {

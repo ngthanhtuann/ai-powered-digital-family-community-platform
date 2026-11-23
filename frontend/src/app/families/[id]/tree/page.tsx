@@ -202,6 +202,17 @@ export default function FamilyTreePage() {
           Kéo để di chuyển, cuộn hoặc dùng nút +/- để phóng to. Bấm tên để xem chi tiết và tra quan hệ, bấm “Mở nhánh” để
           tải thêm đời sau.
         </p>
+        {/* SCRUM-136: chú giải màu và huy hiệu trên cây */}
+        <ul aria-label="Chú giải" className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-caption text-text-secondary">
+          <li className="flex items-center gap-1.5"><span aria-hidden="true" className="h-4 w-6 rounded-sm border-4 border-tree-male" />Nam</li>
+          <li className="flex items-center gap-1.5"><span aria-hidden="true" className="h-4 w-6 rounded-sm border-4 border-tree-female" />Nữ</li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden="true" className="h-4 w-6 rounded-sm border-4 border-dashed border-border-strong bg-surface-muted" />Đã mất (viền nét đứt)
+          </li>
+          <li><span className="rounded-full bg-secondary px-2 font-semibold text-primary">Trưởng họ</span></li>
+          <li><span className="rounded-full bg-primary px-2 font-semibold text-cream-on-dark">Trưởng chi</span></li>
+          <li className="flex items-center gap-1.5"><span className="rounded-full bg-primary px-2 font-semibold text-cream-on-dark">Bạn</span>hồ sơ của bạn</li>
+        </ul>
       </header>
       <AccessState loading={first.isLoading} error={error} />
       {first.isSuccess && flow.nodes.length === 0 && (
@@ -226,7 +237,11 @@ export default function FamilyTreePage() {
               proOptions={{ hideAttribution: true }}
             >
               <Controls showInteractive={false} className="[&_button]:!h-11 [&_button]:!w-11" />
-              <MiniMap pannable zoomable nodeClassName="fill-border-strong" ariaLabel="Bản đồ thu nhỏ của cây" />
+              <MiniMap pannable zoomable ariaLabel="Bản đồ thu nhỏ của cây"
+                nodeClassName={(n) => {
+                  const g = (n.data as PersonFlowNode['data'] | undefined)?.person.gender;
+                  return g === 'MALE' ? 'fill-tree-male' : g === 'FEMALE' ? 'fill-tree-female' : 'fill-border-strong';
+                }} />
               <Background gap={16} />
               <FocusOnce id={[focusParam, myPersonId].find((id) => id && flow.nodes.some((n) => n.id === id)) ?? undefined} />
               <FitToPath ids={relation?.path?.map((step) => step.id).filter((id) => flow.nodes.some((n) => n.id === id)).join(',') ?? ''} />

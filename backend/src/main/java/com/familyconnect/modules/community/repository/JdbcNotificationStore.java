@@ -43,6 +43,12 @@ public class JdbcNotificationStore {
               "title",title,"content",content,"creator",creator));
     }
 
+    /** Xóa mềm mọi thông báo một loại của một tài nguyên (BR-COM-15: thu hồi thông báo tang khi báo nhầm). */
+    public void retract(UUID refId, String type) {
+        jdbc.update("UPDATE notification SET deleted_at = now(), updated_at = now() " +
+            "WHERE ref_id = :ref AND type = :type AND deleted_at IS NULL", p("ref", refId, "type", type));
+    }
+
     public Page list(UUID userId, Boolean isRead, int page, int size, String order) {
         var args = p("user",userId,"read",isRead,"limit",size,"offset",(long)page*size);
         String where = " FROM notification WHERE user_id=:user AND deleted_at IS NULL" +
