@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -45,6 +46,8 @@ function LoginForm() {
       setAlert({ variant: 'error', title: 'AUTH_003', message: 'Tài khoản đã bị khóa' });
     } else if (searchParams.get('reason') === 'password-changed') {
       setAlert({ variant: 'success', title: 'Đã đổi mật khẩu', message: 'Mời bạn đăng nhập lại.' });
+    } else if (searchParams.get('reason') === 'password-reset') {
+      setAlert({ variant: 'success', title: 'Đã đặt lại mật khẩu', message: 'Mời bạn đăng nhập bằng mật khẩu mới.' });
     }
   }, [searchParams]);
 
@@ -102,6 +105,7 @@ function LoginForm() {
         <Button type="submit" disabled={isSubmitting || waitUntil !== null}>
           Đăng nhập
         </Button>
+        <Link href="/forgot-password" className="self-center text-body text-info underline">Quên mật khẩu?</Link>
       </form>
     </AuthLayout>
   );

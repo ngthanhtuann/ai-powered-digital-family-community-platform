@@ -77,6 +77,23 @@ Người sở hữu: **TV1 Tuấn**
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
+### `password_reset_code`
+
+**Mục đích:** Mã đặt lại mật khẩu dùng một lần do trưởng họ hoặc quản trị cấp (UC-AUTH-15, SCRUM-139).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | Khóa chính |
+| user_id | UUID | NOT NULL, FK | Tài khoản được đặt lại → `users.id` (FK, cùng module) |
+| code_hash | VARCHAR(100) | NOT NULL | BCrypt của mã, không lưu mã gốc |
+| expires_at | TIMESTAMPTZ | NOT NULL | Hết hạn sau 30 phút |
+| failed_attempts | SMALLINT | NOT NULL DEFAULT 0 | Số lần nhập sai; đủ 5 thì hủy |
+| used_at | TIMESTAMPTZ | NULL | Đã dùng |
+| created_by | UUID | NULL | Người cấp mã (không FK) |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
+| deleted_at | TIMESTAMPTZ | NULL | Mã bị hủy (cấp mã mới hoặc sai quá 5 lần) |
+
 ### `member_verification`
 
 **Mục đích:** Yêu cầu tham gia gia đình và tình trạng thành viên.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.

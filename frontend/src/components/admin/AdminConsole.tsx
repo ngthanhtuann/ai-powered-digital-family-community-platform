@@ -12,6 +12,7 @@ import { TextField } from '@/components/ui/TextField';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { BranchSelect } from '@/components/admin/BranchSelect';
 import { useAdminFamily } from '@/components/admin/AdminFamilyPicker';
+import { ResetCodeModal } from '@/components/admin/ResetCodeModal';
 import {
   adminApi,
   PAGE_SIZE,
@@ -117,6 +118,7 @@ function UsersSection({ myId }: { myId?: string }) {
   const [filters, setFilters] = useState<{ q?: string; status?: UserStatus; role?: GlobalRole }>({});
   const [page, setPage] = useState(0);
   const [locking, setLocking] = useState<AdminUser | null>(null);
+  const [resetting, setResetting] = useState<AdminUser | null>(null);
   const [assigning, setAssigning] = useState<AdminUser | null>(null);
   const list = useQuery({
     queryKey: ['admin-users', filters, page],
@@ -164,6 +166,7 @@ function UsersSection({ myId }: { myId?: string }) {
             ? <Button fullWidth={false} variant="secondary" loading={unlock.isPending && unlock.variables === u.id}
                 onClick={() => unlock.mutate(u.id)}>Mở khóa</Button>
             : <Button fullWidth={false} variant="danger" onClick={() => setLocking(u)}>Khóa</Button>}
+          <Button fullWidth={false} variant="secondary" onClick={() => setResetting(u)}>Cấp mã đặt lại mật khẩu</Button>
           {!u.roles.includes('SYSTEM_ADMIN') && (
             <Button fullWidth={false} variant="secondary" onClick={() => setAssigning(u)}>Gán dòng họ</Button>
           )}
@@ -216,6 +219,7 @@ function UsersSection({ myId }: { myId?: string }) {
         </>
       )}
       {locking && <LockModal user={locking} onClose={() => setLocking(null)} />}
+      {resetting && <ResetCodeModal userId={resetting.id} fullName={resetting.fullName} onClose={() => setResetting(null)} />}
       {assigning && <MembershipModal user={assigning} onClose={() => setAssigning(null)} />}
     </section>
   );

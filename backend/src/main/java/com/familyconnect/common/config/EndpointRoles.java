@@ -30,6 +30,8 @@ public class EndpointRoles {
             Map.entry("POST /users", ANYONE),
             Map.entry("POST /auth/login", ANYONE),
             Map.entry("POST /auth/refresh", ANYONE),
+            Map.entry("POST /auth/password-resets", ANYONE),
+            Map.entry("POST /users/{}/password-reset-codes", ADMINS),
             Map.entry("DELETE /auth/sessions/current", SIGNED_IN),
             Map.entry("GET /users/me", SIGNED_IN),
             Map.entry("PATCH /users/me", SIGNED_IN),

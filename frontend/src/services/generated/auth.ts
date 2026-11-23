@@ -104,6 +104,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/password-resets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Đặt lại mật khẩu bằng mã dùng một lần (UC-AUTH-15)
+         * @description Vai trò: công khai (`security: []`). Mã do trưởng họ hoặc quản trị cấp (`POST /users/{userId}/password-reset-codes`). Email không có, mã sai, hết hạn hoặc đã dùng đều trả `400 VALID_001` với `details[0].field = "code"` (không lộ email có tồn tại). Sai 5 lần thì mã bị hủy. Thành công thì thu hồi mọi refresh token. Giới hạn 5 lần mỗi phút theo IP và email (chung với đăng nhập), vượt thì `429 RATE_001` (BR-AUTH-24).
+         */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/password-reset-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cấp mã đặt lại mật khẩu (UC-AUTH-15)
+         * @description Vai trò: trưởng họ (`BRANCH_ADMIN` không gán chi) cho tài khoản đã xác minh cùng dòng họ, trừ trưởng họ khác và quản trị; `SYSTEM_ADMIN` cho mọi tài khoản. Tự cấp cho mình hoặc vai trò khác: `403 PERM_001`; tài khoản không có hoặc khác dòng họ: `404 NOT_FOUND_001`. Mã 8 ký tự, hết hạn 30 phút, chỉ trả **một lần** ở phản hồi này; mã cũ chưa dùng bị hủy. Ghi nhật ký `PASSWORD_RESET_CODE_ISSUED` không kèm mã (BR-AUTH-24).
+         */
+        post: operations["issuePasswordResetCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -743,6 +783,23 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
+        PasswordResetRequest: {
+            /** Format: email */
+            email: string;
+            /** @description Không phân biệt chữ hoa thường */
+            code: string;
+            newPassword: string;
+        };
+        PasswordResetCode: {
+            /** @description Chỉ trả một lần; không lưu ở đâu khác */
+            code: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        PasswordResetCodeResponse: {
+            success?: boolean;
+            data?: components["schemas"]["PasswordResetCode"];
+        };
         /** @description Gửi các trường cần đổi (ít nhất một). Không đổi được email ở API này. */
         UpdateProfileRequest: {
             fullName?: string;
@@ -1351,6 +1408,81 @@ export interface operations {
             400: components["responses"]["BadRequestError"];
             401: components["responses"]["UnauthorizedError"];
             403: components["responses"]["AccountLockedError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "an.nguyen@example.com",
+                 *       "code": "K7M2Q9XA",
+                 *       "newPassword": "Matkhaumoi456"
+                 *     }
+                 */
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Đã đặt lại mật khẩu */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": null
+                     *     }
+                     */
+                    "application/json": components["schemas"]["EmptyResponse"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            429: components["responses"]["TooManyRequestsError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    issuePasswordResetCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã cấp mã */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "data": {
+                     *         "code": "K7M2Q9XA",
+                     *         "expiresAt": "2026-11-23T13:30:00Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["PasswordResetCodeResponse"];
+                };
+            };
+            401: components["responses"]["UnauthorizedError"];
+            403: components["responses"]["ForbiddenError"];
+            404: components["responses"]["NotFoundError"];
             500: components["responses"]["InternalServerError"];
         };
     };

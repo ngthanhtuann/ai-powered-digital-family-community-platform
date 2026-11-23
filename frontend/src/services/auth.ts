@@ -11,6 +11,8 @@ export type User = Schemas['User'];
 export type Membership = Schemas['Membership'];
 export type UpdateProfileRequest = Schemas['UpdateProfileRequest'];
 export type ChangePasswordRequest = Schemas['ChangePasswordRequest'];
+export type PasswordResetRequest = Schemas['PasswordResetRequest'];
+export type PasswordResetCode = Schemas['PasswordResetCode'];
 
 /** POST /auth/login: thành công thì lưu cặp token. */
 export async function login(body: LoginRequest): Promise<LoginData> {
@@ -50,6 +52,16 @@ export function getMyProfile(): Promise<User> {
 /** PATCH /users/me: sửa họ tên, số điện thoại, ngày sinh (UC-AUTH-05). */
 export function updateMyProfile(body: UpdateProfileRequest): Promise<User> {
   return api.patch<User>('/users/me', body);
+}
+
+/** POST /auth/password-resets (UC-AUTH-15): đặt lại bằng mã do trưởng họ hoặc quản trị cấp. */
+export async function resetPassword(body: PasswordResetRequest): Promise<void> {
+  await api.post('/auth/password-resets', body);
+}
+
+/** POST /users/{userId}/password-reset-codes (UC-AUTH-15): mã chỉ trả một lần, không lưu lại ở client. */
+export function issuePasswordResetCode(userId: string): Promise<PasswordResetCode> {
+  return api.post<PasswordResetCode>(`/users/${userId}/password-reset-codes`);
 }
 
 /** PUT /users/me/password: server thu hồi mọi refresh token, nên gọi xong phải đăng nhập lại (UC-AUTH-04). */

@@ -10,6 +10,7 @@ import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAc
 import { TextField } from '@/components/ui/TextField';
 import { branchesOf, familyRolesApi, memberRoleLabel, PAGE_SIZE, type FamilyAccount, type MemberRole } from '@/services/admin';
 import { genealogyApi, type Person } from '@/services/genealogy';
+import { ResetCodeModal } from '@/components/admin/ResetCodeModal';
 import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
 const selectClass = 'h-[42px] w-full rounded-control border border-border-strong bg-surface-muted px-3 text-body '
@@ -214,6 +215,7 @@ export default function FamilyRolesPage() {
   const familyId = access.isSystemAdmin ? adminFamily.trim() : (isHead ? membership?.familyId ?? '' : '');
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<FamilyAccount | null>(null);
+  const [resetting, setResetting] = useState<FamilyAccount | null>(null);
   const list = useQuery({
     queryKey: ['family-accounts', familyId, page],
     enabled: access.isReady && /^[0-9a-f-]{36}$/i.test(familyId),
@@ -227,7 +229,15 @@ export default function FamilyRolesPage() {
       key: 'actions', header: 'Thao tác',
       render: (a) => a.userId === myId
         ? <span className="text-caption text-text-secondary">Tài khoản của bạn</span>
-        : <Button fullWidth={false} variant="secondary" onClick={() => setEditing(a)}>Phân công</Button>,
+        : (
+          <div className="flex flex-wrap gap-2">
+            <Button fullWidth={false} variant="secondary" onClick={() => setEditing(a)}>Phân công</Button>
+            {/* BR-AUTH-24: trưởng họ không cấp mã cho trưởng họ khác; quản trị thì được. */}
+            {(access.isSystemAdmin || a.role !== 'BRANCH_ADMIN' || a.branchId) && (
+              <Button fullWidth={false} variant="secondary" onClick={() => setResetting(a)}>Cấp mã đặt lại mật khẩu</Button>
+            )}
+          </div>
+        ),
     },
   ];
   const total = list.data?.meta.total ?? 0;
@@ -270,6 +280,7 @@ export default function FamilyRolesPage() {
         </>
       )}
       {editing && <RoleModal familyId={familyId} account={editing} onClose={() => setEditing(null)} />}
+      {resetting && <ResetCodeModal userId={resetting.userId} fullName={resetting.fullName} onClose={() => setResetting(null)} />}
     </div>
   );
 }

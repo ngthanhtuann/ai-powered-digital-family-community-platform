@@ -201,6 +201,50 @@ paths:
         '401': {$ref: '#/components/responses/UnauthorizedError'}
         '403': {$ref: '#/components/responses/AccountLockedError'}
         '500': {$ref: '#/components/responses/InternalServerError'}
+  /auth/password-resets:
+    post:
+      tags: [Auth]
+      summary: Đặt lại mật khẩu bằng mã dùng một lần (UC-AUTH-15)
+      description: 'Vai trò: công khai (`security: []`). Mã do trưởng họ hoặc quản trị cấp (`POST /users/{userId}/password-reset-codes`). Email không có, mã sai, hết hạn hoặc đã dùng đều trả `400 VALID_001` với `details[0].field = "code"` (không lộ email có tồn tại). Sai 5 lần thì mã bị hủy. Thành công thì thu hồi mọi refresh token. Giới hạn 5 lần mỗi phút theo IP và email (chung với đăng nhập), vượt thì `429 RATE_001` (BR-AUTH-24).'
+      operationId: resetPassword
+      x-roles: [GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordResetRequest'}
+            example: {email: an.nguyen@example.com, code: K7M2Q9XA, newPassword: Matkhaumoi456}
+      responses:
+        '200':
+          description: Đã đặt lại mật khẩu
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmptyResponse'}
+              example: {success: true, data: null}
+        '400': {$ref: '#/components/responses/BadRequestError'}
+        '429': {$ref: '#/components/responses/TooManyRequestsError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /users/{userId}/password-reset-codes:
+    post:
+      tags: [FamilyRoles]
+      summary: Cấp mã đặt lại mật khẩu (UC-AUTH-15)
+      description: 'Vai trò: trưởng họ (`BRANCH_ADMIN` không gán chi) cho tài khoản đã xác minh cùng dòng họ, trừ trưởng họ khác và quản trị; `SYSTEM_ADMIN` cho mọi tài khoản. Tự cấp cho mình hoặc vai trò khác: `403 PERM_001`; tài khoản không có hoặc khác dòng họ: `404 NOT_FOUND_001`. Mã 8 ký tự, hết hạn 30 phút, chỉ trả **một lần** ở phản hồi này; mã cũ chưa dùng bị hủy. Ghi nhật ký `PASSWORD_RESET_CODE_ISSUED` không kèm mã (BR-AUTH-24).'
+      operationId: issuePasswordResetCode
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      parameters:
+        - {name: userId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '201':
+          description: Đã cấp mã
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PasswordResetCodeResponse'}
+              example: {success: true, data: {code: K7M2Q9XA, expiresAt: '2026-11-23T13:30:00Z'}}
+        '401': {$ref: '#/components/responses/UnauthorizedError'}
+        '403': {$ref: '#/components/responses/ForbiddenError'}
+        '404': {$ref: '#/components/responses/NotFoundError'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
   /users/me:
     get:
       tags: [Profile]
@@ -1291,6 +1335,24 @@ components:
       properties:
         currentPassword: {type: string}
         newPassword: {type: string, minLength: 8, maxLength: 72}
+    PasswordResetRequest:
+      type: object
+      required: [email, code, newPassword]
+      properties:
+        email: {type: string, format: email}
+        code: {type: string, minLength: 1, maxLength: 20, description: Không phân biệt chữ hoa thường}
+        newPassword: {type: string, minLength: 8, maxLength: 72}
+    PasswordResetCode:
+      type: object
+      required: [code, expiresAt]
+      properties:
+        code: {type: string, description: Chỉ trả một lần; không lưu ở đâu khác}
+        expiresAt: {type: string, format: date-time}
+    PasswordResetCodeResponse:
+      type: object
+      properties:
+        success: {type: boolean}
+        data: {$ref: '#/components/schemas/PasswordResetCode'}
     UpdateProfileRequest:
       type: object
       minProperties: 1

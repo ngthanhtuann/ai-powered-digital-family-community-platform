@@ -29,9 +29,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserAccountController {
 
     private final AuthService authService;
+    private final com.familyconnect.modules.auth.service.PasswordResetService passwordResetService;
 
-    public UserAccountController(AuthService authService) {
+    public UserAccountController(AuthService authService,
+                                 com.familyconnect.modules.auth.service.PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
+    }
+
+    @PostMapping("/{userId}/password-reset-codes")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(operationId = "issuePasswordResetCode", summary = "Cấp mã đặt lại mật khẩu (UC-AUTH-15)")
+    public ApiResponse<com.familyconnect.modules.auth.dto.AuthResponses.PasswordResetCodeData> issuePasswordResetCode(
+            @org.springframework.web.bind.annotation.PathVariable java.util.UUID userId) {
+        return ApiResponse.ok(passwordResetService.issue(CurrentUser.require().id(), userId));
     }
 
     @PostMapping

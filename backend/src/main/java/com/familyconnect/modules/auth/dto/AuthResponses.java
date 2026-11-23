@@ -15,6 +15,10 @@ public final class AuthResponses {
     private AuthResponses() {
     }
 
+    /** Schema PasswordResetCode (UC-AUTH-15): mã chỉ trả một lần ở phản hồi cấp mã. */
+    public record PasswordResetCodeData(String code, OffsetDateTime expiresAt) {
+    }
+
     /** Schema User. Không bao giờ chứa password_hash (BR-AUTH-19). */
     public record UserData(
             UUID id,

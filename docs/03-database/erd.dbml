@@ -350,6 +350,20 @@ Table refresh_token {
   Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Refresh token (chỉ lưu hash) · Trạng thái: Đầy đủ'
 }
 
+Table password_reset_code {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Tài khoản được đặt lại mật khẩu']
+  code_hash varchar(100) [not null, note: 'BCrypt của mã, không lưu mã gốc']
+  expires_at timestamptz [not null, note: 'Hết hạn sau 30 phút']
+  failed_attempts smallint [not null, default: 0, note: 'Sai 5 lần thì hủy']
+  used_at timestamptz [note: 'Đã dùng']
+  created_by uuid [note: 'Trưởng họ hoặc quản trị cấp mã']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Mã bị hủy']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Mã đặt lại mật khẩu dùng một lần (SCRUM-139) · Trạng thái: Đầy đủ'
+}
+
 Table member_verification {
   id uuid [pk, note: 'Khóa chính']
   user_id uuid [not null, note: 'Người xin tham gia hoặc thành viên']
@@ -502,6 +516,7 @@ Ref: event_participant.event_id > event.id
 Ref: user_role.user_id > users.id
 Ref: user_role.role_id > role.id
 Ref: refresh_token.user_id > users.id
+Ref: password_reset_code.user_id > users.id
 Ref: member_verification.user_id > users.id
 Ref: ai_chat_message.session_id > ai_chat_session.id
 Ref: comment.parent_id > comment.id

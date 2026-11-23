@@ -69,6 +69,22 @@ public final class AuthRequests {
     ) {
     }
 
+    /** POST /auth/password-resets (PasswordResetRequest, UC-AUTH-15). */
+    public record PasswordReset(
+            @NotBlank(message = "Email không được để trống")
+            @jakarta.validation.constraints.Email(message = "Email không đúng định dạng")
+            String email,
+
+            @NotBlank(message = "Mã không được để trống")
+            @Size(max = 20, message = "Mã tối đa 20 ký tự")
+            String code,
+
+            @NotBlank(message = "Mật khẩu mới không được để trống")
+            @Size(min = 8, max = 72, message = "Mật khẩu mới từ 8 đến 72 ký tự")
+            String newPassword
+    ) {
+    }
+
     /** PUT /users/me/password (ChangePasswordRequest). */
     public record ChangePassword(
             @NotBlank(message = "Mật khẩu hiện tại không được để trống")
