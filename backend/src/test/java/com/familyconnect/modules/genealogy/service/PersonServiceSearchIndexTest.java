@@ -46,7 +46,10 @@ class PersonServiceSearchIndexTest {
         ai = mock(AiGateway.class);
         service = new PersonService(persons, mock(FamilyRepository.class), mock(BranchRepository.class),
                 mock(GenealogyAccess.class), mock(MembershipQuery.class), mock(AuditLogger.class), ai,
-                mock(CommunityQuery.class), directory, CLOCK);
+                mock(CommunityQuery.class), directory,
+                mock(com.familyconnect.modules.auth.api.MembershipCommand.class),
+                mock(com.familyconnect.modules.community.api.CommunityNotificationPort.class),
+                mock(com.familyconnect.modules.auth.api.UserDirectory.class), CLOCK);
     }
 
     private Person person(String name, LocalDate birthDate) {

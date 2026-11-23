@@ -9,8 +9,8 @@ type Gender = 'MALE' | 'FEMALE' | 'OTHER' | null | undefined;
 
 /** Màu giới tính theo Figma "UC-GEN-06 Cây gia phả / 360"; luôn có chú giải bằng chữ đi kèm. */
 export function genderColor(gender: Gender): string {
-  if (gender === 'MALE') return colors.secondary;
-  if (gender === 'FEMALE') return colors.accentPink;
+  if (gender === 'MALE') return colors.treeMale;
+  if (gender === 'FEMALE') return colors.treeFemale;
   return colors.borderStrong;
 }
 

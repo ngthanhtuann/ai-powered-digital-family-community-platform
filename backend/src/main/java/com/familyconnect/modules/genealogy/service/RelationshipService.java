@@ -98,6 +98,7 @@ public class RelationshipService {
         relation.setCreatedBy(viewer.userId());
         relation.setUpdatedBy(viewer.userId());
         ParentChild saved = parentChildRepository.saveAndFlush(relation);
+        inheritBranch(child, parent, "FATHER".equals(input.parentRole().name()), viewer.userId());
         auditLogger.log("PARENT_CHILD_CREATED", "PARENT_CHILD", saved.getId(), familyId, Map.of());
         return toData(saved);
     }
@@ -261,5 +262,23 @@ public class RelationshipService {
     private boolean everMarried(UUID person1Id, UUID person2Id) {
         return marriageRepository.findAllByPersonId(person1Id).stream()
                 .anyMatch(m -> m.getPerson1Id().equals(person2Id) || m.getPerson2Id().equals(person2Id));
+    }
+
+    /** BR-GEN-22: con chưa có chi lấy chi của cha/mẹ; con đang ở chi của mẹ thì nối cha sẽ chuyển sang chi của cha. */
+    private void inheritBranch(Person child, Person parent, boolean father, UUID actor) {
+        UUID branch = parent.getBranchId();
+        if (branch == null || branch.equals(child.getBranchId())) {
+            return;
+        }
+        boolean followsMother = father && child.getBranchId() != null
+                && parentChildRepository.findByChildIdAndDeletedAtIsNull(child.getId()).stream()
+                .filter(pc -> "MOTHER".equals(pc.getParentRole()))
+                .map(pc -> personRepository.findByIdAndDeletedAtIsNull(pc.getParentId()).map(Person::getBranchId).orElse(null))
+                .anyMatch(child.getBranchId()::equals);
+        if (child.getBranchId() == null || followsMother) {
+            child.setBranchId(branch);
+            child.setUpdatedBy(actor);
+            personRepository.saveAndFlush(child);
+        }
     }
 }

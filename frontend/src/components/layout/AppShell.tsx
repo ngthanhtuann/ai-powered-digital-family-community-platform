@@ -71,7 +71,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 function isPublicRoute(pathname: string) {
-  return pathname === '/login' || pathname === '/register';
+  return pathname === '/login' || pathname === '/register' || pathname === '/forgot-password';
 }
 
 // Trang không có trong menu nhưng thuộc một mục: cây của gia đình mở từ mục "Cây gia phả" (/tree chuyển hướng tới).

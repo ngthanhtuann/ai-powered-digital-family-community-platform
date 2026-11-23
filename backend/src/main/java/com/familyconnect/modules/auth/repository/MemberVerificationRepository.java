@@ -45,6 +45,8 @@ public interface MemberVerificationRepository extends JpaRepository<MemberVerifi
             """)
     List<UUID> findApprovedUserIds(UUID familyId);
 
+    List<MemberVerification> findByFamilyIdAndStatusAndDeletedAtIsNull(UUID familyId, VerificationStatus status);
+
     /** Khóa dòng khi duyệt, từ chối, hủy: hai người xử lý cùng lúc thì người sau thấy trạng thái mới (AUTH_006). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<MemberVerification> findByIdAndDeletedAtIsNull(UUID id);

@@ -165,6 +165,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/persons/{personId}/death": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Đánh dấu đã mất hoặc khôi phục khi báo nhầm (UC-GEN-03, BR-GEN-21)
+         * @description Người quản lý chi (trong phạm vi chi), trưởng họ, SYSTEM_ADMIN; áp dụng cả hồ sơ đã gắn tài khoản. isDeceased=true: hôn nhân chuyển WIDOWED, khóa tài khoản gắn với hồ sơ (BR-AUTH-23), gửi thông báo DEATH_NOTICE (BR-COM-15). isDeceased=false: khôi phục khi báo nhầm (mở khóa tài khoản, thu hồi thông báo). Không tự báo mất cho chính mình: 403 PERM_001.
+         */
+        put: operations["setPersonDeath"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/persons/{personId}/account-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tài khoản có thể gắn thay cho hồ sơ (BR-GEN-23)
+         * @description Người quản lý chi của hồ sơ. Chỉ họ tên các tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào, sắp theo họ tên.
+         */
+        get: operations["listAccountCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/persons/{personId}/account-replacements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Thay tài khoản gắn với hồ sơ khi mất tài khoản (UC-GEN-03, BR-GEN-23)
+         * @description Khóa và cho tài khoản cũ rời dòng họ (không xóa), gắn tài khoản mới, chuyển vai trò trưởng họ/chi và quyền sở hữu nội dung công khai (BR-AUTH-25). Hồ sơ chưa gắn tài khoản hoặc tài khoản mới trùng tài khoản cũ: 400 VALID_001; tài khoản mới khác dòng họ hoặc chưa xác minh: 409 GEN_014; đã gắn hồ sơ khác: 409 CONFLICT_001; tự thay tài khoản của mình: 403 PERM_001.
+         */
+        post: operations["replacePersonAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/persons/{personId}/death-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Con ruột báo mất cha/mẹ, chờ xác nhận (BR-GEN-24)
+         * @description Chỉ người có tài khoản gắn với hồ sơ là con ruột của người còn sống; người khác 403 PERM_001. Đã mất hoặc đã có báo mất đang chờ: 409 CONFLICT_001. Người xác nhận nhận thông báo DEATH_REPORT; hết hạn sau 7 ngày.
+         */
+        post: operations["reportDeath"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/persons/{personId}/death-reports/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Báo mất đang chờ hoặc đã xác nhận gần nhất (BR-GEN-24)
+         * @description data null nếu không có. Báo mất quá hạn được chuyển EXPIRED khi đọc. canConfirm cho biết người xem có xác nhận được không.
+         */
+        get: operations["getLatestDeathReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/death-reports/{reportId}/confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Xác nhận báo mất (BR-GEN-24)
+         * @description Một người xác nhận là đủ: hồ sơ chuyển đã mất với hệ quả của BR-GEN-21. Không có quyền xác nhận: 403 PERM_001; đã xác nhận hoặc hết hạn: 409 CONFLICT_001. Người mất là trưởng họ/chi thì trả kèm gợi ý kế nhiệm.
+         */
+        post: operations["confirmDeathReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/persons/{personId}/parents": {
         parameters: {
             query?: never;
@@ -178,7 +310,7 @@ export interface paths {
         put?: never;
         /**
          * Thêm cha/mẹ cho thành viên (UC-GEN-04)
-         * @description personId là người con. Kiểm tra BR-GEN-02 đến 05.
+         * @description personId là người con. Kiểm tra BR-GEN-02 đến 05. Con chưa có chi thì tự vào chi của cha/mẹ, ưu tiên chi của cha (BR-GEN-22).
          */
         post: operations["addParent"];
         delete?: never;
@@ -452,6 +584,69 @@ export interface components {
             userId?: string | null;
             /** @description Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN). */
             canEdit?: boolean;
+            /** @description Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21. */
+            canManage?: boolean;
+            /** @description Người đang xem là con ruột có tài khoản của người còn sống này: được gửi báo mất chờ xác nhận (BR-GEN-24). */
+            canReportDeath?: boolean;
+            /**
+             * @description Giờ mất HH:mm (giờ địa phương), SCRUM-134.
+             * @example 14:30
+             */
+            deathTime?: string | null;
+        };
+        AccountReplacementInput: {
+            /** Format: uuid */
+            newUserId: string;
+            reason: string;
+        };
+        AccountCandidate: {
+            /** Format: uuid */
+            userId?: string;
+            fullName?: string;
+        };
+        AccountCandidateListResponse: {
+            success?: boolean;
+            data?: components["schemas"]["AccountCandidate"][];
+        };
+        DeathReportInput: {
+            /** Format: date */
+            deathDate: string;
+            deathTime?: string | null;
+            burialPlace?: string | null;
+        };
+        DeathReport: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            personId?: string;
+            personName?: string;
+            reportedByName?: string | null;
+            /** Format: date */
+            deathDate?: string;
+            deathTime?: string | null;
+            burialPlace?: string | null;
+            /** @enum {string} */
+            status?: "PENDING" | "CONFIRMED" | "EXPIRED";
+            /** Format: date-time */
+            expiresAt?: string;
+            canConfirm?: boolean;
+            /** Format: uuid */
+            successorPersonId?: string | null;
+            /** @description Gợi ý kế nhiệm khi người mất là trưởng họ/chi */
+            successorName?: string | null;
+        };
+        DeathReportResponse: {
+            success?: boolean;
+            data?: components["schemas"]["DeathReport"] | null;
+        };
+        /** @description BR-GEN-21. isDeceased=true bắt buộc deathDate; deathTime cần deathDate. isDeceased=false bỏ qua các trường còn lại. */
+        DeathInput: {
+            isDeceased: boolean;
+            /** Format: date */
+            deathDate?: string | null;
+            /** @example 14:30 */
+            deathTime?: string | null;
+            burialPlace?: string | null;
         };
         PersonResponse: {
             success?: boolean;
@@ -546,6 +741,13 @@ export interface components {
              * @description Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)
              */
             avatarMediaId?: string | null;
+            /** @description Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất */
+            deathYear?: number | null;
+            /**
+             * @description Người còn sống có tài khoản đang là trưởng họ (BRANCH_ADMIN không gán chi) hoặc trưởng chi; để hiện huy hiệu trên cây (SCRUM-136)
+             * @enum {string|null}
+             */
+            leaderRole?: "FAMILY_HEAD" | "BRANCH_HEAD" | null;
         };
         TreeEdge: {
             id?: string;
@@ -1508,6 +1710,219 @@ export interface operations {
                      *       }
                      *     }
                      */
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setPersonDeath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "isDeceased": true,
+                 *       "deathDate": "2026-11-20",
+                 *       "deathTime": "14:30",
+                 *       "burialPlace": "Nghĩa trang quê nhà"
+                 *     }
+                 */
+                "application/json": components["schemas"]["DeathInput"];
+            };
+        };
+        responses: {
+            /** @description Đã cập nhật */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAccountCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Danh sách */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountCandidateListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    replacePersonAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "newUserId": "9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b",
+                 *       "reason": "Mất điện thoại và email cũ"
+                 *     }
+                 */
+                "application/json": components["schemas"]["AccountReplacementInput"];
+            };
+        };
+        responses: {
+            /** @description Đã thay tài khoản */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description GEN_014 tài khoản mới không thuộc dòng họ; CONFLICT_001 tài khoản mới đã gắn hồ sơ khác */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reportDeath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "deathDate": "2026-11-20",
+                 *       "deathTime": "14:30",
+                 *       "burialPlace": "Nghĩa trang quê nhà"
+                 *     }
+                 */
+                "application/json": components["schemas"]["DeathReportInput"];
+            };
+        };
+        responses: {
+            /** @description Đã gửi báo mất */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeathReportResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description CONFLICT_001 đã mất hoặc đã có báo mất đang chờ */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLatestDeathReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Báo mất hoặc null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeathReportResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    confirmDeathReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Đã xác nhận */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeathReportResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description CONFLICT_001 đã xác nhận hoặc hết hạn */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
