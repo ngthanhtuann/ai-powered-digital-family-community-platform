@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/genealogy/PersonNode';
 import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
 import { genealogyApi, type Relationship, type TreeNode } from '@/services/genealogy';
-import { aiApi } from '@/services/ai';
 
 const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
 
@@ -27,10 +26,8 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const person = useQuery({ queryKey: ['person', personId], queryFn: () => genealogyApi.person(personId) });
   const [mode, setMode] = useState<RelationMode | null>(null);
   const [otherId, setOtherId] = useState('');
-  const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
   const relation = useMutation({
     mutationFn: () => genealogyApi.relationship(personId, otherId),
-    onMutate: () => explanation.reset(), // tra cặp khác thì bỏ lời giải thích AI của cặp cũ
     onSuccess: (data) => onRelation(data),
   });
   const p = person.data;
@@ -78,12 +75,6 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
           {relation.data && (
             <div role="status" className="space-y-1 rounded-control bg-info-soft p-3 text-body">
               <p>{relation.data.description}</p>
-              <Button fullWidth={false} variant="secondary" loading={explanation.isPending}
-                onClick={() => explanation.mutate()} disabled={!relation.data.supported}>
-                Giải thích bằng AI
-              </Button>
-              {explanation.isError && <p role="alert" className="text-body text-error">{errorText(explanation.error)}</p>}
-              {explanation.data && <p className="text-body">{explanation.data.explanation}</p>}
               {/* Có tổ tiên chung thì trang cây tự tải thêm; quan hệ chỉ qua hôn nhân thì không có gốc để tải. */}
               {offTree > 0 && (
                 <p className="text-caption">
@@ -91,7 +82,7 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
                   {relation.data.commonAncestorId ? ', đang tải thêm...' : ' (mở thêm nhánh để thấy).'}
                 </p>
               )}
-              <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); explanation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
+              <Button fullWidth={false} variant="secondary" onClick={() => { relation.reset(); onRelation(null); }}>Bỏ tô sáng</Button>
             </div>
           )}
         </form>
