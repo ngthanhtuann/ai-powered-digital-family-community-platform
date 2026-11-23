@@ -52,8 +52,8 @@ export const adminApi = {
 
 /** UC-AUTH-14: trưởng họ (hoặc quản trị) phân công trưởng chi. */
 export const familyRolesApi = {
-  accounts: (familyId: string, page: number) =>
-    api.list<FamilyAccount>(`/families/${familyId}/accounts`, { page, size: PAGE_SIZE }),
+  accounts: (familyId: string, page: number, size = PAGE_SIZE) =>
+    api.list<FamilyAccount>(`/families/${familyId}/accounts`, { page, size }),
   setRole: (familyId: string, userId: string, body: Schemas['FamilyAccountRoleRequest']) =>
     api.put<FamilyAccount>(`/families/${familyId}/accounts/${userId}`, body),
 };
