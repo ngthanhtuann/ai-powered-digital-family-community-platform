@@ -6,6 +6,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { AccessState, useHeritageAccess } from '@/components/heritage/HeritageAccess';
 import { errorText, selectClass, yearOf } from '@/components/genealogy/RelationModal';
 import { Button } from '@/components/ui/Button';
+import { aiApi } from '@/services/ai';
 import { genealogyApi, type Relationship } from '@/services/genealogy';
 import { AdminFamilyPicker, useAdminFamily } from '@/components/admin/AdminFamilyPicker';
 
@@ -22,20 +23,23 @@ export default function RelationshipPage() {
   const [personA, setPersonA] = useState('');
   const [personB, setPersonB] = useState('');
   const relation = useMutation({ mutationFn: () => genealogyApi.relationship(personA, personB) });
+  const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personA, personB) });
 
   function lookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    explanation.reset();
     relation.mutate();
   }
 
   function pick(set: (id: string) => void) {
-    return (id: string) => { set(id); relation.reset(); };
+    return (id: string) => { set(id); relation.reset(); explanation.reset(); };
   }
 
   function swap() {
     setPersonA(personB);
     setPersonB(personA);
     relation.reset();
+    explanation.reset();
   }
 
   const result = relation.data;
@@ -95,7 +99,12 @@ export default function RelationshipPage() {
                     Xem trên cây
                   </Link>
                 )}
+                <Button fullWidth={false} variant="secondary" loading={explanation.isPending} onClick={() => explanation.mutate()}>
+                  Giải thích bằng AI
+                </Button>
               </div>
+              {explanation.isError && <p role="alert" className="text-body text-error">{errorText(explanation.error)}</p>}
+              {explanation.data && <p className="rounded-control bg-info-soft p-3 text-body">{explanation.data.explanation}</p>}
               <MiniTree result={result} />
             </>
           ) : (
