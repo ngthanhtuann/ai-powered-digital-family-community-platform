@@ -443,7 +443,7 @@ paths:
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [parent-child]
       summary: Thêm cha/mẹ cho thành viên (UC-GEN-04)
-      description: personId là người con. Kiểm tra BR-GEN-02 đến 05.
+      description: personId là người con. Kiểm tra BR-GEN-02 đến 05. Con chưa có chi thì tự vào chi của cha/mẹ, ưu tiên chi của cha (BR-GEN-22).
       requestBody:
         required: true
         content:

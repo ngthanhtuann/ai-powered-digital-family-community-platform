@@ -542,6 +542,43 @@ class GenealogyApiIntegrationTest {
                 .isEqualTo("LOCKED|Vi phạm");
     }
 
+    // ---- BR-GEN-22 (SCRUM-138): con tự thuộc chi của cha mẹ ----
+
+    @Test
+    void childInheritsParentBranchPreferringFather() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String persons = "/api/v1/families/" + familyId + "/persons";
+        UUID fatherBranch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi nội")));
+        UUID motherBranch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi ngoại")));
+        UUID chosen = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi tự chọn")));
+        Map<String, Object> f = person("Cha", LocalDate.of(1960, 1, 1));
+        f.put("branchId", fatherBranch.toString());
+        UUID father = id(call(post(persons), token, f));
+        Map<String, Object> m = person("Mẹ", LocalDate.of(1962, 1, 1));
+        m.put("gender", "FEMALE");
+        m.put("branchId", motherBranch.toString());
+        UUID mother = id(call(post(persons), token, m));
+        UUID child = id(call(post(persons), token, person("Con", LocalDate.of(1990, 1, 1))));
+        String branchSql = "select branch_id from person where id = ?";
+
+        call(post("/api/v1/persons/" + child + "/parents"), token, Map.of("parentId", mother.toString(), "parentRole", "MOTHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child)).isEqualTo(motherBranch);
+        call(post("/api/v1/persons/" + child + "/parents"), token, Map.of("parentId", father.toString(), "parentRole", "FATHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child)).isEqualTo(fatherBranch);
+
+        // Chi do người quản lý chọn thì giữ nguyên.
+        Map<String, Object> c2 = person("Con tự chọn chi", LocalDate.of(1992, 1, 1));
+        c2.put("branchId", chosen.toString());
+        UUID child2 = id(call(post(persons), token, c2));
+        call(post("/api/v1/persons/" + child2 + "/parents"), token, Map.of("parentId", father.toString(), "parentRole", "FATHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child2)).isEqualTo(chosen);
+    }
+
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
 
     @Test
