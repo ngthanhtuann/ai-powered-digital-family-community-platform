@@ -62,6 +62,7 @@ public class EndpointRoles {
             Map.entry("GET /persons/{}/account-candidates", ADMINS),
             Map.entry("POST /persons/{}/account-replacements", ADMINS),
             Map.entry("POST /persons/{}/death-reports", SIGNED_IN),
+            Map.entry("POST /persons/{}/relatives", ADMINS),
             Map.entry("GET /persons/{}/death-reports/latest", SIGNED_IN),
             Map.entry("POST /death-reports/{}/confirmations", SIGNED_IN),
             Map.entry("DELETE /persons/{}", ADMINS),

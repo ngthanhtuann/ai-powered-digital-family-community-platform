@@ -31,9 +31,11 @@ public class FamilyTreeRepository {
         return jdbc.queryForList("""
                 SELECT p.id FROM person p
                 WHERE p.family_id = :familyId AND p.deleted_at IS NULL
-                  AND NOT EXISTS (SELECT 1 FROM parent_child pc JOIN person parent ON parent.id = pc.parent_id
-                                  WHERE pc.child_id = p.id AND pc.deleted_at IS NULL
-                                    AND parent.family_id = :familyId AND parent.deleted_at IS NULL)
+                  -- NOT IN băm danh sách con một lần; NOT EXISTS tương quan từng dòng mất 5 giây với 500 người khi bảng
+                  -- chưa có thống kê (SCRUM-142: cây nào cũng tìm người tổ để biết trưởng họ theo dòng).
+                  AND p.id NOT IN (SELECT pc.child_id FROM parent_child pc JOIN person parent ON parent.id = pc.parent_id
+                                   WHERE pc.deleted_at IS NULL
+                                     AND parent.family_id = :familyId AND parent.deleted_at IS NULL)
                 ORDER BY COALESCE(EXTRACT(YEAR FROM p.birth_date)::int, p.birth_year) NULLS LAST, p.created_at, p.id
                 LIMIT 1
                 """, new MapSqlParameterSource("familyId", familyId), UUID.class).stream().findFirst();

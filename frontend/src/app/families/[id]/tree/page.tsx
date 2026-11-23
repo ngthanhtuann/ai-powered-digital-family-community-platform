@@ -51,6 +51,49 @@ function FocusOnce({ id }: { id?: string }) {
   return null;
 }
 
+/** SCRUM-143: đưa người vừa tìm vào giữa; n đổi mỗi lần chọn để tìm lại cùng người vẫn chạy. */
+function FocusOn({ target }: { target: { id: string; n: number } | null }) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    if (target) void fitView({ nodes: [{ id: target.id }], maxZoom: 1, duration: 400 });
+  }, [target, fitView]);
+  return null;
+}
+
+/** SCRUM-143: tìm người theo tên trong dòng họ (GET /families/{id}/persons?q=), chọn thì cây tự tìm tới. */
+function TreeSearch({ familyId, onPick }: { familyId: string; onPick: (id: string) => void }) {
+  const [q, setQ] = useState('');
+  const term = q.trim();
+  const found = useQuery({
+    queryKey: ['tree-search', familyId, term],
+    queryFn: () => genealogyApi.persons(familyId, { q: term, page: 0, size: 8, sort: 'fullName,asc' }),
+    enabled: term.length >= 2,
+  });
+  return (
+    <div className="relative max-w-md">
+      <label className="grid gap-1 text-label">Tìm người trên cây
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Gõ ít nhất 2 chữ của họ tên"
+          className="h-[42px] w-full rounded-control border border-border-strong bg-surface px-3 text-body text-text-primary outline-none focus-visible:outline-2 focus-visible:outline-info" />
+      </label>
+      {term.length >= 2 && (
+        <ul aria-label="Kết quả tìm" className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-card border border-border bg-surface shadow-overlay">
+          {found.isPending && <li className="p-3 text-body text-text-secondary">Đang tìm...</li>}
+          {found.isError && <li role="alert" className="p-3 text-body text-error">Không tìm được, vui lòng thử lại.</li>}
+          {found.data?.items.length === 0 && <li className="p-3 text-body text-text-secondary">Không thấy ai có tên như vậy.</li>}
+          {found.data?.items.map((p) => (
+            <li key={p.id}>
+              <button type="button" className="flex min-h-11 w-full items-center px-3 text-left text-body hover:bg-surface-muted"
+                onClick={() => { onPick(p.id ?? ''); setQ(''); }}>
+                {p.fullName}{p.birthYear ? ` (${p.birthYear})` : ''}{p.isDeceased ? ' · đã mất' : ''}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Đưa đường quan hệ vừa tra vào giữa khung nhìn (chỉ những người đang hiện trên cây). */
 function FitToPath({ ids }: { ids: string }) {
   const { fitView } = useReactFlow();
@@ -142,6 +185,31 @@ export default function FamilyTreePage() {
     setRelation(null);
   }, []);
 
+  // SCRUM-143: chọn người từ ô tìm kiếm; chưa hiện trên cây thì tải cây từ tổ tiên chung với người tổ, đủ sâu tới người đó.
+  const [searchFocus, setSearchFocus] = useState<{ id: string; n: number } | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
+  const onSearchPick = useCallback(async (id: string) => {
+    setSelected(id);
+    setRelation(null);
+    setCollapsed(new Set());
+    if (graph.nodes.some((n) => n.id === id)) {
+      setSearchFocus({ id, n: Date.now() });
+      return;
+    }
+    setPendingFocus(id);
+    const rootId = first.data?.rootId;
+    const found = rootId ? await genealogyApi.relationship(rootId, id).catch(() => null) : null;
+    const ancestor = found?.commonAncestorId ?? id;
+    const depth = Math.min(10, (found?.stepsFromB ?? 0) + 1);
+    setFocusRoots((roots) => (roots.some((r) => r.rootId === ancestor && r.depth >= depth) ? roots : [...roots, { rootId: ancestor, depth }]));
+  }, [graph.nodes, first.data?.rootId]);
+  useEffect(() => {
+    if (pendingFocus && graph.nodes.some((n) => n.id === pendingFocus)) {
+      setSearchFocus({ id: pendingFocus, n: Date.now() });
+      setPendingFocus(null);
+    }
+  }, [pendingFocus, graph.nodes]);
+
   const loadingKey = [...loadingRoots].join(',');
   const flow = useMemo(() => {
     const hidden = hiddenByCollapse(graph.edges, collapsed);
@@ -215,6 +283,7 @@ export default function FamilyTreePage() {
         </ul>
       </header>
       <AccessState loading={first.isLoading} error={error} />
+      {first.isSuccess && <TreeSearch familyId={familyId} onPick={(id) => void onSearchPick(id)} />}
       {first.isSuccess && flow.nodes.length === 0 && (
         <p className="rounded-card border border-border bg-surface p-4 text-body text-text-secondary">
           Gia đình chưa có thành viên. <Link href="/members" className="text-info underline">Thêm thành viên</Link>
@@ -244,6 +313,7 @@ export default function FamilyTreePage() {
                 }} />
               <Background gap={16} />
               <FocusOnce id={[focusParam, myPersonId].find((id) => id && flow.nodes.some((n) => n.id === id)) ?? undefined} />
+              <FocusOn target={searchFocus} />
               <FitToPath ids={relation?.path?.map((step) => step.id).filter((id) => flow.nodes.some((n) => n.id === id)).join(',') ?? ''} />
             </ReactFlow>
           </div>

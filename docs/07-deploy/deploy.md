@@ -127,9 +127,9 @@ Compose hiện không đặt Nginx trước backend: trình duyệt gọi API tr
 
    | Vai trò                          | Email                                                                            |
    | -------------------------------- | -------------------------------------------------------------------------------- |
-   | MEMBER đã xác minh               | `ha@demo.familyconnect.vn` (Nguyễn Thị Hà, Chi 2)                                |
+   | MEMBER đã xác minh               | `ha@demo.familyconnect.vn` (Nguyễn Thị Hà, Chi 3)                                |
    | MEMBER chưa xác minh (chờ duyệt) | `tu@demo.familyconnect.vn`                                                       |
-   | BRANCH_ADMIN (Trưởng chi)        | `hung@demo.familyconnect.vn` (Trưởng Chi 2)                                      |
+   | BRANCH_ADMIN (Trưởng chi)        | `hung@demo.familyconnect.vn` (Trưởng Chi 3)                                      |
    | BRANCH_ADMIN (Trưởng họ)         | `phuc@demo.familyconnect.vn` (người tạo dòng họ, quản lý cả họ)                  |
    | SYSTEM_ADMIN                     | Email và mật khẩu bạn đặt ở `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` |
 

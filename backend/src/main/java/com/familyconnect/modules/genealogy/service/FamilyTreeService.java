@@ -43,11 +43,13 @@ public class FamilyTreeService {
     private final FamilyRepository familyRepository;
     private final GenealogyAccess access;
     private final MembershipQuery membershipQuery;
+    private final LineageService lineageService;
     private final Clock clock;
 
     public FamilyTreeService(FamilyTreeRepository treeRepository, PersonRepository personRepository,
                              FamilyRepository familyRepository, GenealogyAccess access,
-                             MembershipQuery membershipQuery, Clock clock) {
+                             MembershipQuery membershipQuery, LineageService lineageService, Clock clock) {
+        this.lineageService = lineageService;
         this.treeRepository = treeRepository;
         this.personRepository = personRepository;
         this.familyRepository = familyRepository;
@@ -87,11 +89,14 @@ public class FamilyTreeService {
         membershipQuery.findVerifiedMembers(familyId).stream()
                 .filter(m -> m.role() == EffectiveRole.BRANCH_ADMIN)
                 .forEach(m -> leaders.put(m.userId(), m.branchId() == null ? "FAMILY_HEAD" : "BRANCH_HEAD"));
+        // SCRUM-142, BR-GEN-25: trưởng theo dòng (không cần tài khoản), tính theo id hồ sơ.
+        Map<UUID, String> lineage = lineageService.lineageHeads(familyId);
         List<TreeNode> nodes = personRepository.findAllById(ids).stream()
                 .filter(p -> p.getDeletedAt() == null && familyId.equals(p.getFamilyId()))
                 .sorted(Comparator.comparing((Person p) -> descendants.getOrDefault(p.getId(), Integer.MAX_VALUE))
+                        .thenComparing(FamilyTreeService::bornOn, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(Person::getFullName))
-                .map(p -> toNode(p, fullData, today, hasMore.contains(p.getId()), generations.get(p.getId()), leaders))
+                .map(p -> toNode(p, fullData, today, hasMore.contains(p.getId()), generations.get(p.getId()), leaders, lineage))
                 .toList();
 
         List<TreeEdge> edges = new ArrayList<>();
@@ -117,8 +122,21 @@ public class FamilyTreeService {
     }
 
     /** BR-GEN-10: MEMBER thấy trẻ dưới 16 tuổi còn sống chỉ với tên, quan hệ (cạnh), năm sinh. */
+    /** SCRUM-142: anh em xếp theo ngày sinh (chỉ có năm thì coi là 1/1). */
+    private static LocalDate bornOn(Person p) {
+        return p.getBirthDate() != null ? p.getBirthDate()
+                : p.getBirthYear() == null ? null : LocalDate.of(p.getBirthYear(), 1, 1);
+    }
+
+    private static String leaderRole(Person p, Map<UUID, String> leaders, Map<UUID, String> lineage) {
+        String byAccount = p.getUserId() == null ? null : leaders.get(p.getUserId());
+        String byLine = lineage.get(p.getId());
+        return LineageService.FAMILY_HEAD.equals(byAccount) || LineageService.FAMILY_HEAD.equals(byLine)
+                ? LineageService.FAMILY_HEAD : byAccount != null ? byAccount : byLine;
+    }
+
     private static TreeNode toNode(Person p, boolean fullData, LocalDate today, boolean hasMoreChildren,
-                                   Integer generation, Map<UUID, String> leaders) {
+                                   Integer generation, Map<UUID, String> leaders, Map<UUID, String> lineage) {
         Integer birthYear = p.getBirthDate() != null ? Integer.valueOf(p.getBirthDate().getYear())
                 : p.getBirthYear() == null ? null : p.getBirthYear().intValue();
         boolean child = !p.isDeceased() && p.getBirthDate() != null
@@ -127,6 +145,6 @@ public class FamilyTreeService {
         return new TreeNode(p.getId(), p.getFullName(), limited ? null : p.getGender(), birthYear, p.isDeceased(),
                 hasMoreChildren, limited ? null : generation, limited ? null : p.getAvatarMediaId(),
                 p.getDeathDate() == null ? null : p.getDeathDate().getYear(),
-                limited || p.isDeceased() || p.getUserId() == null ? null : leaders.get(p.getUserId()));
+                limited || p.isDeceased() ? null : leaderRole(p, leaders, lineage));
     }
 }

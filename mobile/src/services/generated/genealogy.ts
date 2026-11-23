@@ -297,6 +297,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/persons/{personId}/relatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Thêm người thân mới (con, cha/mẹ, vợ/chồng) và nối quan hệ trong một lần lưu (BR-GEN-26)
+         * @description Tạo hồ sơ như POST /families/{familyId}/persons rồi nối với người {personId}; một bước lỗi (VALID_001, GEN_005 đến GEN_011, PERM_001) thì không lưu gì. Người mới chưa chọn chi thì vào chi của {personId}.
+         */
+        post: operations["addRelative"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/persons/{personId}/parents": {
         parameters: {
             query?: never;
@@ -514,6 +536,30 @@ export interface components {
             data?: components["schemas"]["Branch"][];
             meta?: components["schemas"]["Meta"];
         };
+        /** @description BR-GEN-26 */
+        RelativeInput: {
+            /**
+             * @description Người mới là con, cha/mẹ hay vợ/chồng của {personId}
+             * @enum {string}
+             */
+            relation: "CHILD" | "PARENT" | "SPOUSE";
+            person: components["schemas"]["PersonInput"];
+            /**
+             * @description CHILD/PARENT; mặc định BIOLOGICAL
+             * @enum {string|null}
+             */
+            kind?: "BIOLOGICAL" | "ADOPTED" | "STEP" | null;
+            /**
+             * @description Chỉ cần khi người làm cha/mẹ có giới tính OTHER
+             * @enum {string|null}
+             */
+            parentRole?: "FATHER" | "MOTHER" | null;
+            /**
+             * Format: date
+             * @description SPOUSE; ngày kết hôn
+             */
+            startDate?: string | null;
+        };
         /** @description Người còn sống bắt buộc có birthDate (BR-GEN-17). Người đã mất có thể chỉ có birthYear. */
         PersonInput: {
             fullName: string;
@@ -632,8 +678,10 @@ export interface components {
             canConfirm?: boolean;
             /** Format: uuid */
             successorPersonId?: string | null;
-            /** @description Gợi ý kế nhiệm khi người mất là trưởng họ/chi */
+            /** @description Gợi ý kế nhiệm khi người mất là trưởng họ/chi (BR-GEN-25) */
             successorName?: string | null;
+            /** @description Người được gợi ý đã có tài khoản chưa; chưa có thì giao diện gợi ý mời */
+            successorHasAccount?: boolean;
         };
         DeathReportResponse: {
             success?: boolean;
@@ -744,7 +792,7 @@ export interface components {
             /** @description Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất */
             deathYear?: number | null;
             /**
-             * @description Người còn sống có tài khoản đang là trưởng họ (BRANCH_ADMIN không gán chi) hoặc trưởng chi; để hiện huy hiệu trên cây (SCRUM-136)
+             * @description Người còn sống là trưởng họ hoặc trưởng chi: theo vai trò tài khoản (BRANCH_ADMIN không gán chi là trưởng họ) hoặc theo dòng (BR-GEN-25, không cần tài khoản); để hiện huy hiệu trên cây (SCRUM-136, 142). Anh em trong mảng nodes xếp theo ngày sinh.
              * @enum {string|null}
              */
             leaderRole?: "FAMILY_HEAD" | "BRANCH_HEAD" | null;
@@ -1918,6 +1966,55 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description CONFLICT_001 đã xác nhận hoặc hết hạn */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addRelative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: components["parameters"]["personId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "relation": "CHILD",
+                 *       "person": {
+                 *         "fullName": "Nguyễn Văn Bình",
+                 *         "gender": "MALE",
+                 *         "birthDate": "1985-06-01"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["RelativeInput"];
+            };
+        };
+        responses: {
+            /** @description Đã tạo người mới và nối quan hệ; trả hồ sơ người mới */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description GEN_005 đến GEN_011 vi phạm quy tắc quan hệ (đã đủ cha/mẹ ruột, vòng lặp, cha mẹ không lớn tuổi hơn con...) */
             409: {
                 headers: {
                     [name: string]: unknown;

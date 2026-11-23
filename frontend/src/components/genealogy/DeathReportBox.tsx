@@ -52,7 +52,8 @@ export function DeathReportBox({ person }: { person: Person }) {
         <section className="space-y-1 rounded-card border border-border bg-surface p-4">
           <p className="text-label">Gợi ý người kế nhiệm: {r.successorName}</p>
           <p className="text-body text-text-secondary">
-            Theo thứ tự con trai ruột lớn nhất còn sống có tài khoản, rồi cháu đích tôn. Trưởng họ quyết định ở{' '}
+            Theo thứ tự con trai trưởng; con trưởng mất trước thì cháu đích tôn; không có con trai thì em trai kế tiếp.
+            {!r.successorHasAccount && ` ${r.successorName} chưa có tài khoản: hãy mời tham gia trước.`} Trưởng họ quyết định ở{' '}
             <Link href="/family-roles" className="text-info underline">Phân công trưởng chi</Link>.
           </p>
         </section>

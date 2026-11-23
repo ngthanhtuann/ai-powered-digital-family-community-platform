@@ -754,6 +754,81 @@ class GenealogyApiIntegrationTest {
                 .isTrue();
     }
 
+    // ---- BR-GEN-26 (SCRUM-143): thêm người thân trong một lần lưu; BR-GEN-25 (SCRUM-142): kế nhiệm theo dòng ----
+
+    @Autowired
+    private com.familyconnect.modules.genealogy.service.LineageService lineage;
+
+    private int personCount(UUID familyId) {
+        return jdbc.queryForObject("select count(*) from person where family_id = ? and deleted_at is null", Integer.class, familyId);
+    }
+
+    /** Chạy ngoài giao dịch chung của lớp test để mỗi request có giao dịch riêng như khi chạy thật (kiểm hoàn tác). */
+    @Test
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void addRelativeCreatesPersonAndRelationInOneSaveOrNothing() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi thêm")));
+        Map<String, Object> f = person("Cha thêm", LocalDate.of(1960, 1, 1));
+        f.put("branchId", branch.toString());
+        UUID father = id(call(post("/api/v1/families/" + familyId + "/persons"), token, f));
+        String url = "/api/v1/persons/" + father + "/relatives";
+
+        UUID child = id(call(post(url), token, Map.of("relation", "CHILD", "person", person("Con thêm", LocalDate.of(1990, 1, 1))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.branchId").value(branch.toString())));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select parent_role || '|' || kind from parent_child where parent_id = ? and child_id = ?", String.class, father, child))
+                .isEqualTo("FATHER|BIOLOGICAL");
+        Map<String, Object> wife = person("Vợ thêm", LocalDate.of(1962, 1, 1));
+        wife.put("gender", "FEMALE");
+        UUID spouse = id(call(post(url), token, Map.of("relation", "SPOUSE", "person", wife, "startDate", "1985-01-01"))
+                .andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person1_id = ? and person2_id = ?", String.class, father, spouse)).isEqualTo("MARRIED");
+
+        // Một bước lỗi thì không lưu gì: con sinh trước cha (GEN_007), cha/mẹ giới tính khác không chọn vai trò (VALID_001).
+        int before = personCount(familyId);
+        call(post(url), token, Map.of("relation", "CHILD", "person", person("Con sai", LocalDate.of(1950, 1, 1))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("GEN_007"));
+        Map<String, Object> other = person("Cha mẹ khác", LocalDate.of(1930, 1, 1));
+        other.put("gender", "OTHER");
+        call(post("/api/v1/persons/" + child + "/relatives"), token, Map.of("relation", "PARENT", "person", other))
+                .andExpect(status().isBadRequest());
+        org.assertj.core.api.Assertions.assertThat(personCount(familyId)).isEqualTo(before);
+    }
+
+    @Test
+    void heirFollowsEldestSonLineThenYoungerBrother() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        Map<String, Object> founder = person("Thủy tổ", LocalDate.of(1900, 1, 1));
+        founder.put("isDeceased", true);
+        founder.put("deathDate", "1980-01-01");
+        UUID to = id(call(post("/api/v1/families/" + familyId + "/persons"), token, founder));
+        Map<String, Object> eldestDead = person("Con cả đã mất", LocalDate.of(1925, 1, 1));
+        eldestDead.put("isDeceased", true);
+        eldestDead.put("deathDate", "1990-01-01");
+        UUID eldest = id(call(post("/api/v1/persons/" + to + "/relatives"), token, Map.of("relation", "CHILD", "person", eldestDead)));
+        UUID second = id(call(post("/api/v1/persons/" + to + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Con thứ", LocalDate.of(1930, 1, 1)))));
+        UUID grandson = id(call(post("/api/v1/persons/" + eldest + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Cháu đích tôn", LocalDate.of(1950, 1, 1)))));
+
+        // Đích tôn thừa trọng: con cả mất trước nhưng có con trai thì cháu kế nhiệm, không chuyển sang con thứ.
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(to)).isEqualTo(grandson);
+        // Không có con trai, không có em trai: không có người kế nhiệm.
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(grandson)).isNull();
+        // Không có con trai thì sang em trai ruột kế tiếp.
+        UUID youngest = id(call(post("/api/v1/persons/" + to + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Con út", LocalDate.of(1935, 1, 1)))));
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(second)).isEqualTo(youngest);
+        // Người tổ đã mất: trưởng họ theo dòng là cháu đích tôn, không cần tài khoản.
+        org.assertj.core.api.Assertions.assertThat(lineage.lineageHeads(familyId)).containsEntry(grandson, "FAMILY_HEAD");
+    }
+
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
 
     @Test

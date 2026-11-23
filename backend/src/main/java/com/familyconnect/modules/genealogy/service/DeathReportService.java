@@ -55,12 +55,14 @@ public class DeathReportService {
     private final UserDirectory userDirectory;
     private final CommunityNotificationPort notifications;
     private final AuditLogger auditLogger;
+    private final LineageService lineageService;
     private final Clock clock;
 
     public DeathReportService(NamedParameterJdbcTemplate jdbc, PersonRepository personRepository, BranchRepository branchRepository,
                               PersonService personService, GenealogyAccess access, MembershipQuery membershipQuery,
                               UserDirectory userDirectory, CommunityNotificationPort notifications, AuditLogger auditLogger,
-                              Clock clock) {
+                              LineageService lineageService, Clock clock) {
+        this.lineageService = lineageService;
         this.jdbc = jdbc;
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
@@ -180,7 +182,11 @@ public class DeathReportService {
                 || confirmers(person, report.createdBy()).contains(viewer.userId());
     }
 
+    /** Trưởng họ/chi theo tài khoản (BRANCH_ADMIN) hoặc theo dòng (BR-GEN-25, không cần tài khoản). */
     private boolean isHead(Person person) {
+        if (lineageService.lineageHeads(person.getFamilyId()).containsKey(person.getId())) {
+            return true;
+        }
         if (person.getUserId() == null) {
             return false;
         }
@@ -207,38 +213,14 @@ public class DeathReportService {
               AND a.deleted_at IS NULL AND b.deleted_at IS NULL AND s.deleted_at IS NULL
               AND s.user_id IS NOT NULL AND NOT s.is_deceased
             """;
-    /** Con trai ruột, lớn tuổi trước; kèm còn sống và có tài khoản. */
-    private static final String SONS = """
-            SELECT c.id, (c.user_id IS NOT NULL AND NOT c.is_deceased) AS eligible FROM parent_child pc JOIN person c ON c.id = pc.child_id
-            WHERE pc.parent_id = :person AND pc.kind = 'BIOLOGICAL' AND pc.deleted_at IS NULL
-              AND c.deleted_at IS NULL AND c.gender = 'MALE'
-            ORDER BY COALESCE(c.birth_date, make_date(c.birth_year::int, 1, 1)) NULLS LAST, c.full_name
-            """;
 
     private List<UUID> accounts(String sql, UUID personId) {
         return jdbc.queryForList(sql, Map.of("person", personId), UUID.class);
     }
 
-    private record Son(UUID id, boolean eligible) {
-    }
-
-    private List<Son> sons(UUID personId) {
-        return jdbc.query(SONS, Map.of("person", personId),
-                (rs, i) -> new Son(rs.getObject("id", UUID.class), rs.getBoolean("eligible")));
-    }
-
-    /** Con trai ruột lớn nhất còn sống có tài khoản; không có thì cháu đích tôn (con trai lớn nhất hợp lệ của con trai trưởng). */
+    /** BR-GEN-25 (SCRUM-142): con trưởng, đích tôn thừa trọng, em trai kế; không đòi tài khoản. */
     UUID successor(UUID personId) {
-        List<Son> sons = sons(personId);
-        for (Son son : sons) {
-            if (son.eligible()) {
-                return son.id();
-            }
-        }
-        if (sons.isEmpty()) {
-            return null;
-        }
-        return sons(sons.get(0).id()).stream().filter(Son::eligible).map(Son::id).findFirst().orElse(null);
+        return lineageService.heirOf(personId);
     }
 
     // ---- truy cập bảng ----
@@ -280,10 +262,11 @@ public class DeathReportService {
 
     private DeathReportData toData(Report r, Person person, Viewer viewer) {
         String reporter = userDirectory.getFullNames(List.of(r.createdBy())).get(r.createdBy());
-        String successorName = r.successorPersonId() == null ? null
-                : personRepository.findByIdAndDeletedAtIsNull(r.successorPersonId()).map(Person::getFullName).orElse(null);
+        Person successor = r.successorPersonId() == null ? null
+                : personRepository.findByIdAndDeletedAtIsNull(r.successorPersonId()).orElse(null);
         return new DeathReportData(r.id(), r.personId(), person.getFullName(), reporter, r.deathDate(),
                 r.deathTime() == null ? null : r.deathTime().format(HH_MM), r.burialPlace(), r.status(), r.expiresAt(),
-                canConfirm(viewer, person, r), r.successorPersonId(), successorName);
+                canConfirm(viewer, person, r), r.successorPersonId(), successor == null ? null : successor.getFullName(),
+                successor != null && successor.getUserId() != null);
     }
 }
