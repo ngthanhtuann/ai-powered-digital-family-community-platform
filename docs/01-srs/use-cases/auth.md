@@ -375,6 +375,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | BR-AUTH-23 | **Khóa tài khoản người đã mất** (23/11/2026, SCRUM-134). Khi module Gia phả đánh dấu đã mất một hồ sơ có gắn tài khoản (BR-GEN-21), gọi `MembershipCommand.lockDeceasedAccount`: khóa tài khoản với lý do cố định "Đã mất", thu hồi mọi refresh token, ghi `USER_LOCKED`. Khôi phục khi báo nhầm gọi `unlockDeceasedAccount`: chỉ mở khóa khi lý do khóa đúng là "Đã mất" (tài khoản bị quản trị khóa vì lý do khác giữ nguyên), ghi `USER_UNLOCKED`. Không áp dụng cho `SYSTEM_ADMIN`. |
 | BR-AUTH-24 | **Mã đặt lại mật khẩu** (23/11/2026, SCRUM-139, UC-AUTH-15). Chỉ trưởng họ (cho tài khoản đã xác minh cùng dòng họ, trừ trưởng họ khác và quản trị) và `SYSTEM_ADMIN` (mọi tài khoản trừ chính mình) cấp được. Mã 8 ký tự, ngẫu nhiên bằng `SecureRandom`, lưu BCrypt, hết hạn 30 phút, dùng một lần; mỗi tài khoản chỉ có một mã còn hiệu lực. Sai 5 lần thì hủy. Không ghi mã vào nhật ký, log hay phản hồi nào khác ngoài phản hồi cấp mã. |
 | BR-AUTH-25 | **Thay tài khoản** (23/11/2026, SCRUM-140, BR-GEN-23). Module Gia phả gọi `MembershipCommand.replaceAccount(old, new, actor, reason)` trong cùng giao dịch: (1) tài khoản mới nhận vai trò và chi quản lý của tài khoản cũ nếu tài khoản cũ là `BRANCH_ADMIN`; (2) bản ghi `APPROVED` của tài khoản cũ chuyển `REMOVED`; (3) khóa tài khoản cũ với lý do "Thay tài khoản: <lý do>", thu hồi mọi refresh token; (4) gọi mọi bản cài đặt `AccountContentTransfer` để chuyển quyền sở hữu nội dung công khai; (5) ghi `ACCOUNT_REPLACED`. **Không chuyển** lịch sử chat AI, thông báo cá nhân, nhật ký kiểm toán. Không xóa tài khoản cũ. |
+| BR-AUTH-26 | **Rời dòng họ sau ly hôn, nhận quyền trưởng chi theo hồ sơ** (24/11/2026, SCRUM-145, 146). `MembershipCommand.removeFromFamily` (Gia phả gọi khi người ngoài tộc có tài khoản đã ly hôn hết, BR-GEN-28): bản ghi `APPROVED` chuyển `REMOVED`, thu hồi refresh token, ghi `MEMBERSHIP_REMOVED`; không áp dụng cho trưởng họ. `MembershipCommand.grantBranchHead` (Gia phả gọi khi chọn tay trưởng chi có tài khoản, BR-GEN-29): bản ghi `APPROVED` cùng dòng họ nhận `BRANCH_ADMIN` của chi đó (trưởng họ giữ nguyên). Khi duyệt yêu cầu tham gia có gắn hồ sơ (UC-AUTH-07), nếu `GenealogyPort.headedBranchOf(personId)` có giá trị thì tài khoản nhận `BRANCH_ADMIN` của chi đó. |
 
 ---
 
@@ -658,6 +659,8 @@ public interface MembershipCommand {
     void lockDeceasedAccount(UUID userId, UUID actorId);       // Gia phả gọi khi báo mất (BR-AUTH-23)
     void unlockDeceasedAccount(UUID userId, UUID actorId);     // Gia phả gọi khi khôi phục do báo nhầm (BR-AUTH-23)
     void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason);   // Gia phả gọi khi thay tài khoản (BR-AUTH-25)
+    void removeFromFamily(UUID userId, UUID actorId, String reason);   // Gia phả gọi khi vợ/chồng ngoài tộc đã ly hôn (BR-AUTH-26)
+    void grantBranchHead(UUID userId, UUID familyId, UUID branchId, UUID actorId);   // Gia phả gọi khi chọn tay trưởng chi (BR-AUTH-26)
 }
 
 public interface UserDirectory {
@@ -688,6 +691,8 @@ public interface GenealogyPort {                               // module Gia ph�
     Optional<UUID> findBranchFamily(UUID branchId);                // gia đình chứa chi (mã chi khi xin tham gia, BR-AUTH-09)
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);   // chính nó hoặc chi con
     void unlinkAccount(UUID userId);                                                // đặt person.user_id = NULL ở hồ sơ đang gắn tài khoản này (nếu có)
+    Optional<UUID> headedBranchOf(UUID personId);                                    // chi mà hồ sơ được chọn tay làm trưởng chi (BR-AUTH-26)
+    Set<UUID> hiddenAccountIds(UUID familyId);                                       // tài khoản của vợ/chồng ngoài tộc đã ly hôn (BR-GEN-28)
     void linkAccount(UUID familyId, UUID personId, UUID userId);                    // đặt person.user_id; person phải thuộc familyId (BR-AUTH-11); ném lỗi GEN_xxx nếu không hợp lệ
 }
 

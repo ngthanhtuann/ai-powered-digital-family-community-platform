@@ -63,6 +63,11 @@ public class Branch {
     public void setName(String name) { this.name = name; }
     public UUID getParentBranchId() { return parentBranchId; }
     public void setParentBranchId(UUID parentBranchId) { this.parentBranchId = parentBranchId; }
+    @jakarta.persistence.Column(name = "head_person_id")
+    private UUID headPersonId;
+
+    public UUID getHeadPersonId() { return headPersonId; }
+    public void setHeadPersonId(UUID headPersonId) { this.headPersonId = headPersonId; }
     public UUID getOriginPersonId() { return originPersonId; }
     public void setOriginPersonId(UUID originPersonId) { this.originPersonId = originPersonId; }
     public String getDescription() { return description; }

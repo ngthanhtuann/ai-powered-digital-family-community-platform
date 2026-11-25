@@ -200,7 +200,7 @@ public class CommunityService implements SummarySource {
         List<UUID> visible = allBranches ? List.of() : store.postBranchIds(family).stream()
             .filter(branch -> platform.canRead(user,family,branch)).toList();
         Page<Post> found = store.posts(family,allBranches,visible,branchId,type,authorId,
-                platform.descendantsAudienceAuthors(user),page,size,order);
+                platform.descendantsAudienceAuthors(user),platform.hiddenAuthors(user,family),page,size,order);
         return PageSuccess.of(views(found.items(),user),
                               page,size,found.total());
     }

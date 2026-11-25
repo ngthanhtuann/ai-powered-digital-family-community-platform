@@ -128,6 +128,15 @@ public class ModulePlatformAdapter implements CommunityPlatformPort {
     }
 
     @Override
+    public java.util.Set<UUID> hiddenAuthors(Actor actor, UUID familyId) {
+        if (actor.role() == Role.SYSTEM_ADMIN || actor.role() == Role.BRANCH_ADMIN) {
+            return java.util.Set.of();
+        }
+        GenealogyPort port = genealogyPort.getIfAvailable();
+        return port == null ? java.util.Set.of() : port.hiddenAccountIds(familyId);
+    }
+
+    @Override
     public boolean hasGenealogyProfile(UUID userId) {
         GenealogyPort port = genealogyPort.getIfAvailable();
         return port != null && !port.personsByUserIds(java.util.Set.of(userId)).isEmpty();

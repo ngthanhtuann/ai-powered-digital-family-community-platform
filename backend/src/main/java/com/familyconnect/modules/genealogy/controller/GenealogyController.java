@@ -39,12 +39,15 @@ public class GenealogyController {
     private final FamilyService familyService;
     private final BranchService branchService;
     private final PersonService personService;
+    private final com.familyconnect.modules.genealogy.service.BranchHeadService branchHeadService;
     private final com.familyconnect.modules.genealogy.service.RelativeService relativeService;
     private final com.familyconnect.modules.genealogy.service.DeathReportService deathReportService;
 
     public GenealogyController(FamilyService familyService, BranchService branchService, PersonService personService,
                                com.familyconnect.modules.genealogy.service.DeathReportService deathReportService,
-                               com.familyconnect.modules.genealogy.service.RelativeService relativeService) {
+                               com.familyconnect.modules.genealogy.service.RelativeService relativeService,
+                               com.familyconnect.modules.genealogy.service.BranchHeadService branchHeadService) {
+        this.branchHeadService = branchHeadService;
         this.relativeService = relativeService;
         this.deathReportService = deathReportService;
         this.familyService = familyService;
@@ -93,6 +96,19 @@ public class GenealogyController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BranchData> createBranch(@PathVariable UUID familyId, @Valid @RequestBody BranchInput input) {
         return ApiResponse.ok(branchService.create(familyId, input));
+    }
+
+    @GetMapping("/families/{familyId}/branch-heads")
+    public ApiResponse<java.util.List<com.familyconnect.modules.genealogy.dto.GenealogyResponses.BranchHeadData>> branchHeads(
+            @PathVariable UUID familyId) {
+        return ApiResponse.ok(branchHeadService.heads(familyId));
+    }
+
+    @PutMapping("/branches/{branchId}/head")
+    public ApiResponse<com.familyconnect.modules.genealogy.dto.GenealogyResponses.BranchHeadData> setBranchHead(
+            @PathVariable UUID branchId,
+            @RequestBody com.familyconnect.modules.genealogy.dto.GenealogyRequests.BranchHeadInput input) {
+        return ApiResponse.ok(branchHeadService.setHead(branchId, input.personId()));
     }
 
     @PutMapping("/branches/{branchId}")

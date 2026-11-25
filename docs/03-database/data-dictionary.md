@@ -212,6 +212,7 @@ Người sở hữu: **TV2 Trí**
 | name | VARCHAR(150) | NOT NULL | Tên chi |
 | parent_branch_id | UUID | NULL, FK | Chi cha → `branch.id` (FK, cùng module) |
 | origin_person_id | UUID | NULL, FK | Người tổ của chi → `person.id` (FK, cùng module) |
+| head_person_id | UUID | NULL, FK | Trưởng chi chọn tay → `person.id` (SCRUM-146); NULL thì theo dòng |
 | description | TEXT |  | Mô tả |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |

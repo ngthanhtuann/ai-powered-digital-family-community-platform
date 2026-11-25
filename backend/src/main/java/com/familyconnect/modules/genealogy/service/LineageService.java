@@ -95,14 +95,26 @@ public class LineageService {
         return Boolean.TRUE.equals(rows.get(0).get("is_deceased")) ? lineHeir(originId, 0) : originId;
     }
 
+    /** BR-GEN-29: trưởng chi chọn tay nếu có, không thì người giữ dòng của người lập chi. */
+    UUID branchHead(UUID manualHead, UUID origin) {
+        if (manualHead != null) {
+            return manualHead;
+        }
+        return origin == null ? null : holderOf(origin);
+    }
+
+    /** Người giữ dòng của người tổ (trưởng họ theo dòng); rỗng nếu không xác định được. */
+    java.util.Optional<UUID> familyHolder(UUID familyId) {
+        return treeRepository.findTopAncestor(familyId).map(this::holderOf);
+    }
+
     /** person id -> FAMILY_HEAD (giữ dòng người tổ) hoặc BRANCH_HEAD (giữ dòng người lập chi). */
     public Map<UUID, String> lineageHeads(UUID familyId) {
         Map<UUID, String> heads = new HashMap<>();
-        List<UUID> origins = jdbc.queryForList(
-                "SELECT origin_person_id FROM branch WHERE family_id = :family AND deleted_at IS NULL AND origin_person_id IS NOT NULL",
-                Map.of("family", familyId), UUID.class);
-        for (UUID origin : origins) {
-            UUID holder = holderOf(origin);
+        for (Map<String, Object> branch : jdbc.queryForList(
+                "SELECT origin_person_id, head_person_id FROM branch WHERE family_id = :family AND deleted_at IS NULL",
+                Map.of("family", familyId))) {
+            UUID holder = branchHead((UUID) branch.get("head_person_id"), (UUID) branch.get("origin_person_id"));
             if (holder != null) {
                 heads.put(holder, BRANCH_HEAD);
             }

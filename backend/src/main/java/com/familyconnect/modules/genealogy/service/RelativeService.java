@@ -27,10 +27,20 @@ public class RelativeService {
     private final PersonService personService;
     private final RelationshipService relationshipService;
 
-    public RelativeService(PersonRepository personRepository, PersonService personService, RelationshipService relationshipService) {
+    private final BranchService branchService;
+    private final com.familyconnect.modules.genealogy.repository.BranchRepository branchRepository;
+    private final com.familyconnect.modules.genealogy.repository.FamilyTreeRepository treeRepository;
+
+    public RelativeService(PersonRepository personRepository, PersonService personService, RelationshipService relationshipService,
+                           BranchService branchService,
+                           com.familyconnect.modules.genealogy.repository.BranchRepository branchRepository,
+                           com.familyconnect.modules.genealogy.repository.FamilyTreeRepository treeRepository) {
         this.personRepository = personRepository;
         this.personService = personService;
         this.relationshipService = relationshipService;
+        this.branchService = branchService;
+        this.branchRepository = branchRepository;
+        this.treeRepository = treeRepository;
     }
 
     @Transactional
@@ -45,13 +55,52 @@ public class RelativeService {
             case PARENT -> roleOf(person.gender().name(), input.parentRole());
             case SPOUSE -> null;
         };
+        if (input.relation() == com.familyconnect.modules.genealogy.dto.GenealogyRequests.RelativeKind.SPOUSE
+                && Boolean.TRUE.equals(input.divorcePrevious())) {
+            relationshipService.divorceCurrent(anchor.getId(), input.startDate()); // BR-GEN-28
+        }
+        boolean found = input.relation() == com.familyconnect.modules.genealogy.dto.GenealogyRequests.RelativeKind.CHILD
+                && Boolean.TRUE.equals(input.foundBranch());
+        if (found) { // BR-GEN-30: kiểm tra trước khi ghi
+            if (!treeRepository.findTopAncestor(anchor.getFamilyId()).map(anchor.getId()::equals).orElse(false)) {
+                throw ApiException.invalidField("foundBranch", "Chỉ lập chi cho con của người tổ");
+            }
+            if (person.gender() != com.familyconnect.modules.genealogy.dto.GenealogyRequests.Gender.MALE) {
+                throw ApiException.invalidField("foundBranch", "Chi do con trai của người tổ lập");
+            }
+        }
         PersonData created = personService.create(anchor.getFamilyId(), person);
         switch (input.relation()) {
-            case CHILD -> relationshipService.addParent(created.id(), new ParentInput(anchor.getId(), role, kind));
+            case CHILD -> {
+                relationshipService.addParent(created.id(), new ParentInput(anchor.getId(), role, kind));
+                if (input.otherParentId() != null) { // BR-GEN-27: cha/mẹ còn lại, cùng giao dịch
+                    Person other = personRepository.findByIdAndDeletedAtIsNull(input.otherParentId())
+                            .orElseThrow(() -> ApiException.invalidField("otherParentId", "Không tìm thấy cha/mẹ còn lại"));
+                    relationshipService.addParent(created.id(), new ParentInput(other.getId(),
+                            roleOf(other.getGender(), role == ParentRole.FATHER ? ParentRole.MOTHER : ParentRole.FATHER), kind));
+                }
+            }
             case PARENT -> relationshipService.addParent(anchor.getId(), new ParentInput(created.id(), role, kind));
             case SPOUSE -> relationshipService.addMarriage(new MarriageInput(anchor.getId(), created.id(), input.startDate()));
         }
+        if (found) {
+            branchService.create(anchor.getFamilyId(), new com.familyconnect.modules.genealogy.dto.GenealogyRequests.BranchInput(
+                    nextBranchName(anchor.getFamilyId()), null, created.id(), null));
+        }
         return personService.get(created.id());
+    }
+
+    /** "Chi N" với N là số chi gốc hiện có cộng 1; trùng tên thì tăng tiếp. */
+    private String nextBranchName(UUID familyId) {
+        java.util.List<com.familyconnect.modules.genealogy.entity.Branch> branches =
+                branchRepository.findAllByFamilyIdAndDeletedAtIsNullOrderByName(familyId);
+        java.util.Set<String> names = new java.util.HashSet<>();
+        branches.forEach(b -> names.add(b.getName().trim().toLowerCase(java.util.Locale.ROOT)));
+        int n = (int) branches.stream().filter(b -> b.getParentBranchId() == null).count() + 1;
+        while (names.contains("chi " + n)) {
+            n++;
+        }
+        return "Chi " + n;
     }
 
     private static ParentRole roleOf(String gender, ParentRole explicit) {

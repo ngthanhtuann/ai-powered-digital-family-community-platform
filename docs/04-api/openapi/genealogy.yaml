@@ -175,6 +175,7 @@ paths:
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [branches]
       summary: Tạo chi họ (UC-GEN-02)
+      description: Người lập chi (originPersonId) chưa thuộc chi nào thì vào chi mới; sửa chi cũng vậy (BR-GEN-30).
       requestBody:
         required: true
         content:
@@ -201,6 +202,47 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
               example: { success: false, error: { code: GEN_003, message: Chi cha tạo vòng lặp, details: [] } }
 
+  /families/{familyId}/branch-heads:
+    parameters:
+      - $ref: '#/components/parameters/familyId'
+    get:
+      operationId: listBranchHeads
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [branches]
+      summary: Trưởng chi của từng chi (chọn tay hoặc theo dòng, BR-GEN-29)
+      responses:
+        '200':
+          description: Mỗi chi một dòng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BranchHeadListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /branches/{branchId}/head:
+    parameters:
+      - $ref: '#/components/parameters/branchId'
+    put:
+      operationId: setBranchHead
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [branches]
+      summary: Chọn tay trưởng chi, kể cả người chưa có tài khoản (BR-GEN-29)
+      description: Trưởng họ (BRANCH_ADMIN không gán chi) hoặc SYSTEM_ADMIN. personId null thì quay về trưởng chi theo dòng. Người không thuộc dòng họ hoặc đã mất 400 VALID_001.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BranchHeadInput' }
+      responses:
+        '200':
+          description: Trưởng chi sau khi đổi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BranchHeadResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /branches/{branchId}:
     parameters:
       - $ref: '#/components/parameters/branchId'
@@ -684,7 +726,8 @@ paths:
       - $ref: '#/components/parameters/marriageId'
     put:
       operationId: updateMarriage
-      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: "Người quản lý chi của một trong hai người; MEMBER là một trong hai vợ chồng chỉ được chuyển sang DIVORCED (BR-GEN-28). Người ngoài tộc có tài khoản đã ly hôn hết thì rời dòng họ (BR-AUTH-26)."
       tags: [marriages]
       summary: Đổi trạng thái hôn nhân (UC-GEN-05)
       requestBody:
@@ -939,6 +982,31 @@ components:
         data: { type: array, items: { $ref: '#/components/schemas/Branch' } }
         meta: { $ref: '#/components/schemas/Meta' }
 
+    BranchHeadInput:
+      type: object
+      properties:
+        personId: { type: string, format: uuid, nullable: true }
+    BranchHead:
+      type: object
+      properties:
+        branchId: { type: string, format: uuid }
+        branchName: { type: string }
+        parentBranchId: { type: string, format: uuid, nullable: true }
+        headPersonId: { type: string, format: uuid, nullable: true }
+        headPersonName: { type: string, nullable: true }
+        source: { type: string, enum: [MANUAL, LINEAGE], nullable: true }
+        hasAccount: { type: boolean }
+        familyHead: { type: boolean, description: Người này đồng thời là trưởng họ (kiêm) }
+    BranchHeadResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/BranchHead' }
+    BranchHeadListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: array, items: { $ref: '#/components/schemas/BranchHead' } }
     RelativeInput:
       type: object
       required: [relation, person]
@@ -949,6 +1017,9 @@ components:
         kind: { type: string, enum: [BIOLOGICAL, ADOPTED, STEP], nullable: true, description: CHILD/PARENT; mặc định BIOLOGICAL }
         parentRole: { type: string, enum: [FATHER, MOTHER], nullable: true, description: Chỉ cần khi người làm cha/mẹ có giới tính OTHER }
         startDate: { type: string, format: date, nullable: true, description: SPOUSE; ngày kết hôn }
+        otherParentId: { type: string, format: uuid, nullable: true, description: "CHILD: cha/mẹ còn lại (thường là vợ/chồng của {personId}), nối trong cùng giao dịch (BR-GEN-27)" }
+        divorcePrevious: { type: boolean, default: false, description: "SPOUSE: chuyển các hôn nhân MARRIED hiện có của {personId} sang DIVORCED trước khi thêm vợ/chồng mới (BR-GEN-28)" }
+        foundBranch: { type: boolean, default: false, description: "CHILD, {personId} là người tổ, người con là nam: tạo chi gốc 'Chi N' do người con lập, cùng giao dịch (BR-GEN-30)" }
     PersonInput:
       type: object
       required: [fullName, gender]
@@ -1124,6 +1195,8 @@ components:
         generation: { type: integer, nullable: true, description: "Thế hệ theo genealogy.md mục 6.8 (đời 1 là tổ). Null với trẻ dưới 16 tuổi khi người xem là MEMBER" }
         avatarMediaId: { type: string, format: uuid, nullable: true, description: "Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)" }
         deathYear: { type: integer, nullable: true, description: "Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất" }
+        divorced: { type: boolean, description: "Vợ/chồng ngoài tộc đã ly hôn (BR-GEN-28): khung mờ, nhãn Đã ly hôn" }
+        locked: { type: boolean, description: "Người xem không phải trưởng họ/chi, quản trị: không mở được hồ sơ, thông tin đã ẩn (BR-GEN-28)" }
         leaderRole: { type: string, enum: [FAMILY_HEAD, BRANCH_HEAD], nullable: true, description: "Người còn sống là trưởng họ hoặc trưởng chi: theo vai trò tài khoản (BRANCH_ADMIN không gán chi là trưởng họ) hoặc theo dòng (BR-GEN-25, không cần tài khoản); để hiện huy hiệu trên cây (SCRUM-136, 142). Anh em trong mảng nodes xếp theo ngày sinh." }
     TreeEdge:
       type: object

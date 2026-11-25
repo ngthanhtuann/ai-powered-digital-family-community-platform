@@ -48,4 +48,9 @@ public interface BranchRepository extends JpaRepository<Branch, UUID> {
             SELECT id FROM descendants
             """, nativeQuery = true)
     List<UUID> findBranchAndDescendants(@Param("familyId") UUID familyId, @Param("branchId") UUID branchId);
+
+    /** BR-GEN-29: chi mà hồ sơ được chọn tay làm trưởng chi. */
+    java.util.Optional<com.familyconnect.modules.genealogy.entity.Branch> findFirstByHeadPersonIdAndDeletedAtIsNull(UUID personId);
+
+    java.util.List<com.familyconnect.modules.genealogy.entity.Branch> findAllByFamilyIdAndDeletedAtIsNullOrderByName(UUID familyId);
 }

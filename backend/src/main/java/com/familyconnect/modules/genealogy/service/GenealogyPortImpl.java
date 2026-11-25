@@ -68,6 +68,22 @@ public class GenealogyPortImpl implements GenealogyPort {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Set<UUID> hiddenAccountIds(UUID familyId) {
+        java.util.List<UUID> ids = personRepository.findDivorcedOutsiders(familyId);
+        java.util.Set<UUID> accounts = new java.util.HashSet<>();
+        personRepository.findAllById(ids).forEach(p -> { if (p.getUserId() != null) accounts.add(p.getUserId()); });
+        return accounts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<UUID> headedBranchOf(UUID personId) {
+        return branchRepository.findFirstByHeadPersonIdAndDeletedAtIsNull(personId)
+                .map(com.familyconnect.modules.genealogy.entity.Branch::getId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.Map<UUID, PersonCard> personsByUserIds(java.util.Collection<UUID> userIds) {
         java.util.Map<UUID, PersonCard> cards = new java.util.HashMap<>();
         personRepository.findAllByUserIdInAndDeletedAtIsNull(userIds)

@@ -81,8 +81,14 @@ function PersonNode({ data }: NodeProps<PersonFlowNode>) {
       style={{ width: PERSON_NODE_WIDTH, height: PERSON_NODE_HEIGHT }}
       className={`relative flex flex-col items-center justify-center gap-1 rounded-card border-4 px-2 text-center shadow-card ${gender.border} ${ring} ${
         person.isDeceased ? 'border-dashed' : ''
-      } ${isMe ? 'bg-info-soft shadow-overlay' : person.isDeceased ? 'bg-surface-muted' : 'bg-surface'} ${onPath === false ? 'opacity-40' : ''}`}
+      } ${isMe ? 'bg-info-soft shadow-overlay' : person.isDeceased ? 'bg-surface-muted' : 'bg-surface'} ${
+        onPath === false || person.divorced ? 'opacity-40' : ''}`}
     >
+      {person.divorced && (
+        <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-border-strong px-2 text-caption font-semibold text-surface">
+          Đã ly hôn
+        </span>
+      )}
       {person.isDeceased && (
         <span className="absolute -top-3 left-2 rounded-full bg-text-secondary px-2 text-caption font-semibold text-surface">
           Đã mất
@@ -103,7 +109,10 @@ function PersonNode({ data }: NodeProps<PersonFlowNode>) {
         type="button"
         onClick={() => onSelect(person.id ?? '')}
         aria-pressed={selected}
-        className="nodrag flex max-w-full items-center gap-2 rounded-control text-left hover:bg-surface-muted"
+        // BR-GEN-28: hồ sơ đã ẩn sau ly hôn thì thành viên không mở được.
+        disabled={Boolean(person.locked)}
+        title={person.locked ? 'Hồ sơ đã được ẩn sau ly hôn' : undefined}
+        className="nodrag flex max-w-full items-center gap-2 rounded-control text-left hover:bg-surface-muted disabled:cursor-not-allowed"
       >
         <Avatar mediaId={person.avatarMediaId} name={name} />
         <span className="max-w-[112px] truncate text-label text-text-primary">{name}</span>

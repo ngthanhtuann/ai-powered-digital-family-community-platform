@@ -277,6 +277,9 @@ export default function FamilyTreePage() {
           <li className="flex items-center gap-1.5">
             <span aria-hidden="true" className="h-4 w-6 rounded-sm border-4 border-dashed border-border-strong bg-surface-muted" />Đã mất (viền nét đứt)
           </li>
+          <li className="flex items-center gap-1.5">
+            <span className="rounded-full bg-border-strong px-2 font-semibold text-surface">Đã ly hôn</span>khung mờ
+          </li>
           <li><span className="rounded-full bg-secondary px-2 font-semibold text-primary">Trưởng họ</span></li>
           <li><span className="rounded-full bg-primary px-2 font-semibold text-cream-on-dark">Trưởng chi</span></li>
           <li className="flex items-center gap-1.5"><span className="rounded-full bg-primary px-2 font-semibold text-cream-on-dark">Bạn</span>hồ sơ của bạn</li>
@@ -323,6 +326,9 @@ export default function FamilyTreePage() {
               familyId={familyId}
               personId={selected}
               people={graph.nodes}
+              edges={graph.edges}
+              myPersonId={myPersonId}
+              topAncestorId={first.data?.rootId}
               canManage={access.isAdmin}
               onRelation={onRelation}
               onClose={() => { setSelected(null); setRelation(null); }}

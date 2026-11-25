@@ -119,6 +119,20 @@ public interface PersonRepository extends JpaRepository<Person, UUID>, Directory
     int reviveMarriages(@Param("personId") UUID personId, @Param("deathDate") LocalDate deathDate,
                         @Param("actor") UUID actor);
 
+    /**
+     * BR-GEN-28: vợ/chồng ngoài tộc đã ly hôn: không có cha mẹ trên cây, không lập chi, có hôn nhân và mọi hôn nhân đều DIVORCED.
+     */
+    @Query(value = """
+            SELECT p.id FROM person p
+            WHERE p.family_id = :familyId AND p.deleted_at IS NULL
+              AND NOT EXISTS (SELECT 1 FROM parent_child pc WHERE pc.child_id = p.id AND pc.deleted_at IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM branch b WHERE b.origin_person_id = p.id AND b.deleted_at IS NULL)
+              AND EXISTS (SELECT 1 FROM marriage m WHERE (m.person1_id = p.id OR m.person2_id = p.id) AND m.deleted_at IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM marriage m WHERE (m.person1_id = p.id OR m.person2_id = p.id)
+                              AND m.deleted_at IS NULL AND m.status <> 'DIVORCED')
+            """, nativeQuery = true)
+    List<UUID> findDivorcedOutsiders(@Param("familyId") UUID familyId);
+
     /** BR-GEN-24: tài khoản userId gắn với một con ruột (BIOLOGICAL) của parentId. */
     @Query(value = """
             SELECT EXISTS (SELECT 1 FROM parent_child pc JOIN person c ON c.id = pc.child_id

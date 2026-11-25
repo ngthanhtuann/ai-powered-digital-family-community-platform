@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { TextField } from '@/components/ui/TextField';
 import { Avatar } from '@/components/genealogy/PersonNode';
 import { RelationModal, errorText, selectClass, yearOf, type RelationMode } from '@/components/genealogy/RelationModal';
-import { genealogyApi, type DeathInput, type Person, type Relationship, type TreeNode } from '@/services/genealogy';
+import { genealogyApi, type DeathInput, type Person, type Relationship, type TreeEdge, type TreeNode } from '@/services/genealogy';
 import { aiApi } from '@/services/ai';
 
 const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHER: 'Khác' };
@@ -18,10 +18,17 @@ const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHE
  * cho người quản lý, và tra "A là gì của B" để tô sáng đường quan hệ (UC-GEN-07, gọi UC-GEN-08).
  * SCRUM-117: chọn người để tra ngay trong danh sách người trên cây (cây đã mở từ người tổ), bỏ ô tìm riêng.
  */
-export function PersonPanel({ familyId, personId, people, canManage, onRelation, onClose }: {
+/** Vợ/chồng của một người theo cạnh MARRIAGE trên cây (SCRUM-144, 145). */
+export type SpouseLink = { marriageId: string; id: string; name: string; status: string; deceased: boolean };
+
+export function PersonPanel({ familyId, personId, people, edges = [], myPersonId, topAncestorId, canManage, onRelation, onClose }: {
   familyId: string;
   personId: string;
   people: TreeNode[];
+  edges?: TreeEdge[];
+  myPersonId?: string;
+  /** Người tổ (gốc cây): thêm con trai cho người tổ thì gợi ý lập chi mới (BR-GEN-30). */
+  topAncestorId?: string;
   canManage: boolean;
   onRelation: (relation: Relationship | null) => void;
   onClose: () => void;
@@ -30,6 +37,18 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
   const [mode, setMode] = useState<RelationMode | null>(null);
   const [deathOpen, setDeathOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [divorcing, setDivorcing] = useState<SpouseLink | null>(null);
+  const byId = new Map(people.map((n) => [n.id ?? '', n]));
+  // BR-GEN-27: đã có cả cha và mẹ thì ẩn "Thêm cha/mẹ".
+  const parentGenders = edges.filter((e) => e.type === 'PARENT_CHILD' && e.target === personId)
+    .map((e) => byId.get(e.source ?? '')?.gender);
+  const hasBothParents = parentGenders.includes('MALE') && parentGenders.includes('FEMALE');
+  const spouses: SpouseLink[] = edges.filter((e) => e.type === 'MARRIAGE' && (e.source === personId || e.target === personId))
+    .map((e) => {
+      const other = byId.get((e.source === personId ? e.target : e.source) ?? '');
+      return { marriageId: e.id ?? '', id: other?.id ?? '', name: other?.fullName ?? '', status: e.status ?? '', deceased: Boolean(other?.isDeceased) };
+    })
+    .filter((s) => s.id);
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [otherId, setOtherId] = useState('');
   const explanation = useMutation({ mutationFn: () => aiApi.explainRelationship(personId, otherId) });
@@ -73,9 +92,10 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
           <div className="grid gap-2">
             <Button variant="secondary" aria-expanded={adding} onClick={() => setAdding(!adding)}>Thêm người thân</Button>
             {adding && (
-              <div className="grid grid-cols-3 gap-2" role="group" aria-label={`Thêm người thân cho ${p.fullName}`}>
+              <div className={`grid gap-2 ${hasBothParents ? 'grid-cols-2' : 'grid-cols-3'}`} role="group"
+                aria-label={`Thêm người thân cho ${p.fullName}`}>
                 <Button variant="secondary" onClick={() => setMode('child')}>Con</Button>
-                <Button variant="secondary" onClick={() => setMode('parent')}>Cha/mẹ</Button>
+                {!hasBothParents && <Button variant="secondary" onClick={() => setMode('parent')}>Cha/mẹ</Button>}
                 <Button variant="secondary" onClick={() => setMode('spouse')}>Vợ/chồng</Button>
               </div>
             )}
@@ -119,7 +139,23 @@ export function PersonPanel({ familyId, personId, people, canManage, onRelation,
           )}
         </form>
       </>}
-      {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} onClose={() => setMode(null)} />}
+      {spouses.length > 0 && p && (
+        <div className="grid gap-2 border-t border-border pt-4">
+          <p className="text-label">Hôn nhân</p>
+          {spouses.map((s) => (
+            <div key={s.marriageId} className="flex flex-wrap items-center justify-between gap-2 text-body">
+              <span>{s.name} · {s.status === 'MARRIED' ? 'đang kết hôn' : s.status === 'DIVORCED' ? 'đã ly hôn' : 'góa'}</span>
+              {/* BR-GEN-28: trưởng họ, trưởng chi hoặc chính hai vợ chồng ghi ly hôn. */}
+              {s.status === 'MARRIED' && !s.deceased && (canManage || personId === myPersonId || s.id === myPersonId) && (
+                <Button fullWidth={false} variant="secondary" onClick={() => setDivorcing(s)}>Ghi ly hôn</Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} spouses={spouses}
+        canFoundBranch={personId === topAncestorId} onClose={() => setMode(null)} />}
+      {divorcing && p && <DivorceModal person={p} spouse={divorcing} onClose={() => setDivorcing(null)} />}
       {deathOpen && p && <DeathModal person={p} onClose={() => setDeathOpen(false)} />}
       {replaceOpen && p && <ReplaceAccountModal person={p} onClose={() => setReplaceOpen(false)} />}
     </aside>
@@ -218,6 +254,38 @@ function ReplaceAccountModal({ person, onClose }: { person: Person; onClose: () 
           placeholder="Ví dụ: mất điện thoại và email cũ" />
         {save.isError && <p role="alert" className="text-body text-error">{errorText(save.error)}</p>}
         <Button type="submit" loading={save.isPending} disabled={!newUserId || !reason.trim()}>Thay tài khoản</Button>
+      </form>
+    </Modal>
+  );
+}
+
+/** BR-GEN-28 (SCRUM-145): ghi đã ly hôn; vợ/chồng ngoài tộc sẽ mờ trên cây và bị ẩn với thành viên. */
+function DivorceModal({ person, spouse, onClose }: { person: Person; spouse: SpouseLink; onClose: () => void }) {
+  const cache = useQueryClient();
+  const today = new Date().toLocaleDateString('sv-SE');
+  const [endDate, setEndDate] = useState(today);
+  const [sure, setSure] = useState(false);
+  const save = useMutation({
+    mutationFn: () => genealogyApi.updateMarriage(spouse.marriageId, { status: 'DIVORCED', endDate }),
+    onSuccess: async () => {
+      await Promise.all(['person', 'tree', 'members', 'posts'].map((key) => cache.invalidateQueries({ queryKey: [key] })));
+      onClose();
+    },
+  });
+  return (
+    <Modal open title={`Ghi ly hôn: ${person.fullName} và ${spouse.name}`} onClose={onClose}>
+      <form className="grid gap-4 p-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <p className="text-body text-text-secondary">
+          Người ngoài tộc sau khi ly hôn sẽ mờ trên cây, thành viên không mở được hồ sơ và bài viết của họ; tài khoản của họ (nếu có)
+          rời dòng họ. Trưởng họ, trưởng chi vẫn xem được.
+        </p>
+        <TextField label="Ngày ly hôn" type="date" required max={today} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        <label className="flex min-h-11 items-center gap-2 rounded-control bg-warning-soft p-3 text-body">
+          <input type="checkbox" className="h-5 w-5" checked={sure} onChange={(e) => setSure(e.target.checked)} />
+          Tôi xác nhận hai người đã ly hôn
+        </label>
+        {save.isError && <p role="alert" className="text-body text-error">{errorText(save.error)}</p>}
+        <Button type="submit" loading={save.isPending} disabled={!sure || !endDate}>Ghi ly hôn</Button>
       </form>
     </Modal>
   );

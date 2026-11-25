@@ -114,27 +114,27 @@ class CommunityServiceTest {
         when(store.postBranchIds(familyA)).thenReturn(List.of(branchId,otherBranch));
         when(platform.canRead(admin,familyA,branchId)).thenReturn(true);
         when(platform.canRead(admin,familyA,otherBranch)).thenReturn(false);
-        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),any(),
+        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),any(),any(),
                          eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
         service.posts(null,null,null,null,0,20,"createdAt,desc");
-        verify(store).posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),any(),eq(0),eq(20),anyString());
+        verify(store).posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),isNull(),isNull(),any(),any(),eq(0),eq(20),anyString());
     }
 
     @Test void authorFilterIsPassedToStoreForProfilePage() {
         UUID author = UUID.randomUUID();
         when(platform.requireAuthenticatedActor())
             .thenReturn(new Actor(memberId,familyA,null,Role.BRANCH_ADMIN,true));
-        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),any(),eq(0),eq(10),anyString()))
+        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),any(),any(),eq(0),eq(10),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
         service.posts(null,null,null,author,0,10,"createdAt,desc");
-        verify(store).posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),any(),eq(0),eq(10),anyString());
+        verify(store).posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),eq(author),any(),any(),eq(0),eq(10),anyString());
     }
 
     @Test void wholeFamilyAdminSkipsBranchFilter() {
         when(platform.requireAuthenticatedActor())
             .thenReturn(new Actor(memberId,familyA,null,Role.BRANCH_ADMIN,true));
-        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),isNull(),any(),eq(0),eq(20),anyString()))
+        when(store.posts(eq(familyA),eq(true),eq(List.of()),isNull(),isNull(),isNull(),any(),any(),eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
         service.posts(null,null,null,null,0,20,"createdAt,desc");
         verify(store,never()).postBranchIds(any());
@@ -144,7 +144,7 @@ class CommunityServiceTest {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         when(store.postBranchIds(familyA)).thenReturn(List.of(branchId));
         when(platform.canRead(any(),eq(familyA),eq(branchId))).thenReturn(true);
-        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),eq(PostType.NEWS),isNull(),any(),
+        when(store.posts(eq(familyA),eq(false),eq(List.of(branchId)),isNull(),eq(PostType.NEWS),isNull(),any(),any(),
                          eq(0),eq(20),eq("created_at DESC, id DESC")))
             .thenReturn(new CommunityStore.Page<>(List.of(),0));
         var response = service.posts(null,null,PostType.NEWS,null,0,20,"createdAt,desc");
@@ -218,7 +218,7 @@ class CommunityServiceTest {
         when(platform.requireAuthenticatedActor()).thenReturn(member());
         Post mine = new Post(UUID.randomUUID(),familyA,null,"Của tôi",PostType.POST,memberId,now,now);
         Post other = new Post(postId,familyA,null,"Của người khác",PostType.POST,authorId,now,now);
-        when(store.posts(eq(familyA),eq(false),eq(List.of()),isNull(),isNull(),isNull(),any(),eq(0),eq(20),anyString()))
+        when(store.posts(eq(familyA),eq(false),eq(List.of()),isNull(),isNull(),isNull(),any(),any(),eq(0),eq(20),anyString()))
             .thenReturn(new CommunityStore.Page<>(List.of(mine,other),2));
         when(store.reactionCounts(anyList())).thenReturn(Map.of(
             mine.id(),Map.of(ReactionType.LIKE,1L), other.id(),Map.of(ReactionType.LIKE,0L)));
