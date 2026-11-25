@@ -175,6 +175,7 @@ paths:
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [branches]
       summary: Tạo chi họ (UC-GEN-02)
+      description: Người lập chi (originPersonId) chưa thuộc chi nào thì vào chi mới; sửa chi cũng vậy (BR-GEN-30).
       requestBody:
         required: true
         content:
@@ -1018,6 +1019,7 @@ components:
         startDate: { type: string, format: date, nullable: true, description: SPOUSE; ngày kết hôn }
         otherParentId: { type: string, format: uuid, nullable: true, description: "CHILD: cha/mẹ còn lại (thường là vợ/chồng của {personId}), nối trong cùng giao dịch (BR-GEN-27)" }
         divorcePrevious: { type: boolean, default: false, description: "SPOUSE: chuyển các hôn nhân MARRIED hiện có của {personId} sang DIVORCED trước khi thêm vợ/chồng mới (BR-GEN-28)" }
+        foundBranch: { type: boolean, default: false, description: "CHILD, {personId} là người tổ, người con là nam: tạo chi gốc 'Chi N' do người con lập, cùng giao dịch (BR-GEN-30)" }
     PersonInput:
       type: object
       required: [fullName, gender]

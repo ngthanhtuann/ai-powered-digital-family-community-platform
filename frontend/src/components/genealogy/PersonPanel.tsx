@@ -21,12 +21,14 @@ const GENDER_LABEL: Record<string, string> = { MALE: 'Nam', FEMALE: 'Nữ', OTHE
 /** Vợ/chồng của một người theo cạnh MARRIAGE trên cây (SCRUM-144, 145). */
 export type SpouseLink = { marriageId: string; id: string; name: string; status: string; deceased: boolean };
 
-export function PersonPanel({ familyId, personId, people, edges = [], myPersonId, canManage, onRelation, onClose }: {
+export function PersonPanel({ familyId, personId, people, edges = [], myPersonId, topAncestorId, canManage, onRelation, onClose }: {
   familyId: string;
   personId: string;
   people: TreeNode[];
   edges?: TreeEdge[];
   myPersonId?: string;
+  /** Người tổ (gốc cây): thêm con trai cho người tổ thì gợi ý lập chi mới (BR-GEN-30). */
+  topAncestorId?: string;
   canManage: boolean;
   onRelation: (relation: Relationship | null) => void;
   onClose: () => void;
@@ -151,7 +153,8 @@ export function PersonPanel({ familyId, personId, people, edges = [], myPersonId
           ))}
         </div>
       )}
-      {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} spouses={spouses} onClose={() => setMode(null)} />}
+      {mode && p && <RelationModal familyId={familyId} person={p} mode={mode} spouses={spouses}
+        canFoundBranch={personId === topAncestorId} onClose={() => setMode(null)} />}
       {divorcing && p && <DivorceModal person={p} spouse={divorcing} onClose={() => setDivorcing(null)} />}
       {deathOpen && p && <DeathModal person={p} onClose={() => setDeathOpen(false)} />}
       {replaceOpen && p && <ReplaceAccountModal person={p} onClose={() => setReplaceOpen(false)} />}

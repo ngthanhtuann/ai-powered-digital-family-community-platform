@@ -71,6 +71,53 @@ function invitable(p: Person, today: Date) {
   return born <= today;
 }
 
+/** UC-GEN-02, BR-GEN-30 (SCRUM-147): thêm chi hoặc sửa tên, chi cha, người lập chi. Người lập chưa có chi thì vào chi. */
+function BranchFormModal({ familyId, branch, branches, people, onClose }: {
+  familyId: string; branch?: BranchItem; branches: BranchItem[]; people: Person[]; onClose: () => void;
+}) {
+  const cache = useQueryClient();
+  const [name, setName] = useState(branch?.name ?? `Chi ${branches.filter((b) => !b.parentBranchId).length + 1}`);
+  const [parentBranchId, setParentBranchId] = useState(branch?.parentBranchId ?? '');
+  const [originPersonId, setOriginPersonId] = useState(branch?.originPersonId ?? '');
+  // Người chưa thuộc chi nào lên đầu: thường là con trai của người tổ chưa lập chi.
+  const founders = people.filter((p) => !p.isDeceased || p.id === originPersonId)
+    .sort((a, b) => Number(Boolean(a.branchId)) - Number(Boolean(b.branchId)) || (a.fullName ?? '').localeCompare(b.fullName ?? '', 'vi'));
+  const save = useMutation({
+    mutationFn: () => {
+      const input = { name: name.trim(), parentBranchId: parentBranchId || null, originPersonId: originPersonId || null,
+        description: branch?.description ?? null };
+      return branch ? genealogyApi.updateBranch(branch.id!, input) : genealogyApi.createBranch(familyId, input);
+    },
+    onSuccess: async () => {
+      await Promise.all(['branches', 'branch-heads', 'members', 'tree'].map((key) => cache.invalidateQueries({ queryKey: [key] })));
+      onClose();
+    },
+  });
+  return (
+    <Modal open title={branch ? `Sửa ${branch.name}` : 'Thêm chi'}
+      description="Chi gốc do con trai của người tổ lập (Chi 1 con cả, Chi 2 con thứ hai...). Người lập chi chưa thuộc chi nào sẽ vào chi này."
+      onClose={onClose}>
+      <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <TextField label="Tên chi" required maxLength={150} value={name} onChange={(e) => setName(e.target.value)} />
+        <label className="grid gap-1.5 text-label">Thuộc chi
+          <select className={selectClass} value={parentBranchId} onChange={(e) => setParentBranchId(e.target.value)}>
+            <option value="">Chi gốc (thuộc cả dòng họ)</option>
+            {branches.filter((b) => b.id !== branch?.id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1.5 text-label">Người lập chi
+          <select className={selectClass} value={originPersonId} onChange={(e) => setOriginPersonId(e.target.value)}>
+            <option value="">Chưa ghi</option>
+            {founders.map((p) => <option key={p.id} value={p.id}>{p.fullName}{p.branchId ? '' : ' (chưa thuộc chi nào)'}</option>)}
+          </select>
+        </label>
+        {save.isError && <p role="alert" className="text-body text-error">{errorText(save.error)}</p>}
+        <Button type="submit" loading={save.isPending} disabled={!name.trim()}>Lưu</Button>
+      </form>
+    </Modal>
+  );
+}
+
 /** BR-GEN-29 (SCRUM-146): chọn người trên cây làm trưởng chi, kể cả chưa có tài khoản; hoặc quay về theo dòng. */
 function PickHeadPersonModal({ branch, head, people, onClose }: {
   branch: BranchItem; head?: BranchHead; people: Person[]; onClose: () => void;
@@ -129,6 +176,7 @@ function InviteModal({ familyId, person, branchName, onClose }: {
 function BranchOverview({ familyId }: { familyId: string }) {
   const [q, setQ] = useState('');
   const [picking, setPicking] = useState<BranchItem | null>(null);
+  const [editing, setEditing] = useState<BranchItem | 'new' | null>(null);
   const [inviting, setInviting] = useState<Person | null>(null);
   // shortcut: lấy tối đa 100 tài khoản, 100 chi, 100 người (giới hạn size của API); dòng họ lớn hơn cần phân trang.
   const accounts = useQuery({ queryKey: ['family-accounts', familyId, 'all'], queryFn: () => familyRolesApi.accounts(familyId, 0, 100) });
@@ -160,6 +208,9 @@ function BranchOverview({ familyId }: { familyId: string }) {
         <p className="mt-1 text-body">{heads.length ? heads.map((h) => h.fullName).join(', ') : 'Chưa có'}</p>
       </div>
 
+      <div className="flex justify-end">
+        <Button fullWidth={false} onClick={() => setEditing('new')}>Thêm chi</Button>
+      </div>
       <ul className="divide-y divide-border rounded-card border border-border bg-surface" aria-label="Các chi">
         {branches.isSuccess && rows.length === 0 && (
           <li className="p-4 text-body text-text-secondary">{q ? 'Không có chi phù hợp.' : 'Dòng họ chưa có chi nào.'}</li>
@@ -179,9 +230,12 @@ function BranchOverview({ familyId }: { familyId: string }) {
                   Trưởng chi: {head?.headPersonName ? `${head.headPersonName} (${note})` : 'Chưa có'}
                 </p>
               </div>
-              <Button fullWidth={false} variant="secondary" onClick={() => setPicking(branch)}>
-                {head?.headPersonName ? 'Đổi trưởng chi' : 'Chọn trưởng chi'}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button fullWidth={false} variant="secondary" onClick={() => setEditing(branch)}>Sửa chi</Button>
+                <Button fullWidth={false} variant="secondary" onClick={() => setPicking(branch)}>
+                  {head?.headPersonName ? 'Đổi trưởng chi' : 'Chọn trưởng chi'}
+                </Button>
+              </div>
             </li>
           );
         })}
@@ -205,6 +259,8 @@ function BranchOverview({ familyId }: { familyId: string }) {
         </ul>
       </div>
 
+      {editing && <BranchFormModal familyId={familyId} branch={editing === 'new' ? undefined : editing} branches={branchList}
+        people={persons.data?.items ?? []} onClose={() => setEditing(null)} />}
       {picking && <PickHeadPersonModal branch={picking} head={headOf.get(picking.id ?? '')} people={persons.data?.items ?? []}
         onClose={() => setPicking(null)} />}
       {inviting && <InviteModal familyId={familyId} person={inviting} branchName={branchName(inviting.branchId)}

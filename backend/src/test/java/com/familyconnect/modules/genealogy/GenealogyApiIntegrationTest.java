@@ -931,6 +931,31 @@ class GenealogyApiIntegrationTest {
     }
 
     @Test
+    void sonOfTopAncestorFoundsNextBranchAndBranchFounderJoinsIt() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID founder = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Thủy tổ lập chi", LocalDate.of(1900, 1, 1))));
+        call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi 1")).andExpect(status().isCreated());
+        UUID son = relative(token, founder, "CHILD", person("Con trai lập chi", LocalDate.of(1930, 1, 1)), Map.of("foundBranch", true));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select b.name || '|' || (b.origin_person_id = p.id) "
+                + "from person p join branch b on b.id = p.branch_id where p.id = ?", String.class, son)).isEqualTo("Chi 2|true");
+        // Con gái, hoặc con của người không phải người tổ, thì không lập chi.
+        Map<String, Object> daughter = new HashMap<>(Map.of("relation", "CHILD", "foundBranch", true));
+        daughter.put("person", woman("Con gái", LocalDate.of(1932, 1, 1)));
+        call(post("/api/v1/persons/" + founder + "/relatives"), token, daughter).andExpect(status().isBadRequest());
+        Map<String, Object> grandson = new HashMap<>(Map.of("relation", "CHILD", "foundBranch", true));
+        grandson.put("person", person("Cháu", LocalDate.of(1960, 1, 1)));
+        call(post("/api/v1/persons/" + son + "/relatives"), token, grandson).andExpect(status().isBadRequest());
+        // Tạo chi bằng tay với người lập chưa thuộc chi nào: người đó vào chi.
+        UUID loner = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Người lập chi tay", LocalDate.of(1935, 1, 1))));
+        UUID manual = id(call(post("/api/v1/families/" + familyId + "/branches"), token,
+                Map.of("name", "Chi tay", "originPersonId", loner.toString())).andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select branch_id from person where id = ?", UUID.class, loner))
+                .isEqualTo(manual);
+    }
+
+    @Test
     void familyHeadPicksBranchHeadEvenWithoutAccount() throws Exception {
         Object[] o = owner();
         String headToken = (String) o[0];

@@ -328,6 +328,7 @@ export default function FamilyTreePage() {
               people={graph.nodes}
               edges={graph.edges}
               myPersonId={myPersonId}
+              topAncestorId={first.data?.rootId}
               canManage={access.isAdmin}
               onRelation={onRelation}
               onClose={() => { setSelected(null); setRelation(null); }}

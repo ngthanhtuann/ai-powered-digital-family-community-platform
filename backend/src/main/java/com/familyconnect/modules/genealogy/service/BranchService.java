@@ -67,6 +67,7 @@ public class BranchService {
         apply(branch, input);
         branch.setCreatedBy(viewer.userId());
         branchRepository.saveAndFlush(branch);
+        assignFounder(branch, viewer.userId());
         auditLogger.log("BRANCH_CREATED", "BRANCH", branch.getId(), familyId, Map.of());
         return toData(branch);
     }
@@ -88,6 +89,7 @@ public class BranchService {
         apply(branch, input);
         branch.setUpdatedBy(viewer.userId());
         branchRepository.saveAndFlush(branch);
+        assignFounder(branch, viewer.userId());
         auditLogger.log("BRANCH_UPDATED", "BRANCH", branchId, familyId, Map.of());
         return toData(branch);
     }
@@ -105,6 +107,20 @@ public class BranchService {
         branch.setDeletedAt(OffsetDateTime.now(clock));
         branch.setUpdatedBy(viewer.userId());
         auditLogger.log("BRANCH_DELETED", "BRANCH", branchId, familyId, Map.of());
+    }
+
+    /** BR-GEN-30: người lập chi chưa thuộc chi nào thì vào chi này (con cháu nối sau tự theo, BR-GEN-22). */
+    private void assignFounder(Branch branch, UUID actor) {
+        if (branch.getOriginPersonId() == null) {
+            return;
+        }
+        personRepository.findByIdAndDeletedAtIsNull(branch.getOriginPersonId())
+                .filter(p -> p.getBranchId() == null)
+                .ifPresent(p -> {
+                    p.setBranchId(branch.getId());
+                    p.setUpdatedBy(actor);
+                    personRepository.saveAndFlush(p);
+                });
     }
 
     /** Chi cha và người tổ phải thuộc cùng gia đình (UC-GEN-02 luồng 2b). */

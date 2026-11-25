@@ -67,7 +67,10 @@ export interface paths {
         /** Danh sách chi họ (UC-GEN-02) */
         get: operations["listBranches"];
         put?: never;
-        /** Tạo chi họ (UC-GEN-02) */
+        /**
+         * Tạo chi họ (UC-GEN-02)
+         * @description Người lập chi (originPersonId) chưa thuộc chi nào thì vào chi mới; sửa chi cũng vậy (BR-GEN-30).
+         */
         post: operations["createBranch"];
         delete?: never;
         options?: never;
@@ -640,6 +643,11 @@ export interface components {
              * @default false
              */
             divorcePrevious: boolean;
+            /**
+             * @description CHILD, {personId} là người tổ, người con là nam: tạo chi gốc 'Chi N' do người con lập, cùng giao dịch (BR-GEN-30)
+             * @default false
+             */
+            foundBranch: boolean;
         };
         /** @description Người còn sống bắt buộc có birthDate (BR-GEN-17). Người đã mất có thể chỉ có birthYear. */
         PersonInput: {

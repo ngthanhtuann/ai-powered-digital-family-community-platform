@@ -97,7 +97,8 @@ public final class GenealogyRequests {
             ParentRole parentRole,
             LocalDate startDate,
             UUID otherParentId,
-            Boolean divorcePrevious) {
+            Boolean divorcePrevious,
+            Boolean foundBranch) {
     }
 
     public enum RelativeKind { CHILD, PARENT, SPOUSE }
