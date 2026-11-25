@@ -91,12 +91,15 @@ public class FamilyTreeService {
                 .forEach(m -> leaders.put(m.userId(), m.branchId() == null ? "FAMILY_HEAD" : "BRANCH_HEAD"));
         // SCRUM-142, BR-GEN-25: trưởng theo dòng (không cần tài khoản), tính theo id hồ sơ.
         Map<UUID, String> lineage = lineageService.lineageHeads(familyId);
+        // SCRUM-145, BR-GEN-28: vợ/chồng ngoài tộc đã ly hôn mờ đi; người xem thường thì khóa và ẩn thông tin.
+        Set<UUID> divorced = new HashSet<>(personRepository.findDivorcedOutsiders(familyId));
         List<TreeNode> nodes = personRepository.findAllById(ids).stream()
                 .filter(p -> p.getDeletedAt() == null && familyId.equals(p.getFamilyId()))
                 .sorted(Comparator.comparing((Person p) -> descendants.getOrDefault(p.getId(), Integer.MAX_VALUE))
                         .thenComparing(FamilyTreeService::bornOn, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(Person::getFullName))
-                .map(p -> toNode(p, fullData, today, hasMore.contains(p.getId()), generations.get(p.getId()), leaders, lineage))
+                .map(p -> toNode(p, fullData, today, hasMore.contains(p.getId()), generations.get(p.getId()), leaders, lineage,
+                        divorced.contains(p.getId())))
                 .toList();
 
         List<TreeEdge> edges = new ArrayList<>();
@@ -136,15 +139,17 @@ public class FamilyTreeService {
     }
 
     private static TreeNode toNode(Person p, boolean fullData, LocalDate today, boolean hasMoreChildren,
-                                   Integer generation, Map<UUID, String> leaders, Map<UUID, String> lineage) {
+                                   Integer generation, Map<UUID, String> leaders, Map<UUID, String> lineage,
+                                   boolean divorced) {
         Integer birthYear = p.getBirthDate() != null ? Integer.valueOf(p.getBirthDate().getYear())
                 : p.getBirthYear() == null ? null : p.getBirthYear().intValue();
         boolean child = !p.isDeceased() && p.getBirthDate() != null
                 && p.getBirthDate().plusYears(CHILD_AGE).isAfter(today);
-        boolean limited = child && !fullData;
-        return new TreeNode(p.getId(), p.getFullName(), limited ? null : p.getGender(), birthYear, p.isDeceased(),
+        boolean locked = divorced && !fullData;
+        boolean limited = (child || locked) && !fullData;
+        return new TreeNode(p.getId(), p.getFullName(), limited ? null : p.getGender(), locked ? null : birthYear, p.isDeceased(),
                 hasMoreChildren, limited ? null : generation, limited ? null : p.getAvatarMediaId(),
                 p.getDeathDate() == null ? null : p.getDeathDate().getYear(),
-                limited || p.isDeceased() ? null : leaderRole(p, leaders, lineage));
+                limited || p.isDeceased() ? null : leaderRole(p, leaders, lineage), divorced, locked);
     }
 }

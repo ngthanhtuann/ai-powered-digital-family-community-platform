@@ -143,6 +143,13 @@ public class JoinRequestService {
                 mv.changeRole(mv.getRole(), request.branchId(), actorId);
                 detail.put("branchId", request.branchId());
             }
+            if (request.personId() != null) {
+                // BR-AUTH-26: hồ sơ được chọn tay làm trưởng chi thì tài khoản nhận quyền trưởng chi ngay khi được duyệt.
+                genealogy().headedBranchOf(request.personId()).ifPresent(headed -> {
+                    mv.changeRole(com.familyconnect.modules.auth.entity.MemberRole.BRANCH_ADMIN, headed, actorId);
+                    detail.put("branchHead", headed);
+                });
+            }
             mv.approve(actorId, now);
             verificationRepository.saveAndFlush(mv);
             auditLogger.log("JOIN_APPROVED", "JOIN_REQUEST", mv.getId(), mv.getFamilyId(), detail);

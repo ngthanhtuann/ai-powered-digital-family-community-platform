@@ -19,6 +19,7 @@ Table branch {
   name varchar(150) [not null, note: 'Tên chi']
   parent_branch_id uuid [note: 'Chi cha']
   origin_person_id uuid [note: 'Người tổ của chi']
+  head_person_id uuid [note: 'Trưởng chi chọn tay (SCRUM-146)']
   description text [note: 'Mô tả']
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
   updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
@@ -524,6 +525,7 @@ Table ai_summary_cache {
 Ref: branch.family_id > family.id
 Ref: branch.parent_branch_id > branch.id
 Ref: branch.origin_person_id > person.id
+Ref: branch.head_person_id > person.id
 Ref: person.family_id > family.id
 Ref: person.branch_id > branch.id
 Ref: parent_child.parent_id > person.id

@@ -23,4 +23,10 @@ public interface MembershipCommand {
      * Gia phả đã kiểm tra quyền và tài khoản mới đã xác minh cùng dòng họ.
      */
     void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason);
+
+    /** BR-AUTH-26: vợ/chồng ngoài tộc đã ly hôn rời dòng họ (REMOVED, thu hồi phiên); không áp dụng cho trưởng họ. */
+    void removeFromFamily(UUID userId, UUID actorId, String reason);
+
+    /** BR-AUTH-26: tài khoản của người được chọn tay làm trưởng chi nhận BRANCH_ADMIN của chi đó; trưởng họ giữ nguyên. */
+    void grantBranchHead(UUID userId, UUID familyId, UUID branchId, UUID actorId);
 }

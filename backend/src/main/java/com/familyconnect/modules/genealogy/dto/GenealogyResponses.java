@@ -38,6 +38,11 @@ public final class GenealogyResponses {
     public record AccountCandidate(UUID userId, String fullName) {
     }
 
+    /** genealogy.yaml BranchHead (BR-GEN-29). */
+    public record BranchHeadData(UUID branchId, String branchName, UUID parentBranchId, UUID headPersonId, String headPersonName,
+                                 String source, boolean hasAccount, boolean familyHead) {
+    }
+
     public record PaginationMeta(int page, int size, long total) {
     }
 
@@ -60,7 +65,7 @@ public final class GenealogyResponses {
     /** genealogy.yaml TreeNode; gender, generation, avatarMediaId null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10). */
     public record TreeNode(UUID id, String fullName, String gender, Integer birthYear, boolean isDeceased,
                            boolean hasMoreChildren, Integer generation, UUID avatarMediaId,
-                           Integer deathYear, String leaderRole) {
+                           Integer deathYear, String leaderRole, boolean divorced, boolean locked) {
     }
 
     /** genealogy.yaml TreeEdge: PARENT_CHILD (source là cha/mẹ, kèm kind) hoặc MARRIAGE (kèm status). */

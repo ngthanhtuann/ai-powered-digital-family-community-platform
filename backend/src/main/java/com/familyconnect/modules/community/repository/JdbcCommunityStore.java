@@ -135,7 +135,7 @@ public class JdbcCommunityStore implements CommunityStore {
     }
     @Override public Page<Post> posts(UUID family, boolean allBranches, List<UUID> visible,
                                        UUID branch, PostType type, UUID author, java.util.Set<UUID> descendantsAuthors,
-                                       int page, int size, String order) {
+                                       java.util.Set<UUID> hiddenAuthors, int page, int size, String order) {
         var args = p("family",family,"branch",branch,"type",type==null?null:type.name(),"author",author,
                      "limit",size,"offset",(long)page*size);
         var where = new StringBuilder(" FROM post WHERE family_id=:family AND deleted_at IS NULL " +
@@ -157,6 +157,11 @@ public class JdbcCommunityStore implements CommunityStore {
                 where.append(" AND (audience <> 'DESCENDANTS' OR created_by IN (:descAuthors))");
                 args.addValue("descAuthors", descendantsAuthors);
             }
+        }
+        // BR-COM-18: ẩn bài của vợ/chồng ngoài tộc đã ly hôn với thành viên thường.
+        if (hiddenAuthors != null && !hiddenAuthors.isEmpty()) {
+            where.append(" AND created_by NOT IN (:hiddenAuthors)");
+            args.addValue("hiddenAuthors", hiddenAuthors);
         }
         long total = jdbc.queryForObject("SELECT COUNT(*)" + where, args, Long.class);
         var items = jdbc.query("SELECT " + POST_COLUMNS + where + " ORDER BY " + order +

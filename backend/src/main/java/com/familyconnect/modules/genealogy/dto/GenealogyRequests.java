@@ -85,13 +85,19 @@ public final class GenealogyRequests {
         }
     }
 
+    /** PUT /branches/{branchId}/head (BranchHeadInput, BR-GEN-29); null là quay về theo dòng. */
+    public record BranchHeadInput(UUID personId) {
+    }
+
     /** POST /persons/{personId}/relatives (RelativeInput, BR-GEN-26). */
     public record RelativeInput(
             @NotNull(message = "Chưa chọn quan hệ") RelativeKind relation,
             @NotNull(message = "Thiếu thông tin người mới") @jakarta.validation.Valid PersonInput person,
             ParentKind kind,
             ParentRole parentRole,
-            LocalDate startDate) {
+            LocalDate startDate,
+            UUID otherParentId,
+            Boolean divorcePrevious) {
     }
 
     public enum RelativeKind { CHILD, PARENT, SPOUSE }

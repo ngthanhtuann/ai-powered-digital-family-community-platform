@@ -75,6 +75,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/families/{familyId}/branch-heads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familyId: components["parameters"]["familyId"];
+            };
+            cookie?: never;
+        };
+        /** Trưởng chi của từng chi (chọn tay hoặc theo dòng, BR-GEN-29) */
+        get: operations["listBranchHeads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/branches/{branchId}/head": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: components["parameters"]["branchId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Chọn tay trưởng chi, kể cả người chưa có tài khoản (BR-GEN-29)
+         * @description Trưởng họ (BRANCH_ADMIN không gán chi) hoặc SYSTEM_ADMIN. personId null thì quay về trưởng chi theo dòng. Người không thuộc dòng họ hoặc đã mất 400 VALID_001.
+         */
+        put: operations["setBranchHead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/branches/{branchId}": {
         parameters: {
             query?: never;
@@ -389,7 +430,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Đổi trạng thái hôn nhân (UC-GEN-05) */
+        /**
+         * Đổi trạng thái hôn nhân (UC-GEN-05)
+         * @description Người quản lý chi của một trong hai người; MEMBER là một trong hai vợ chồng chỉ được chuyển sang DIVORCED (BR-GEN-28). Người ngoài tộc có tài khoản đã ly hôn hết thì rời dòng họ (BR-AUTH-26).
+         */
         put: operations["updateMarriage"];
         post?: never;
         /** Xóa hôn nhân nhập nhầm (UC-GEN-05) */
@@ -536,6 +580,33 @@ export interface components {
             data?: components["schemas"]["Branch"][];
             meta?: components["schemas"]["Meta"];
         };
+        BranchHeadInput: {
+            /** Format: uuid */
+            personId?: string | null;
+        };
+        BranchHead: {
+            /** Format: uuid */
+            branchId?: string;
+            branchName?: string;
+            /** Format: uuid */
+            parentBranchId?: string | null;
+            /** Format: uuid */
+            headPersonId?: string | null;
+            headPersonName?: string | null;
+            /** @enum {string|null} */
+            source?: "MANUAL" | "LINEAGE" | null;
+            hasAccount?: boolean;
+            /** @description Người này đồng thời là trưởng họ (kiêm) */
+            familyHead?: boolean;
+        };
+        BranchHeadResponse: {
+            success?: boolean;
+            data?: components["schemas"]["BranchHead"];
+        };
+        BranchHeadListResponse: {
+            success?: boolean;
+            data?: components["schemas"]["BranchHead"][];
+        };
         /** @description BR-GEN-26 */
         RelativeInput: {
             /**
@@ -559,6 +630,16 @@ export interface components {
              * @description SPOUSE; ngày kết hôn
              */
             startDate?: string | null;
+            /**
+             * Format: uuid
+             * @description CHILD: cha/mẹ còn lại (thường là vợ/chồng của {personId}), nối trong cùng giao dịch (BR-GEN-27)
+             */
+            otherParentId?: string | null;
+            /**
+             * @description SPOUSE: chuyển các hôn nhân MARRIED hiện có của {personId} sang DIVORCED trước khi thêm vợ/chồng mới (BR-GEN-28)
+             * @default false
+             */
+            divorcePrevious: boolean;
         };
         /** @description Người còn sống bắt buộc có birthDate (BR-GEN-17). Người đã mất có thể chỉ có birthYear. */
         PersonInput: {
@@ -791,6 +872,10 @@ export interface components {
             avatarMediaId?: string | null;
             /** @description Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất */
             deathYear?: number | null;
+            /** @description Vợ/chồng ngoài tộc đã ly hôn (BR-GEN-28): khung mờ, nhãn Đã ly hôn */
+            divorced?: boolean;
+            /** @description Người xem không phải trưởng họ/chi, quản trị: không mở được hồ sơ, thông tin đã ẩn (BR-GEN-28) */
+            locked?: boolean;
             /**
              * @description Người còn sống là trưởng họ hoặc trưởng chi: theo vai trò tài khoản (BRANCH_ADMIN không gán chi là trưởng họ) hoặc theo dòng (BR-GEN-25, không cần tài khoản); để hiện huy hiệu trên cây (SCRUM-136, 142). Anh em trong mảng nodes xếp theo ngày sinh.
              * @enum {string|null}
@@ -1302,6 +1387,61 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+        };
+    };
+    listBranchHeads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                familyId: components["parameters"]["familyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mỗi chi một dòng */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchHeadListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setBranchHead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branchId: components["parameters"]["branchId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchHeadInput"];
+            };
+        };
+        responses: {
+            /** @description Trưởng chi sau khi đổi */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchHeadResponse"];
+                };
+            };
+            400: components["responses"]["ValidationError"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     updateBranch: {

@@ -829,6 +829,136 @@ class GenealogyApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(lineage.lineageHeads(familyId)).containsEntry(grandson, "FAMILY_HEAD");
     }
 
+    // ---- BR-GEN-27, 28, 29 (SCRUM-144, 145, 146) ----
+
+    private UUID relative(String token, UUID anchor, String relation, Map<String, Object> person, Map<String, Object> extra)
+            throws Exception {
+        Map<String, Object> body = new HashMap<>(extra);
+        body.put("relation", relation);
+        body.put("person", person);
+        return id(call(post("/api/v1/persons/" + anchor + "/relatives"), token, body).andExpect(status().isCreated()));
+    }
+
+    private Map<String, Object> woman(String name, LocalDate birth) {
+        Map<String, Object> w = person(name, birth);
+        w.put("gender", "FEMALE");
+        return w;
+    }
+
+    @Test
+    void childOfInLawIsDrawnUnderTheCoupleAndOtherParentIsLinked() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID root = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Ông gốc", LocalDate.of(1940, 1, 1))));
+        UUID daughter = relative(token, root, "CHILD", woman("Con gái", LocalDate.of(1965, 1, 1)), Map.of());
+        UUID husband = relative(token, daughter, "SPOUSE", person("Rể", LocalDate.of(1963, 1, 1)), Map.of());
+        // Con riêng của rể (chỉ nối với rể) vẫn được vẽ dưới cặp vợ chồng, không bị đẩy lên hàng đầu.
+        UUID stepChild = relative(token, husband, "CHILD", person("Con riêng của rể", LocalDate.of(1990, 1, 1)), Map.of());
+        String tree = call(get("/api/v1/families/" + familyId + "/tree").param("rootId", root.toString()).param("depth", "5"), token, null)
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(tree).contains(stepChild.toString());
+        // Thêm con cho con gái kèm cha còn lại là rể: nối cả hai cha mẹ trong một lần lưu.
+        UUID grandchild = relative(token, daughter, "CHILD", person("Cháu", LocalDate.of(1992, 1, 1)),
+                Map.of("otherParentId", husband.toString()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select string_agg(parent_role, ',' order by parent_role) from parent_child where child_id = ? and deleted_at is null",
+                String.class, grandchild)).isEqualTo("FATHER,MOTHER");
+    }
+
+    @Test
+    void spouseRecordsDivorceAndDivorcedOutsiderIsHiddenFromMembers() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String wifeEmail = newUser();
+        member(wifeEmail, familyId, null, "MEMBER");
+        String viewerEmail = newUser();
+        member(viewerEmail, familyId, null, "MEMBER");
+        UUID husband = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, person("Chồng", LocalDate.of(1960, 1, 1))));
+        Map<String, Object> w = woman("Vợ ngoài tộc", LocalDate.of(1962, 1, 1));
+        w.put("userId", userId(wifeEmail).toString());
+        UUID wife = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, w));
+        UUID marriage = id(call(post("/api/v1/marriages"), headToken,
+                Map.of("person1Id", husband.toString(), "person2Id", wife.toString(), "startDate", "1985-01-01")));
+        jdbc.update("insert into post(family_id, type, content, created_by) values (?, 'POST', 'Bài của vợ ngoài tộc', ?)",
+                familyId, userId(wifeEmail));
+        String viewer = token(viewerEmail);
+        String wifeToken = token(wifeEmail);
+
+        // Người ngoài (thành viên khác) không được ghi ly hôn hộ; chính người vợ thì được.
+        Map<String, Object> divorce = Map.of("status", "DIVORCED", "endDate", "2020-01-01");
+        call(put("/api/v1/marriages/" + marriage), viewer, divorce).andExpect(status().isForbidden());
+        call(put("/api/v1/marriages/" + marriage), wifeToken, divorce).andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from member_verification where user_id = ? order by created_at desc limit 1", String.class,
+                userId(wifeEmail))).isEqualTo("REMOVED");
+        call(get("/api/v1/persons/" + wife), viewer, null).andExpect(status().isForbidden());
+        call(get("/api/v1/persons/" + wife), headToken, null).andExpect(status().isOk());
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", husband.toString()).param("depth", "2"), viewer, null)
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].locked").value(org.hamcrest.Matchers.contains(true)))
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].divorced").value(org.hamcrest.Matchers.contains(true)));
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", husband.toString()).param("depth", "2"), headToken, null)
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].locked").value(org.hamcrest.Matchers.contains(false)));
+        String feed = call(get("/api/v1/posts"), viewer, null).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(feed).doesNotContain("Bài của vợ ngoài tộc");
+        String headFeed = call(get("/api/v1/posts"), headToken, null).andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(headFeed).contains("Bài của vợ ngoài tộc");
+    }
+
+    @Test
+    void addingNewSpouseRecordsDivorceOfCurrentOneWhenAsked() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID man = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Ông tái hôn", LocalDate.of(1950, 1, 1))));
+        UUID first = relative(token, man, "SPOUSE", woman("Vợ đầu", LocalDate.of(1952, 1, 1)), Map.of("startDate", "1975-01-01"));
+        Map<String, Object> second = new HashMap<>();
+        second.put("relation", "SPOUSE");
+        second.put("person", woman("Vợ sau", LocalDate.of(1960, 1, 1)));
+        second.put("startDate", "1995-01-01");
+        call(post("/api/v1/persons/" + man + "/relatives"), token, second).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("GEN_009"));
+        second.put("divorcePrevious", true);
+        UUID newWife = id(call(post("/api/v1/persons/" + man + "/relatives"), token, second).andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status || '|' || end_date from marriage where person2_id = ?", String.class, first)).isEqualTo("DIVORCED|1995-01-01");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person2_id = ?", String.class, newWife)).isEqualTo("MARRIED");
+    }
+
+    @Test
+    void familyHeadPicksBranchHeadEvenWithoutAccount() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi chọn tay")));
+        Map<String, Object> noAccount = person("Chưa có tài khoản", LocalDate.of(1970, 1, 1));
+        noAccount.put("branchId", branch.toString());
+        UUID picked = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, noAccount));
+        String memberEmail = newUser();
+        member(memberEmail, familyId, branch, "MEMBER");
+        Map<String, Object> withAccount = person("Có tài khoản", LocalDate.of(1972, 1, 1));
+        withAccount.put("branchId", branch.toString());
+        withAccount.put("userId", userId(memberEmail).toString());
+        UUID linked = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, withAccount));
+        String url = "/api/v1/branches/" + branch + "/head";
+
+        call(put(url), token(memberEmail), Map.of("personId", picked.toString())).andExpect(status().isForbidden());
+        call(put(url), headToken, Map.of("personId", picked.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.source").value("MANUAL")).andExpect(jsonPath("$.data.hasAccount").value(false));
+        call(get("/api/v1/families/" + familyId + "/branch-heads"), headToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.branchId == '" + branch + "')].headPersonId").value(org.hamcrest.Matchers.contains(picked.toString())));
+        // Người được chọn có tài khoản thì tài khoản nhận quyền trưởng chi của chi đó.
+        call(put(url), headToken, Map.of("personId", linked.toString())).andExpect(status().isOk());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select role || '|' || branch_id from member_verification where user_id = ? and status = 'APPROVED'", String.class,
+                userId(memberEmail))).isEqualTo("BRANCH_ADMIN|" + branch);
+    }
+
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----
 
     @Test

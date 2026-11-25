@@ -22,8 +22,10 @@ const TITLES: Record<RelationMode, string> = { parent: 'Thêm cha/mẹ cho', chi
 const PICK_LABEL: Record<RelationMode, string> = { parent: 'Người làm cha/mẹ', child: 'Người làm con', spouse: 'Người còn lại' };
 
 /** UC-GEN-04, 05: chọn người còn lại trong gia đình; lỗi nghiệp vụ hiện đúng thông điệp server (GEN_005..011). */
-export function RelationModal({ familyId, person, mode, onClose }: {
-  familyId: string; person: Person; mode: RelationMode; onClose: () => void;
+type SpouseRef = { id: string; name: string; status: string; deceased: boolean };
+
+export function RelationModal({ familyId, person, mode, spouses = [], onClose }: {
+  familyId: string; person: Person; mode: RelationMode; spouses?: SpouseRef[]; onClose: () => void;
 }) {
   const cache = useQueryClient();
   const options = useQuery({
@@ -69,7 +71,7 @@ export function RelationModal({ familyId, person, mode, onClose }: {
           Người đã có hồ sơ
         </Button>
       </div>
-      {source === 'new' && <NewRelativeForm person={person} mode={mode} onDone={onClose} />}
+      {source === 'new' && <NewRelativeForm person={person} mode={mode} spouses={spouses} onDone={onClose} />}
       {source === 'existing' && (
       <form className="grid gap-4 p-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
         {options.isPending && <p className="text-body text-text-secondary">Đang tải danh sách thành viên...</p>}
@@ -124,8 +126,14 @@ const RELATION = { parent: 'PARENT', child: 'CHILD', spouse: 'SPOUSE' } as const
 const NAME_LABEL: Record<RelationMode, string> = { parent: 'Họ tên cha/mẹ', child: 'Họ tên người con', spouse: 'Họ tên vợ/chồng' };
 
 /** Tạo hồ sơ mới và nối quan hệ trong một lần lưu (POST /persons/{id}/relatives); lỗi thì server không lưu gì. */
-function NewRelativeForm({ person, mode, onDone }: { person: Person; mode: RelationMode; onDone: () => void }) {
+function NewRelativeForm({ person, mode, spouses, onDone }: {
+  person: Person; mode: RelationMode; spouses: SpouseRef[]; onDone: () => void;
+}) {
   const cache = useQueryClient();
+  // BR-GEN-27: con mới mặc định có cha/mẹ còn lại là vợ/chồng hiện tại; BR-GEN-28: lấy vợ/chồng mới thì hỏi ghi ly hôn người cũ.
+  const current = spouses.filter((s) => s.status === 'MARRIED' && !s.deceased);
+  const [otherParentId, setOtherParentId] = useState(current[0]?.id ?? '');
+  const [divorcePrevious, setDivorcePrevious] = useState(true);
   const defaultGender = mode === 'spouse' ? (person.gender === 'FEMALE' ? 'MALE' : 'FEMALE') : 'MALE';
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RelativeValues>({
     resolver: zodResolver(relativeSchema),
@@ -152,6 +160,8 @@ function NewRelativeForm({ person, mode, onDone }: { person: Person; mode: Relat
       kind: mode === 'spouse' ? null : v.kind,
       parentRole: needsRole ? v.parentRole : null,
       startDate: mode === 'spouse' && v.startDate ? v.startDate : null,
+      otherParentId: mode === 'child' && otherParentId ? otherParentId : null,
+      divorcePrevious: mode === 'spouse' && current.length > 0 && divorcePrevious,
     }),
     onSuccess: async () => {
       await Promise.all(['members', 'tree', 'person'].map((key) => cache.invalidateQueries({ queryKey: [key] })));
@@ -171,6 +181,20 @@ function NewRelativeForm({ person, mode, onDone }: { person: Person; mode: Relat
           <select className={selectClass} {...register('parentRole')}>
             <option value="FATHER">Cha</option><option value="MOTHER">Mẹ</option>
           </select>
+        </label>
+      )}
+      {mode === 'child' && spouses.length > 0 && (
+        <label className="grid gap-1 text-label">{person.gender === 'FEMALE' ? 'Cha' : 'Mẹ'} của người con
+          <select className={selectClass} value={otherParentId} onChange={(e) => setOtherParentId(e.target.value)}>
+            {spouses.map((s) => <option key={s.id} value={s.id}>{s.name}{s.status === 'MARRIED' ? '' : ' (đã kết thúc hôn nhân)'}</option>)}
+            <option value="">Không ghi</option>
+          </select>
+        </label>
+      )}
+      {mode === 'spouse' && current.length > 0 && (
+        <label className="flex min-h-11 items-center gap-2 rounded-control bg-warning-soft p-3 text-body">
+          <input type="checkbox" className="h-5 w-5" checked={divorcePrevious} onChange={(e) => setDivorcePrevious(e.target.checked)} />
+          Ghi đã ly hôn với {current.map((s) => s.name).join(', ')}
         </label>
       )}
       <TextField label="Ngày sinh" type="date" error={errors.birthDate?.message} {...register('birthDate')} />

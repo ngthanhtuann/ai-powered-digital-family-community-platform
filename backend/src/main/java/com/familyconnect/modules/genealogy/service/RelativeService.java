@@ -45,9 +45,21 @@ public class RelativeService {
             case PARENT -> roleOf(person.gender().name(), input.parentRole());
             case SPOUSE -> null;
         };
+        if (input.relation() == com.familyconnect.modules.genealogy.dto.GenealogyRequests.RelativeKind.SPOUSE
+                && Boolean.TRUE.equals(input.divorcePrevious())) {
+            relationshipService.divorceCurrent(anchor.getId(), input.startDate()); // BR-GEN-28
+        }
         PersonData created = personService.create(anchor.getFamilyId(), person);
         switch (input.relation()) {
-            case CHILD -> relationshipService.addParent(created.id(), new ParentInput(anchor.getId(), role, kind));
+            case CHILD -> {
+                relationshipService.addParent(created.id(), new ParentInput(anchor.getId(), role, kind));
+                if (input.otherParentId() != null) { // BR-GEN-27: cha/mẹ còn lại, cùng giao dịch
+                    Person other = personRepository.findByIdAndDeletedAtIsNull(input.otherParentId())
+                            .orElseThrow(() -> ApiException.invalidField("otherParentId", "Không tìm thấy cha/mẹ còn lại"));
+                    relationshipService.addParent(created.id(), new ParentInput(other.getId(),
+                            roleOf(other.getGender(), role == ParentRole.FATHER ? ParentRole.MOTHER : ParentRole.FATHER), kind));
+                }
+            }
             case PARENT -> relationshipService.addParent(anchor.getId(), new ParentInput(created.id(), role, kind));
             case SPOUSE -> relationshipService.addMarriage(new MarriageInput(anchor.getId(), created.id(), input.startDate()));
         }

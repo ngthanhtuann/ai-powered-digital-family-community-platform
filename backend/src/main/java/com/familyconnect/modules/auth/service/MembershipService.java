@@ -181,6 +181,33 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
 
     @Override
     @Transactional
+    public void removeFromFamily(UUID userId, UUID actorId, String reason) {
+        verificationRepository.findByUserIdAndStatusIn(userId, EnumSet.of(VerificationStatus.APPROVED))
+                .filter(mv -> !(mv.getRole() == MemberRole.BRANCH_ADMIN && mv.getBranchId() == null))
+                .ifPresent(mv -> {
+                    mv.remove(actorId);
+                    verificationRepository.saveAndFlush(mv);
+                    refreshTokenRepository.revokeAllForUser(userId, OffsetDateTime.now(clock));
+                    auditLogger.getObject().log("MEMBERSHIP_REMOVED", "USER", userId, mv.getFamilyId(), Map.of("reason", reason));
+                });
+    }
+
+    @Override
+    @Transactional
+    public void grantBranchHead(UUID userId, UUID familyId, UUID branchId, UUID actorId) {
+        verificationRepository.findByUserIdAndStatusIn(userId, EnumSet.of(VerificationStatus.APPROVED))
+                .filter(mv -> familyId.equals(mv.getFamilyId()))
+                .filter(mv -> !(mv.getRole() == MemberRole.BRANCH_ADMIN && mv.getBranchId() == null))
+                .ifPresent(mv -> {
+                    mv.changeRole(MemberRole.BRANCH_ADMIN, branchId, actorId);
+                    verificationRepository.saveAndFlush(mv);
+                    auditLogger.getObject().log("MEMBERSHIP_CHANGED", "USER", userId, familyId,
+                            Map.of("role", "BRANCH_ADMIN", "branchId", branchId, "reason", "Chọn tay trưởng chi (BR-GEN-29)"));
+                });
+    }
+
+    @Override
+    @Transactional
     public void unlockDeceasedAccount(UUID userId, UUID actorId) {
         userRepository.findById(userId)
                 .filter(u -> u.getStatus() == UserStatus.LOCKED && DECEASED_LOCK_REASON.equals(u.getLockReason()))

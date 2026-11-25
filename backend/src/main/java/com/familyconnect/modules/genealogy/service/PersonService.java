@@ -108,7 +108,16 @@ public class PersonService implements PersonSearchIndex {
     public PersonData get(UUID personId) {
         Person person = find(personId);
         Viewer viewer = access.requireRead(person.getFamilyId());
+        if (lockedFor(person, viewer)) {
+            throw new ApiException(ErrorCode.PERM_001, "Hồ sơ đã được ẩn sau ly hôn");
+        }
         return toData(person, viewer);
+    }
+
+    /** BR-GEN-28: vợ/chồng ngoài tộc đã ly hôn chỉ người quản lý dòng họ xem được (chính chủ vẫn xem hồ sơ của mình). */
+    private boolean lockedFor(Person person, Viewer viewer) {
+        return !viewer.seesFullData(person.getFamilyId()) && !viewer.userId().equals(person.getUserId())
+                && personRepository.findDivorcedOutsiders(person.getFamilyId()).contains(person.getId());
     }
 
     @Transactional

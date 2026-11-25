@@ -7,6 +7,7 @@ export type Person = Schemas['Person'];
 export type PersonInput = Schemas['PersonInput'];
 export type DeathInput = Schemas['DeathInput'];
 export type RelativeInput = Schemas['RelativeInput'];
+export type BranchHead = Schemas['BranchHead'];
 export type AccountCandidate = Schemas['AccountCandidate'];
 export type DeathReport = Schemas['DeathReport'];
 export type DeathReportInput = Schemas['DeathReportInput'];
@@ -30,6 +31,9 @@ export const genealogyApi = {
   /** BR-GEN-21: người quản lý báo mất hoặc khôi phục khi báo nhầm. */
   setDeath: (personId: string, input: DeathInput) => api.put<Person>(`/persons/${personId}/death`, input),
   /** BR-GEN-23: thay tài khoản khi người thân mất tài khoản. */
+  /** BR-GEN-29: trưởng chi của từng chi (chọn tay hoặc theo dòng); chọn tay kể cả người chưa có tài khoản. */
+  branchHeads: (familyId: string) => api.get<BranchHead[]>(`/families/${familyId}/branch-heads`),
+  setBranchHead: (branchId: string, personId: string | null) => api.put<BranchHead>(`/branches/${branchId}/head`, { personId }),
   /** BR-GEN-26: tạo người thân mới và nối quan hệ trong một lần lưu. */
   addRelative: (personId: string, input: RelativeInput) => api.post<Person>(`/persons/${personId}/relatives`, input),
   /** BR-GEN-24: con ruột báo mất, người khác xác nhận. */

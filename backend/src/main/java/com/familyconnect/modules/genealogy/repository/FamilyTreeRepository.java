@@ -45,14 +45,25 @@ public class FamilyTreeRepository {
     public Map<UUID, Integer> findDescendants(UUID familyId, UUID rootId, int depth) {
         Map<UUID, Integer> levels = new HashMap<>();
         jdbc.query("""
-                WITH RECURSIVE tree(id, level) AS (
+                -- SCRUM-144 (BR-GEN-27): cạnh cha mẹ -> con gồm cả vợ/chồng của cha/mẹ (con riêng của dâu/rể hiện dưới cặp
+                -- vợ chồng). Gom sẵn một lần (MATERIALIZED) rồi đệ quy theo phép nối bằng: 500 người khoảng 30ms.
+                WITH RECURSIVE links(parent_id, child_id) AS MATERIALIZED (
+                    SELECT pc.parent_id, pc.child_id FROM parent_child pc
+                    JOIN person c ON c.id = pc.child_id AND c.family_id = :familyId AND c.deleted_at IS NULL
+                    WHERE pc.deleted_at IS NULL
+                    UNION
+                    SELECT CASE WHEN m.person1_id = pc.parent_id THEN m.person2_id ELSE m.person1_id END, pc.child_id
+                    FROM parent_child pc
+                    JOIN marriage m ON (m.person1_id = pc.parent_id OR m.person2_id = pc.parent_id) AND m.deleted_at IS NULL
+                    JOIN person c ON c.id = pc.child_id AND c.family_id = :familyId AND c.deleted_at IS NULL
+                    WHERE pc.deleted_at IS NULL
+                ),
+                tree(id, level) AS (
                     SELECT p.id, 0 FROM person p
                     WHERE p.id = :rootId AND p.family_id = :familyId AND p.deleted_at IS NULL
                     UNION
-                    SELECT child.id, tree.level + 1 FROM tree
-                    JOIN parent_child pc ON pc.parent_id = tree.id AND pc.deleted_at IS NULL
-                    JOIN person child ON child.id = pc.child_id
-                        AND child.family_id = :familyId AND child.deleted_at IS NULL
+                    SELECT l.child_id, tree.level + 1 FROM tree
+                    JOIN links l ON l.parent_id = tree.id
                     WHERE tree.level < :lastLevel
                 )
                 SELECT id, MIN(level) AS level FROM tree GROUP BY id

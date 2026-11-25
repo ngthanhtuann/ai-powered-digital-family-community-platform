@@ -226,7 +226,7 @@ function Seed-Social {
                 @(@('ha', 'Tết này nhà chị vào nhé, bé My mê đi thuyền lắm.', -1), @('lan', 'Nhớ món lẩu mắm quá anh ơi.', -1),
                   @('khoa', 'Chị vào thì báo em ra bến đón ạ.', 0), @('phuc', 'Hay quá, bác cũng muốn một lần vào miền Tây.', -1)),
                 @(@('ha','LOVE'), @('lan','HAHA'), @('phuc','LIKE'), @('hung','LIKE'))),
-            @('lan', 'Chi 3a cuối tuần này gặp mặt mừng sinh nhật bé Bin ở nhà em, mọi người nhớ đến sớm phụ nấu ăn nhé.', 'lan', $null,
+            @('lan', 'Nhà em cuối tuần này gặp mặt mừng sinh nhật bé Bin ở nhà em, mọi người nhớ đến sớm phụ nấu ăn nhé.', 'lan', $null,
                 @(@('khoa', 'Anh mang bánh kem với nước ngọt nhé.', -1), @('hung', 'Bố mẹ đến từ sáng phụ con.', -1), @('lan', 'Dạ con cảm ơn bố ạ.', 1)),
                 @(@('khoa','LOVE'), @('hung','LIKE')))
         )
@@ -280,7 +280,7 @@ $fam = (Call POST '/families' @{ name = 'Họ Nguyễn – Nam Định (demo)'; 
 $famTran = (Call POST '/families' @{ name = 'Họ Trần – Huế (demo)'; description = 'Dữ liệu giả để demo' } $tok.quy).id
 $b1 = (Call POST "/families/$fam/branches" @{ name = 'Chi 1 (chi trưởng)' } $tok.phuc).id
 $b2 = (Call POST "/families/$fam/branches" @{ name = 'Chi 3' } $tok.phuc).id
-$b2a = (Call POST "/families/$fam/branches" @{ name = 'Chi 3a'; parentBranchId = $b2 } $tok.phuc).id
+# SCRUM-146: bỏ chi con Chi 3a (thừa với demo); gia đình bà Lan thuộc Chi 3.
 # SCRUM-142: chi đặt số theo thứ tự con trai của cụ Tổ (Phúc 1950 Chi 1, Lộc 1955 Chi 2, Hùng 1972 Chi 3); biến $b2 là chi của Hùng.
 $b3 = (Call POST "/families/$fam/branches" @{ name = 'Chi 2' } $tok.phuc).id
 
@@ -327,8 +327,8 @@ Person bao 'Đặng Văn Bảo' MALE '1982-10-10' $null @{ currentProvince = 'Th
 Person nhung 'Kiều Thị Nhung' FEMALE '1985-05-25' $null @{ currentProvince = 'Thái Bình' }
 Person ha 'Nguyễn Thị Hà' FEMALE '1994-04-09' $b2 @{ currentProvince = 'Hà Nội' }
 Person son 'Cao Văn Sơn' MALE '1992-02-20' $b2 @{ currentProvince = 'Hà Nội' }
-Person lan 'Nguyễn Thị Lan' FEMALE '1996-07-15' $b2a @{ currentProvince = 'TP. Hồ Chí Minh' }
-Person khoa 'Lê Văn Khoa' MALE '1993-01-25' $b2a @{ currentProvince = 'TP. Hồ Chí Minh' }
+Person lan 'Nguyễn Thị Lan' FEMALE '1996-07-15' $b2 @{ currentProvince = 'TP. Hồ Chí Minh' }
+Person khoa 'Lê Văn Khoa' MALE '1993-01-25' $b2 @{ currentProvince = 'TP. Hồ Chí Minh' }
 Person nam 'Nguyễn Văn Nam' MALE '1998-12-24' $b2 @{ currentProvince = 'Hà Nội' }
 Person vy 'Lương Thị Vy' FEMALE '1999-01-31' $b2 @{ currentProvince = 'Hà Nội' }
 Person na 'Nguyễn Thị Na' FEMALE '2016-09-01' $b2
@@ -349,7 +349,7 @@ Person haidang 'Từ Hải Đăng' MALE '2011-07-27' $b3
 Person khoi 'Nguyễn Minh Khôi' MALE '2015-12-01' $b3
 Person thaovy 'Đặng Thảo Vy' FEMALE '2010-01-01' $null
 Person hamy 'Cao Hà My' FEMALE '2021-08-15' $b2
-Person bin 'Lê Gia Bin' MALE '2020-06-01' $b2a
+Person bin 'Lê Gia Bin' MALE '2020-06-01' $b2
 Person giahan 'Nguyễn Gia Hân' FEMALE '2023-03-03' $b2
 # Đời 5
 Person phong 'Nguyễn Đức Phong' MALE '2025-04-04' $b3
@@ -408,7 +408,7 @@ Die 'nhan' '2005-11-20' 'Nghĩa trang làng Hải Hậu' $true
 Die 'loc' '2015-07-01' 'Nghĩa trang Hải Phòng'
 
 Write-Host '4/8 Xin vao gia dinh va duyet...'
-foreach ($j in @(@('hung', $b2), @('minh', $b1), @('ha', $b2), @('lan', $b2a), @('khoa', $b2a))) {
+foreach ($j in @(@('hung', $b2), @('minh', $b1), @('ha', $b2), @('lan', $b2), @('khoa', $b2))) {
     $null = Call POST '/join-requests' @{ code = $j[1]; message = 'Con cháu trong họ xin vào gia đình' } $tok[$j[0]]
 }
 $pending = Call GET '/join-requests?status=PENDING&page=0&size=50' $null $tok.phuc
@@ -429,7 +429,7 @@ $null = Call POST '/events' @{ title = 'Họp Chi 3 tổng kết năm'; descript
 $null = Call POST '/posts' @{ content = 'Họ ta chuẩn bị in lại cuốn gia phả. Các chi gửi bổ sung thông tin con cháu trước 30/11.'; type = 'NEWS'; branchId = $null } $tok.phuc
 $null = Call POST '/posts' @{ content = 'Chi 1 họp bàn sửa mộ cụ Tổ vào Chủ nhật này, 8h sáng tại nhà bác Phúc.'; type = 'POST'; branchId = $b1 } $tok.minh
 $null = Call POST '/posts' @{ content = 'Chi 3 góp quỹ khuyến học năm nay, hạn cuối 30/11. Cháu nào đạt học sinh giỏi báo chú Hùng.'; type = 'POST'; branchId = $b2 } $tok.hung
-$null = Call POST '/posts' @{ content = 'Cuối tuần này Chi 3a gặp mặt mừng sinh nhật bé Bin 6 tuổi ở nhà em nhé cả nhà.'; type = 'POST'; branchId = $b2a } $tok.lan
+$null = Call POST '/posts' @{ content = 'Cuối tuần này nhà em gặp mặt mừng sinh nhật bé Bin 6 tuổi ở nhà em nhé cả nhà.'; type = 'POST'; branchId = $b2 } $tok.lan
 $null = Call POST '/posts' @{ content = 'Cảm ơn cả họ đã đón con rể mới. Hẹn gặp mọi người ở giỗ Tổ!'; type = 'POST'; branchId = $null } $tok.khoa
 $null = Call POST '/posts' @{ content = 'Họ Trần lịch tảo mộ cuối năm tại Huế, mời con cháu sắp xếp về.'; type = 'POST'; branchId = $null } $tok.quy
 
@@ -463,5 +463,5 @@ foreach ($q in @(@('minh','ha',$true), @('bin','hung',$true), @('kiet','phuc',$t
 
 Write-Host 'Xong.'
 Write-Host "Ma gia dinh ho Nguyen (dung khi xin vao gia dinh): $fam"
-Write-Host "Ma Chi 1: $b1 | Ma Chi 2 (Loc): $b3 | Ma Chi 3 (Hung): $b2 | Ma Chi 3a: $b2a"
+Write-Host "Ma Chi 1: $b1 | Ma Chi 2 (Loc): $b3 | Ma Chi 3 (Hung): $b2"
 Write-Host "Ma gia dinh ho Tran: $famTran"

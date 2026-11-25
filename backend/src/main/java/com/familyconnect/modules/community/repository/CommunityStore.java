@@ -37,7 +37,8 @@ public interface CommunityStore {
     List<UUID> postBranchIds(UUID familyId);
     Page<Post> posts(UUID familyId, boolean allBranches, List<UUID> visibleBranches,
                      UUID branchFilter, PostType type, UUID authorFilter,
-                     java.util.Set<UUID> descendantsAuthors, int page, int size, String orderBy);
+                     java.util.Set<UUID> descendantsAuthors, java.util.Set<UUID> hiddenAuthors, int page, int size,
+                     String orderBy);
     Post updatePost(UUID id, String content, UUID branch, UUID userId, PostAudience audience);
     void deletePost(UUID id);
     /** Đếm theo lô cho một trang bài, tránh mỗi bài một truy vấn. */
