@@ -8,7 +8,7 @@ import { PersonSelect } from '../components/genealogy-ui';
 import { Button, Card, Notice, Screen } from '../components/ui';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { genealogyApi } from '../services/genealogy';
-import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
 import { colors, radius, text } from '../theme';
 
 type Picked = { id: string; name: string } | null;
@@ -24,9 +24,9 @@ export function RelationshipScreen({
   navigation,
   route,
 }: DrawerScreenProps<AppDrawerParamList, 'Relationship'>) {
-  const { session } = useSession();
-  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
-  const familyName = session.status === 'signedIn' ? session.membership.familyName : null;
+  const scope = useFamilyScope();
+  const familyId = scope.familyId;
+  const familyName = scope.familyName;
   const [a, setA] = useState<Picked>(null);
   const [b, setB] = useState<Picked>(null);
   // Chọn thành viên là màn của stack gốc (không dùng Modal, SCRUM-90); người được chọn trả về qua tham số.

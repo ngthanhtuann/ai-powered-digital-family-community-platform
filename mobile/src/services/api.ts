@@ -190,3 +190,26 @@ export const api = {
     return res.data.data;
   },
 };
+
+/**
+ * Tải tệp có kiểm quyền (báo cáo PDF/CSV, tệp di sản) vào bộ nhớ đệm rồi mở bằng ứng dụng của máy, như api.download của web.
+ * Gọi /users/me trước để interceptor làm mới access token nếu đã hết hạn (downloadFileAsync không đi qua axios).
+ */
+export async function downloadAndOpen(
+  path: string,
+  fileName: string,
+  mimeType: string,
+  title: string,
+) {
+  const { File, Paths } = await import('expo-file-system');
+  await api.get('/users/me');
+  const access = tokenStorage.getAccess();
+  if (!access)
+    throw new ApiError('AUTH_002', 'Phiên đăng nhập đã hết, vui lòng đăng nhập lại.', 401);
+  const target = new File(Paths.cache, fileName);
+  if (target.exists) target.delete();
+  const file = await File.downloadFileAsync(`${API_BASE_URL}${API_PREFIX}${path}`, target, {
+    headers: { Authorization: `Bearer ${access}` },
+  });
+  await File.preview(file, { title, mimeType });
+}

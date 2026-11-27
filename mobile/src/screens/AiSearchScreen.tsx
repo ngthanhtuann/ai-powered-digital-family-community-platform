@@ -14,7 +14,8 @@ import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { ApiError } from '../services/api';
 import { aiApi, type AiSearchResult } from '../services/ai';
 import { Button, Card, Notice } from '../components/ui';
-import { useSession } from '../session/SessionContext';
+import { AdminFamilyPicker } from '../components/AdminFamilyPicker';
+import { useFamilyScope } from '../session/FamilyScope';
 import { colors, radius, spacing, text } from '../theme';
 import type { AppDrawerParamList } from '../navigation/types';
 
@@ -27,11 +28,9 @@ const GROUPS: { title: string; types: AiSearchResult['sourceType'][] }[] = [
 
 export function AiSearchScreen() {
   const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-  const { session } = useSession();
-  const familyId =
-    session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
-  const isSystemAdmin =
-    session.status === 'signedIn' && session.user.roles.includes('SYSTEM_ADMIN');
+  const scope = useFamilyScope();
+  const familyId = scope.familyId ?? undefined;
+  const isSystemAdmin = scope.isSystemAdmin;
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<AiSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +68,7 @@ export function AiSearchScreen() {
         <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>
           Tìm kiếm trong gia đình
         </Text>
+        {isSystemAdmin ? <AdminFamilyPicker /> : null}
         {isSystemAdmin && !familyId ? (
           <Notice
             variant="info"

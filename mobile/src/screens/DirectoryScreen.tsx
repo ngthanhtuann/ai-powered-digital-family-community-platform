@@ -2,22 +2,30 @@
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { AdminFamilyPicker } from '../components/AdminFamilyPicker';
+import { ErrorText } from '../components/form-ui';
+import { dashboardApi } from '../services/admin';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { EmptyPanel, ErrorPanel, ListLoadingMore, nextPage } from '../components/community-ui';
 import { Button, Card, Loading, TextField } from '../components/ui';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { heritageApi, type DirectoryFilter, type DirectoryMember } from '../services/heritage';
-import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
 import { colors, spacing, text } from '../theme';
 
 const EMPTY: DirectoryFilter = { keyword: '', job: '', location: '', generation: '' };
 
 export function DirectoryScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-  const { session } = useSession();
-  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
+  const scope = useFamilyScope();
+  const familyId = scope.familyId;
+  // FR-DSH-05: trưởng chi, trưởng họ, quản trị xuất CSV thành viên ngay ở danh bạ (như web).
+  const csv = useMutation({
+    mutationFn: () =>
+      dashboardApi.exportMembersCsv(scope.familyParam ? { familyId: scope.familyParam } : {}),
+  });
   const [draft, setDraft] = useState<DirectoryFilter>(EMPTY);
   // Chỉ gọi API khi bấm Tìm, không gọi mỗi lần gõ phím.
   const [filter, setFilter] = useState<DirectoryFilter>(EMPTY);
@@ -56,6 +64,16 @@ export function DirectoryScreen() {
         }}
         ListHeaderComponent={
           <View style={{ gap: 12, paddingBottom: 4 }}>
+            {scope.isSystemAdmin ? <AdminFamilyPicker /> : null}
+            {scope.isAdmin && familyId ? (
+              <Button
+                title="Xuất CSV thành viên"
+                variant="secondary"
+                loading={csv.isPending}
+                onPress={() => csv.mutate()}
+              />
+            ) : null}
+            <ErrorText error={csv.error} />
             <TextField
               label="Tìm theo họ tên"
               value={draft.keyword}

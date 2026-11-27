@@ -11,26 +11,28 @@ import {
   ListLoadingMore,
   nextPage,
 } from '../components/community-ui';
-import { Card, Loading } from '../components/ui';
+import { AdminFamilyPicker } from '../components/AdminFamilyPicker';
+import { Button, Card, Loading } from '../components/ui';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 import { eventsApi, RSVP_LABEL, type Event } from '../services/events';
-import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
 import { colors, spacing, text } from '../theme';
 
 type Period = 'upcoming' | 'past';
 
 export function EventsScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-  const { session } = useSession();
+  const scope = useFamilyScope();
   const [period, setPeriod] = useState<Period>('upcoming');
   const [now, setNow] = useState(() => new Date().toISOString());
-  const familyId =
-    session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
+  // Quản trị hệ thống: gia đình đang xem (như AdminFamilyPicker của web); thành viên: gia đình của mình.
+  const familyId = scope.familyParam;
   const events = useInfiniteQuery({
     queryKey: ['events', period, now, familyId],
     initialPageParam: 0,
     queryFn: ({ pageParam }) => eventsApi.list(pageParam, period, now, familyId),
     getNextPageParam: nextPage<Event>,
+    enabled: Boolean(scope.familyId),
   });
   const items = useMemo(() => events.data?.pages.flatMap((p) => p.items) ?? [], [events.data]);
   const choosePeriod = (value: Period) => {
@@ -56,28 +58,41 @@ export function EventsScreen() {
             events.fetchNextPage();
         }}
         ListHeaderComponent={
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {(['upcoming', 'past'] as const).map((value) => (
-              <Pressable
-                key={value}
-                onPress={() => choosePeriod(value)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: period === value }}
-                style={{
-                  flex: 1,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: 6,
-                  padding: 12,
-                  alignItems: 'center',
-                  backgroundColor: period === value ? colors.secondary : colors.surface,
-                }}
-              >
-                <Text style={[text.label, { color: colors.textPrimary }]}>
-                  {value === 'upcoming' ? 'Sắp tới' : 'Đã qua'}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={{ gap: 12 }}>
+            {scope.isSystemAdmin ? <AdminFamilyPicker /> : null}
+            {scope.familyId ? (
+              <Button
+                title="Tạo sự kiện"
+                onPress={() =>
+                  drawer
+                    .getParent<NativeStackNavigationProp<RootStackParamList>>()
+                    ?.navigate('EventForm', {})
+                }
+              />
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['upcoming', 'past'] as const).map((value) => (
+                <Pressable
+                  key={value}
+                  onPress={() => choosePeriod(value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: period === value }}
+                  style={{
+                    flex: 1,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    padding: 12,
+                    alignItems: 'center',
+                    backgroundColor: period === value ? colors.secondary : colors.surface,
+                  }}
+                >
+                  <Text style={[text.label, { color: colors.textPrimary }]}>
+                    {value === 'upcoming' ? 'Sắp tới' : 'Đã qua'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         }
         renderItem={({ item }) => (

@@ -1,4 +1,4 @@
-// Menu drawer trong ứng dụng (mobile.md mục 3.1; không dùng tab bar). Nhóm Quản lý, Quản trị chỉ có trên web.
+// Menu drawer trong ứng dụng (mobile.md mục 3.1; không dùng tab bar), cùng danh sách theo vai trò với web (design-system.md 5.2).
 // Các module khác (Bảng tin, Sự kiện, Gia phả, AI...) thêm màn vào đây và vào AppDrawerParamList.
 import {
   createDrawerNavigator,
@@ -27,6 +27,17 @@ import { AiChatScreen } from '../screens/AiChatScreen';
 import { AiSearchScreen } from '../screens/AiSearchScreen';
 import { AiSourceDetailScreen } from '../screens/AiSourceDetailScreen';
 import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
+import { FamilyRolesScreen, JoinRequestsScreen, MembersScreen } from '../screens/ManageScreens';
+import { AnnouncementsScreen, OutstandingMembersScreen } from '../screens/ContentManageScreens';
+import { DashboardScreen, ReportsScreen } from '../screens/DashboardScreens';
+import {
+  AdminAuditScreen,
+  AdminBackupScreen,
+  AdminConfigScreen,
+  AdminModerationScreen,
+  AdminUsersScreen,
+} from '../screens/AdminScreens';
 import { colors, text } from '../theme';
 import type { AppDrawerParamList, RootStackParamList } from './types';
 
@@ -134,6 +145,7 @@ function DrawerContent(props: DrawerContentComponentProps) {
 }
 
 export function AppDrawer() {
+  const scope = useFamilyScope();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <DrawerContent {...props} />}
@@ -159,6 +171,12 @@ export function AppDrawer() {
       {/* Bảng tin, Sự kiện là danh sách cuộn: không gắn nút nổi Trợ lý AI để khỏi che bài cuối; mở AI từ menu. */}
       <Drawer.Screen name="Feed" component={FeedScreen} options={{ title: 'Bảng tin' }} />
       <Drawer.Screen name="Events" component={EventsScreen} options={{ title: 'Sự kiện' }} />
+      <Drawer.Screen
+        name="Announcements"
+        component={AnnouncementsScreen}
+        options={{ title: 'Thông báo gia đình' }}
+      />
+      <Drawer.Screen name="Members" component={MembersScreen} options={{ title: 'Thành viên' }} />
       {/* Gia phả (SCRUM-90): cây là danh sách cuộn nên không gắn nút nổi AI, giống Bảng tin. */}
       <Drawer.Screen
         name="FamilyTree"
@@ -173,6 +191,11 @@ export function AppDrawer() {
       {/* Danh bạ, Di sản (SCRUM-92) là danh sách cuộn nên không gắn nút nổi AI. */}
       <Drawer.Screen name="Directory" component={DirectoryScreen} options={{ title: 'Danh bạ' }} />
       <Drawer.Screen name="Heritage" component={HeritageScreen} options={{ title: 'Di sản' }} />
+      <Drawer.Screen
+        name="OutstandingMembers"
+        component={OutstandingMembersScreen}
+        options={{ title: 'Người tiêu biểu' }}
+      />
       <Drawer.Screen name="AiChat" component={AiChatScreen} options={{ title: 'Trợ lý AI' }} />
       <Drawer.Screen name="AiSearch" component={AiSearchWithFab} options={{ title: 'Tìm kiếm' }} />
       <Drawer.Screen
@@ -180,6 +203,59 @@ export function AppDrawer() {
         component={AiSourceDetailWithFab}
         options={{ title: 'Chi tiết', drawerItemStyle: { display: 'none' } }}
       />
+      {/* Nhóm Quản lý: trưởng chi, trưởng họ, quản trị (như web). */}
+      {scope.isAdmin ? (
+        <>
+          <Drawer.Screen
+            name="JoinRequests"
+            component={JoinRequestsScreen}
+            options={{ title: 'Duyệt yêu cầu tham gia' }}
+          />
+          <Drawer.Screen
+            name="Dashboard"
+            component={DashboardScreen}
+            options={{ title: 'Thống kê' }}
+          />
+          <Drawer.Screen name="Reports" component={ReportsScreen} options={{ title: 'Báo cáo' }} />
+        </>
+      ) : null}
+      {scope.isFamilyHead ? (
+        <Drawer.Screen
+          name="FamilyRoles"
+          component={FamilyRolesScreen}
+          options={{ title: 'Phân công trưởng chi' }}
+        />
+      ) : null}
+      {/* Nhóm Quản trị hệ thống: chỉ SYSTEM_ADMIN. */}
+      {scope.isSystemAdmin ? (
+        <>
+          <Drawer.Screen
+            name="AdminUsers"
+            component={AdminUsersScreen}
+            options={{ title: 'Quản lý người dùng' }}
+          />
+          <Drawer.Screen
+            name="AdminModeration"
+            component={AdminModerationScreen}
+            options={{ title: 'Kiểm duyệt nội dung' }}
+          />
+          <Drawer.Screen
+            name="AdminAudit"
+            component={AdminAuditScreen}
+            options={{ title: 'Nhật ký kiểm toán' }}
+          />
+          <Drawer.Screen
+            name="AdminBackup"
+            component={AdminBackupScreen}
+            options={{ title: 'Sao lưu và khôi phục' }}
+          />
+          <Drawer.Screen
+            name="AdminConfig"
+            component={AdminConfigScreen}
+            options={{ title: 'Cấu hình hệ thống' }}
+          />
+        </>
+      ) : null}
       <Drawer.Screen
         name="Profile"
         component={ProfileWithFab}

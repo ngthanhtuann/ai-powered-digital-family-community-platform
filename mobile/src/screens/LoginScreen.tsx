@@ -31,7 +31,13 @@ export function LoginScreen({
     alert ??
     (route.params?.registered
       ? { variant: 'success' as const, title: 'Đã tạo tài khoản', message: 'Mời bạn đăng nhập.' }
-      : sessionNotice);
+      : route.params?.passwordReset
+        ? {
+            variant: 'success' as const,
+            title: 'Đã đặt lại mật khẩu',
+            message: 'Mời bạn đăng nhập bằng mật khẩu mới.',
+          }
+        : sessionNotice);
 
   const {
     control,
@@ -101,6 +107,15 @@ export function LoginScreen({
           )}
         />
         <Button title="Đăng nhập" onPress={onSubmit} loading={isSubmitting} />
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text style={[text.body, { color: colors.info, textAlign: 'right' }]}>
+            Quên mật khẩu?
+          </Text>
+        </Pressable>
       </Card>
       <Pressable
         accessibilityRole="link"

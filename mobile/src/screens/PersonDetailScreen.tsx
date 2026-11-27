@@ -11,8 +11,9 @@ import { ApiError } from '../services/api';
 import { communityApi, scopeLabel } from '../services/community';
 import { genealogyApi, lifeSpan, type TreeData } from '../services/genealogy';
 import { heritageApi } from '../services/heritage';
-import { mergeGraph, relativesOf } from '../services/genealogy-tree';
-import { useSession } from '../session/SessionContext';
+import { hasBothParents, mergeGraph, relativesOf, spouseRefs } from '../services/genealogy-tree';
+import { useFamilyScope } from '../session/FamilyScope';
+import { DeathReportBox } from './GenealogyManageScreens';
 import { colors, text } from '../theme';
 
 export function PersonDetailScreen({
@@ -20,9 +21,9 @@ export function PersonDetailScreen({
   route,
 }: NativeStackScreenProps<RootStackParamList, 'PersonDetail'>) {
   const { personId } = route.params;
-  const { session } = useSession();
-  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
-  const myUserId = session.status === 'signedIn' ? session.user.id : null;
+  const scope = useFamilyScope();
+  const familyId = scope.familyId;
+  const myUserId = scope.userId;
   const queryClient = useQueryClient();
   const person = useQuery({
     queryKey: ['person', personId],
@@ -57,7 +58,16 @@ export function PersonDetailScreen({
   const trees = queryClient
     .getQueriesData<TreeData>({ queryKey: ['tree', familyId] })
     .map(([, data]) => data);
-  const relatives = relativesOf(mergeGraph(trees), personId);
+  const graph = mergeGraph(trees);
+  const relatives = relativesOf(graph, personId);
+  const spouses = spouseRefs(graph, personId);
+  const me = useQuery({ queryKey: ['person', 'me'], queryFn: genealogyApi.myPerson, retry: false });
+  // Người tổ là gốc mặc định của cây: thêm con trai cho người tổ thì gợi ý lập chi mới (BR-GEN-30).
+  const top = useQuery({
+    queryKey: ['tree', familyId, 'top'],
+    queryFn: () => genealogyApi.tree(familyId as string, { depth: 1 }),
+    enabled: Boolean(familyId) && scope.isAdmin,
+  });
 
   if (person.isLoading) {
     return (
@@ -80,6 +90,12 @@ export function PersonDetailScreen({
     ['Năm sinh – mất', lifeSpan(p.birthYear, p.isDeceased, p.deathDate) || null],
     ['Nơi sinh', p.birthplace],
     ['Nơi ở hiện tại', p.currentProvince],
+    [
+      'Ngày mất',
+      p.isDeceased && p.deathDate
+        ? `${p.deathDate.split('-').reverse().join('/')}${p.deathTime ? ` lúc ${p.deathTime}` : ''}`
+        : null,
+    ],
     ['Nơi an táng', p.isDeceased ? p.burialPlace : null],
     [
       'Nghề nghiệp',
@@ -150,12 +166,89 @@ export function PersonDetailScreen({
           ))}
         </Card>
       ) : null}
+      <DeathReportBox
+        person={p}
+        onReport={() => navigation.push('DeathReportForm', { personId })}
+        onFamilyRoles={() => navigation.popTo('App', { screen: 'FamilyRoles' })}
+      />
       {authorId && authorId === myUserId ? (
         // BR-GEN-20: chỉ chính chủ sửa thông tin của mình.
         <Button
           title="Chỉnh sửa hồ sơ"
           onPress={() => navigation.push('EditProfile', { personId })}
         />
+      ) : p.canEdit ? (
+        // Quản trị sửa hồ sơ chưa có tài khoản (canEdit do backend tính theo BR-GEN-20).
+        <Button title="Sửa hồ sơ" onPress={() => navigation.push('PersonForm', { personId })} />
+      ) : null}
+      {scope.isAdmin ? (
+        <Card title="Thêm người thân">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(['child', 'parent', 'spouse'] as const)
+              .filter((mode) => mode !== 'parent' || !hasBothParents(graph, personId))
+              .map((mode) => (
+                <Button
+                  key={mode}
+                  title={mode === 'child' ? 'Con' : mode === 'parent' ? 'Cha/mẹ' : 'Vợ/chồng'}
+                  variant="secondary"
+                  onPress={() =>
+                    navigation.push('RelativeForm', {
+                      personId,
+                      mode,
+                      spouses,
+                      canFoundBranch: top.data?.rootId === personId,
+                    })
+                  }
+                />
+              ))}
+          </View>
+        </Card>
+      ) : null}
+      {p.canManage ? (
+        <Button
+          title={p.isDeceased ? 'Sửa thông tin mất / báo nhầm' : 'Báo mất'}
+          variant="secondary"
+          onPress={() => navigation.push('DeathForm', { personId })}
+        />
+      ) : null}
+      {p.canManage && p.userId && !p.isDeceased ? (
+        <Button
+          title="Thay tài khoản (mất tài khoản)"
+          variant="secondary"
+          onPress={() => navigation.push('ReplaceAccount', { personId })}
+        />
+      ) : null}
+      {spouses.length ? (
+        <Card title="Hôn nhân">
+          {spouses.map((s) => (
+            <View key={s.marriageId} style={{ gap: 8 }}>
+              <Text style={[text.body, { color: colors.textPrimary }]}>
+                {s.name} ·{' '}
+                {s.status === 'MARRIED'
+                  ? 'đang kết hôn'
+                  : s.status === 'DIVORCED'
+                    ? 'đã ly hôn'
+                    : 'góa'}
+              </Text>
+              {/* BR-GEN-28: trưởng họ, trưởng chi hoặc chính hai vợ chồng ghi ly hôn. */}
+              {s.status === 'MARRIED' &&
+              !s.deceased &&
+              (scope.isAdmin || personId === me.data?.id || s.id === me.data?.id) ? (
+                <Button
+                  title="Ghi ly hôn"
+                  variant="secondary"
+                  onPress={() =>
+                    navigation.push('Divorce', {
+                      personId,
+                      personName: p.fullName ?? '',
+                      spouse: s,
+                    })
+                  }
+                />
+              ) : null}
+            </View>
+          ))}
+        </Card>
       ) : null}
       {authorId ? (
         <Card title="Bài đăng">

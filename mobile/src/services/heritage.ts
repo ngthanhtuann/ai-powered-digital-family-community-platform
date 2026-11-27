@@ -66,3 +66,56 @@ export const heritageApi = {
       ...family(familyId),
     }),
 };
+
+export type CreateDocument = Schemas['CreateHeritageDocumentRequest'];
+export type UpdateDocument = Schemas['UpdateHeritageDocumentRequest'];
+export type CreateStory = Schemas['CreateFamilyStoryRequest'];
+export type UpdateStory = Schemas['UpdateFamilyStoryRequest'];
+export type OutstandingMember = Schemas['OutstandingMemberData'];
+export type CreateOutstandingMember = Schemas['CreateOutstandingMemberRequest'];
+export type UpdateOutstandingMember = Schemas['UpdateOutstandingMemberRequest'];
+
+const withFamily = (path: string, familyId?: string) =>
+  `${path}${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`;
+
+/** Thêm, sửa, xóa di sản và người tiêu biểu (BR-HER-01, 04: chỉ trưởng chi, trưởng họ, quản trị), như web. */
+export const heritageManageApi = {
+  document: (id: string) =>
+    api.get<HeritageDocument>(`/heritage/documents/${encodeURIComponent(id)}`),
+  createDocument: (body: CreateDocument, familyId?: string) =>
+    api.post<HeritageDocument>(withFamily('/heritage/documents', familyId), body),
+  updateDocument: (id: string, body: UpdateDocument) =>
+    api.patch<HeritageDocument>(`/heritage/documents/${encodeURIComponent(id)}`, body),
+  deleteDocument: (id: string) => api.delete(`/heritage/documents/${encodeURIComponent(id)}`),
+  createStory: (body: CreateStory, familyId?: string) =>
+    api.post<FamilyStory>(withFamily('/heritage/stories', familyId), body),
+  updateStory: (id: string, body: UpdateStory) =>
+    api.patch<FamilyStory>(`/heritage/stories/${encodeURIComponent(id)}`, body),
+  deleteStory: (id: string) => api.delete(`/heritage/stories/${encodeURIComponent(id)}`),
+  outstandingMembers: (page: number, familyId?: string | null) =>
+    api.list<OutstandingMember>('/heritage/outstanding-members', {
+      page,
+      size: 20,
+      sort: 'createdAt,desc',
+      ...(familyId ? { familyId } : {}),
+    }),
+  createOutstandingMember: (body: CreateOutstandingMember, familyId?: string) =>
+    api.post<OutstandingMember>(withFamily('/heritage/outstanding-members', familyId), body),
+  updateOutstandingMember: (id: string, body: UpdateOutstandingMember) =>
+    api.patch<OutstandingMember>(`/heritage/outstanding-members/${encodeURIComponent(id)}`, body),
+  deleteOutstandingMember: (id: string) =>
+    api.delete(`/heritage/outstanding-members/${encodeURIComponent(id)}`),
+  /** Ảnh hoặc PDF cho di sản (ownerType HERITAGE, ownerId là gia đình). */
+  upload: (
+    file: { uri: string; name: string; mimeType: string },
+    familyId: string,
+    caption?: string,
+  ) => {
+    const form = new FormData();
+    form.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
+    form.append('ownerType', 'HERITAGE');
+    form.append('ownerId', familyId);
+    if (caption?.trim()) form.append('caption', caption.trim());
+    return api.upload<{ id: string }>('/media', form);
+  },
+};

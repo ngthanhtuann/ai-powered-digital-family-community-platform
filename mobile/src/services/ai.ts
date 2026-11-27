@@ -21,14 +21,31 @@ type SearchData = {
 const AI_TIMEOUT_MS = 45_000;
 
 export const aiApi = {
-  chat: (question: string, sessionId: string | null) =>
-    api.post<AiChatReply>('/ai/chat', { question, sessionId }, { timeout: AI_TIMEOUT_MS }),
+  /** familyId chỉ gửi khi SYSTEM_ADMIN chọn gia đình; vai trò khác backend tự lấy gia đình của mình (như web). */
+  chat: (question: string, sessionId: string | null, familyId?: string) =>
+    api.post<AiChatReply>(
+      '/ai/chat',
+      { question, sessionId, ...(familyId ? { familyId } : {}) },
+      { timeout: AI_TIMEOUT_MS },
+    ),
   search: (query: string, page = 0, size = 20, familyId?: string) =>
     api.get<SearchData>(
       '/ai/search',
       { q: query, page, size, ...(familyId ? { familyId } : {}) },
       { timeout: AI_TIMEOUT_MS },
     ),
-  summarize: (sourceType: 'POST' | 'STORY', sourceId: string) =>
+  summarize: (sourceType: 'POST' | 'STORY' | 'DOCUMENT', sourceId: string) =>
     api.post<AiSummary>('/ai/summaries', { sourceType, sourceId }, { timeout: AI_TIMEOUT_MS }),
+  /** UC-AI-05: nội dung liên quan; không vượt phạm vi quyền xem (BR-AI-10). */
+  recommendations: (contextType: AiRecommendationContext, contextId: string, limit = 5) =>
+    api.get<AiRecommendations>(
+      '/ai/recommendations',
+      { contextType, contextId, limit },
+      { timeout: AI_TIMEOUT_MS },
+    ),
 };
+
+type RecommendationOperation = operations['getRecommendations'];
+export type AiRecommendationContext = RecommendationOperation['parameters']['query']['contextType'];
+export type AiRecommendations =
+  RecommendationOperation['responses'][200]['content']['application/json']['data'];

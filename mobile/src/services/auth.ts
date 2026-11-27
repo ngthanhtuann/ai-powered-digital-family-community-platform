@@ -53,3 +53,16 @@ export async function changePassword(body: ChangePasswordRequest): Promise<void>
   await api.put('/users/me/password', body);
   await tokenStorage.clear();
 }
+
+export type PasswordResetRequest = Schemas['PasswordResetRequest'];
+export type PasswordResetCode = Schemas['PasswordResetCode'];
+
+/** POST /auth/password-resets (UC-AUTH-15): đặt lại bằng mã do trưởng họ hoặc quản trị cấp. */
+export async function resetPassword(body: PasswordResetRequest): Promise<void> {
+  await api.post('/auth/password-resets', body);
+}
+
+/** POST /users/{userId}/password-reset-codes (UC-AUTH-15): mã chỉ trả một lần, không lưu lại ở máy. */
+export function issuePasswordResetCode(userId: string): Promise<PasswordResetCode> {
+  return api.post<PasswordResetCode>(`/users/${encodeURIComponent(userId)}/password-reset-codes`);
+}

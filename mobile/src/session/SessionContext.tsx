@@ -21,6 +21,10 @@ import {
   type User,
 } from '../services/auth';
 import { tokenStorage } from '../services/token-storage';
+import * as SecureStore from 'expo-secure-store';
+
+// Gia đình Quản trị hệ thống đang xem (như AdminFamilyPicker trên web, SCRUM-118): không phải bí mật, lưu để mở lại app vẫn giữ.
+const ADMIN_FAMILY_KEY = 'fc.adminFamily';
 
 export type Session =
   | { status: 'loading' }
@@ -38,6 +42,9 @@ interface SessionApi {
   reloadMembership: () => Promise<void>;
   setUser: (user: User) => void;
   retry: () => void;
+  /** Quản trị hệ thống không thuộc gia đình nào: gia đình đang xem do họ chọn. */
+  adminFamilyId: string | null;
+  setAdminFamilyId: (id: string | null) => void;
 }
 
 const SessionContext = createContext<SessionApi | null>(null);
@@ -69,6 +76,19 @@ async function resolveSession(): Promise<Session | null> {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session>({ status: 'loading' });
+  const [adminFamilyId, setAdminFamilyState] = useState<string | null>(null);
+  useEffect(() => {
+    SecureStore.getItemAsync(ADMIN_FAMILY_KEY)
+      .then((id) => setAdminFamilyState(id))
+      .catch(() => undefined); // không đọc được thì coi như chưa chọn
+  }, []);
+  const setAdminFamilyId = useCallback((id: string | null) => {
+    setAdminFamilyState(id);
+    (id
+      ? SecureStore.setItemAsync(ADMIN_FAMILY_KEY, id)
+      : SecureStore.deleteItemAsync(ADMIN_FAMILY_KEY)
+    ).catch(() => undefined);
+  }, []);
 
   const toSignedOut = useCallback(
     (notice?: NoticeMessage) => {
@@ -114,8 +134,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSession({ status: 'loading' });
         load();
       },
+      adminFamilyId,
+      setAdminFamilyId,
     }),
-    [session, toSignedOut, reloadMembership, load],
+    [session, toSignedOut, reloadMembership, load, adminFamilyId, setAdminFamilyId],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
