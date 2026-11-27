@@ -1,7 +1,7 @@
 # Thiết kế Mobile (React Native + Expo)
 
 > **Người viết:** TV5 (Lê Nhựt) | **Reviewer:** TV3 (PiLo257) | **Task Jira:** SCRUM-84 | **Hạn nộp review:** Thứ Năm 15/10 (Sprint 2)
-> **Trạng thái:** Đã merge vào `develop` (Sprint 2)
+> **Trạng thái:** Đã merge vào `develop` (Sprint 2). Cập nhật 28/11/2026: mobile làm đủ chức năng như web, gồm nhóm Quản lý và Quản trị (mục 2, 3).
 > Căn cứ: `architecture.md` mục 5 và 7, `design-system.md` mục 4, 5.1, 5.2, `use-cases/auth.md` mục 4.2, `conventions.md` mục 2, 3, 8, `srs.md` mục 3 và Phụ lục A (bản trên `develop`).
 
 ## 1. Chọn công nghệ
@@ -10,25 +10,25 @@
 Mobile gọi cùng REST API `/api/v1` với web và dùng cùng hợp đồng API (kiểu dữ liệu sinh từ OpenAPI, mục 4.4). Khung ứng dụng tạo ở SCRUM-85 (`mobile/README.md`).
 
 ## 2. Phạm vi mobile
-Quyền trong từng chức năng theo `srs.md` Phụ lục A, giống web (ví dụ Thành viên chỉ xem cây gia phả; Trưởng chi mới thấy nút gỡ bài của người khác).
+Quyền trong từng chức năng theo `srs.md` Phụ lục A, giống web (ví dụ Thành viên chỉ xem cây gia phả; Trưởng chi mới thấy nút gỡ bài của người khác). Từ 28/11/2026 mobile làm đủ chức năng của web (quyết định của nhóm, thay cho phạm vi "chỉ xem" và "nhóm Quản lý, Quản trị chỉ trên web" trước đây); backend vẫn kiểm quyền ở mọi API. Quản trị hệ thống chọn "Gia đình đang xem" như ô chọn gia đình trên header web (SCRUM-118).
 
 | Chức năng | Có trên mobile | Mã FR | Use case / ghi chú |
 |---|---|---|---|
-| Đăng nhập, đăng ký, đăng xuất, hồ sơ, đổi mật khẩu | Có | FR-AUTH-01, FR-AUTH-03 | UC-AUTH-01 đến 05 |
+| Đăng nhập, đăng ký, đăng xuất, hồ sơ, đổi mật khẩu, quên mật khẩu | Có | FR-AUTH-01, FR-AUTH-03 | UC-AUTH-01 đến 05, UC-AUTH-15 (nhập mã do trưởng họ hoặc quản trị cấp) |
 | Xin tham gia gia đình, chờ duyệt, tạo gia đình | Có | FR-AUTH-04, FR-GEN-01 | UC-AUTH-06, UC-GEN-01 (luồng sau đăng nhập, mục 3) |
-| Bảng tin, bài đăng, bình luận, reaction, ảnh, thông báo ghim | Có | FR-COM-01 đến FR-COM-05 | UC-COM-01 đến 06. Sửa, xóa bài và bình luận của mình, báo cáo vi phạm, thả cảm xúc ngay trên thẻ bài (SCRUM-128) |
-| Sự kiện, RSVP, người tham dự, ảnh sự kiện, nhắc nhở | Có | FR-EVT-01 đến FR-EVT-05 | UC-EVT-01 đến 05. Nhắc nhở hiển thị trong màn Thông báo (BR-EVT-05); push notification là phần mở rộng |
-| Danh sách thành viên, cây gia phả, tra quan hệ | Có (xem) | FR-GEN-03 (xem), FR-GEN-06, FR-GEN-07, FR-GEN-08 | UC-GEN-03 (xem), 06, 07, 08. Ô của chính mình tô màu "Bạn"; chính chủ sửa hồ sơ của mình, nghề nghiệp, học vấn, ảnh đại diện (BR-GEN-20, SCRUM-128). Thêm, sửa người khác và quan hệ làm trên web |
-| Trợ lý AI, tìm kiếm, tóm tắt, giải thích quan hệ, gợi ý | Có | FR-AI-01 đến FR-AI-05 | UC-AI-01 đến 05 |
-| Danh bạ, hồ sơ nghề nghiệp và học vấn | Có (SCRUM-92) | FR-DIR-01 đến FR-DIR-04 | UC-DIR-01, 02. Tìm không dấu, lọc nghề, nơi ở, thế hệ; xem hồ sơ có học vấn |
-| Di sản: tài liệu, câu chuyện, thư viện ảnh | Có (SCRUM-92, SCRUM-109) | FR-HER-01, FR-HER-02, FR-HER-04, FR-HER-05 | UC-HER-01 đến 04 (xem). Tài liệu PDF mở bằng trình xem của máy (SCRUM-109). Người tiêu biểu (FR-HER-03) và thêm, sửa nội dung di sản chỉ trên web |
-| Nhóm Quản lý: duyệt yêu cầu tham gia, thống kê và báo cáo | Không, chỉ web | FR-AUTH-04 (duyệt), FR-DSH-01 đến FR-DSH-05 | `design-system.md` mục 5.2 |
-| Nhóm Quản trị hệ thống | Không, chỉ web | FR-ADM-01 đến FR-ADM-05 | `design-system.md` mục 5.2 |
+| Bảng tin, bài đăng, bình luận, reaction, ảnh, thông báo gia đình | Có | FR-COM-01 đến FR-COM-05 | UC-COM-01 đến 06. Sửa, xóa bài và bình luận của mình, báo cáo vi phạm, thả cảm xúc ngay trên thẻ bài (SCRUM-128). Trưởng chi trở lên đăng tin tức gia đình (BR-COM-04); đăng, sửa, ghim, xóa thông báo gia đình; thông báo ghim hiện đầu Bảng tin |
+| Sự kiện, RSVP, người tham dự, ảnh sự kiện, nhắc nhở | Có | FR-EVT-01 đến FR-EVT-05 | UC-EVT-01 đến 05. Tạo, sửa, hủy sự kiện (người tạo hoặc người quản lý); lọc người tham dự theo RSVP, điểm danh (BR-EVT-03); thêm ảnh sự kiện. Nhắc nhở hiển thị trong màn Thông báo (BR-EVT-05); push notification là phần mở rộng |
+| Thành viên, cây gia phả, tra quan hệ, quản lý gia phả | Có | FR-GEN-01 đến FR-GEN-08 | UC-GEN-02 đến 08. Ô của chính mình tô màu "Bạn"; tìm người trên cây; vợ/chồng ngoài tộc đã ly hôn mờ và khóa với thành viên (BR-GEN-28). Chính chủ sửa hồ sơ của mình (BR-GEN-20). Người quản lý: thêm thành viên, thêm người thân trong một lần lưu (BR-GEN-26, kèm cha/mẹ còn lại BR-GEN-27, lập chi BR-GEN-30), ghi ly hôn, tái hôn (BR-GEN-28), báo mất (BR-GEN-21), thay tài khoản (BR-GEN-23); con ruột báo mất, người khác xác nhận (BR-GEN-24) |
+| Trợ lý AI, tìm kiếm, tóm tắt, giải thích quan hệ, gợi ý | Có | FR-AI-01 đến FR-AI-05 | UC-AI-01 đến 05. Tóm tắt bài, câu chuyện, tài liệu và "Có thể bạn quan tâm" ngay trên màn chi tiết, như web |
+| Danh bạ, hồ sơ nghề nghiệp và học vấn | Có (SCRUM-92) | FR-DIR-01 đến FR-DIR-04 | UC-DIR-01, 02. Tìm không dấu, lọc nghề, nơi ở, thế hệ; xem hồ sơ có học vấn; người quản lý xuất CSV thành viên |
+| Di sản: tài liệu, câu chuyện, thư viện ảnh, người tiêu biểu | Có (SCRUM-92, SCRUM-109) | FR-HER-01 đến FR-HER-05 | UC-HER-01 đến 04. Tài liệu PDF mở bằng trình xem của máy (SCRUM-109). Người quản lý thêm, sửa, xóa tài liệu, câu chuyện (tác giả cũng sửa được câu chuyện của mình), tải ảnh, quản lý người tiêu biểu (BR-HER-01, 04). Tệp tài liệu chọn được ảnh; chọn tệp PDF trên mobile cần thêm thư viện `expo-document-picker` (chưa duyệt), hiện thêm PDF trên web |
+| Nhóm Quản lý: duyệt yêu cầu tham gia, phân công trưởng chi, thống kê và báo cáo | Có (trưởng chi, trưởng họ, quản trị) | FR-AUTH-04 (duyệt), FR-DSH-01 đến FR-DSH-05 | UC-AUTH-07 (tự chọn sẵn hồ sơ trùng họ tên và ngày sinh, SCRUM-132; mã mời gửi qua hộp chia sẻ của máy), UC-AUTH-14 (theo chi, thêm/sửa chi, chọn trưởng chi BR-GEN-29, mời người chưa có tài khoản, cấp mã đặt lại mật khẩu UC-AUTH-15). Thống kê vẽ bằng thanh ngang kèm số (không thêm thư viện biểu đồ); báo cáo PDF và CSV tải về rồi mở bằng ứng dụng của máy |
+| Nhóm Quản trị hệ thống | Có (chỉ SYSTEM_ADMIN) | FR-ADM-01 đến FR-ADM-05 | UC-AUTH-08 đến 12: người dùng (khóa có lý do, mở khóa, cấp/thu quyền quản trị, gán dòng họ, cấp mã đặt lại mật khẩu), kiểm duyệt nội dung, nhật ký kiểm toán, sao lưu và khôi phục (gõ RESTORE), cấu hình hệ thống |
 
 ## 3. Sơ đồ điều hướng
 ### 3.1. Mô hình điều hướng
 - **React Navigation** (`architecture.md` mục 5): một stack gốc chọn nhánh theo trạng thái đăng nhập và trạng thái tham gia gia đình (`membership`); trong ứng dụng dùng **menu drawer**, mỗi mục mở một stack (danh sách → chi tiết → tạo, sửa).
-- **Menu drawer theo design system** (`design-system.md` mục 4 và 5.1: điều hướng mobile là khối cuối trang, "chuyển thành menu drawer khi làm app"). Nội dung drawer đúng component `Layout/Điều hướng mobile` (Size=360) trên page 01, đúng danh sách theo vai trò ở mục 5.2, bỏ nhóm Quản lý và Quản trị. Mở bằng nút Menu trên `Layout/Header` Size=360. **Không dùng tab bar** (Jira SCRUM-84 bước 3 có ghi "tab bar", đã thống nhất đổi theo review PR #37 ngày 16/10/2026).
+- **Menu drawer theo design system** (`design-system.md` mục 4 và 5.1: điều hướng mobile là khối cuối trang, "chuyển thành menu drawer khi làm app"). Nội dung drawer đúng component `Layout/Điều hướng mobile` (Size=360) trên page 01, đúng danh sách theo vai trò ở mục 5.2, gồm cả nhóm Quản lý (trưởng chi, trưởng họ, quản trị; Phân công trưởng chi chỉ trưởng họ, quản trị) và Quản trị hệ thống (SYSTEM_ADMIN) từ 28/11/2026. Mở bằng nút Menu trên `Layout/Header` Size=360. **Không dùng tab bar** (Jira SCRUM-84 bước 3 có ghi "tab bar", đã thống nhất đổi theo review PR #37 ngày 16/10/2026).
 - Chuông thông báo trên header mở màn Thông báo. Nút nổi "Trợ lý AI" (component trên page 06) mở màn Trợ lý AI từ mọi màn trong ứng dụng.
 
 ### 3.2. Luồng sau khi mở ứng dụng và đăng nhập (UC-AUTH-02, UC-AUTH-06)
@@ -85,6 +85,13 @@ Bất kỳ lúc nào: nhận `401 AUTH_002` mà làm mới token thất bại th
 | AI | Tìm kiếm | UC-AI-01 | `Tìm kiếm / 360` (cần đổi tên `UC-AI-01 Tìm kiếm / 360`) |
 | Danh bạ | Danh bạ, xem hồ sơ | UC-DIR-01, 02 | `UC-DIR-01 Danh bạ / 360` |
 | Di sản | Di sản (tab Tài liệu, Câu chuyện, Ảnh), chi tiết câu chuyện, xem ảnh và tài liệu | UC-HER-01 đến 04 | Chưa có |
+| Xác thực | Quên mật khẩu | UC-AUTH-15 | Chưa có |
+| Gia phả | Thêm người thân, Thêm/Sửa thành viên, Báo mất, Ghi ly hôn, Thay tài khoản | UC-GEN-03 đến 05 | Chưa có (theo hộp thoại của web) |
+| Cộng đồng | Thông báo gia đình, Đăng/Sửa thông báo | UC-COM-06 | Chưa có |
+| Sự kiện | Tạo/Sửa sự kiện | UC-EVT-01 | Chưa có |
+| Di sản | Người tiêu biểu, Thêm/Sửa tài liệu, câu chuyện, người tiêu biểu | UC-HER-01 đến 04 | Chưa có |
+| Quản lý | Duyệt yêu cầu tham gia (Duyệt, Từ chối), Phân công trưởng chi (Thêm/Sửa chi, Chọn trưởng chi, Phân công, Mời, Cấp mã), Thống kê, Báo cáo | UC-AUTH-07, 14, 15, FR-DSH | Chưa có (bản web ở page 02, 05) |
+| Quản trị hệ thống | Người dùng (Khóa, Gán dòng họ), Kiểm duyệt, Nhật ký, Sao lưu và khôi phục, Cấu hình | UC-AUTH-08 đến 12 | Chưa có (bản web ở page 02) |
 | Tài khoản | Hồ sơ cá nhân, Đổi mật khẩu | UC-AUTH-05, 04 | Chưa có |
 
 ## 4. Kiến trúc mobile
@@ -166,5 +173,5 @@ Tình trạng ngày 18/10/2026: đã có 12 khung, khung nào cũng dùng instan
 - 5 khung chưa có `Layout/Điều hướng mobile`: Thành viên, Cây gia phả, Tra cứu xưng hô, Sự kiện và Giỗ chạp, Chat AI.
 
 ## 6. Câu hỏi còn mở
-- [ ] Trưởng chi có đăng tin tức, thông báo ghim, gỡ bài trên mobile không? `design-system.md` mục 5.2 chỉ nói mobile bỏ nhóm Quản lý và Quản trị. (Đề xuất: có, vì các nút này nằm trong màn Bảng tin, không thuộc nhóm Quản lý.)
+- [x] Trưởng chi có đăng tin tức, thông báo ghim, gỡ bài trên mobile không? Đã chốt 28/11/2026: có, và mobile làm đủ chức năng như web (mục 2).
 - [ ] Push notification cho nhắc nhở sự kiện: phần mở rộng theo BR-EVT-05, chưa cam kết.

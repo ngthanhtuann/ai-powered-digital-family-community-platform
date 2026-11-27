@@ -144,7 +144,7 @@ Menu lấy theo các module trong `srs.md` mục 3 và quyền trong Phụ lục
 - Tên ứng dụng hiển thị: **FamilyConnect** (tên dự án trong `srs.md`); dòng phụ là tên dòng họ đang xem.
 - "Tổng quan" là trang chủ cho mọi thành viên đã xác minh; thống kê chi tiết và báo cáo nằm ở "Thống kê và báo cáo" (chỉ Trưởng chi, Quản trị) đúng Phụ lục A. Nội dung trang Tổng quan cho Thành viên do SCRUM-32 chốt.
 - Mục "Bản đồ quê hương" trong bản vẽ cũ không có trong `srs.md` nên đã thay bằng "Kho lưu trữ số" (FR-HER-05).
-- Theo `mobile.md` mục 2, app mobile (React Native) không có nhóm Quản lý và Quản trị; bản web ở cỡ 360 vẫn hiện đủ theo vai trò.
+- Theo `mobile.md` mục 2 (cập nhật 28/11/2026), app mobile (React Native) có đủ các nhóm như web, kể cả Quản lý và Quản trị hệ thống, hiện theo vai trò; bản web ở cỡ 360 vẫn hiện đủ theo vai trò.
 
 ## 6. Cấu hình `tailwind.config`
 

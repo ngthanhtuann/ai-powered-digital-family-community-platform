@@ -11,7 +11,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { ApiError } from '../services/api';
-import { useSession } from '../session/SessionContext';
+import { AdminFamilyPicker } from '../components/AdminFamilyPicker';
+import { useFamilyScope } from '../session/FamilyScope';
 import { aiApi, type AiSource } from '../services/ai';
 import { Button, Card, Notice } from '../components/ui';
 import { colors, radius, spacing, text } from '../theme';
@@ -34,10 +35,9 @@ const SOURCE_LABEL: Record<AiSource['sourceType'], string> = {
 
 export function AiChatScreen() {
   const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-  const { session } = useSession();
-  // SYSTEM_ADMIN không thuộc gia đình nào; /ai/chat của quản trị cần chọn gia đình, chỉ có trên bản web.
-  const isSystemAdmin =
-    session.status === 'signedIn' && session.user.roles.includes('SYSTEM_ADMIN');
+  // SYSTEM_ADMIN không thuộc gia đình nào nên phải chọn gia đình để hỏi (ai.yaml: familyId bắt buộc với quản trị).
+  const scope = useFamilyScope();
+  const isSystemAdmin = scope.isSystemAdmin && !scope.familyId;
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export function AiChatScreen() {
     setRetryQuestion(value);
     const version = conversationVersion.current;
     try {
-      const reply = await aiApi.chat(value, sessionId);
+      const reply = await aiApi.chat(value, sessionId, scope.familyParam);
       if (version !== conversationVersion.current) return;
       setSessionId(reply.sessionId ?? null);
       setMessages((current) => [
@@ -113,11 +113,12 @@ export function AiChatScreen() {
           <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>Trợ lý AI</Text>
           <Button title="Cuộc trò chuyện mới" variant="secondary" onPress={newConversation} />
         </View>
+        {scope.isSystemAdmin ? <AdminFamilyPicker /> : null}
         {isSystemAdmin ? (
           <Notice
             variant="info"
-            title="Dùng bản web để hỏi"
-            message="Tài khoản quản trị hệ thống cần chọn gia đình trước khi hỏi trợ lý; việc này hiện chỉ có trên bản web."
+            title="Cần chọn gia đình"
+            message="Tài khoản quản trị hệ thống cần chọn gia đình trước khi hỏi trợ lý."
           />
         ) : null}
         {error ? <Notice variant="error" title="Chưa gửi được câu hỏi" message={error} /> : null}

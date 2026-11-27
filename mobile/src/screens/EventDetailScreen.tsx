@@ -1,11 +1,14 @@
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ErrorPanel, formatWhen, MediaGallery, nextPage } from '../components/community-ui';
+import { Select } from '../components/form-ui';
 import { Button, Card, Loading, Notice, Screen } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
 import {
+  eventManageApi,
   eventsApi,
   RSVP_LABEL,
   type EventMedia,
@@ -13,6 +16,7 @@ import {
   type Participant,
 } from '../services/events';
 import { colors, text } from '../theme';
+import { AttendanceToggle, EventManagePanel, EventPhotoUpload } from './ContentManageScreens';
 
 const RSVP: { value: EventRsvp; title: string }[] = [
   { value: 'GOING', title: 'Tham dự' },
@@ -23,6 +27,7 @@ const RSVP: { value: EventRsvp; title: string }[] = [
 export function EventDetailScreen() {
   const { eventId } = useRoute<RouteProp<RootStackParamList, 'EventDetail'>>().params;
   const qc = useQueryClient();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [notice, setNotice] = useState<string | null>(null);
   const [referenceNow, setReferenceNow] = useState(() => Date.now());
   useEffect(() => {
@@ -33,10 +38,13 @@ export function EventDetailScreen() {
     queryKey: ['event', eventId],
     queryFn: () => eventsApi.detail(eventId),
   });
+  // BR-EVT-03: lọc người tham dự theo trạng thái RSVP.
+  const [rsvpFilter, setRsvpFilter] = useState<EventRsvp | ''>('');
   const participants = useInfiniteQuery({
-    queryKey: ['participants', eventId],
+    queryKey: ['participants', eventId, rsvpFilter],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => eventsApi.participants(eventId, pageParam),
+    queryFn: ({ pageParam }) =>
+      eventManageApi.participants(eventId, pageParam, rsvpFilter || undefined),
     getNextPageParam: nextPage<Participant>,
   });
   const photos = useInfiniteQuery({
@@ -113,10 +121,24 @@ export function EventDetailScreen() {
           {notice ? (
             <Notice variant="error" title="Không cập nhật được RSVP" message={notice} />
           ) : null}
+          <EventManagePanel
+            event={event.data}
+            stack={navigation}
+            onDeleted={() => navigation.goBack()}
+          />
         </Card>
       )}
 
       <Card title="Người tham dự">
+        <Select
+          label="Lọc theo phản hồi"
+          value={rsvpFilter}
+          onChange={setRsvpFilter}
+          options={[
+            { value: '' as const, label: 'Tất cả' },
+            ...RSVP.map((r) => ({ value: r.value, label: r.title })),
+          ]}
+        />
         {participants.isPending ? (
           <Loading />
         ) : participants.isError ? (
@@ -131,7 +153,9 @@ export function EventDetailScreen() {
             >
               <Text style={[text.body, { color: colors.textPrimary }]}>
                 {p.displayName ?? 'Thành viên'} — {RSVP_LABEL[p.rsvpStatus]}
+                {p.attendedAt ? ' · Đã điểm danh' : ''}
               </Text>
+              <AttendanceToggle eventId={eventId} participant={p} />
             </View>
           ))
         )}
@@ -146,6 +170,7 @@ export function EventDetailScreen() {
       </Card>
 
       <Card title="Thư viện ảnh sự kiện">
+        <EventPhotoUpload eventId={eventId} />
         {photos.isPending ? (
           <Loading />
         ) : photos.isError ? (

@@ -10,6 +10,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { communityApi, postableBranches, type UploadAsset } from '../services/community';
 import { genealogyApi } from '../services/genealogy';
 import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
+import { Segmented } from '../components/form-ui';
 import { colors, radius, text } from '../theme';
 
 const DESCENDANTS = 'DESCENDANTS';
@@ -38,6 +40,10 @@ export function CreatePostScreen() {
     branchAdmin,
   );
   const [scopeChoice, setScopeChoice] = useState<string | null | undefined>(undefined);
+  const familyScope = useFamilyScope();
+  // BR-COM-04: tin tức gia đình chỉ trưởng chi, trưởng họ, quản trị đăng.
+  const canNews = branchAdmin || systemAdmin;
+  const [postType, setPostType] = useState<'POST' | 'NEWS'>('POST');
   const wanted = scopeChoice === undefined ? myBranch : scopeChoice;
   // 3 lựa chọn như web (SCRUM-124): Cả dòng họ / Chi của tôi / Con cháu của tôi (cần hồ sơ gia phả).
   const canDescendants = !!useQuery({
@@ -97,12 +103,12 @@ export function CreatePostScreen() {
     let id = postId;
     try {
       if (!id) {
-        const familyId =
-          session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
+        // Quản trị hệ thống đăng vào gia đình đang xem (như web); thành viên: backend lấy gia đình của mình.
+        const familyId = familyScope.familyParam;
         id = (
           scope === DESCENDANTS
-            ? await communityApi.create(content.trim(), null, familyId, 'DESCENDANTS')
-            : await communityApi.create(content.trim(), scope, familyId)
+            ? await communityApi.create(content.trim(), null, familyId, 'DESCENDANTS', postType)
+            : await communityApi.create(content.trim(), scope, familyId, undefined, postType)
         ).id;
         setPostId(id);
       }
@@ -151,6 +157,17 @@ export function CreatePostScreen() {
         <Text style={[text.caption, { color: colors.textSecondary }]}>
           {content.length}/5000 ký tự
         </Text>
+        {canNews ? (
+          <Segmented
+            label="Loại bài"
+            value={postType}
+            onChange={setPostType}
+            options={[
+              { value: 'POST', label: 'Bài đăng' },
+              { value: 'NEWS', label: 'Tin tức gia đình' },
+            ]}
+          />
+        ) : null}
         <Text style={[text.label, { color: colors.textPrimary }]}>Ai được xem</Text>
         <View accessibilityRole="radiogroup" style={{ gap: 6 }}>
           {[{ id: null as string | null, label: 'Cả dòng họ' }]

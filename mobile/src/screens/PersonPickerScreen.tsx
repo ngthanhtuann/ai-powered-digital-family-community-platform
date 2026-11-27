@@ -9,7 +9,7 @@ import { PersonAvatar } from '../components/genealogy-ui';
 import { Loading, TextField } from '../components/ui';
 import type { PersonPick, RootStackParamList } from '../navigation/types';
 import { genealogyApi, lifeSpan, type Person } from '../services/genealogy';
-import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
 import { colors, spacing, text } from '../theme';
 
 /** Mốc thời gian tạo ngoài component (quy tắc thuần của React 19) để màn nhận biết mỗi lần chọn. */
@@ -21,8 +21,7 @@ export function PersonPickerScreen({
   navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, 'PersonPicker'>) {
-  const { session } = useSession();
-  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
+  const familyId = useFamilyScope().familyId;
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
   useEffect(() => {

@@ -1,7 +1,7 @@
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import {
@@ -15,8 +15,15 @@ import {
 } from '../components/community-ui';
 import { Button, Card, Loading } from '../components/ui';
 import { PersonAvatar } from '../components/genealogy-ui';
-import { communityApi, scopeLabel, type Post, type ReactionType } from '../services/community';
-import { useSession } from '../session/SessionContext';
+import {
+  announcementsApi,
+  communityApi,
+  scopeLabel,
+  type Post,
+  type ReactionType,
+} from '../services/community';
+import { useFamilyScope } from '../session/FamilyScope';
+import { AdminFamilyPicker } from '../components/AdminFamilyPicker';
 import { colors, spacing, text } from '../theme';
 import type { AppDrawerParamList, RootStackParamList } from '../navigation/types';
 
@@ -30,17 +37,24 @@ const QUICK_REACTIONS: { type: ReactionType; icon: string }[] = [
 
 export function FeedScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-  const { session } = useSession();
+  const scope = useFamilyScope();
   const [filter, setFilter] = useState<FeedFilter>('ALL');
   const { names: branchNames } = useFamilyBranches(); // nhãn phạm vi bài (SCRUM-101)
-  const familyId =
-    session.status === 'signedIn' ? (session.membership.familyId ?? undefined) : undefined;
+  const familyId = scope.familyParam;
+  // Thông báo gia đình đã ghim hiện trước bài đăng như web (FR-COM-05); xem đủ, đăng, sửa ở màn Thông báo gia đình.
+  const pinned = useQuery({
+    queryKey: ['announcements', familyId ?? 'own', 'pinned'],
+    queryFn: () => announcementsApi.list(0, familyId),
+    enabled: Boolean(scope.familyId),
+  });
+  const pinnedItems = (pinned.data?.items ?? []).filter((a) => a.isPinned);
   const query = useInfiniteQuery({
     queryKey: ['posts', filter, familyId],
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       communityApi.posts(pageParam, filter === 'NEWS' ? 'NEWS' : undefined, familyId),
     getNextPageParam: nextPage<Post>,
+    enabled: Boolean(scope.familyId),
   });
   const posts = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
   const qc = useQueryClient();
@@ -75,6 +89,28 @@ export function FeedScreen() {
         }}
         ListHeaderComponent={
           <View style={{ gap: 12 }}>
+            {scope.isSystemAdmin ? <AdminFamilyPicker /> : null}
+            {pinnedItems.map((a) => (
+              <Pressable
+                key={a.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Thông báo đã ghim: ${a.title}`}
+                onPress={() => drawer.navigate('Announcements')}
+                style={{
+                  gap: 4,
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.secondary,
+                  backgroundColor: colors.surface,
+                }}
+              >
+                <Text style={[text.label, { color: colors.textPrimary }]}>📌 {a.title}</Text>
+                <Text style={[text.body, { color: colors.textPrimary }]} numberOfLines={3}>
+                  {a.content}
+                </Text>
+              </Pressable>
+            ))}
             <Button
               title="Tạo bài đăng"
               onPress={() =>

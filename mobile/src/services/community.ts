@@ -71,10 +71,11 @@ export const communityApi = {
     branchId: string | null,
     familyId?: string,
     audience?: 'FAMILY' | 'BRANCH' | 'DESCENDANTS',
+    type: 'POST' | 'NEWS' = 'POST', // BR-COM-04: NEWS chỉ trưởng chi, trưởng họ, quản trị
   ) =>
     api.post<Post>(`/posts${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`, {
       content,
-      type: 'POST',
+      type,
       branchId,
       audience,
     } satisfies Schemas['PostCreateRequest']),
@@ -130,4 +131,27 @@ export const communityApi = {
     form.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
     return api.upload<Media>(`/posts/${encodeURIComponent(postId)}/media`, form, onProgress);
   },
+};
+
+export type Announcement = Schemas['Announcement'];
+export type AnnouncementRequest = Schemas['AnnouncementRequest'];
+export type AnnouncementUpdateRequest = Schemas['AnnouncementUpdateRequest'];
+
+/** Thông báo chung của gia đình (UC-COM-06, FR-COM-05), như web. */
+export const announcementsApi = {
+  list: (page: number, familyId?: string) =>
+    api.list<Announcement>('/announcements', {
+      page,
+      size: 20,
+      sort: 'createdAt,desc',
+      ...(familyId ? { familyId } : {}),
+    }),
+  create: (body: AnnouncementRequest, familyId?: string) =>
+    api.post<Announcement>(
+      `/announcements${familyId ? `?familyId=${encodeURIComponent(familyId)}` : ''}`,
+      body,
+    ),
+  update: (id: string, body: AnnouncementUpdateRequest) =>
+    api.patch<Announcement>(`/announcements/${encodeURIComponent(id)}`, body),
+  remove: (id: string) => api.delete(`/announcements/${encodeURIComponent(id)}`),
 };

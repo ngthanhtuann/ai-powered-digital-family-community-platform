@@ -33,6 +33,7 @@ import {
 } from '../services/community';
 import { useSession } from '../session/SessionContext';
 import { colors, radius, spacing, text } from '../theme';
+import { AiSummaryPanel, RecommendationsPanel } from '../components/ai-ui';
 
 const REACTIONS: { type: ReactionType; label: string }[] = [
   { type: 'LIKE', label: '👍 Thích' },
@@ -262,6 +263,11 @@ export function PostDetailScreen() {
                 ) : null}
               </Card>
             ) : null}
+            {/* Như '⋯ Tóm tắt AI, nội dung liên quan' của bảng tin web (UC-AI-04, 05). */}
+            <Card title="Công cụ AI">
+              <AiSummaryPanel sourceType="POST" sourceId={postId} />
+              <RecommendationsPanel contextType="POST" contextId={postId} />
+            </Card>
             <Card title={replyTo ? `Trả lời ${replyTo.authorName}` : 'Viết bình luận'}>
               <TextInput
                 accessibilityLabel="Nội dung bình luận"

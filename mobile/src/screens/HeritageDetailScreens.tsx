@@ -12,8 +12,11 @@ import { API_BASE_URL } from '../services/api';
 import { heritageApi } from '../services/heritage';
 import { tokenStorage } from '../services/token-storage';
 import { colors, spacing, text } from '../theme';
+import { DocumentManagePanel, StoryManagePanel } from './ContentManageScreens';
+import { AiSummaryPanel } from '../components/ai-ui';
 
 export function StoryDetailScreen({
+  navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, 'StoryDetail'>) {
   const story = useQuery({
@@ -34,6 +37,13 @@ export function StoryDetailScreen({
       <Card title={s.title} description={`${s.authorName} · ${formatDate(s.createdAt)}`}>
         <Text style={[text.body, { color: colors.textPrimary }]}>{s.content}</Text>
       </Card>
+      <AiSummaryPanel sourceType="STORY" sourceId={s.id} />
+      <StoryManagePanel
+        storyId={s.id}
+        authorId={s.authorId}
+        stack={navigation}
+        onDeleted={() => navigation.goBack()}
+      />
     </Screen>
   );
 }
@@ -55,9 +65,10 @@ async function openPdf(mediaId: string, title: string) {
 
 /** Xem ảnh phóng to (thư viện ảnh) hoặc tài liệu trong kho lưu trữ; tài liệu PDF mở bằng trình xem của máy. */
 export function PhotoViewerScreen({
+  navigation,
   route,
 }: NativeStackScreenProps<RootStackParamList, 'PhotoViewer'>) {
-  const { mediaId, title, document } = route.params;
+  const { mediaId, title, document, documentId } = route.params;
   const { width, height } = useWindowDimensions();
   const [failed, setFailed] = useState(false);
   const pdf = useMutation({ mutationFn: () => openPdf(mediaId, title) });
@@ -69,6 +80,16 @@ export function PhotoViewerScreen({
       minimumZoomScale={1}
     >
       <Text style={[text.sectionTitle, { color: colors.textPrimary }]}>{title}</Text>
+      {documentId ? (
+        <>
+          <AiSummaryPanel sourceType="DOCUMENT" sourceId={documentId} />
+          <DocumentManagePanel
+            documentId={documentId}
+            stack={navigation}
+            onDeleted={() => navigation.goBack()}
+          />
+        </>
+      ) : null}
       {failed && document ? (
         <View style={{ gap: 8 }}>
           <Notice

@@ -9,7 +9,7 @@ export interface Graph {
   /** Cha/mẹ theo con. */
   parents: Map<string, TreeEdge[]>;
   /** Hôn nhân theo từng người, hai chiều. */
-  spouses: Map<string, { id: string; status: TreeEdge['status'] }[]>;
+  spouses: Map<string, { id: string; status: TreeEdge['status']; marriageId: string }[]>;
 }
 
 function push<V>(map: Map<string, V[]>, key: string, value: V) {
@@ -33,8 +33,8 @@ export function mergeGraph(parts: (TreeData | undefined)[]): Graph {
       push(graph.children, e.source, e);
       push(graph.parents, e.target, e);
     } else if (e.type === 'MARRIAGE') {
-      push(graph.spouses, e.source, { id: e.target, status: e.status });
-      push(graph.spouses, e.target, { id: e.source, status: e.status });
+      push(graph.spouses, e.source, { id: e.target, status: e.status, marriageId: e.id as string });
+      push(graph.spouses, e.target, { id: e.source, status: e.status, marriageId: e.id as string });
     }
   }
   return graph;
@@ -54,9 +54,14 @@ function birthOrder(graph: Graph, a: string, b: string): number {
   return ya - yb;
 }
 
-/** Con của một người, xếp theo năm sinh; chỉ lấy con đã có trong cây. */
+/**
+ * Con của một người, xếp theo năm sinh; chỉ lấy con đã có trong cây. Gồm cả con riêng của vợ/chồng (dâu, rể ngoài tộc
+ * không có dòng riêng), để con đó nằm dưới cặp vợ chồng như web (BR-GEN-27).
+ */
 export function childIds(graph: Graph, id: string): string[] {
-  const ids = (graph.children.get(id) ?? [])
+  const parents = [id, ...(graph.spouses.get(id) ?? []).map((s) => s.id)];
+  const ids = parents
+    .flatMap((pid) => graph.children.get(pid) ?? [])
     .map((e) => e.target as string)
     .filter((c) => graph.nodes.has(c));
   return [...new Set(ids)].sort((a, b) => birthOrder(graph, a, b));
@@ -132,4 +137,36 @@ export function relativesOf(
       role: 'Con' + (e.kind ? KIND_LABEL[e.kind] : ''),
     }));
   return [...parents, ...spouses, ...kids];
+}
+
+/** Vợ/chồng của một người theo cạnh MARRIAGE (SCRUM-144, 145), dùng cho mục Hôn nhân và form thêm người thân. */
+export interface SpouseRef {
+  marriageId: string;
+  id: string;
+  name: string;
+  status: string;
+  deceased: boolean;
+}
+
+export function spouseRefs(graph: Graph, id: string): SpouseRef[] {
+  return (graph.spouses.get(id) ?? [])
+    .filter((s) => graph.nodes.has(s.id))
+    .map((s) => {
+      const other = graph.nodes.get(s.id);
+      return {
+        marriageId: s.marriageId,
+        id: s.id,
+        name: other?.fullName ?? '',
+        status: s.status ?? '',
+        deceased: Boolean(other?.isDeceased),
+      };
+    });
+}
+
+/** BR-GEN-27: đã có cả cha và mẹ trên cây thì ẩn "Thêm cha/mẹ". */
+export function hasBothParents(graph: Graph, id: string): boolean {
+  const genders = (graph.parents.get(id) ?? []).map(
+    (e) => graph.nodes.get(e.source as string)?.gender,
+  );
+  return genders.includes('MALE') && genders.includes('FEMALE');
 }

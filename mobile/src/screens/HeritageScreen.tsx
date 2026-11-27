@@ -1,4 +1,5 @@
-// Di sản (UC-HER-01..03, FR-HER-01..05; SCRUM-92): kho lưu trữ số, câu chuyện gia đình, thư viện ảnh. Chỉ xem.
+// Di sản (UC-HER-01..04, FR-HER-01..05; SCRUM-92): kho lưu trữ số, câu chuyện gia đình, thư viện ảnh.
+// Người quản lý thêm tài liệu, câu chuyện, ảnh như web (BR-HER-01).
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,7 +21,8 @@ import {
   type HeritageDocument,
   type HeritagePhoto,
 } from '../services/heritage';
-import { useSession } from '../session/SessionContext';
+import { useFamilyScope } from '../session/FamilyScope';
+import { HeritageActions } from './ContentManageScreens';
 import { colors, spacing, text } from '../theme';
 
 type Tab = 'documents' | 'stories' | 'photos';
@@ -95,8 +97,8 @@ function HeritageList<T>({
 export function HeritageScreen() {
   const drawer = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
   const stack = () => drawer.getParent<NativeStackNavigationProp<RootStackParamList>>();
-  const { session } = useSession();
-  const familyId = session.status === 'signedIn' ? session.membership.familyId : null;
+  const scope = useFamilyScope();
+  const familyId = scope.familyId;
   const [tab, setTab] = useState<Tab>('documents');
   const { width } = useWindowDimensions();
   const tile = Math.floor((width - spacing.page * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
@@ -125,26 +127,29 @@ export function HeritageScreen() {
   });
 
   const header = (
-    <View style={{ flexDirection: 'row', gap: 8, paddingBottom: 4, flexWrap: 'wrap' }}>
-      {TABS.map(({ value, label }) => (
-        <Pressable
-          key={value}
-          onPress={() => setTab(value)}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === value }}
-          style={{
-            minHeight: 44,
-            justifyContent: 'center',
-            paddingHorizontal: 14,
-            borderRadius: 6,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: tab === value ? colors.secondary : colors.surface,
-          }}
-        >
-          <Text style={[text.label, { color: colors.textPrimary }]}>{label}</Text>
-        </Pressable>
-      ))}
+    <View style={{ gap: 12, paddingBottom: 4 }}>
+      <HeritageActions stack={stack()} />
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {TABS.map(({ value, label }) => (
+          <Pressable
+            key={value}
+            onPress={() => setTab(value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === value }}
+            style={{
+              minHeight: 44,
+              justifyContent: 'center',
+              paddingHorizontal: 14,
+              borderRadius: 6,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: tab === value ? colors.secondary : colors.surface,
+            }}
+          >
+            <Text style={[text.label, { color: colors.textPrimary }]}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 
@@ -228,6 +233,7 @@ export function HeritageScreen() {
                 mediaId: d.mediaId,
                 title: d.title,
                 document: true,
+                documentId: d.id,
               })
             }
           >
