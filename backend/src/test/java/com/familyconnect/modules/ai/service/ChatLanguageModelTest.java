@@ -13,6 +13,13 @@ class ChatLanguageModelTest {
         assertThrows(IllegalStateException.class, () -> ChatLanguageModel.textOf(response));
     }
 
+    @Test void answerSplitAcrossPartsIsJoinedAndThoughtsAreSkipped() throws Exception {
+        var response = json("{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":["
+                + "{\"text\":\"đang nghĩ\",\"thought\":true},{\"text\":\"Hà là em họ của An,\"},"
+                + "{\"text\":\" vì hai người cùng ông nội.\"}]}}]}");
+        assertEquals("Hà là em họ của An, vì hai người cùng ông nội.", ChatLanguageModel.textOf(response));
+    }
+
     @Test void completeAnswerIsReturned() throws Exception {
         var response = json("{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\" An làm bác sĩ. \"}]}}]}");
         assertEquals("An làm bác sĩ.", ChatLanguageModel.textOf(response));

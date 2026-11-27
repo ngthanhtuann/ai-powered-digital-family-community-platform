@@ -4,7 +4,7 @@ import { SESSION_COOKIE } from '@/lib/token-storage';
 // Bảo vệ route (SCRUM-36): chưa đăng nhập thì chuyển về /login, kèm ?next= để quay lại sau khi đăng nhập.
 // Chỉ kiểm tra cookie đánh dấu phiên (xem lib/token-storage.ts); token hết hạn hay bị khóa
 // do lib/api.ts xử lý khi backend trả 401 AUTH_002 hoặc 403 AUTH_003.
-const PUBLIC_PATHS = ['/login', '/register'];
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password'];
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

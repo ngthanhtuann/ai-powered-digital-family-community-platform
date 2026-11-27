@@ -19,6 +19,7 @@ Table branch {
   name varchar(150) [not null, note: 'Tên chi']
   parent_branch_id uuid [note: 'Chi cha']
   origin_person_id uuid [note: 'Người tổ của chi']
+  head_person_id uuid [note: 'Trưởng chi chọn tay (SCRUM-146)']
   description text [note: 'Mô tả']
   created_by uuid [not null, note: 'tham chiếu logic -> users, không có FK']
   updated_by uuid [note: 'tham chiếu logic -> users, không có FK']
@@ -41,6 +42,7 @@ Table person {
   current_address varchar(255) [note: 'Địa chỉ nơi ở hiện tại']
   is_deceased boolean [not null]
   death_date date [note: 'CHECK (death_date >= birth_date)']
+  death_time time [note: 'Giờ mất, chỉ có khi có death_date (SCRUM-134)']
   burial_place varchar(255) [note: 'Nơi an táng']
   avatar_media_id uuid [note: 'Ảnh đại diện, tham chiếu media; tham chiếu logic -> media, không có FK']
   user_id uuid [unique, note: 'Tài khoản nối với thành viên; tham chiếu logic -> users, không có FK']
@@ -65,6 +67,26 @@ Table parent_child {
   updated_at timestamptz [not null, note: 'Thời gian cập nhật']
   deleted_at timestamptz [note: 'Xóa mềm']
   Note: 'Gia phả (genealogy) · TV2 Trí · Quan hệ cha/mẹ - con · CHECK (parent_id <> child_id); UNIQUE (parent_id, child_id) WHERE deleted_at IS NULL; UNIQUE (child_id, parent_role) WHERE kind = BIOLOGICAL AND deleted_at IS NULL.'
+}
+
+Table death_report {
+  id uuid [pk, note: 'Khóa chính']
+  family_id uuid [not null, note: 'Dòng họ']
+  person_id uuid [not null, note: 'Người được báo mất']
+  death_date date [not null, note: 'Ngày mất']
+  death_time time [note: 'Giờ mất']
+  burial_place varchar(255) [note: 'Nơi an táng']
+  status varchar(10) [not null, note: 'PENDING, CONFIRMED, EXPIRED']
+  expires_at timestamptz [not null, note: 'Tạo + 7 ngày']
+  confirmed_by uuid [note: 'Người xác nhận']
+  confirmed_at timestamptz [note: 'Thời điểm xác nhận']
+  successor_person_id uuid [note: 'Gợi ý kế nhiệm']
+  created_by uuid [not null, note: 'Người báo (con ruột)']
+  updated_by uuid [note: 'Người sửa']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Xóa mềm']
+  Note: 'Gia phả (genealogy) · TV2 Trí · Báo mất chờ xác nhận (SCRUM-135, BR-GEN-24) · Trạng thái: Đầy đủ'
 }
 
 Table marriage {
@@ -179,9 +201,9 @@ Table notification {
   id uuid [pk, note: 'Khóa chính']
   user_id uuid [not null, note: 'Người nhận; tham chiếu logic -> users, không có FK']
   family_id uuid [not null, note: 'Gia đình của thông báo; tham chiếu logic, không FK (SCRUM-53)']
-  ref_type varchar(30) [note: 'EVENT, ANNOUNCEMENT, CONTENT_REPORT']
+  ref_type varchar(30) [note: 'EVENT, ANNOUNCEMENT, CONTENT_REPORT, POST, PERSON']
   ref_id uuid [note: 'Tài nguyên tham chiếu']
-  type varchar(50) [not null, note: 'EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt: CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận: POST_COMMENTED, COMMENT_REPLIED']
+  type varchar(50) [not null, note: 'EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt: CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận: POST_COMMENTED, COMMENT_REPLIED; tang: DEATH_NOTICE, DEATH_REPORT']
   title varchar(255) [not null]
   content text [not null]
   is_read boolean [not null]
@@ -349,6 +371,20 @@ Table refresh_token {
   Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Refresh token (chỉ lưu hash) · Trạng thái: Đầy đủ'
 }
 
+Table password_reset_code {
+  id uuid [pk, note: 'Khóa chính']
+  user_id uuid [not null, note: 'Tài khoản được đặt lại mật khẩu']
+  code_hash varchar(100) [not null, note: 'BCrypt của mã, không lưu mã gốc']
+  expires_at timestamptz [not null, note: 'Hết hạn sau 30 phút']
+  failed_attempts smallint [not null, default: 0, note: 'Sai 5 lần thì hủy']
+  used_at timestamptz [note: 'Đã dùng']
+  created_by uuid [note: 'Trưởng họ hoặc quản trị cấp mã']
+  created_at timestamptz [not null, note: 'Thời gian tạo']
+  updated_at timestamptz [not null, note: 'Thời gian cập nhật']
+  deleted_at timestamptz [note: 'Mã bị hủy']
+  Note: 'Auth và quản trị (auth, admin) · TV1 Tuấn · Mã đặt lại mật khẩu dùng một lần (SCRUM-139) · Trạng thái: Đầy đủ'
+}
+
 Table member_verification {
   id uuid [pk, note: 'Khóa chính']
   user_id uuid [not null, note: 'Người xin tham gia hoặc thành viên']
@@ -489,6 +525,7 @@ Table ai_summary_cache {
 Ref: branch.family_id > family.id
 Ref: branch.parent_branch_id > branch.id
 Ref: branch.origin_person_id > person.id
+Ref: branch.head_person_id > person.id
 Ref: person.family_id > family.id
 Ref: person.branch_id > branch.id
 Ref: parent_child.parent_id > person.id
@@ -501,6 +538,10 @@ Ref: event_participant.event_id > event.id
 Ref: user_role.user_id > users.id
 Ref: user_role.role_id > role.id
 Ref: refresh_token.user_id > users.id
+Ref: password_reset_code.user_id > users.id
 Ref: member_verification.user_id > users.id
 Ref: ai_chat_message.session_id > ai_chat_session.id
 Ref: comment.parent_id > comment.id
+Ref: death_report.family_id > family.id
+Ref: death_report.person_id > person.id
+Ref: death_report.successor_person_id > person.id

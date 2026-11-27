@@ -5,6 +5,14 @@ type Schemas = components['schemas'];
 
 export type Person = Schemas['Person'];
 export type PersonInput = Schemas['PersonInput'];
+export type DeathInput = Schemas['DeathInput'];
+export type RelativeInput = Schemas['RelativeInput'];
+export type BranchHead = Schemas['BranchHead'];
+export type BranchInput = Schemas['BranchInput'];
+export type AccountCandidate = Schemas['AccountCandidate'];
+export type DeathReport = Schemas['DeathReport'];
+export type DeathReportInput = Schemas['DeathReportInput'];
+export type AccountReplacementInput = Schemas['AccountReplacementInput'];
 export type ParentInput = Schemas['ParentInput'];
 export type MarriageInput = Schemas['MarriageInput'];
 export type MarriageUpdate = Schemas['MarriageUpdate'];
@@ -21,6 +29,24 @@ export const genealogyApi = {
     api.list<Person>(`/families/${familyId}/persons`, params),
   createPerson: (familyId: string, input: PersonInput) => api.post<Person>(`/families/${familyId}/persons`, input),
   updatePerson: (personId: string, input: PersonInput) => api.put<Person>(`/persons/${personId}`, input),
+  /** BR-GEN-21: người quản lý báo mất hoặc khôi phục khi báo nhầm. */
+  setDeath: (personId: string, input: DeathInput) => api.put<Person>(`/persons/${personId}/death`, input),
+  /** BR-GEN-23: thay tài khoản khi người thân mất tài khoản. */
+  /** BR-GEN-29: trưởng chi của từng chi (chọn tay hoặc theo dòng); chọn tay kể cả người chưa có tài khoản. */
+  /** UC-GEN-02, BR-GEN-30: người lập chi chưa thuộc chi nào thì vào chi. */
+  createBranch: (familyId: string, input: BranchInput) => api.post(`/families/${familyId}/branches`, input),
+  updateBranch: (branchId: string, input: BranchInput) => api.put(`/branches/${branchId}`, input),
+  branchHeads: (familyId: string) => api.get<BranchHead[]>(`/families/${familyId}/branch-heads`),
+  setBranchHead: (branchId: string, personId: string | null) => api.put<BranchHead>(`/branches/${branchId}/head`, { personId }),
+  /** BR-GEN-26: tạo người thân mới và nối quan hệ trong một lần lưu. */
+  addRelative: (personId: string, input: RelativeInput) => api.post<Person>(`/persons/${personId}/relatives`, input),
+  /** BR-GEN-24: con ruột báo mất, người khác xác nhận. */
+  reportDeath: (personId: string, input: DeathReportInput) => api.post<DeathReport>(`/persons/${personId}/death-reports`, input),
+  latestDeathReport: (personId: string) => api.get<DeathReport | null>(`/persons/${personId}/death-reports/latest`),
+  confirmDeathReport: (reportId: string) => api.post<DeathReport>(`/death-reports/${reportId}/confirmations`),
+  accountCandidates: (personId: string) => api.get<AccountCandidate[]>(`/persons/${personId}/account-candidates`),
+  replaceAccount: (personId: string, input: AccountReplacementInput) =>
+    api.post<Person>(`/persons/${personId}/account-replacements`, input),
   addParent: (childId: string, input: ParentInput) => api.post<ParentChild>(`/persons/${childId}/parents`, input),
   removeParent: (childId: string, parentId: string) => api.delete(`/persons/${childId}/parents/${parentId}`),
   createMarriage: (input: MarriageInput) => api.post<Marriage>('/marriages', input),

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/genealogy/PersonNode';
 import { PersonFormModal } from '@/components/genealogy/PersonFormModal';
+import { DeathReportBox } from '@/components/genealogy/DeathReportBox';
 import { ProtectedPostImages } from '@/components/community/ProtectedPostImages';
 import { ApiError } from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/datetime';
@@ -153,6 +154,8 @@ export default function PersonPage() {
           {isMe && <Link href="/profile/account" className={buttonClass}>Tài khoản đăng nhập</Link>}
         </div>
       </section>
+
+      <DeathReportBox person={p} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="space-y-6">

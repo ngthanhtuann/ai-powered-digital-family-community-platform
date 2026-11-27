@@ -32,6 +32,10 @@ public interface CommunityPlatformPort {
     default java.util.Set<UUID> descendantsAudienceAuthors(Actor actor) {
         return actor.role() == Role.SYSTEM_ADMIN ? null : java.util.Set.of(actor.userId());
     }
+    /** BR-COM-18: tài khoản có bài bị ẩn với actor (vợ/chồng ngoài tộc đã ly hôn); rỗng với người quản lý. */
+    default java.util.Set<UUID> hiddenAuthors(Actor actor, UUID familyId) {
+        return java.util.Set.of();
+    }
     /** SCRUM-121: người đăng có hồ sơ gia phả không (mới chọn được "con cháu của tôi"). */
     default boolean hasGenealogyProfile(UUID userId) {
         return false;

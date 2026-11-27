@@ -77,6 +77,23 @@ Người sở hữu: **TV1 Tuấn**
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
+### `password_reset_code`
+
+**Mục đích:** Mã đặt lại mật khẩu dùng một lần do trưởng họ hoặc quản trị cấp (UC-AUTH-15, SCRUM-139).  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | Khóa chính |
+| user_id | UUID | NOT NULL, FK | Tài khoản được đặt lại → `users.id` (FK, cùng module) |
+| code_hash | VARCHAR(100) | NOT NULL | BCrypt của mã, không lưu mã gốc |
+| expires_at | TIMESTAMPTZ | NOT NULL | Hết hạn sau 30 phút |
+| failed_attempts | SMALLINT | NOT NULL DEFAULT 0 | Số lần nhập sai; đủ 5 thì hủy |
+| used_at | TIMESTAMPTZ | NULL | Đã dùng |
+| created_by | UUID | NULL | Người cấp mã (không FK) |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
+| deleted_at | TIMESTAMPTZ | NULL | Mã bị hủy (cấp mã mới hoặc sai quá 5 lần) |
+
 ### `member_verification`
 
 **Mục đích:** Yêu cầu tham gia gia đình và tình trạng thành viên.  **Người sở hữu:** TV1 Tuấn.  **Trạng thái:** Đầy đủ.
@@ -195,6 +212,7 @@ Người sở hữu: **TV2 Trí**
 | name | VARCHAR(150) | NOT NULL | Tên chi |
 | parent_branch_id | UUID | NULL, FK | Chi cha → `branch.id` (FK, cùng module) |
 | origin_person_id | UUID | NULL, FK | Người tổ của chi → `person.id` (FK, cùng module) |
+| head_person_id | UUID | NULL, FK | Trưởng chi chọn tay → `person.id` (SCRUM-146); NULL thì theo dòng |
 | description | TEXT |  | Mô tả |
 | created_by | UUID | NOT NULL | Người tạo, tham chiếu users (logic) → `users` (tham chiếu logic) |
 | updated_by | UUID | NULL | Người cập nhật, tham chiếu users (logic) → `users` (tham chiếu logic) |
@@ -220,6 +238,7 @@ Người sở hữu: **TV2 Trí**
 | current_address | VARCHAR(255) |  | Địa chỉ nơi ở hiện tại |
 | is_deceased | BOOLEAN | NOT NULL DEFAULT FALSE |  |
 | death_date | DATE | NULL, CHECK (death_date >= birth_date) |  |
+| death_time | TIME | NULL | Giờ mất theo giờ địa phương; chỉ có khi có death_date (SCRUM-134) |
 | burial_place | VARCHAR(255) | NULL | Nơi an táng |
 | avatar_media_id | UUID | NULL | Ảnh đại diện, tham chiếu media → `media` (tham chiếu logic) |
 | user_id | UUID | NULL, UNIQUE (WHERE user_id IS NOT NULL AND deleted_at IS NULL) | Tài khoản nối với thành viên → `users` (tham chiếu logic) |
@@ -250,6 +269,29 @@ Người sở hữu: **TV2 Trí**
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
 **Ràng buộc bổ sung:** CHECK (parent_id <> child_id); UNIQUE (parent_id, child_id) WHERE deleted_at IS NULL; UNIQUE (child_id, parent_role) WHERE kind = 'BIOLOGICAL' AND deleted_at IS NULL.
+
+### `death_report`
+
+**Mục đích:** Báo mất do con ruột gửi, chờ xác nhận, hết hạn sau 7 ngày (BR-GEN-24, SCRUM-135).  **Người sở hữu:** TV2 Trí.  **Trạng thái:** Đầy đủ.
+
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | Khóa chính |
+| family_id | UUID | NOT NULL, FK | → `family.id` |
+| person_id | UUID | NOT NULL, FK | Người được báo mất → `person.id` |
+| death_date | DATE | NOT NULL | Ngày mất |
+| death_time | TIME | NULL | Giờ mất |
+| burial_place | VARCHAR(255) | NULL | Nơi an táng |
+| status | VARCHAR(10) | NOT NULL, CHECK | PENDING, CONFIRMED, EXPIRED |
+| expires_at | TIMESTAMPTZ | NOT NULL | Hết hạn (tạo + 7 ngày) |
+| confirmed_by | UUID | NULL | Người xác nhận → `users` (tham chiếu logic) |
+| confirmed_at | TIMESTAMPTZ | NULL | Thời điểm xác nhận |
+| successor_person_id | UUID | NULL, FK | Gợi ý kế nhiệm → `person.id` |
+| created_by | UUID | NOT NULL | Người báo → `users` (tham chiếu logic) |
+| updated_by | UUID | NULL | Người sửa |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
+| deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
 
 ### `marriage`
 
@@ -399,9 +441,9 @@ Ràng buộc và chỉ mục: `UNIQUE (target_type, target_id, reporter_id) WHER
 | id | UUID | PK | Khóa chính |
 | user_id | UUID | NOT NULL | Người nhận → `users` (tham chiếu logic) |
 | family_id | UUID | NOT NULL, INDEX | Gia đình của thông báo → `family` (tham chiếu logic, SCRUM-53) |
-| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT |
+| ref_type | VARCHAR(30) | NULL | EVENT, ANNOUNCEMENT, CONTENT_REPORT, POST, PERSON |
 | ref_id | UUID | NULL | Tài nguyên tham chiếu |
-| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận (SCRUM-123): POST_COMMENTED, COMMENT_REPLIED |
+| type | VARCHAR(50) | NOT NULL, CHECK | EVENT_REMINDER_24H, EVENT_REMINDER_1H, ANNOUNCEMENT; kiểm duyệt (SCRUM-53): CONTENT_HIDDEN, CONTENT_RESTORED, REPORT_HIDDEN, REPORT_DISMISSED, REPORT_RESTORED; bình luận (SCRUM-123): POST_COMMENTED, COMMENT_REPLIED; tang (SCRUM-134, 135): DEATH_NOTICE, DEATH_REPORT |
 | title | VARCHAR(255) | NOT NULL |  |
 | content | TEXT | NOT NULL |  |
 | is_read | BOOLEAN | NOT NULL DEFAULT FALSE |  |

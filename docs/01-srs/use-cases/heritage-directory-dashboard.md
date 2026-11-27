@@ -359,3 +359,5 @@ ORDER BY start_at ASC
 LIMIT 5;
 
 ```
+
+> **SCRUM-140 (23/11/2026, BR-AUTH-25):** module Di sản cài đặt `AccountContentTransfer`: khi người quản lý thay tài khoản cho hồ sơ, người tạo (`created_by`) của `heritage_document` và `family_story` chuyển sang tài khoản mới.

@@ -49,6 +49,7 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 | UC-AUTH-12 | Cấu hình hệ thống | Quản trị hệ thống | FR-ADM-05 | Must | S7 | SCRUM-94 |
 | UC-AUTH-13 | Kiểm soát truy cập theo vai trò (RBAC) | Mọi actor (được các use case khác `«include»`) | FR-AUTH-02 | Must | S4 | SCRUM-43 |
 | UC-AUTH-14 | Bổ nhiệm trưởng chi trong dòng họ | Trưởng họ, Quản trị hệ thống | FR-AUTH-02 | Should | S5 | SCRUM-50 |
+| UC-AUTH-15 | Đặt lại mật khẩu bằng mã dùng một lần | Trưởng họ, Quản trị hệ thống, Khách | FR-AUTH-01 | Should | S8 | SCRUM-139 |
 
 > **Khác với gợi ý trong khung sườn:** khung sườn có 12 use case; bản này giữ nguyên 12 use case đó và thêm UC-AUTH-13 để đặc tả FR-AUTH-02 (khung sườn ghi FR-AUTH-02 thuộc tài liệu này). UC-AUTH-04 chỉ gồm đổi mật khẩu, chưa có quên mật khẩu qua email (mục 8, câu 1). UC-AUTH-09 chỉ là phần quản trị; nút "Báo cáo bài viết" thuộc Community.
 
@@ -98,7 +99,7 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 |---|---|
 | Mã FR liên quan | FR-AUTH-01 |
 | Actor | Người dùng đã đăng nhập |
-| Mô tả ngắn | Người dùng đổi mật khẩu của mình khi biết mật khẩu hiện tại. (Quên mật khẩu qua email chưa có, xem mục 8 câu 1.) |
+| Mô tả ngắn | Người dùng đổi mật khẩu của mình khi biết mật khẩu hiện tại. (Quên mật khẩu: UC-AUTH-15, mã do trưởng họ hoặc quản trị cấp.) |
 | Tiền điều kiện | Đã đăng nhập. |
 | Luồng chính | 1. Người dùng nhập mật khẩu hiện tại và mật khẩu mới.<br>2. Hệ thống kiểm tra mật khẩu hiện tại bằng BCrypt và độ dài mật khẩu mới.<br>3. Hệ thống lưu hash mới, thu hồi mọi refresh token, ghi nhật ký `PASSWORD_CHANGED`.<br>4. Hệ thống trả `200`; ứng dụng yêu cầu đăng nhập lại. |
 | Luồng thay thế / ngoại lệ | 2a. Mật khẩu hiện tại sai: `400 VALID_001` với `details[0].field = "currentPassword"`.<br>2b. Mật khẩu mới ngắn hơn 8 ký tự: `400 VALID_001`. |
@@ -172,10 +173,22 @@ Tài liệu này mô tả ba module backend trong `com.familyconnect.modules` (`
 | Actor | Trưởng họ (`BRANCH_ADMIN` không gán chi), Quản trị hệ thống |
 | Mô tả ngắn | Trưởng họ xem các tài khoản đã xác minh trong dòng họ, bổ nhiệm một người làm trưởng chi của một chi (hoặc đồng quản lý cả dòng họ), hoặc thu quyền về thành viên. |
 | Tiền điều kiện | Đăng nhập là trưởng họ của dòng họ đó, hoặc `SYSTEM_ADMIN`. |
-| Luồng chính | 1. Trưởng họ mở trang Phân công trưởng chi; hệ thống trả danh sách tài khoản đã xác minh của dòng họ (họ tên, vai trò, chi quản lý).<br>2. Trưởng họ chọn một người, chọn vai trò `BRANCH_ADMIN` kèm chi (hoặc không chọn chi để đồng quản lý cả dòng họ), hoặc `MEMBER`.<br>3. Hệ thống cập nhật `member_verification` của người đó, có hiệu lực ở request kế tiếp.<br>4. Hệ thống ghi nhật ký `MEMBERSHIP_CHANGED` (giá trị cũ và mới) và trả tài khoản sau cập nhật. |
+| Luồng chính | 1. Trưởng họ mở trang Phân công trưởng chi; hệ thống trả danh sách tài khoản đã xác minh của dòng họ (họ tên, vai trò, chi quản lý).<br>2. Trưởng họ chọn một người, chọn vai trò `BRANCH_ADMIN` kèm chi (hoặc không chọn chi để đồng quản lý cả dòng họ), hoặc `MEMBER`.<br>3. Hệ thống cập nhật `member_verification` của người đó, có hiệu lực ở request kế tiếp.<br>4. Hệ thống ghi nhật ký `MEMBERSHIP_CHANGED` (giá trị cũ và mới) và trả tài khoản sau cập nhật.<br>**Màn hình (SCRUM-137, góp ý dùng thử 23/11/2026):** thẻ trưởng họ; danh sách chi dạng cây ghi trưởng chi hiện tại hoặc "Chưa có" kèm nút chọn (chọn tài khoản rồi gọi API ở bước 3 với `BRANCH_ADMIN` và chi đó); ô tìm theo tên; người trong gia phả còn sống, từ 16 tuổi, chưa gắn tài khoản hiện kèm nút Mời (sao chép mã chi của người đó, không có chi thì mã gia đình, kèm hướng dẫn đăng ký và tham gia theo UC-AUTH-06). Không thêm API: dùng danh sách tài khoản, `listBranches`, `listPersons` sẵn có. |
 | Luồng thay thế / ngoại lệ | 1a. Trưởng chi có gán chi, thành viên, hoặc trưởng họ của dòng họ khác gọi: `403 PERM_001`.<br>2a. Chi không thuộc dòng họ, hoặc người được chọn không phải thành viên đã xác minh của dòng họ: `404 NOT_FOUND_001`.<br>3a. Tự đổi vai trò của mình, hoặc thu quyền trưởng họ cuối cùng của dòng họ: `409 ADM_001`. |
 | Hậu điều kiện | Người được bổ nhiệm có quyền trưởng chi trong phạm vi chi đã gán (kèm chi con). |
 | Quy tắc nghiệp vụ | BR-AUTH-22, BR-AUTH-16 |
+
+### UC-AUTH-15: Đặt lại mật khẩu bằng mã dùng một lần
+| Mục | Nội dung |
+|---|---|
+| Mã FR liên quan | FR-AUTH-01 |
+| Actor | Trưởng họ hoặc Quản trị hệ thống (cấp mã); Khách là người quên mật khẩu (nhập mã) |
+| Mô tả ngắn | Hệ thống không gửi email (mục 8 câu 1). Người quên mật khẩu liên hệ trưởng họ hoặc quản trị; người đó cấp một mã ngắn dùng một lần, người dùng nhập email, mã và mật khẩu mới ở trang Quên mật khẩu (SCRUM-139, góp ý dùng thử 23/11/2026). |
+| Tiền điều kiện | Cấp mã: đăng nhập là trưởng họ của dòng họ chứa tài khoản cần đặt lại, hoặc `SYSTEM_ADMIN`. |
+| Luồng chính | 1. Trưởng họ mở Phân công trưởng chi (quản trị mở Quản lý người dùng), chọn "Cấp mã đặt lại mật khẩu" cho một tài khoản.<br>2. Hệ thống tạo mã 8 ký tự (chữ in hoa và số, bỏ ký tự dễ nhầm), lưu dạng băm BCrypt, hết hạn sau 30 phút, hủy mã cũ chưa dùng của tài khoản đó, ghi `PASSWORD_RESET_CODE_ISSUED` (không ghi mã) và trả mã **một lần duy nhất**.<br>3. Trưởng họ gửi mã riêng cho người đó.<br>4. Người dùng mở "Quên mật khẩu" ở màn đăng nhập, nhập email, mã, mật khẩu mới.<br>5. Hệ thống kiểm tra mã, lưu mật khẩu mới, đánh dấu mã đã dùng, thu hồi mọi refresh token, ghi `PASSWORD_RESET`. |
+| Luồng thay thế / ngoại lệ | 1a. Trưởng chi có gán chi hoặc thành viên: `403 PERM_001`. Tự cấp cho mình, trưởng họ cấp cho trưởng họ khác hoặc cho quản trị: `403 PERM_001`. Tài khoản không thuộc dòng họ của trưởng họ: `404 NOT_FOUND_001`.<br>5a. Email không có, mã sai, hết hạn hoặc đã dùng: `400 VALID_001` với `details[0].field = "code"`, cùng một thông báo để không lộ email có tồn tại hay không.<br>5b. Sai 5 lần thì mã bị hủy, phải xin mã mới.<br>5c. Quá 5 lần mỗi phút theo IP và email: `429 RATE_001` (dùng chung giới hạn với đăng nhập). |
+| Hậu điều kiện | Mật khẩu đã đổi; mọi thiết bị phải đăng nhập lại. Trạng thái khóa tài khoản không đổi. |
+| Quy tắc nghiệp vụ | BR-AUTH-02, BR-AUTH-05, BR-AUTH-24 |
 
 ### UC-AUTH-10: Xem nhật ký kiểm toán
 | Mục | Nội dung |
@@ -359,6 +372,10 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | BR-AUTH-20 | **Quản trị viên đầu tiên.** Khi khởi động mà chưa có tài khoản `SYSTEM_ADMIN`, nếu có biến môi trường `BOOTSTRAP_ADMIN_EMAIL` và `BOOTSTRAP_ADMIN_PASSWORD` thì tạo tài khoản đó; không đặt mật khẩu mặc định trong migration hay Git (`conventions.md` mục 7.2). Tài khoản demo từng vai trò (`deploy.md`) nạp bằng dữ liệu mẫu. |
 | BR-AUTH-21 | **Xóa mềm.** Các bảng nghiệp vụ dùng `deleted_at` (`architecture.md` mục 7, quyết định 4). Phiên bản này không có API xóa tài khoản; quản trị khóa tài khoản thay vì xóa. |
 | BR-AUTH-22 | **Bổ nhiệm trưởng chi** (UC-AUTH-14, Phụ lục A bổ sung 2/11/2026). Trưởng họ (`BRANCH_ADMIN` có `branch_id` NULL) và `SYSTEM_ADMIN` đổi `role` và `branch_id` trong bản ghi `APPROVED` của tài khoản cùng dòng họ; trưởng chi có gán chi không được bổ nhiệm. Chi phải thuộc dòng họ. Không tự đổi vai trò của mình; dòng họ luôn còn ít nhất một trưởng họ (`ADM_001`). Danh sách tài khoản chỉ trả họ tên, vai trò, chi (không email, số điện thoại). Giao diện gọi `BRANCH_ADMIN` không gán chi là "Trưởng họ", có gán chi là "Trưởng chi" kèm tên chi. |
+| BR-AUTH-23 | **Khóa tài khoản người đã mất** (23/11/2026, SCRUM-134). Khi module Gia phả đánh dấu đã mất một hồ sơ có gắn tài khoản (BR-GEN-21), gọi `MembershipCommand.lockDeceasedAccount`: khóa tài khoản với lý do cố định "Đã mất", thu hồi mọi refresh token, ghi `USER_LOCKED`. Khôi phục khi báo nhầm gọi `unlockDeceasedAccount`: chỉ mở khóa khi lý do khóa đúng là "Đã mất" (tài khoản bị quản trị khóa vì lý do khác giữ nguyên), ghi `USER_UNLOCKED`. Không áp dụng cho `SYSTEM_ADMIN`. |
+| BR-AUTH-24 | **Mã đặt lại mật khẩu** (23/11/2026, SCRUM-139, UC-AUTH-15). Chỉ trưởng họ (cho tài khoản đã xác minh cùng dòng họ, trừ trưởng họ khác và quản trị) và `SYSTEM_ADMIN` (mọi tài khoản trừ chính mình) cấp được. Mã 8 ký tự, ngẫu nhiên bằng `SecureRandom`, lưu BCrypt, hết hạn 30 phút, dùng một lần; mỗi tài khoản chỉ có một mã còn hiệu lực. Sai 5 lần thì hủy. Không ghi mã vào nhật ký, log hay phản hồi nào khác ngoài phản hồi cấp mã. |
+| BR-AUTH-25 | **Thay tài khoản** (23/11/2026, SCRUM-140, BR-GEN-23). Module Gia phả gọi `MembershipCommand.replaceAccount(old, new, actor, reason)` trong cùng giao dịch: (1) tài khoản mới nhận vai trò và chi quản lý của tài khoản cũ nếu tài khoản cũ là `BRANCH_ADMIN`; (2) bản ghi `APPROVED` của tài khoản cũ chuyển `REMOVED`; (3) khóa tài khoản cũ với lý do "Thay tài khoản: <lý do>", thu hồi mọi refresh token; (4) gọi mọi bản cài đặt `AccountContentTransfer` để chuyển quyền sở hữu nội dung công khai; (5) ghi `ACCOUNT_REPLACED`. **Không chuyển** lịch sử chat AI, thông báo cá nhân, nhật ký kiểm toán. Không xóa tài khoản cũ. |
+| BR-AUTH-26 | **Rời dòng họ sau ly hôn, nhận quyền trưởng chi theo hồ sơ** (24/11/2026, SCRUM-145, 146). `MembershipCommand.removeFromFamily` (Gia phả gọi khi người ngoài tộc có tài khoản đã ly hôn hết, BR-GEN-28): bản ghi `APPROVED` chuyển `REMOVED`, thu hồi refresh token, ghi `MEMBERSHIP_REMOVED`; không áp dụng cho trưởng họ. `MembershipCommand.grantBranchHead` (Gia phả gọi khi chọn tay trưởng chi có tài khoản, BR-GEN-29): bản ghi `APPROVED` cùng dòng họ nhận `BRANCH_ADMIN` của chi đó (trưởng họ giữ nguyên). Khi duyệt yêu cầu tham gia có gắn hồ sơ (UC-AUTH-07), nếu `GenealogyPort.headedBranchOf(personId)` có giá trị thì tài khoản nhận `BRANCH_ADMIN` của chi đó. |
 
 ---
 
@@ -378,6 +395,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | `role` | Danh mục vai trò: GUEST, MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN | SCRUM-35 | Dữ liệu khởi tạo 4 dòng |
 | `user_role` | Vai trò **toàn hệ thống** của người dùng (MEMBER, SYSTEM_ADMIN) | SCRUM-35 | FK tới `users`, `role` |
 | `refresh_token` | Refresh token (chỉ lưu hash) | SCRUM-35 | FK tới `users` |
+| `password_reset_code` | Mã đặt lại mật khẩu dùng một lần (chỉ lưu hash, UC-AUTH-15) | SCRUM-139 (Sprint 8) | FK tới `users`; không có `updated_by` |
 | `member_verification` | Yêu cầu tham gia gia đình và tình trạng thành viên (ai thuộc gia đình nào, chi nào, đã xác minh chưa, vai trò) | Thiết kế ở SCRUM-26; làm cùng SCRUM-35 (Sprint 3) vì module Gia phả (SCRUM-37) cần ngay (mục 8, câu 3) | FK tới `users`; `family_id`, `branch_id` chỉ là UUID |
 | `audit_log` | Nhật ký kiểm toán | SCRUM-57 (Sprint 6) | Không có FK |
 | `system_config` | Tham số cấu hình hệ thống | SCRUM-94 (Sprint 7) | Không có FK |
@@ -389,6 +407,7 @@ erDiagram
   USERS ||--o{ USER_ROLE : "có vai trò toàn hệ thống"
   ROLE ||--o{ USER_ROLE : "được gán"
   USERS ||--o{ REFRESH_TOKEN : "sở hữu"
+  USERS ||--o{ PASSWORD_RESET_CODE : "có mã đặt lại"
   USERS ||--o{ MEMBER_VERIFICATION : "xin tham gia / thuộc gia đình"
 ```
 
@@ -454,6 +473,22 @@ Index: `UNIQUE (user_id, role_id) WHERE deleted_at IS NULL`; `(role_id)`.
 | deleted_at | TIMESTAMPTZ | NULL | |
 
 Index: `UNIQUE (token_hash)`; `(user_id)`; `(expires_at)`.
+
+#### Bảng `password_reset_code`
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK, `DEFAULT gen_random_uuid()` | |
+| user_id | UUID | NOT NULL, FK `users(id)` | Tài khoản được đặt lại mật khẩu |
+| code_hash | VARCHAR(100) | NOT NULL | BCrypt của mã; không lưu mã gốc |
+| expires_at | TIMESTAMPTZ | NOT NULL | Hết hạn sau 30 phút |
+| failed_attempts | SMALLINT | NOT NULL, `DEFAULT 0` | Số lần nhập sai; đủ 5 thì mã bị hủy (xóa mềm) |
+| used_at | TIMESTAMPTZ | NULL | Thời điểm đã dùng |
+| created_by | UUID | NULL | Trưởng họ hoặc quản trị cấp mã (không FK, X17) |
+| created_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
+| updated_at | TIMESTAMPTZ | NOT NULL, `DEFAULT now()` | |
+| deleted_at | TIMESTAMPTZ | NULL | Mã bị hủy (cấp mã mới hoặc sai quá 5 lần) |
+
+Index: `(user_id) WHERE used_at IS NULL AND deleted_at IS NULL`. Bảng kỹ thuật như `refresh_token`: không có `updated_by`.
 
 #### Bảng `member_verification`
 | Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
@@ -557,6 +592,8 @@ Tất cả API nằm dưới `/api/v1`, theo `docs/04-api/conventions.md`: thàn
 | POST | `/api/v1/auth/login` | Đăng nhập | UC-AUTH-02 | Công khai | 400, 401, 403, 429 |
 | POST | `/api/v1/auth/refresh` | Làm mới token | UC-AUTH-03 | Công khai | 400, 401, 403 |
 | DELETE | `/api/v1/auth/sessions/current` | Đăng xuất | UC-AUTH-03 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN | 401 |
+| POST | `/api/v1/auth/password-resets` | Đặt lại mật khẩu bằng mã | UC-AUTH-15 | Công khai | 400, 429 |
+| POST | `/api/v1/users/{userId}/password-reset-codes` | Cấp mã đặt lại mật khẩu | UC-AUTH-15 | BRANCH_ADMIN (trưởng họ), SYSTEM_ADMIN | 401, 403, 404 |
 | PUT | `/api/v1/users/me/password` | Đổi mật khẩu | UC-AUTH-04 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN | 400, 401, 403 |
 | GET | `/api/v1/users/me` | Xem hồ sơ của tôi | UC-AUTH-05 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN | 401, 403 |
 | PATCH | `/api/v1/users/me` | Cập nhật hồ sơ của tôi | UC-AUTH-05 | MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN | 400, 401, 403 |
@@ -612,12 +649,18 @@ public interface MembershipQuery {
     void requireVerified(UUID userId);                         // ném PERM_002 nếu chưa xác minh; SYSTEM_ADMIN luôn qua
     void requireFamilyAccess(UUID userId, UUID familyId);      // PERM_002 nếu chưa xác minh, PERM_001 nếu khác gia đình
     List<UUID> findVerifiedUserIds(UUID familyId);             // gửi thông báo cho cả gia đình
+    List<MembershipView> findVerifiedMembers(UUID familyId);   // kèm vai trò, chi để chọn người nhận thông báo tang (BR-COM-15)
 }
 public record MembershipView(UUID userId, UUID familyId, UUID branchId, EffectiveRole role, boolean verified) {}
 public enum EffectiveRole { MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN }   // familyId null với SYSTEM_ADMIN
 
 public interface MembershipCommand {
     void assignFamilyOwner(UUID userId, UUID familyId);        // Gia phả gọi ở UC-GEN-01 bước 4, cùng giao dịch tạo family (BR-AUTH-12)
+    void lockDeceasedAccount(UUID userId, UUID actorId);       // Gia phả gọi khi báo mất (BR-AUTH-23)
+    void unlockDeceasedAccount(UUID userId, UUID actorId);     // Gia phả gọi khi khôi phục do báo nhầm (BR-AUTH-23)
+    void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason);   // Gia phả gọi khi thay tài khoản (BR-AUTH-25)
+    void removeFromFamily(UUID userId, UUID actorId, String reason);   // Gia phả gọi khi vợ/chồng ngoài tộc đã ly hôn (BR-AUTH-26)
+    void grantBranchHead(UUID userId, UUID familyId, UUID branchId, UUID actorId);   // Gia phả gọi khi chọn tay trưởng chi (BR-AUTH-26)
 }
 
 public interface UserDirectory {
@@ -648,7 +691,13 @@ public interface GenealogyPort {                               // module Gia ph�
     Optional<UUID> findBranchFamily(UUID branchId);                // gia đình chứa chi (mã chi khi xin tham gia, BR-AUTH-09)
     boolean isBranchWithin(UUID familyId, UUID branchId, UUID ancestorBranchId);   // chính nó hoặc chi con
     void unlinkAccount(UUID userId);                                                // đặt person.user_id = NULL ở hồ sơ đang gắn tài khoản này (nếu có)
+    Optional<UUID> headedBranchOf(UUID personId);                                    // chi mà hồ sơ được chọn tay làm trưởng chi (BR-AUTH-26)
+    Set<UUID> hiddenAccountIds(UUID familyId);                                       // tài khoản của vợ/chồng ngoài tộc đã ly hôn (BR-GEN-28)
     void linkAccount(UUID familyId, UUID personId, UUID userId);                    // đặt person.user_id; person phải thuộc familyId (BR-AUTH-11); ném lỗi GEN_xxx nếu không hợp lệ
+}
+
+public interface AccountContentTransfer {                     // Community, Sự kiện, Di sản cài đặt (BR-AUTH-25, SCRUM-140)
+    void transferContent(UUID fromUserId, UUID toUserId);      // chuyển người tạo nội dung công khai; trùng thì giữ bản của tài khoản mới
 }
 
 public interface ContentModerationPort {                       // module Community (TV3) cài đặt
@@ -674,7 +723,7 @@ Tên hành động `UPPER_SNAKE_CASE`. Nhóm hành động của module này (c�
 
 | Nhóm | Hành động | Khi nào |
 |---|---|---|
-| Auth | `USER_REGISTERED`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGIN_BLOCKED`, `LOGOUT`, `PASSWORD_CHANGED`, `PROFILE_UPDATED` | UC-AUTH-01 đến 05; `LOGIN_FAILED` che bớt email |
+| Auth | `USER_REGISTERED`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGIN_BLOCKED`, `LOGOUT`, `PASSWORD_CHANGED`, `PROFILE_UPDATED`, `PASSWORD_RESET_CODE_ISSUED`, `PASSWORD_RESET`, `ACCOUNT_REPLACED` | UC-AUTH-01 đến 05, 15 (không ghi mã), BR-AUTH-25; `LOGIN_FAILED` che bớt email |
 | Xác minh | `JOIN_REQUESTED`, `JOIN_CANCELLED`, `JOIN_APPROVED`, `JOIN_REJECTED` | UC-AUTH-06, 07 |
 | Quản trị | `USER_LOCKED`, `USER_UNLOCKED`, `ROLE_CHANGED`, `MEMBERSHIP_CHANGED` | UC-AUTH-08 (ghi giá trị cũ và mới) |
 | Quản trị | `CONTENT_HIDDEN`, `REPORT_DISMISSED`, `CONTENT_RESTORED` | UC-AUTH-09 (ghi người xử lý và chủ nội dung) |
@@ -719,7 +768,7 @@ Wireframe các màn dưới đây ở page `02 Auth và Admin` của file Figma 
 
 Các mục dưới đây là điểm tài liệu gốc chưa nói rõ; TV1 đã chọn cách đơn giản nhất (ghi trong ngoặc) để làm tiếp, nhóm xác nhận ở họp Sprint 2.
 
-- [ ] **1. Quên mật khẩu qua email.** Khung sườn ghi "Đổi mật khẩu / quên mật khẩu", nhưng SRS và Jira không có hạ tầng gửi email (SMTP) hay bảng mã đặt lại. (Bản này chỉ làm đổi mật khẩu khi đã đăng nhập; nếu cần quên mật khẩu thì phải thêm dịch vụ email và 1 bảng.)
+- [x] **1. Quên mật khẩu qua email.** Khung sườn ghi "Đổi mật khẩu / quên mật khẩu", nhưng SRS và Jira không có hạ tầng gửi email (SMTP) hay bảng mã đặt lại. (Bản này chỉ làm đổi mật khẩu khi đã đăng nhập; nếu cần quên mật khẩu thì phải thêm dịch vụ email và 1 bảng.) **Cập nhật 23/11/2026 (SCRUM-139):** đã làm bằng mã dùng một lần do trưởng họ hoặc quản trị cấp (UC-AUTH-15), không cần email.
 - [ ] **2. Người xin tham gia biết mã gia đình bằng cách nào?** Module Gia phả không có API tìm hoặc liệt kê gia đình (cố ý, để không lộ dòng họ). (Người xin nhập mã gia đình hoặc mã chi do người thân, trưởng họ hoặc trưởng chi cung cấp. Đã chốt 3/11/2026 theo SCRUM-100: trang Duyệt yêu cầu tham gia hiện mã gia đình và mã chi kèm nút sao chép.)
 - [x] **3. Lịch làm `member_verification`: đã chốt 13/10/2026.** SRS xếp FR-AUTH-04 ở Sprint 6 (SCRUM-57), nhưng Gia phả (SCRUM-37, Sprint 3) cần `MembershipQuery` và `assignFamilyOwner` ngay để cổng `PERM_002` hoạt động. Quyết định: bảng `member_verification` và các interface ở mục 6.3 làm cùng SCRUM-35 (Sprint 3); SCRUM-57 làm API xin tham gia, duyệt và màn hình duyệt, cùng nhật ký. Đã cập nhật mô tả SCRUM-35 và SCRUM-57 trên Jira và cột Sprint của FR-AUTH-04 trong `srs.md` (S3-S6).
 - [x] **4. `SYSTEM_ADMIN` không thuộc gia đình nào** (BR-AUTH-08): đã chốt 18/10/2026. Các API danh sách, tạo mới và thống kê lấy gia đình từ người đăng nhập có tham số `familyId`, bắt buộc với `SYSTEM_ADMIN` (`conventions.md` mục 6.2); đã thêm vào `community-events.yaml`, `heritage-directory-dashboard.yaml`, `ai.yaml`.

@@ -26,10 +26,20 @@ public class AuthController {
 
     private final AuthService authService;
     private final RefreshRateLimiter refreshRateLimiter;
+    private final com.familyconnect.modules.auth.service.PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService, RefreshRateLimiter refreshRateLimiter) {
+    public AuthController(AuthService authService, RefreshRateLimiter refreshRateLimiter,
+                          com.familyconnect.modules.auth.service.PasswordResetService passwordResetService) {
         this.authService = authService;
         this.refreshRateLimiter = refreshRateLimiter;
+        this.passwordResetService = passwordResetService;
+    }
+
+    @PostMapping("/password-resets")
+    @Operation(operationId = "resetPassword", summary = "Đặt lại mật khẩu bằng mã dùng một lần (UC-AUTH-15)")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody AuthRequests.PasswordReset request, HttpServletRequest http) {
+        passwordResetService.reset(request, ClientIp.of(http));
+        return ApiResponse.empty();
     }
 
     @PostMapping("/login")

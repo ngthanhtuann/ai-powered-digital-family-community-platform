@@ -57,6 +57,52 @@ public final class GenealogyRequests {
         }
     }
 
+    /** POST /persons/{personId}/account-replacements (AccountReplacementInput, BR-GEN-23). */
+    public record AccountReplacementInput(
+            @NotNull(message = "Chưa chọn tài khoản mới") UUID newUserId,
+            @NotBlank(message = "Cần nhập lý do thay tài khoản")
+            @Size(max = 255, message = "Lý do tối đa 255 ký tự") String reason) {
+    }
+
+    /** POST /persons/{personId}/death-reports (DeathReportInput, BR-GEN-24). */
+    public record DeathReportInput(
+            @NotNull(message = "Cần nhập ngày mất") LocalDate deathDate,
+            @jakarta.validation.constraints.Pattern(regexp = "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                    message = "Giờ mất theo dạng HH:mm") String deathTime,
+            @Size(max = 255, message = "Nơi an táng tối đa 255 ký tự") String burialPlace) {
+    }
+
+    /** PUT /persons/{personId}/death (genealogy.yaml DeathInput, BR-GEN-21). */
+    public record DeathInput(
+            @NotNull(message = "Chưa chọn đã mất hay còn sống") Boolean isDeceased,
+            LocalDate deathDate,
+            @jakarta.validation.constraints.Pattern(regexp = "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+                    message = "Giờ mất theo dạng HH:mm") String deathTime,
+            @Size(max = 255, message = "Nơi an táng tối đa 255 ký tự") String burialPlace) {
+
+        public boolean deceased() {
+            return Boolean.TRUE.equals(isDeceased);
+        }
+    }
+
+    /** PUT /branches/{branchId}/head (BranchHeadInput, BR-GEN-29); null là quay về theo dòng. */
+    public record BranchHeadInput(UUID personId) {
+    }
+
+    /** POST /persons/{personId}/relatives (RelativeInput, BR-GEN-26). */
+    public record RelativeInput(
+            @NotNull(message = "Chưa chọn quan hệ") RelativeKind relation,
+            @NotNull(message = "Thiếu thông tin người mới") @jakarta.validation.Valid PersonInput person,
+            ParentKind kind,
+            ParentRole parentRole,
+            LocalDate startDate,
+            UUID otherParentId,
+            Boolean divorcePrevious,
+            Boolean foundBranch) {
+    }
+
+    public enum RelativeKind { CHILD, PARENT, SPOUSE }
+
     /** POST /persons/{personId}/parents (genealogy.yaml ParentInput); kind mặc định BIOLOGICAL. */
     public record ParentInput(
             @NotNull(message = "Chưa chọn cha/mẹ") UUID parentId,

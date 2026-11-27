@@ -1,5 +1,6 @@
 package com.familyconnect.modules.auth.service;
 
+import com.familyconnect.common.audit.AuditLogger;
 import com.familyconnect.common.exception.ApiException;
 import com.familyconnect.common.exception.ErrorCode;
 import com.familyconnect.modules.auth.api.EffectiveRole;
@@ -13,7 +14,10 @@ import com.familyconnect.modules.auth.entity.MemberRole;
 import com.familyconnect.modules.auth.entity.MemberVerification;
 import com.familyconnect.modules.auth.entity.Role;
 import com.familyconnect.modules.auth.entity.VerificationStatus;
+import com.familyconnect.modules.auth.entity.UserStatus;
 import com.familyconnect.modules.auth.repository.MemberVerificationRepository;
+import com.familyconnect.modules.auth.repository.RefreshTokenRepository;
+import com.familyconnect.modules.auth.repository.UserRepository;
 import com.familyconnect.modules.auth.repository.UserRoleRepository;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
@@ -46,15 +50,31 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
     private final MemberVerificationRepository verificationRepository;
     private final UserRoleRepository userRoleRepository;
     private final ObjectProvider<GenealogyPort> genealogyPort;
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    // AuditLogger phụ thuộc MembershipQuery nên lấy trễ để tránh vòng phụ thuộc.
+    private final ObjectProvider<AuditLogger> auditLogger;
+    private final ObjectProvider<com.familyconnect.modules.auth.api.AccountContentTransfer> contentTransfers;
     private final Clock clock;
+
+    /** BR-AUTH-23: lý do khóa cố định để chỉ mở khóa đúng tài khoản bị khóa vì báo mất. */
+    static final String DECEASED_LOCK_REASON = "Đã mất";
 
     public MembershipService(MemberVerificationRepository verificationRepository,
                              UserRoleRepository userRoleRepository,
                              ObjectProvider<GenealogyPort> genealogyPort,
+                             UserRepository userRepository,
+                             RefreshTokenRepository refreshTokenRepository,
+                             ObjectProvider<AuditLogger> auditLogger,
+                             ObjectProvider<com.familyconnect.modules.auth.api.AccountContentTransfer> contentTransfers,
                              Clock clock) {
+        this.contentTransfers = contentTransfers;
         this.verificationRepository = verificationRepository;
         this.userRoleRepository = userRoleRepository;
         this.genealogyPort = genealogyPort;
+        this.userRepository = userRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.auditLogger = auditLogger;
         this.clock = clock;
     }
 
@@ -102,7 +122,102 @@ public class MembershipService implements MembershipQuery, MembershipCommand {
         return verificationRepository.findApprovedUserIds(familyId);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<MembershipView> findVerifiedMembers(UUID familyId) {
+        return verificationRepository.findByFamilyIdAndStatusAndDeletedAtIsNull(familyId, VerificationStatus.APPROVED)
+                .stream()
+                .map(mv -> new MembershipView(mv.getUserId(), mv.getFamilyId(), mv.getBranchId(),
+                        mv.getRole() == MemberRole.BRANCH_ADMIN ? EffectiveRole.BRANCH_ADMIN : EffectiveRole.MEMBER, true))
+                .toList();
+    }
+
     // ---- MembershipCommand ----
+
+    @Override
+    @Transactional
+    public void lockDeceasedAccount(UUID userId, UUID actorId) {
+        if (isSystemAdmin(userId)) {
+            return;
+        }
+        userRepository.findById(userId).filter(u -> u.getStatus() == UserStatus.ACTIVE).ifPresent(user -> {
+            user.lock(DECEASED_LOCK_REASON, actorId);
+            userRepository.saveAndFlush(user);
+            refreshTokenRepository.revokeAllForUser(userId, OffsetDateTime.now(clock));
+            auditLogger.getObject().log("USER_LOCKED", "USER", userId, null,
+                    Map.of("oldStatus", "ACTIVE", "newStatus", "LOCKED", "reason", DECEASED_LOCK_REASON));
+        });
+    }
+
+    @Override
+    @Transactional
+    public void replaceAccount(UUID oldUserId, UUID newUserId, UUID actorId, String reason) {
+        MemberVerification newer = verificationRepository.findByUserIdAndStatusIn(newUserId, EnumSet.of(VerificationStatus.APPROVED))
+                .orElseThrow(() -> new ApiException(ErrorCode.GEN_014));
+        Optional<MemberVerification> old = verificationRepository.findByUserIdAndStatusIn(oldUserId, EnumSet.of(VerificationStatus.APPROVED));
+        Map<String, Object> detail = new HashMap<>();
+        detail.put("newUserId", newUserId);
+        detail.put("reason", reason);
+        if (old.isPresent()) {
+            MemberVerification current = old.get();
+            if (current.getRole() == MemberRole.BRANCH_ADMIN) {
+                // Nhận vai trò trước khi bỏ bản ghi cũ để dòng họ luôn còn trưởng họ.
+                newer.changeRole(MemberRole.BRANCH_ADMIN, current.getBranchId(), actorId);
+                verificationRepository.saveAndFlush(newer);
+                detail.put("roleTransferred", true);
+            }
+            current.remove(actorId);
+            verificationRepository.saveAndFlush(current);
+        }
+        userRepository.findById(oldUserId).filter(u -> u.getStatus() == UserStatus.ACTIVE).ifPresent(user -> {
+            String lockReason = ("Thay tài khoản: " + reason);
+            user.lock(lockReason.length() > 255 ? lockReason.substring(0, 255) : lockReason, actorId);
+            userRepository.saveAndFlush(user);
+        });
+        refreshTokenRepository.revokeAllForUser(oldUserId, OffsetDateTime.now(clock));
+        contentTransfers.orderedStream().forEach(t -> t.transferContent(oldUserId, newUserId));
+        auditLogger.getObject().log("ACCOUNT_REPLACED", "USER", oldUserId, newer.getFamilyId(), detail);
+    }
+
+    @Override
+    @Transactional
+    public void removeFromFamily(UUID userId, UUID actorId, String reason) {
+        verificationRepository.findByUserIdAndStatusIn(userId, EnumSet.of(VerificationStatus.APPROVED))
+                .filter(mv -> !(mv.getRole() == MemberRole.BRANCH_ADMIN && mv.getBranchId() == null))
+                .ifPresent(mv -> {
+                    mv.remove(actorId);
+                    verificationRepository.saveAndFlush(mv);
+                    refreshTokenRepository.revokeAllForUser(userId, OffsetDateTime.now(clock));
+                    auditLogger.getObject().log("MEMBERSHIP_REMOVED", "USER", userId, mv.getFamilyId(), Map.of("reason", reason));
+                });
+    }
+
+    @Override
+    @Transactional
+    public void grantBranchHead(UUID userId, UUID familyId, UUID branchId, UUID actorId) {
+        verificationRepository.findByUserIdAndStatusIn(userId, EnumSet.of(VerificationStatus.APPROVED))
+                .filter(mv -> familyId.equals(mv.getFamilyId()))
+                .filter(mv -> !(mv.getRole() == MemberRole.BRANCH_ADMIN && mv.getBranchId() == null))
+                .ifPresent(mv -> {
+                    mv.changeRole(MemberRole.BRANCH_ADMIN, branchId, actorId);
+                    verificationRepository.saveAndFlush(mv);
+                    auditLogger.getObject().log("MEMBERSHIP_CHANGED", "USER", userId, familyId,
+                            Map.of("role", "BRANCH_ADMIN", "branchId", branchId, "reason", "Chọn tay trưởng chi (BR-GEN-29)"));
+                });
+    }
+
+    @Override
+    @Transactional
+    public void unlockDeceasedAccount(UUID userId, UUID actorId) {
+        userRepository.findById(userId)
+                .filter(u -> u.getStatus() == UserStatus.LOCKED && DECEASED_LOCK_REASON.equals(u.getLockReason()))
+                .ifPresent(user -> {
+                    user.unlock(actorId);
+                    userRepository.saveAndFlush(user);
+                    auditLogger.getObject().log("USER_UNLOCKED", "USER", userId, null,
+                            Map.of("oldStatus", "LOCKED", "newStatus", "ACTIVE"));
+                });
+    }
 
     @Override
     @Transactional

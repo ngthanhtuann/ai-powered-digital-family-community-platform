@@ -26,6 +26,16 @@ public interface GenealogyPort {
         return java.util.Map.of();
     }
 
+    /** BR-GEN-28, BR-COM-18: tài khoản của vợ/chồng ngoài tộc đã ly hôn (bài bị ẩn với thành viên thường). */
+    default java.util.Set<UUID> hiddenAccountIds(UUID familyId) {
+        return java.util.Set.of();
+    }
+
+    /** BR-GEN-29, BR-AUTH-26: chi mà hồ sơ được chọn tay làm trưởng chi; rỗng nếu không. */
+    default Optional<UUID> headedBranchOf(UUID personId) {
+        return Optional.empty();
+    }
+
     /** Rỗng nếu gia đình không tồn tại. */
     Optional<String> findFamilyName(UUID familyId);
 

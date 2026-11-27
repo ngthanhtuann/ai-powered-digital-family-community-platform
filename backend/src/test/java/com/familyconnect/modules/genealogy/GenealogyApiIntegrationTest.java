@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -436,6 +437,551 @@ class GenealogyApiIntegrationTest {
 
         UUID stillLinked = jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId);
         org.assertj.core.api.Assertions.assertThat(stillLinked).isEqualTo(userId(memberEmail));
+    }
+
+    // ---- BR-GEN-21, BR-AUTH-23, BR-COM-15 (SCRUM-134): người quản lý báo mất, báo nhầm thì khôi phục ----
+
+    private int deathNotices(UUID personId, UUID userId) {
+        return jdbc.queryForObject("select count(*) from notification where ref_id = ? and user_id = ? "
+                + "and type = 'DEATH_NOTICE' and deleted_at is null", Integer.class, personId, userId);
+    }
+
+    @Test
+    void headMarksLinkedPersonDeceasedThenRevertsMistake() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID headId = jdbc.queryForObject("select user_id from member_verification where family_id = ? and role = 'BRANCH_ADMIN'",
+                UUID.class, familyId);
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi một")));
+        UUID otherBranch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi hai")));
+        String deadEmail = newUser();
+        member(deadEmail, familyId, branch, "MEMBER");
+        String kinEmail = newUser();
+        member(kinEmail, familyId, branch, "MEMBER");
+        String outsiderEmail = newUser();
+        member(outsiderEmail, familyId, otherBranch, "MEMBER");
+        String persons = "/api/v1/families/" + familyId + "/persons";
+        Map<String, Object> linked = person("Ông Báo Mất", LocalDate.of(1950, 3, 3));
+        linked.put("userId", userId(deadEmail).toString());
+        linked.put("branchId", branch.toString());
+        UUID personId = id(call(post(persons), headToken, linked));
+        UUID wife = id(call(post(persons), headToken, person("Bà Còn Sống", LocalDate.of(1952, 1, 1))));
+        jdbc.update("insert into marriage(person1_id, person2_id, status, created_by) values (?, ?, 'MARRIED', ?)",
+                personId, wife, UUID.randomUUID());
+        String url = "/api/v1/persons/" + personId + "/death";
+        Map<String, Object> death = Map.of("isDeceased", true, "deathDate", "2026-11-20", "deathTime", "14:30",
+                "burialPlace", "Nghĩa trang quê nhà");
+
+        // Thành viên thường không báo mất trực tiếp; thiếu ngày mất hoặc giờ sai định dạng: 400.
+        call(put(url), token(kinEmail), death).andExpect(status().isForbidden());
+        call(put(url), headToken, Map.of("isDeceased", true)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALID_001"));
+        call(put(url), headToken, Map.of("isDeceased", true, "deathDate", "2026-11-20", "deathTime", "25:00"))
+                .andExpect(status().isBadRequest());
+
+        // Trưởng họ báo mất hồ sơ đã gắn tài khoản (ngoại lệ BR-GEN-20).
+        call(put(url), headToken, death).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isDeceased").value(true))
+                .andExpect(jsonPath("$.data.deathTime").value("14:30"))
+                .andExpect(jsonPath("$.data.canManage").value(true));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status || '|' || lock_reason from users where id = ?", String.class, userId(deadEmail)))
+                .isEqualTo("LOCKED|Đã mất");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person1_id = ?", String.class, personId)).isEqualTo("WIDOWED");
+        org.assertj.core.api.Assertions.assertThat(deathNotices(personId, userId(kinEmail))).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(deathNotices(personId, headId)).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(deathNotices(personId, userId(outsiderEmail))).isZero();
+        org.assertj.core.api.Assertions.assertThat(deathNotices(personId, userId(deadEmail))).isZero();
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("email", deadEmail, "password", PASSWORD))))
+                .andExpect(status().is4xxClientError());
+
+        // Báo nhầm: khôi phục còn sống, mở khóa, hôn nhân quay lại MARRIED, thu hồi thông báo.
+        call(put(url), headToken, Map.of("isDeceased", false)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isDeceased").value(false));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from users where id = ?", String.class, userId(deadEmail))).isEqualTo("ACTIVE");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person1_id = ?", String.class, personId)).isEqualTo("MARRIED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select death_time is null and death_date is null from person where id = ?", Boolean.class, personId)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(deathNotices(personId, userId(kinEmail))).isZero();
+        token(deadEmail);
+    }
+
+    @Test
+    void cannotReportOwnDeathOrUnlockAccountLockedForOtherReasons() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID headId = jdbc.queryForObject("select user_id from member_verification where family_id = ? and role = 'BRANCH_ADMIN'",
+                UUID.class, familyId);
+        Map<String, Object> self = person("Trưởng họ", LocalDate.of(1960, 1, 1));
+        self.put("userId", headId.toString());
+        UUID selfId = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, self));
+        call(put("/api/v1/persons/" + selfId + "/death"), headToken, Map.of("isDeceased", true, "deathDate", "2026-11-20"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("PERM_001"));
+
+        String memberEmail = newUser();
+        member(memberEmail, familyId, null, "MEMBER");
+        Map<String, Object> linked = person("Bị khóa vì lý do khác", LocalDate.of(1980, 1, 1));
+        linked.put("userId", userId(memberEmail).toString());
+        UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, linked));
+        // Khóa qua API quản trị (không qua JDBC) để cache Hibernate trong giao dịch test thấy đúng trạng thái.
+        String adminEmail = newUser();
+        jdbc.update("insert into user_role(user_id, role_id) select ?, id from role where code = 'SYSTEM_ADMIN'", userId(adminEmail));
+        call(patch("/api/v1/admin/users/" + userId(memberEmail)), token(adminEmail),
+                Map.of("status", "LOCKED", "lockReason", "Vi phạm")).andExpect(status().isOk());
+        call(put("/api/v1/persons/" + personId + "/death"), headToken, Map.of("isDeceased", true, "deathDate", "2026-11-20"))
+                .andExpect(status().isOk());
+        call(put("/api/v1/persons/" + personId + "/death"), headToken, Map.of("isDeceased", false)).andExpect(status().isOk());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status || '|' || lock_reason from users where id = ?", String.class, userId(memberEmail)))
+                .isEqualTo("LOCKED|Vi phạm");
+    }
+
+    // ---- BR-GEN-22 (SCRUM-138): con tự thuộc chi của cha mẹ ----
+
+    @Test
+    void childInheritsParentBranchPreferringFather() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String persons = "/api/v1/families/" + familyId + "/persons";
+        UUID fatherBranch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi nội")));
+        UUID motherBranch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi ngoại")));
+        UUID chosen = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi tự chọn")));
+        Map<String, Object> f = person("Cha", LocalDate.of(1960, 1, 1));
+        f.put("branchId", fatherBranch.toString());
+        UUID father = id(call(post(persons), token, f));
+        Map<String, Object> m = person("Mẹ", LocalDate.of(1962, 1, 1));
+        m.put("gender", "FEMALE");
+        m.put("branchId", motherBranch.toString());
+        UUID mother = id(call(post(persons), token, m));
+        UUID child = id(call(post(persons), token, person("Con", LocalDate.of(1990, 1, 1))));
+        String branchSql = "select branch_id from person where id = ?";
+
+        call(post("/api/v1/persons/" + child + "/parents"), token, Map.of("parentId", mother.toString(), "parentRole", "MOTHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child)).isEqualTo(motherBranch);
+        call(post("/api/v1/persons/" + child + "/parents"), token, Map.of("parentId", father.toString(), "parentRole", "FATHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child)).isEqualTo(fatherBranch);
+
+        // Chi do người quản lý chọn thì giữ nguyên.
+        Map<String, Object> c2 = person("Con tự chọn chi", LocalDate.of(1992, 1, 1));
+        c2.put("branchId", chosen.toString());
+        UUID child2 = id(call(post(persons), token, c2));
+        call(post("/api/v1/persons/" + child2 + "/parents"), token, Map.of("parentId", father.toString(), "parentRole", "FATHER"))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(branchSql, UUID.class, child2)).isEqualTo(chosen);
+    }
+
+    // ---- SCRUM-136: node cây có năm mất và huy hiệu trưởng họ ----
+
+    @Test
+    void treeNodeShowsDeathYearAndFamilyHeadBadge() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID headId = jdbc.queryForObject("select user_id from member_verification where family_id = ? and role = 'BRANCH_ADMIN'",
+                UUID.class, familyId);
+        String persons = "/api/v1/families/" + familyId + "/persons";
+        Map<String, Object> head = person("Trưởng họ", LocalDate.of(1960, 1, 1));
+        head.put("userId", headId.toString());
+        UUID headPerson = id(call(post(persons), token, head));
+        Map<String, Object> dead = person("Cụ tổ", LocalDate.of(1900, 1, 1));
+        dead.put("isDeceased", true);
+        dead.put("deathDate", "1980-05-05");
+        UUID deadPerson = id(call(post(persons), token, dead));
+
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", headPerson.toString()).param("depth", "1"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes[0].leaderRole").value("FAMILY_HEAD"));
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", deadPerson.toString()).param("depth", "1"), token, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.nodes[0].deathYear").value(1980))
+                .andExpect(jsonPath("$.data.nodes[0].leaderRole").doesNotExist());
+    }
+
+    // ---- BR-GEN-23, BR-AUTH-25, BR-COM-16 (SCRUM-140): thay tài khoản cho hồ sơ ----
+
+    @Test
+    void headReplacesLostAccountTransferringRoleAndContent() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi thay")));
+        String oldEmail = newUser();
+        member(oldEmail, familyId, branch, "BRANCH_ADMIN");
+        String newEmail = newUser();
+        member(newEmail, familyId, branch, "MEMBER");
+        UUID oldId = userId(oldEmail);
+        UUID newId = userId(newEmail);
+        Map<String, Object> linked = person("Người mất tài khoản", LocalDate.of(1980, 1, 1));
+        linked.put("userId", oldId.toString());
+        linked.put("branchId", branch.toString());
+        UUID personId = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, linked));
+        UUID postId = jdbc.queryForObject("insert into post(family_id, type, content, created_by) values (?, 'POST', 'Bài cũ', ?) returning id",
+                UUID.class, familyId, oldId);
+        jdbc.update("insert into reaction(post_id, type, created_by) values (?, 'LIKE', ?)", postId, oldId);
+        jdbc.update("insert into reaction(post_id, type, created_by) values (?, 'LOVE', ?)", postId, newId);
+
+        call(get("/api/v1/persons/" + personId + "/account-candidates"), headToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.userId == '" + newId + "')]").exists())
+                .andExpect(jsonPath("$.data[?(@.userId == '" + oldId + "')]").doesNotExist());
+        String url = "/api/v1/persons/" + personId + "/account-replacements";
+        call(post(url), headToken, Map.of("newUserId", newId.toString())).andExpect(status().isBadRequest());
+        call(post(url), token(newEmail), Map.of("newUserId", newId.toString(), "reason", "x")).andExpect(status().isForbidden());
+        call(post(url), headToken, Map.of("newUserId", newId.toString(), "reason", "Mất điện thoại"))
+                .andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select user_id from person where id = ?", UUID.class, personId))
+                .isEqualTo(newId);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select status || '|' || lock_reason from users where id = ?",
+                String.class, oldId)).isEqualTo("LOCKED|Thay tài khoản: Mất điện thoại");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, oldId))
+                .isEqualTo(1); // không xóa tài khoản cũ
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select role || '|' || branch_id from member_verification where user_id = ? and status = 'APPROVED'", String.class, newId))
+                .isEqualTo("BRANCH_ADMIN|" + branch);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from member_verification where user_id = ?", String.class, oldId)).isEqualTo("REMOVED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select created_by from post where id = ?", UUID.class, postId))
+                .isEqualTo(newId);
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select string_agg(type, ',') from reaction where post_id = ? and deleted_at is null", String.class, postId))
+                .isEqualTo("LOVE"); // trùng thì giữ cảm xúc của tài khoản mới
+    }
+
+    // ---- BR-GEN-24 (SCRUM-135): con ruột báo mất, người khác xác nhận, hết hạn, gợi ý kế nhiệm ----
+
+    private UUID linkedPerson(UUID familyId, String token, String email, String name, LocalDate birth, String gender) throws Exception {
+        Map<String, Object> body = person(name, birth);
+        body.put("gender", gender);
+        if (email != null) {
+            body.put("userId", userId(email).toString());
+        }
+        return id(call(post("/api/v1/families/" + familyId + "/persons"), token, body));
+    }
+
+    private void parent(String token, UUID child, UUID parent, String role) throws Exception {
+        call(post("/api/v1/persons/" + child + "/parents"), token, Map.of("parentId", parent.toString(), "parentRole", role))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void childReportsHeadDeathSiblingConfirmsAndSuccessorIsSuggested() throws Exception {
+        Object[] o = owner();
+        String ownerToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), ownerToken, Map.of("name", "Chi xác nhận")));
+        String headEmail = newUser();
+        member(headEmail, familyId, branch, "BRANCH_ADMIN");
+        String elderEmail = newUser();
+        member(elderEmail, familyId, branch, "MEMBER");
+        String youngerEmail = newUser();
+        member(youngerEmail, familyId, branch, "MEMBER");
+        String adoptedEmail = newUser();
+        member(adoptedEmail, familyId, branch, "MEMBER");
+        UUID head = linkedPerson(familyId, ownerToken, headEmail, "Trưởng chi", LocalDate.of(1950, 1, 1), "MALE");
+        UUID elder = linkedPerson(familyId, ownerToken, elderEmail, "Con trai cả", LocalDate.of(1975, 1, 1), "MALE");
+        UUID younger = linkedPerson(familyId, ownerToken, youngerEmail, "Con gái út", LocalDate.of(1980, 1, 1), "FEMALE");
+        UUID adopted = linkedPerson(familyId, ownerToken, adoptedEmail, "Con nuôi", LocalDate.of(1985, 1, 1), "MALE");
+        parent(ownerToken, elder, head, "FATHER");
+        parent(ownerToken, younger, head, "FATHER");
+        call(post("/api/v1/persons/" + adopted + "/parents"), ownerToken,
+                Map.of("parentId", head.toString(), "parentRole", "FATHER", "kind", "ADOPTED")).andExpect(status().isCreated());
+
+        String reports = "/api/v1/persons/" + head + "/death-reports";
+        Map<String, Object> body = Map.of("deathDate", "2026-11-20", "deathTime", "06:15");
+        // Con nuôi không báo mất được; con ruột báo được, báo lần hai bị từ chối.
+        call(post(reports), token(adoptedEmail), body).andExpect(status().isForbidden());
+        call(get("/api/v1/persons/" + head), token(youngerEmail), null).andExpect(jsonPath("$.data.canReportDeath").value(true));
+        UUID reportId = id(call(post(reports), token(youngerEmail), body).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("PENDING")));
+        call(post(reports), token(elderEmail), body).andExpect(status().isConflict());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select count(*) from notification where ref_id = ? and type = 'DEATH_REPORT' and deleted_at is null and user_id = ?",
+                Integer.class, head, userId(elderEmail))).isEqualTo(1);
+
+        // Người báo không tự xác nhận; con ruột khác xác nhận, hồ sơ chuyển đã mất và gợi ý kế nhiệm là con trai cả.
+        String confirm = "/api/v1/death-reports/" + reportId + "/confirmations";
+        call(post(confirm), token(youngerEmail), null).andExpect(status().isForbidden());
+        call(post(confirm), token(adoptedEmail), null).andExpect(status().isForbidden());
+        call(post(confirm), token(elderEmail), null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.successorPersonId").value(elder.toString()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select is_deceased || '|' || coalesce(death_time::text, '-') from person where id = ?", String.class, head)).isEqualTo("true|06:15:00");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select status from users where id = ?", String.class,
+                userId(headEmail))).isEqualTo("LOCKED");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select count(*) from notification where ref_id = ? and type = 'DEATH_REPORT' and deleted_at is null", Integer.class, head))
+                .isZero();
+        call(post(confirm), token(elderEmail), null).andExpect(status().isConflict());
+    }
+
+    @Test
+    void ordinaryPersonReportIsConfirmedByManagerAndExpiresAfterSevenDays() throws Exception {
+        Object[] o = owner();
+        String ownerToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String childEmail = newUser();
+        member(childEmail, familyId, null, "MEMBER");
+        UUID mother = linkedPerson(familyId, ownerToken, null, "Mẹ", LocalDate.of(1955, 1, 1), "FEMALE");
+        UUID child = linkedPerson(familyId, ownerToken, childEmail, "Con", LocalDate.of(1980, 1, 1), "MALE");
+        parent(ownerToken, child, mother, "MOTHER");
+
+        UUID reportId = id(call(post("/api/v1/persons/" + mother + "/death-reports"), token(childEmail), Map.of("deathDate", "2026-11-21"))
+                .andExpect(status().isCreated()));
+        call(get("/api/v1/persons/" + mother + "/death-reports/latest"), ownerToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.canConfirm").value(true));
+        // Quá 7 ngày không ai xác nhận: hết hạn, không xác nhận được nữa.
+        jdbc.update("update death_report set expires_at = now() - interval '1 minute' where id = ?", reportId);
+        call(get("/api/v1/persons/" + mother + "/death-reports/latest"), ownerToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+        call(post("/api/v1/death-reports/" + reportId + "/confirmations"), ownerToken, null).andExpect(status().isConflict());
+
+        // Báo lại, trưởng họ xác nhận.
+        UUID again = id(call(post("/api/v1/persons/" + mother + "/death-reports"), token(childEmail), Map.of("deathDate", "2026-11-21"))
+                .andExpect(status().isCreated()));
+        call(post("/api/v1/death-reports/" + again + "/confirmations"), ownerToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.successorPersonId").doesNotExist());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select is_deceased from person where id = ?", Boolean.class, mother))
+                .isTrue();
+    }
+
+    // ---- BR-GEN-26 (SCRUM-143): thêm người thân trong một lần lưu; BR-GEN-25 (SCRUM-142): kế nhiệm theo dòng ----
+
+    @Autowired
+    private com.familyconnect.modules.genealogy.service.LineageService lineage;
+
+    private int personCount(UUID familyId) {
+        return jdbc.queryForObject("select count(*) from person where family_id = ? and deleted_at is null", Integer.class, familyId);
+    }
+
+    /** Chạy ngoài giao dịch chung của lớp test để mỗi request có giao dịch riêng như khi chạy thật (kiểm hoàn tác). */
+    @Test
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    void addRelativeCreatesPersonAndRelationInOneSaveOrNothing() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi thêm")));
+        Map<String, Object> f = person("Cha thêm", LocalDate.of(1960, 1, 1));
+        f.put("branchId", branch.toString());
+        UUID father = id(call(post("/api/v1/families/" + familyId + "/persons"), token, f));
+        String url = "/api/v1/persons/" + father + "/relatives";
+
+        UUID child = id(call(post(url), token, Map.of("relation", "CHILD", "person", person("Con thêm", LocalDate.of(1990, 1, 1))))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.data.branchId").value(branch.toString())));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select parent_role || '|' || kind from parent_child where parent_id = ? and child_id = ?", String.class, father, child))
+                .isEqualTo("FATHER|BIOLOGICAL");
+        Map<String, Object> wife = person("Vợ thêm", LocalDate.of(1962, 1, 1));
+        wife.put("gender", "FEMALE");
+        UUID spouse = id(call(post(url), token, Map.of("relation", "SPOUSE", "person", wife, "startDate", "1985-01-01"))
+                .andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person1_id = ? and person2_id = ?", String.class, father, spouse)).isEqualTo("MARRIED");
+
+        // Một bước lỗi thì không lưu gì: con sinh trước cha (GEN_007), cha/mẹ giới tính khác không chọn vai trò (VALID_001).
+        int before = personCount(familyId);
+        call(post(url), token, Map.of("relation", "CHILD", "person", person("Con sai", LocalDate.of(1950, 1, 1))))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("GEN_007"));
+        Map<String, Object> other = person("Cha mẹ khác", LocalDate.of(1930, 1, 1));
+        other.put("gender", "OTHER");
+        call(post("/api/v1/persons/" + child + "/relatives"), token, Map.of("relation", "PARENT", "person", other))
+                .andExpect(status().isBadRequest());
+        org.assertj.core.api.Assertions.assertThat(personCount(familyId)).isEqualTo(before);
+    }
+
+    @Test
+    void heirFollowsEldestSonLineThenYoungerBrother() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        Map<String, Object> founder = person("Thủy tổ", LocalDate.of(1900, 1, 1));
+        founder.put("isDeceased", true);
+        founder.put("deathDate", "1980-01-01");
+        UUID to = id(call(post("/api/v1/families/" + familyId + "/persons"), token, founder));
+        Map<String, Object> eldestDead = person("Con cả đã mất", LocalDate.of(1925, 1, 1));
+        eldestDead.put("isDeceased", true);
+        eldestDead.put("deathDate", "1990-01-01");
+        UUID eldest = id(call(post("/api/v1/persons/" + to + "/relatives"), token, Map.of("relation", "CHILD", "person", eldestDead)));
+        UUID second = id(call(post("/api/v1/persons/" + to + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Con thứ", LocalDate.of(1930, 1, 1)))));
+        UUID grandson = id(call(post("/api/v1/persons/" + eldest + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Cháu đích tôn", LocalDate.of(1950, 1, 1)))));
+
+        // Đích tôn thừa trọng: con cả mất trước nhưng có con trai thì cháu kế nhiệm, không chuyển sang con thứ.
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(to)).isEqualTo(grandson);
+        // Không có con trai, không có em trai: không có người kế nhiệm.
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(grandson)).isNull();
+        // Không có con trai thì sang em trai ruột kế tiếp.
+        UUID youngest = id(call(post("/api/v1/persons/" + to + "/relatives"), token,
+                Map.of("relation", "CHILD", "person", person("Con út", LocalDate.of(1935, 1, 1)))));
+        org.assertj.core.api.Assertions.assertThat(lineage.heirOf(second)).isEqualTo(youngest);
+        // Người tổ đã mất: trưởng họ theo dòng là cháu đích tôn, không cần tài khoản.
+        org.assertj.core.api.Assertions.assertThat(lineage.lineageHeads(familyId)).containsEntry(grandson, "FAMILY_HEAD");
+    }
+
+    // ---- BR-GEN-27, 28, 29 (SCRUM-144, 145, 146) ----
+
+    private UUID relative(String token, UUID anchor, String relation, Map<String, Object> person, Map<String, Object> extra)
+            throws Exception {
+        Map<String, Object> body = new HashMap<>(extra);
+        body.put("relation", relation);
+        body.put("person", person);
+        return id(call(post("/api/v1/persons/" + anchor + "/relatives"), token, body).andExpect(status().isCreated()));
+    }
+
+    private Map<String, Object> woman(String name, LocalDate birth) {
+        Map<String, Object> w = person(name, birth);
+        w.put("gender", "FEMALE");
+        return w;
+    }
+
+    @Test
+    void childOfInLawIsDrawnUnderTheCoupleAndOtherParentIsLinked() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID root = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Ông gốc", LocalDate.of(1940, 1, 1))));
+        UUID daughter = relative(token, root, "CHILD", woman("Con gái", LocalDate.of(1965, 1, 1)), Map.of());
+        UUID husband = relative(token, daughter, "SPOUSE", person("Rể", LocalDate.of(1963, 1, 1)), Map.of());
+        // Con riêng của rể (chỉ nối với rể) vẫn được vẽ dưới cặp vợ chồng, không bị đẩy lên hàng đầu.
+        UUID stepChild = relative(token, husband, "CHILD", person("Con riêng của rể", LocalDate.of(1990, 1, 1)), Map.of());
+        String tree = call(get("/api/v1/families/" + familyId + "/tree").param("rootId", root.toString()).param("depth", "5"), token, null)
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(tree).contains(stepChild.toString());
+        // Thêm con cho con gái kèm cha còn lại là rể: nối cả hai cha mẹ trong một lần lưu.
+        UUID grandchild = relative(token, daughter, "CHILD", person("Cháu", LocalDate.of(1992, 1, 1)),
+                Map.of("otherParentId", husband.toString()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select string_agg(parent_role, ',' order by parent_role) from parent_child where child_id = ? and deleted_at is null",
+                String.class, grandchild)).isEqualTo("FATHER,MOTHER");
+    }
+
+    @Test
+    void spouseRecordsDivorceAndDivorcedOutsiderIsHiddenFromMembers() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        String wifeEmail = newUser();
+        member(wifeEmail, familyId, null, "MEMBER");
+        String viewerEmail = newUser();
+        member(viewerEmail, familyId, null, "MEMBER");
+        UUID husband = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, person("Chồng", LocalDate.of(1960, 1, 1))));
+        Map<String, Object> w = woman("Vợ ngoài tộc", LocalDate.of(1962, 1, 1));
+        w.put("userId", userId(wifeEmail).toString());
+        UUID wife = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, w));
+        UUID marriage = id(call(post("/api/v1/marriages"), headToken,
+                Map.of("person1Id", husband.toString(), "person2Id", wife.toString(), "startDate", "1985-01-01")));
+        jdbc.update("insert into post(family_id, type, content, created_by) values (?, 'POST', 'Bài của vợ ngoài tộc', ?)",
+                familyId, userId(wifeEmail));
+        String viewer = token(viewerEmail);
+        String wifeToken = token(wifeEmail);
+
+        // Người ngoài (thành viên khác) không được ghi ly hôn hộ; chính người vợ thì được.
+        Map<String, Object> divorce = Map.of("status", "DIVORCED", "endDate", "2020-01-01");
+        call(put("/api/v1/marriages/" + marriage), viewer, divorce).andExpect(status().isForbidden());
+        call(put("/api/v1/marriages/" + marriage), wifeToken, divorce).andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from member_verification where user_id = ? order by created_at desc limit 1", String.class,
+                userId(wifeEmail))).isEqualTo("REMOVED");
+        call(get("/api/v1/persons/" + wife), viewer, null).andExpect(status().isForbidden());
+        call(get("/api/v1/persons/" + wife), headToken, null).andExpect(status().isOk());
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", husband.toString()).param("depth", "2"), viewer, null)
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].locked").value(org.hamcrest.Matchers.contains(true)))
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].divorced").value(org.hamcrest.Matchers.contains(true)));
+        call(get("/api/v1/families/" + familyId + "/tree").param("rootId", husband.toString()).param("depth", "2"), headToken, null)
+                .andExpect(jsonPath("$.data.nodes[?(@.id == '" + wife + "')].locked").value(org.hamcrest.Matchers.contains(false)));
+        String feed = call(get("/api/v1/posts"), viewer, null).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(feed).doesNotContain("Bài của vợ ngoài tộc");
+        String headFeed = call(get("/api/v1/posts"), headToken, null).andReturn().getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(headFeed).contains("Bài của vợ ngoài tộc");
+    }
+
+    @Test
+    void addingNewSpouseRecordsDivorceOfCurrentOneWhenAsked() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID man = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Ông tái hôn", LocalDate.of(1950, 1, 1))));
+        UUID first = relative(token, man, "SPOUSE", woman("Vợ đầu", LocalDate.of(1952, 1, 1)), Map.of("startDate", "1975-01-01"));
+        Map<String, Object> second = new HashMap<>();
+        second.put("relation", "SPOUSE");
+        second.put("person", woman("Vợ sau", LocalDate.of(1960, 1, 1)));
+        second.put("startDate", "1995-01-01");
+        call(post("/api/v1/persons/" + man + "/relatives"), token, second).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("GEN_009"));
+        second.put("divorcePrevious", true);
+        UUID newWife = id(call(post("/api/v1/persons/" + man + "/relatives"), token, second).andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status || '|' || end_date from marriage where person2_id = ?", String.class, first)).isEqualTo("DIVORCED|1995-01-01");
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select status from marriage where person2_id = ?", String.class, newWife)).isEqualTo("MARRIED");
+    }
+
+    @Test
+    void sonOfTopAncestorFoundsNextBranchAndBranchFounderJoinsIt() throws Exception {
+        Object[] o = owner();
+        String token = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID founder = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Thủy tổ lập chi", LocalDate.of(1900, 1, 1))));
+        call(post("/api/v1/families/" + familyId + "/branches"), token, Map.of("name", "Chi 1")).andExpect(status().isCreated());
+        UUID son = relative(token, founder, "CHILD", person("Con trai lập chi", LocalDate.of(1930, 1, 1)), Map.of("foundBranch", true));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select b.name || '|' || (b.origin_person_id = p.id) "
+                + "from person p join branch b on b.id = p.branch_id where p.id = ?", String.class, son)).isEqualTo("Chi 2|true");
+        // Con gái, hoặc con của người không phải người tổ, thì không lập chi.
+        Map<String, Object> daughter = new HashMap<>(Map.of("relation", "CHILD", "foundBranch", true));
+        daughter.put("person", woman("Con gái", LocalDate.of(1932, 1, 1)));
+        call(post("/api/v1/persons/" + founder + "/relatives"), token, daughter).andExpect(status().isBadRequest());
+        Map<String, Object> grandson = new HashMap<>(Map.of("relation", "CHILD", "foundBranch", true));
+        grandson.put("person", person("Cháu", LocalDate.of(1960, 1, 1)));
+        call(post("/api/v1/persons/" + son + "/relatives"), token, grandson).andExpect(status().isBadRequest());
+        // Tạo chi bằng tay với người lập chưa thuộc chi nào: người đó vào chi.
+        UUID loner = id(call(post("/api/v1/families/" + familyId + "/persons"), token, person("Người lập chi tay", LocalDate.of(1935, 1, 1))));
+        UUID manual = id(call(post("/api/v1/families/" + familyId + "/branches"), token,
+                Map.of("name", "Chi tay", "originPersonId", loner.toString())).andExpect(status().isCreated()));
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("select branch_id from person where id = ?", UUID.class, loner))
+                .isEqualTo(manual);
+    }
+
+    @Test
+    void familyHeadPicksBranchHeadEvenWithoutAccount() throws Exception {
+        Object[] o = owner();
+        String headToken = (String) o[0];
+        UUID familyId = (UUID) o[1];
+        UUID branch = id(call(post("/api/v1/families/" + familyId + "/branches"), headToken, Map.of("name", "Chi chọn tay")));
+        Map<String, Object> noAccount = person("Chưa có tài khoản", LocalDate.of(1970, 1, 1));
+        noAccount.put("branchId", branch.toString());
+        UUID picked = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, noAccount));
+        String memberEmail = newUser();
+        member(memberEmail, familyId, branch, "MEMBER");
+        Map<String, Object> withAccount = person("Có tài khoản", LocalDate.of(1972, 1, 1));
+        withAccount.put("branchId", branch.toString());
+        withAccount.put("userId", userId(memberEmail).toString());
+        UUID linked = id(call(post("/api/v1/families/" + familyId + "/persons"), headToken, withAccount));
+        String url = "/api/v1/branches/" + branch + "/head";
+
+        call(put(url), token(memberEmail), Map.of("personId", picked.toString())).andExpect(status().isForbidden());
+        call(put(url), headToken, Map.of("personId", picked.toString())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.source").value("MANUAL")).andExpect(jsonPath("$.data.hasAccount").value(false));
+        call(get("/api/v1/families/" + familyId + "/branch-heads"), headToken, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.branchId == '" + branch + "')].headPersonId").value(org.hamcrest.Matchers.contains(picked.toString())));
+        // Người được chọn có tài khoản thì tài khoản nhận quyền trưởng chi của chi đó.
+        call(put(url), headToken, Map.of("personId", linked.toString())).andExpect(status().isOk());
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+                "select role || '|' || branch_id from member_verification where user_id = ? and status = 'APPROVED'", String.class,
+                userId(memberEmail))).isEqualTo("BRANCH_ADMIN|" + branch);
     }
 
     // ---- BR-COM-13 (SCRUM-121): bài "con cháu của tôi"; đặt ở đây vì cần dựng cây gia phả có tài khoản ----

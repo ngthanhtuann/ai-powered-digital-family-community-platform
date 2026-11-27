@@ -40,11 +40,14 @@ public class RelationshipService {
     private final PersonRepository personRepository;
     private final GenealogyAccess access;
     private final AuditLogger auditLogger;
+    private final com.familyconnect.modules.auth.api.MembershipCommand membershipCommand;
     private final Clock clock;
 
     public RelationshipService(ParentChildRepository parentChildRepository, MarriageRepository marriageRepository,
                                PersonRepository personRepository, GenealogyAccess access,
-                               AuditLogger auditLogger, Clock clock) {
+                               AuditLogger auditLogger,
+                               com.familyconnect.modules.auth.api.MembershipCommand membershipCommand, Clock clock) {
+        this.membershipCommand = membershipCommand;
         this.parentChildRepository = parentChildRepository;
         this.marriageRepository = marriageRepository;
         this.personRepository = personRepository;
@@ -98,6 +101,7 @@ public class RelationshipService {
         relation.setCreatedBy(viewer.userId());
         relation.setUpdatedBy(viewer.userId());
         ParentChild saved = parentChildRepository.saveAndFlush(relation);
+        inheritBranch(child, parent, "FATHER".equals(input.parentRole().name()), viewer.userId());
         auditLogger.log("PARENT_CHILD_CREATED", "PARENT_CHILD", saved.getId(), familyId, Map.of());
         return toData(saved);
     }
@@ -160,7 +164,12 @@ public class RelationshipService {
         Person first = find(marriage.getPerson1Id());
         Person second = find(marriage.getPerson2Id());
         Viewer viewer = access.requireRead(first.getFamilyId());
-        requireManageEither(viewer, first, second);
+        // BR-GEN-28: một trong hai vợ chồng được tự ghi ly hôn; đổi trạng thái khác vẫn cần người quản lý chi.
+        boolean spouseDivorcing = input.status() == MarriageStatus.DIVORCED
+                && (viewer.userId().equals(first.getUserId()) || viewer.userId().equals(second.getUserId()));
+        if (!spouseDivorcing) {
+            requireManageEither(viewer, first, second);
+        }
         LocalDate startDate = input.startDate() != null ? input.startDate() : marriage.getStartDate();
         LocalDate endDate = input.status() == MarriageStatus.MARRIED ? null : input.endDate();
         if (input.status() == MarriageStatus.DIVORCED && endDate == null) {
@@ -183,7 +192,30 @@ public class RelationshipService {
         marriage.setUpdatedBy(viewer.userId());
         Marriage saved = marriageRepository.saveAndFlush(marriage);
         auditLogger.log("MARRIAGE_UPDATED", "MARRIAGE", marriageId, first.getFamilyId(), Map.of());
+        if (input.status() == MarriageStatus.DIVORCED) {
+            afterDivorce(first, viewer.userId());
+            afterDivorce(second, viewer.userId());
+        }
         return toData(saved);
+    }
+
+    /** BR-GEN-28: thêm vợ/chồng mới thì các hôn nhân MARRIED hiện có của personId chuyển DIVORCED trước (cùng giao dịch). */
+    @Transactional
+    public void divorceCurrent(UUID personId, LocalDate endDate) {
+        LocalDate end = endDate != null ? endDate : LocalDate.now(clock);
+        for (Marriage current : marriageRepository.findMarriedByPersonId(personId)) {
+            LocalDate start = current.getStartDate();
+            updateMarriage(current.getId(), new MarriageUpdate(MarriageStatus.DIVORCED, start,
+                    start != null && end.isBefore(start) ? start : end));
+        }
+    }
+
+    /** BR-GEN-28, BR-AUTH-26: người ngoài tộc có tài khoản vừa ly hôn hết thì rời dòng họ. */
+    private void afterDivorce(Person person, UUID actor) {
+        if (person.getUserId() != null
+                && personRepository.findDivorcedOutsiders(person.getFamilyId()).contains(person.getId())) {
+            membershipCommand.removeFromFamily(person.getUserId(), actor, "Đã ly hôn (BR-GEN-28)");
+        }
     }
 
     @Transactional
@@ -261,5 +293,23 @@ public class RelationshipService {
     private boolean everMarried(UUID person1Id, UUID person2Id) {
         return marriageRepository.findAllByPersonId(person1Id).stream()
                 .anyMatch(m -> m.getPerson1Id().equals(person2Id) || m.getPerson2Id().equals(person2Id));
+    }
+
+    /** BR-GEN-22: con chưa có chi lấy chi của cha/mẹ; con đang ở chi của mẹ thì nối cha sẽ chuyển sang chi của cha. */
+    private void inheritBranch(Person child, Person parent, boolean father, UUID actor) {
+        UUID branch = parent.getBranchId();
+        if (branch == null || branch.equals(child.getBranchId())) {
+            return;
+        }
+        boolean followsMother = father && child.getBranchId() != null
+                && parentChildRepository.findByChildIdAndDeletedAtIsNull(child.getId()).stream()
+                .filter(pc -> "MOTHER".equals(pc.getParentRole()))
+                .map(pc -> personRepository.findByIdAndDeletedAtIsNull(pc.getParentId()).map(Person::getBranchId).orElse(null))
+                .anyMatch(child.getBranchId()::equals);
+        if (child.getBranchId() == null || followsMother) {
+            child.setBranchId(branch);
+            child.setUpdatedBy(actor);
+            personRepository.saveAndFlush(child);
+        }
     }
 }

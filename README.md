@@ -275,8 +275,8 @@ Tạo bởi `docker/seed-demo.ps1` (dữ liệu giả, **chỉ dùng trên máy 
 | Vai trò | Email | Ghi chú |
 | --- | --- | --- |
 | Trưởng họ (`BRANCH_ADMIN`, quản lý cả họ) | `phuc@demo.familyconnect.vn` | Người tạo dòng họ |
-| Trưởng chi (`BRANCH_ADMIN`) | `hung@demo.familyconnect.vn` | Trưởng Chi 2 |
-| Thành viên đã xác minh (`MEMBER`) | `ha@demo.familyconnect.vn` | Nguyễn Thị Hà, Chi 2 |
+| Trưởng chi (`BRANCH_ADMIN`) | `hung@demo.familyconnect.vn` | Trưởng Chi 3 |
+| Thành viên đã xác minh (`MEMBER`) | `ha@demo.familyconnect.vn` | Nguyễn Thị Hà, Chi 3 |
 | Thành viên chờ duyệt | `tu@demo.familyconnect.vn` | Dùng để demo luồng duyệt |
 | Quản trị hệ thống (`SYSTEM_ADMIN`) | theo `BOOTSTRAP_ADMIN_EMAIL` | Mật khẩu theo `BOOTSTRAP_ADMIN_PASSWORD` |
 

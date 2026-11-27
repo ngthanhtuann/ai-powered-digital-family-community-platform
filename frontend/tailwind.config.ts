@@ -29,6 +29,9 @@ const config: Config = {
         'accent-green': '#5C8A6E',
         'accent-pink': '#B87A9E',
         'accent-pink-soft': '#E8A0C0',
+        // Viền node cây gia phả theo giới tính, tương phản ≥ 4.5 trên nền sáng (SCRUM-136).
+        'tree-male': '#1F5F99',
+        'tree-female': '#A3336E',
       },
       fontSize: {
         'page-title': ['24px', { lineHeight: '32px', fontWeight: '700' }],

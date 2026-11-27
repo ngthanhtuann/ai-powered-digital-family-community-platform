@@ -8,7 +8,13 @@ import com.familyconnect.common.util.AfterCommit;
 import com.familyconnect.modules.ai.api.AiGateway;
 import com.familyconnect.modules.directory.api.DirectoryQuery;
 import com.familyconnect.modules.genealogy.api.PersonSearchIndex;
+import com.familyconnect.modules.auth.api.MembershipCommand;
 import com.familyconnect.modules.auth.api.MembershipQuery;
+import com.familyconnect.modules.community.api.CommunityNotificationPort;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.DeathInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyRequests.AccountReplacementInput;
+import com.familyconnect.modules.genealogy.dto.GenealogyResponses.AccountCandidate;
+import com.familyconnect.modules.auth.api.UserDirectory;
 import com.familyconnect.modules.auth.api.MembershipView;
 import com.familyconnect.modules.community.api.CommunityQuery;
 import com.familyconnect.modules.genealogy.dto.GenealogyRequests.PersonInput;
@@ -27,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,12 +59,19 @@ public class PersonService implements PersonSearchIndex {
     private final AiGateway aiGateway;
     private final CommunityQuery communityQuery;
     private final DirectoryQuery directoryQuery;
+    private final MembershipCommand membershipCommand;
+    private final CommunityNotificationPort notifications;
+    private final UserDirectory userDirectory;
     private final Clock clock;
 
     public PersonService(PersonRepository personRepository, FamilyRepository familyRepository,
                          BranchRepository branchRepository, GenealogyAccess access, MembershipQuery membershipQuery,
                          AuditLogger auditLogger, AiGateway aiGateway, CommunityQuery communityQuery,
-                         DirectoryQuery directoryQuery, Clock clock) {
+                         DirectoryQuery directoryQuery, MembershipCommand membershipCommand,
+                         CommunityNotificationPort notifications, UserDirectory userDirectory, Clock clock) {
+        this.userDirectory = userDirectory;
+        this.membershipCommand = membershipCommand;
+        this.notifications = notifications;
         this.personRepository = personRepository;
         this.familyRepository = familyRepository;
         this.branchRepository = branchRepository;
@@ -94,7 +108,16 @@ public class PersonService implements PersonSearchIndex {
     public PersonData get(UUID personId) {
         Person person = find(personId);
         Viewer viewer = access.requireRead(person.getFamilyId());
+        if (lockedFor(person, viewer)) {
+            throw new ApiException(ErrorCode.PERM_001, "Hồ sơ đã được ẩn sau ly hôn");
+        }
         return toData(person, viewer);
+    }
+
+    /** BR-GEN-28: vợ/chồng ngoài tộc đã ly hôn chỉ người quản lý dòng họ xem được (chính chủ vẫn xem hồ sơ của mình). */
+    private boolean lockedFor(Person person, Viewer viewer) {
+        return !viewer.seesFullData(person.getFamilyId()) && !viewer.userId().equals(person.getUserId())
+                && personRepository.findDivorcedOutsiders(person.getFamilyId()).contains(person.getId());
     }
 
     @Transactional
@@ -132,16 +155,183 @@ public class PersonService implements PersonSearchIndex {
         }
         validate(familyId, personId, input);
         boolean becameDeceased = !person.isDeceased() && input.deceased();
+        boolean revived = person.isDeceased() && !input.deceased();
+        LocalDate oldDeathDate = person.getDeathDate();
         apply(person, input);
         person.setUpdatedBy(viewer.userId());
         personRepository.saveAndFlush(person);
         if (becameDeceased) {
-            personRepository.widowMarriages(personId, person.getDeathDate(), viewer.userId()); // BR-GEN-08
+            onDeath(person, viewer.userId());
+        } else if (revived) {
+            onRevive(person, oldDeathDate, viewer.userId());
         }
         auditLogger.log("PERSON_UPDATED", "PERSON", personId, familyId, Map.of());
         indexAfterCommit(person);
         return toData(person, viewer);
     }
+
+    /** BR-GEN-21: người quản lý chi báo mất (kể cả hồ sơ đã gắn tài khoản) hoặc khôi phục khi báo nhầm. */
+    @Transactional
+    public PersonData setDeath(UUID personId, DeathInput input) {
+        Person person = find(personId);
+        UUID familyId = person.getFamilyId();
+        Viewer viewer = access.requireRead(familyId);
+        access.requireManage(viewer, familyId, person.getBranchId());
+        if (viewer.userId().equals(person.getUserId())) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        boolean wasDeceased = person.isDeceased();
+        LocalDate oldDeathDate = person.getDeathDate();
+        if (input.deceased()) {
+            validateDeathDate(person, input.deathDate());
+            person.setDeceased(true);
+            person.setDeathDate(input.deathDate());
+            person.setDeathTime(input.deathTime() == null || input.deathTime().isBlank() ? null : input.deathTime());
+            person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
+        } else {
+            if (wasDeceased && person.getBirthDate() == null) {
+                throw ApiException.invalidField("birthDate", "Người còn sống cần ngày sinh, hãy nhập ngày sinh trước khi khôi phục");
+            }
+            person.setDeceased(false);
+            person.setDeathDate(null);
+            person.setDeathTime(null);
+            person.setBurialPlace(null);
+        }
+        person.setUpdatedBy(viewer.userId());
+        personRepository.saveAndFlush(person);
+        String action = "PERSON_UPDATED";
+        if (input.deceased() && !wasDeceased) {
+            onDeath(person, viewer.userId());
+            action = "PERSON_DECEASED";
+        } else if (!input.deceased() && wasDeceased) {
+            onRevive(person, oldDeathDate, viewer.userId());
+            action = "PERSON_DECEASED_REVERTED";
+        }
+        auditLogger.log(action, "PERSON", personId, familyId, Map.of());
+        indexAfterCommit(person);
+        return toData(person, viewer);
+    }
+
+    /** BR-GEN-23: tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào; chỉ trả họ tên. */
+    @Transactional(readOnly = true)
+    public List<AccountCandidate> accountCandidates(UUID personId) {
+        Person person = find(personId);
+        Viewer viewer = access.requireRead(person.getFamilyId());
+        access.requireManage(viewer, person.getFamilyId(), person.getBranchId());
+        List<UUID> verified = membershipQuery.findVerifiedMembers(person.getFamilyId()).stream().map(MembershipView::userId).toList();
+        Set<UUID> linked = new java.util.HashSet<>();
+        personRepository.findAllByUserIdInAndDeletedAtIsNull(verified).forEach(p -> linked.add(p.getUserId()));
+        List<UUID> free = verified.stream().filter(id -> !linked.contains(id)).toList();
+        Map<UUID, String> names = userDirectory.getFullNames(free);
+        return free.stream().filter(names::containsKey)
+                .map(id -> new AccountCandidate(id, names.get(id)))
+                .sorted(java.util.Comparator.comparing(AccountCandidate::fullName))
+                .toList();
+    }
+
+    /** BR-GEN-23, BR-AUTH-25: thay tài khoản gắn với hồ sơ; tài khoản cũ không bị xóa. */
+    @Transactional
+    public PersonData replaceAccount(UUID personId, AccountReplacementInput input) {
+        Person person = find(personId);
+        UUID familyId = person.getFamilyId();
+        Viewer viewer = access.requireRead(familyId);
+        access.requireManage(viewer, familyId, person.getBranchId());
+        UUID oldUserId = person.getUserId();
+        if (oldUserId == null) {
+            throw ApiException.invalidField("newUserId", "Hồ sơ chưa gắn tài khoản; hãy gắn khi duyệt yêu cầu tham gia");
+        }
+        if (oldUserId.equals(input.newUserId())) {
+            throw ApiException.invalidField("newUserId", "Tài khoản mới trùng tài khoản đang gắn");
+        }
+        if (viewer.userId().equals(oldUserId)) {
+            throw new ApiException(ErrorCode.PERM_001);
+        }
+        MembershipView newer = membershipQuery.getMembership(input.newUserId());
+        if (!newer.verified() || !familyId.equals(newer.familyId())) {
+            throw new ApiException(ErrorCode.GEN_014);
+        }
+        if (personRepository.findByUserIdAndDeletedAtIsNull(input.newUserId()).isPresent()) {
+            throw new ApiException(ErrorCode.CONFLICT_001, "Tài khoản mới đã gắn với hồ sơ khác");
+        }
+        person.setUserId(null);
+        personRepository.saveAndFlush(person);
+        membershipCommand.replaceAccount(oldUserId, input.newUserId(), viewer.userId(), input.reason().trim());
+        person.setUserId(input.newUserId());
+        person.setUpdatedBy(viewer.userId());
+        personRepository.saveAndFlush(person);
+        auditLogger.log("PERSON_ACCOUNT_REPLACED", "PERSON", personId, familyId, Map.of("reason", input.reason().trim()));
+        indexAfterCommit(person);
+        return toData(person, viewer);
+    }
+
+    /** BR-GEN-24: xác nhận báo mất của con ruột dùng chung hệ quả với BR-GEN-21. */
+    void markDeceasedByReport(Person person, LocalDate deathDate, String deathTime, String burialPlace, UUID actor) {
+        person.setDeceased(true);
+        person.setDeathDate(deathDate);
+        person.setDeathTime(deathTime);
+        person.setBurialPlace(burialPlace);
+        person.setUpdatedBy(actor);
+        personRepository.saveAndFlush(person);
+        onDeath(person, actor);
+        auditLogger.log("PERSON_DECEASED", "PERSON", person.getId(), person.getFamilyId(), Map.of("deathReport", true));
+        indexAfterCommit(person);
+    }
+
+    void validateDeathDate(Person person, LocalDate deathDate) {
+        if (deathDate == null) {
+            throw ApiException.invalidField("deathDate", "Cần nhập ngày mất");
+        }
+        if (deathDate.isAfter(LocalDate.now(clock))) {
+            throw ApiException.invalidField("deathDate", "Ngày mất không được sau hôm nay");
+        }
+        Integer birthYear = birthYear(person);
+        if ((person.getBirthDate() != null && deathDate.isBefore(person.getBirthDate()))
+                || (birthYear != null && deathDate.getYear() < birthYear)) {
+            throw ApiException.invalidField("deathDate", "Ngày mất không được trước ngày sinh");
+        }
+    }
+
+    /** Hệ quả khi chuyển sang đã mất: BR-GEN-08 góa, BR-AUTH-23 khóa tài khoản, BR-COM-15 thông báo tang. */
+    private void onDeath(Person person, UUID actor) {
+        personRepository.widowMarriages(person.getId(), person.getDeathDate(), actor);
+        // BR-GEN-24: đã đánh dấu mất thì báo mất đang chờ coi như đã xác nhận, thu hồi thông báo cần xác nhận.
+        personRepository.confirmPendingDeathReports(person.getId(), actor);
+        notifications.retractDeathReport(person.getId());
+        if (person.getUserId() != null) {
+            membershipCommand.lockDeceasedAccount(person.getUserId(), actor);
+        }
+        List<UUID> branches = person.getBranchId() == null ? null
+                : branchRepository.findBranchAndDescendants(person.getFamilyId(), person.getBranchId());
+        notifications.sendDeathNotice(person.getFamilyId(), branches, person.getId(), person.getUserId(),
+                "Báo tang: " + person.getFullName(), deathNoticeText(person), actor);
+    }
+
+    /** Báo nhầm (BR-GEN-21): hoàn lại góa, mở khóa tài khoản, thu hồi thông báo tang. */
+    private void onRevive(Person person, LocalDate oldDeathDate, UUID actor) {
+        if (oldDeathDate != null) {
+            personRepository.reviveMarriages(person.getId(), oldDeathDate, actor);
+        }
+        if (person.getUserId() != null) {
+            membershipCommand.unlockDeceasedAccount(person.getUserId(), actor);
+        }
+        notifications.retractDeathNotice(person.getId());
+    }
+
+    static String deathNoticeText(Person person) {
+        StringBuilder text = new StringBuilder(person.getFullName()).append(" đã mất");
+        if (person.getDeathDate() != null) {
+            text.append(" ngày ").append(person.getDeathDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        }
+        if (person.getDeathTime() != null) {
+            text.append(" lúc ").append(person.getDeathTime());
+        }
+        text.append('.');
+        if (person.getBurialPlace() != null) {
+            text.append(" Nơi an táng: ").append(person.getBurialPlace()).append('.');
+        }
+        return text.toString();
+    }
+
 
     @Transactional
     public void delete(UUID personId) {
@@ -226,6 +416,9 @@ public class PersonService implements PersonSearchIndex {
         person.setBranchId(input.branchId());
         person.setDeceased(input.deceased());
         person.setDeathDate(input.deathDate());
+        if (!input.deceased()) {
+            person.setDeathTime(null);
+        }
         person.setBurialPlace(FamilyService.blankToNull(input.burialPlace()));
         person.setAvatarMediaId(input.avatarMediaId());
         // Response không trả userId nên client không gửi lại được: để trống thì giữ liên kết (BR-GEN-19).
@@ -247,13 +440,16 @@ public class PersonService implements PersonSearchIndex {
         if (!full && isChild(p.isDeceased(), p.getBirthDate(), LocalDate.now(clock))) {
             return new PersonData(p.getId(), p.getFamilyId(), null, p.getFullName(), p.getGender(), birthYear,
                     null, null, null, null, p.isDeceased(), null, null, null, null, p.getCreatedAt(), p.getUpdatedAt(),
-                    null, false);
+                    null, false, null, false, false);
         }
         return new PersonData(p.getId(), p.getFamilyId(), p.getBranchId(), p.getFullName(), p.getGender(), birthYear,
                 full ? p.getBirthDate() : null, p.getBirthplace(), p.getCurrentProvince(),
                 full ? p.getCurrentAddress() : null, p.isDeceased(), p.getDeathDate(), p.getBurialPlace(),
                 p.getAvatarMediaId(), p.getNote(), p.getCreatedAt(), p.getUpdatedAt(),
-                p.getUserId(), canEdit(p, viewer));
+                p.getUserId(), canEdit(p, viewer), p.getDeathTime(),
+                access.canManage(viewer, p.getFamilyId(), p.getBranchId()),
+                !p.isDeceased() && !viewer.userId().equals(p.getUserId())
+                        && personRepository.isBiologicalChildAccount(p.getId(), viewer.userId()));
     }
 
     private static Integer birthYear(Person p) {

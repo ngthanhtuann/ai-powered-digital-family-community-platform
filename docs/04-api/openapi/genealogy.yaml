@@ -175,6 +175,7 @@ paths:
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [branches]
       summary: Tạo chi họ (UC-GEN-02)
+      description: Người lập chi (originPersonId) chưa thuộc chi nào thì vào chi mới; sửa chi cũng vậy (BR-GEN-30).
       requestBody:
         required: true
         content:
@@ -201,6 +202,47 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
               example: { success: false, error: { code: GEN_003, message: Chi cha tạo vòng lặp, details: [] } }
 
+  /families/{familyId}/branch-heads:
+    parameters:
+      - $ref: '#/components/parameters/familyId'
+    get:
+      operationId: listBranchHeads
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [branches]
+      summary: Trưởng chi của từng chi (chọn tay hoặc theo dòng, BR-GEN-29)
+      responses:
+        '200':
+          description: Mỗi chi một dòng
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BranchHeadListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /branches/{branchId}/head:
+    parameters:
+      - $ref: '#/components/parameters/branchId'
+    put:
+      operationId: setBranchHead
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [branches]
+      summary: Chọn tay trưởng chi, kể cả người chưa có tài khoản (BR-GEN-29)
+      description: Trưởng họ (BRANCH_ADMIN không gán chi) hoặc SYSTEM_ADMIN. personId null thì quay về trưởng chi theo dòng. Người không thuộc dòng họ hoặc đã mất 400 VALID_001.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BranchHeadInput' }
+      responses:
+        '200':
+          description: Trưởng chi sau khi đổi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BranchHeadResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /branches/{branchId}:
     parameters:
       - $ref: '#/components/parameters/branchId'
@@ -410,6 +452,180 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
               example: { success: false, error: { code: GEN_004, message: 'Thành viên còn quan hệ, hãy gỡ quan hệ trước', details: [] } }
 
+  /persons/{personId}/death:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    put:
+      operationId: setPersonDeath
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Đánh dấu đã mất hoặc khôi phục khi báo nhầm (UC-GEN-03, BR-GEN-21)
+      description: "Người quản lý chi (trong phạm vi chi), trưởng họ, SYSTEM_ADMIN; áp dụng cả hồ sơ đã gắn tài khoản. isDeceased=true: hôn nhân chuyển WIDOWED, khóa tài khoản gắn với hồ sơ (BR-AUTH-23), gửi thông báo DEATH_NOTICE (BR-COM-15). isDeceased=false: khôi phục khi báo nhầm (mở khóa tài khoản, thu hồi thông báo). Không tự báo mất cho chính mình: 403 PERM_001."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeathInput' }
+            example: { isDeceased: true, deathDate: '2026-11-20', deathTime: '14:30', burialPlace: Nghĩa trang quê nhà }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /persons/{personId}/account-candidates:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    get:
+      operationId: listAccountCandidates
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Tài khoản có thể gắn thay cho hồ sơ (BR-GEN-23)
+      description: Người quản lý chi của hồ sơ. Chỉ họ tên các tài khoản đã xác minh trong dòng họ chưa gắn hồ sơ nào, sắp theo họ tên.
+      responses:
+        '200':
+          description: Danh sách
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountCandidateListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /persons/{personId}/account-replacements:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: replacePersonAccount
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Thay tài khoản gắn với hồ sơ khi mất tài khoản (UC-GEN-03, BR-GEN-23)
+      description: "Khóa và cho tài khoản cũ rời dòng họ (không xóa), gắn tài khoản mới, chuyển vai trò trưởng họ/chi và quyền sở hữu nội dung công khai (BR-AUTH-25). Hồ sơ chưa gắn tài khoản hoặc tài khoản mới trùng tài khoản cũ: 400 VALID_001; tài khoản mới khác dòng họ hoặc chưa xác minh: 409 GEN_014; đã gắn hồ sơ khác: 409 CONFLICT_001; tự thay tài khoản của mình: 403 PERM_001."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountReplacementInput' }
+            example: { newUserId: 9b1c2d3e-4f50-4a61-8b72-0c1d2e3f4a5b, reason: Mất điện thoại và email cũ }
+      responses:
+        '200':
+          description: Đã thay tài khoản
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: GEN_014 tài khoản mới không thuộc dòng họ; CONFLICT_001 tài khoản mới đã gắn hồ sơ khác
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/death-reports:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: reportDeath
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Con ruột báo mất cha/mẹ, chờ xác nhận (BR-GEN-24)
+      description: "Chỉ người có tài khoản gắn với hồ sơ là con ruột của người còn sống; người khác 403 PERM_001. Đã mất hoặc đã có báo mất đang chờ: 409 CONFLICT_001. Người xác nhận nhận thông báo DEATH_REPORT; hết hạn sau 7 ngày."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeathReportInput' }
+            example: { deathDate: '2026-11-20', deathTime: '14:30', burialPlace: Nghĩa trang quê nhà }
+      responses:
+        '201':
+          description: Đã gửi báo mất
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: CONFLICT_001 đã mất hoặc đã có báo mất đang chờ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/death-reports/latest:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    get:
+      operationId: getLatestDeathReport
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Báo mất đang chờ hoặc đã xác nhận gần nhất (BR-GEN-24)
+      description: data null nếu không có. Báo mất quá hạn được chuyển EXPIRED khi đọc. canConfirm cho biết người xem có xác nhận được không.
+      responses:
+        '200':
+          description: Báo mất hoặc null
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /death-reports/{reportId}/confirmations:
+    parameters:
+      - { name: reportId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: confirmDeathReport
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Xác nhận báo mất (BR-GEN-24)
+      description: "Một người xác nhận là đủ: hồ sơ chuyển đã mất với hệ quả của BR-GEN-21. Không có quyền xác nhận: 403 PERM_001; đã xác nhận hoặc hết hạn: 409 CONFLICT_001. Người mất là trưởng họ/chi thì trả kèm gợi ý kế nhiệm."
+      responses:
+        '200':
+          description: Đã xác nhận
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeathReportResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: CONFLICT_001 đã xác nhận hoặc hết hạn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /persons/{personId}/relatives:
+    parameters:
+      - $ref: '#/components/parameters/personId'
+    post:
+      operationId: addRelative
+      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      tags: [persons]
+      summary: Thêm người thân mới (con, cha/mẹ, vợ/chồng) và nối quan hệ trong một lần lưu (BR-GEN-26)
+      description: "Tạo hồ sơ như POST /families/{familyId}/persons rồi nối với người {personId}; một bước lỗi (VALID_001, GEN_005 đến GEN_011, PERM_001) thì không lưu gì. Người mới chưa chọn chi thì vào chi của {personId}."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RelativeInput' }
+            example: { relation: CHILD, person: { fullName: Nguyễn Văn Bình, gender: MALE, birthDate: '1985-06-01' } }
+      responses:
+        '201':
+          description: Đã tạo người mới và nối quan hệ; trả hồ sơ người mới
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: GEN_005 đến GEN_011 vi phạm quy tắc quan hệ (đã đủ cha/mẹ ruột, vòng lặp, cha mẹ không lớn tuổi hơn con...)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
   /persons/{personId}/parents:
     parameters:
       - $ref: '#/components/parameters/personId'
@@ -418,7 +634,7 @@ paths:
       x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
       tags: [parent-child]
       summary: Thêm cha/mẹ cho thành viên (UC-GEN-04)
-      description: personId là người con. Kiểm tra BR-GEN-02 đến 05.
+      description: personId là người con. Kiểm tra BR-GEN-02 đến 05. Con chưa có chi thì tự vào chi của cha/mẹ, ưu tiên chi của cha (BR-GEN-22).
       requestBody:
         required: true
         content:
@@ -510,7 +726,8 @@ paths:
       - $ref: '#/components/parameters/marriageId'
     put:
       operationId: updateMarriage
-      x-roles: [BRANCH_ADMIN, SYSTEM_ADMIN]
+      x-roles: [MEMBER, BRANCH_ADMIN, SYSTEM_ADMIN]
+      description: "Người quản lý chi của một trong hai người; MEMBER là một trong hai vợ chồng chỉ được chuyển sang DIVORCED (BR-GEN-28). Người ngoài tộc có tài khoản đã ly hôn hết thì rời dòng họ (BR-AUTH-26)."
       tags: [marriages]
       summary: Đổi trạng thái hôn nhân (UC-GEN-05)
       requestBody:
@@ -765,6 +982,44 @@ components:
         data: { type: array, items: { $ref: '#/components/schemas/Branch' } }
         meta: { $ref: '#/components/schemas/Meta' }
 
+    BranchHeadInput:
+      type: object
+      properties:
+        personId: { type: string, format: uuid, nullable: true }
+    BranchHead:
+      type: object
+      properties:
+        branchId: { type: string, format: uuid }
+        branchName: { type: string }
+        parentBranchId: { type: string, format: uuid, nullable: true }
+        headPersonId: { type: string, format: uuid, nullable: true }
+        headPersonName: { type: string, nullable: true }
+        source: { type: string, enum: [MANUAL, LINEAGE], nullable: true }
+        hasAccount: { type: boolean }
+        familyHead: { type: boolean, description: Người này đồng thời là trưởng họ (kiêm) }
+    BranchHeadResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { $ref: '#/components/schemas/BranchHead' }
+    BranchHeadListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: array, items: { $ref: '#/components/schemas/BranchHead' } }
+    RelativeInput:
+      type: object
+      required: [relation, person]
+      description: BR-GEN-26
+      properties:
+        relation: { type: string, enum: [CHILD, PARENT, SPOUSE], description: "Người mới là con, cha/mẹ hay vợ/chồng của {personId}" }
+        person: { $ref: '#/components/schemas/PersonInput' }
+        kind: { type: string, enum: [BIOLOGICAL, ADOPTED, STEP], nullable: true, description: CHILD/PARENT; mặc định BIOLOGICAL }
+        parentRole: { type: string, enum: [FATHER, MOTHER], nullable: true, description: Chỉ cần khi người làm cha/mẹ có giới tính OTHER }
+        startDate: { type: string, format: date, nullable: true, description: SPOUSE; ngày kết hôn }
+        otherParentId: { type: string, format: uuid, nullable: true, description: "CHILD: cha/mẹ còn lại (thường là vợ/chồng của {personId}), nối trong cùng giao dịch (BR-GEN-27)" }
+        divorcePrevious: { type: boolean, default: false, description: "SPOUSE: chuyển các hôn nhân MARRIED hiện có của {personId} sang DIVORCED trước khi thêm vợ/chồng mới (BR-GEN-28)" }
+        foundBranch: { type: boolean, default: false, description: "CHILD, {personId} là người tổ, người con là nam: tạo chi gốc 'Chi N' do người con lập, cùng giao dịch (BR-GEN-30)" }
     PersonInput:
       type: object
       required: [fullName, gender]
@@ -807,6 +1062,62 @@ components:
         updatedAt: { type: string, format: date-time }
         userId: { type: string, format: uuid, nullable: true, description: "Tài khoản gắn với hồ sơ (chỉ đọc, SCRUM-117) để trang cá nhân lấy bài qua GET /posts?authorId=; null với trẻ dưới 16 tuổi bị giới hạn (BR-GEN-10)." }
         canEdit: { type: boolean, description: "Người đang xem được sửa hồ sơ này theo BR-GEN-20 (chính chủ; quản trị chi với hồ sơ chưa gắn tài khoản; SYSTEM_ADMIN)." }
+        canManage: { type: boolean, description: "Người đang xem quản lý chi của hồ sơ (BR-GEN-14): được báo mất, khôi phục theo BR-GEN-21." }
+        canReportDeath: { type: boolean, description: "Người đang xem là con ruột có tài khoản của người còn sống này: được gửi báo mất chờ xác nhận (BR-GEN-24)." }
+        deathTime: { type: string, nullable: true, example: '14:30', description: "Giờ mất HH:mm (giờ địa phương), SCRUM-134." }
+    AccountReplacementInput:
+      type: object
+      required: [newUserId, reason]
+      properties:
+        newUserId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 255 }
+    AccountCandidate:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        fullName: { type: string }
+    AccountCandidateListResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: array, items: { $ref: '#/components/schemas/AccountCandidate' } }
+    DeathReportInput:
+      type: object
+      required: [deathDate]
+      properties:
+        deathDate: { type: string, format: date }
+        deathTime: { type: string, nullable: true, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        burialPlace: { type: string, nullable: true, maxLength: 255 }
+    DeathReport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        personId: { type: string, format: uuid }
+        personName: { type: string }
+        reportedByName: { type: string, nullable: true }
+        deathDate: { type: string, format: date }
+        deathTime: { type: string, nullable: true }
+        burialPlace: { type: string, nullable: true }
+        status: { type: string, enum: [PENDING, CONFIRMED, EXPIRED] }
+        expiresAt: { type: string, format: date-time }
+        canConfirm: { type: boolean }
+        successorPersonId: { type: string, format: uuid, nullable: true }
+        successorName: { type: string, nullable: true, description: Gợi ý kế nhiệm khi người mất là trưởng họ/chi (BR-GEN-25) }
+        successorHasAccount: { type: boolean, description: Người được gợi ý đã có tài khoản chưa; chưa có thì giao diện gợi ý mời }
+    DeathReportResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { allOf: [{ $ref: '#/components/schemas/DeathReport' }], nullable: true }
+    DeathInput:
+      type: object
+      required: [isDeceased]
+      description: BR-GEN-21. isDeceased=true bắt buộc deathDate; deathTime cần deathDate. isDeceased=false bỏ qua các trường còn lại.
+      properties:
+        isDeceased: { type: boolean }
+        deathDate: { type: string, format: date, nullable: true }
+        deathTime: { type: string, nullable: true, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', example: '14:30' }
+        burialPlace: { type: string, nullable: true, maxLength: 255 }
     PersonResponse:
       type: object
       properties:
@@ -883,6 +1194,10 @@ components:
         hasMoreChildren: { type: boolean, description: "Còn nhánh chưa tải, dùng cho mở nhánh lazy-load" }
         generation: { type: integer, nullable: true, description: "Thế hệ theo genealogy.md mục 6.8 (đời 1 là tổ). Null với trẻ dưới 16 tuổi khi người xem là MEMBER" }
         avatarMediaId: { type: string, format: uuid, nullable: true, description: "Ảnh đại diện, tải qua GET /media/{id}/content. Null với trẻ dưới 16 tuổi khi người xem là MEMBER (BR-GEN-10)" }
+        deathYear: { type: integer, nullable: true, description: "Năm mất (SCRUM-136), null nếu còn sống hoặc chưa có ngày mất" }
+        divorced: { type: boolean, description: "Vợ/chồng ngoài tộc đã ly hôn (BR-GEN-28): khung mờ, nhãn Đã ly hôn" }
+        locked: { type: boolean, description: "Người xem không phải trưởng họ/chi, quản trị: không mở được hồ sơ, thông tin đã ẩn (BR-GEN-28)" }
+        leaderRole: { type: string, enum: [FAMILY_HEAD, BRANCH_HEAD], nullable: true, description: "Người còn sống là trưởng họ hoặc trưởng chi: theo vai trò tài khoản (BRANCH_ADMIN không gán chi là trưởng họ) hoặc theo dòng (BR-GEN-25, không cần tài khoản); để hiện huy hiệu trên cây (SCRUM-136, 142). Anh em trong mảng nodes xếp theo ngày sinh." }
     TreeEdge:
       type: object
       properties:

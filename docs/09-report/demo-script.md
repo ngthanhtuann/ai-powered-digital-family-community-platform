@@ -27,8 +27,8 @@ Mật khẩu chung của tài khoản seed: `Demo@2026` (chỉ dùng trên máy 
 
 | Vai trò hiển thị | Email | Quyền trong demo |
 |---|---|---|
-| Thành viên (MEMBER) | `ha@demo.familyconnect.vn` | Nguyễn Thị Hà, Chi 2, đời 4: xem cây, đăng bài, bình luận, hỏi AI |
-| Trưởng chi (BRANCH_ADMIN, Chi 2) | `hung@demo.familyconnect.vn` | Nguyễn Văn Hùng: quản lý thành viên Chi 2, duyệt yêu cầu vào chi |
+| Thành viên (MEMBER) | `ha@demo.familyconnect.vn` | Nguyễn Thị Hà, Chi 3, đời 4: xem cây, đăng bài, bình luận, hỏi AI |
+| Trưởng chi (BRANCH_ADMIN, Chi 3) | `hung@demo.familyconnect.vn` | Nguyễn Văn Hùng: quản lý thành viên Chi 3, duyệt yêu cầu vào chi |
 | Trưởng họ (BRANCH_ADMIN, cả họ) | `phuc@demo.familyconnect.vn` | Nguyễn Văn Phúc: người tạo dòng họ, duyệt yêu cầu, xem Dashboard |
 | Đang chờ duyệt | `tu@demo.familyconnect.vn` | Đỗ Minh Tú: đã gửi yêu cầu vào Chi 1, chưa được duyệt |
 | Quản trị hệ thống (SYSTEM_ADMIN) | theo `BOOTSTRAP_ADMIN_EMAIL` | Quản lý người dùng, kiểm duyệt, nhật ký, sao lưu, cấu hình |
