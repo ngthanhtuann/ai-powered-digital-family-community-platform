@@ -23,3 +23,6 @@ uploads/
 # Hệ điều hành
 .DS_Store
 Thumbs.db
+
+# Tài liệu học cá nhân, chỉ giữ ở máy (không đưa lên Git)
+docs/09-report/huong-dan-hoc-he-thong.md

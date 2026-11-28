@@ -117,5 +117,5 @@ Người kiểm tra: TV1 (AI chạy kịch bản kiểm thử API theo từng b�
 ## 9. Tài liệu tham chiếu
 - `docs/01-srs/use-cases/community-events.md`, `docs/04-api/openapi/community-events.yaml`, `docs/09-report/requirements-traceability.md`.
 - `docs/06-test/community-posts-3-04.md`, `events-4-05.md`, `events-notifications-5-04.md`, `mobile-community-events-6-10.md`.
-- `docker/seed-demo.ps1`, `docs/09-report/demo-script.md`, `docs/09-report/report-outline.md`.
+- `docker/seed-demo.ps1`, `docs/09-report/demo-script.md`.
 - Jira SCRUM-75, 38, 46, 47, 53, 89.

@@ -28,7 +28,7 @@ public class ParentChild {
     @Column(name = "created_by", nullable = false)
     private UUID createdBy;
 
-    @Column(name = "updated_by", nullable = false)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)

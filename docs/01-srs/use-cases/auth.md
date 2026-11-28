@@ -381,7 +381,7 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 
 ## 5. Thiết kế bảng cơ sở dữ liệu của module
 
-> **Gửi TV2 (Trí) gộp vào ERD tổng (SCRUM-28).** Module này có đúng **7 bảng**, khớp danh sách của TV1 trong `erd.md` mục 3. Quy ước (`architecture.md` mục 7, quyết định 4 và 9): tên bảng `snake_case` số ít (ngoại lệ duy nhất là `users` vì `user` là từ khóa PostgreSQL); khóa chính `id` kiểu `UUID` (`DEFAULT gen_random_uuid()`); thời điểm dùng `TIMESTAMPTZ`; xóa mềm bằng `deleted_at`; bảng nghiệp vụ có thêm `created_by`, `updated_by`; mật khẩu băm BCrypt; schema chỉ đổi qua Flyway.
+> **Gửi TV2 (Trí) gộp vào ERD tổng (SCRUM-28).** Module này có **10 bảng** (8 bảng nghiệp vụ và 2 bảng đếm kỹ thuật `ha_rate_limit_*`), khớp danh sách của TV1 trong `erd.md` mục 2. Quy ước (`architecture.md` mục 7, quyết định 4 và 9): tên bảng `snake_case` số ít (ngoại lệ duy nhất là `users` vì `user` là từ khóa PostgreSQL); khóa chính `id` kiểu `UUID` (`DEFAULT gen_random_uuid()`); thời điểm dùng `TIMESTAMPTZ`; xóa mềm bằng `deleted_at`; bảng nghiệp vụ có thêm `created_by`, `updated_by`; mật khẩu băm BCrypt; schema chỉ đổi qua Flyway.
 >
 > **Khóa ngoại (FK) chỉ dùng giữa các bảng của module này.** Cột tham chiếu sang module khác (`family_id`, `branch_id`, `target_id`) chỉ lưu UUID có index, service kiểm tra qua interface Java (mục 6.3).
 >
@@ -399,8 +399,10 @@ Mọi API mới phải có một test: người dùng gia đình A gọi dữ li
 | `member_verification` | Yêu cầu tham gia gia đình và tình trạng thành viên (ai thuộc gia đình nào, chi nào, đã xác minh chưa, vai trò) | Thiết kế ở SCRUM-26; làm cùng SCRUM-35 (Sprint 3) vì module Gia phả (SCRUM-37) cần ngay (mục 8, câu 3) | FK tới `users`; `family_id`, `branch_id` chỉ là UUID |
 | `audit_log` | Nhật ký kiểm toán | SCRUM-57 (Sprint 6) | Không có FK |
 | `system_config` | Tham số cấu hình hệ thống | SCRUM-94 (Sprint 7) | Không có FK |
+| `ha_rate_limit_fixed` | Bộ đếm `RATE_001` cửa sổ cố định (đăng nhập, refresh) dùng chung khi chạy nhiều backend (HA) | SCRUM-96 (migration V22) | Bảng kỹ thuật, không FK, không cột chuẩn |
+| `ha_rate_limit_sliding` | Bộ đếm `RATE_001` cửa sổ trượt 1 giờ (AI chat, tìm kiếm, tóm tắt) dùng chung khi chạy HA | SCRUM-96 (migration V22) | Bảng kỹ thuật, không FK, không cột chuẩn |
 
-Mọi bảng có đủ `created_at`, `updated_at`, `deleted_at`; `users`, `member_verification`, `system_config` thêm `created_by`, `updated_by`. **Ngoại lệ duy nhất:** `audit_log` là bản ghi chỉ thêm nên chỉ có `id` và `created_at` (người thực hiện nằm ở `actor_user_id`).
+Mọi bảng có đủ `created_at`, `updated_at`, `deleted_at`; `users`, `member_verification`, `system_config` thêm `created_by`, `updated_by`. **Ngoại lệ:** `audit_log` là bản ghi chỉ thêm nên chỉ có `id` và `created_at` (người thực hiện nằm ở `actor_user_id`); hai bảng đếm kỹ thuật `ha_rate_limit_fixed`, `ha_rate_limit_sliding` không có cột chuẩn, xóa cứng dòng cũ hơn 1 ngày (`erd.md` mục 1).
 
 ```mermaid
 erDiagram
@@ -544,6 +546,26 @@ Index: `(created_at DESC)`; `(actor_user_id, created_at DESC)`; `(action, create
 | updated_by | UUID | NULL | Người sửa; không FK |
 
 Index: `UNIQUE (config_key) WHERE deleted_at IS NULL`.
+
+#### Bảng `ha_rate_limit_fixed`
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| scope | VARCHAR(32) | PK (scope, subject_hash) | Loại giới hạn: `LOGIN`, `REFRESH` |
+| subject_hash | VARCHAR(64) | PK (scope, subject_hash) | SHA-256 hex của chủ thể (IP, hoặc IP và email); không lưu dạng rõ |
+| window_started_at | TIMESTAMPTZ | NOT NULL | Thời điểm bắt đầu cửa sổ hiện tại |
+| request_count | INTEGER | NOT NULL | Số lượt trong cửa sổ |
+
+Chỉ dùng khi bật `HA_SHARED_RATE_LIMITS=true` (SCRUM-96); không có `id` và cột chuẩn, tác vụ mỗi giờ xóa cứng dòng cũ hơn 1 ngày.
+
+#### Bảng `ha_rate_limit_sliding`
+| Cột | Kiểu | Khóa / Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | BIGSERIAL | PK | |
+| scope | VARCHAR(32) | NOT NULL | Loại giới hạn: `CHAT`, `SEARCH`, `SUMMARY` |
+| subject_hash | VARCHAR(64) | NOT NULL | SHA-256 hex của `userId` |
+| called_at | TIMESTAMPTZ | NOT NULL | Thời điểm gọi |
+
+Index: `idx_ha_rate_limit_subject_time (scope, subject_hash, called_at)`. Chỉ thêm và xóa cứng như `ha_rate_limit_fixed`.
 
 ### 5.3 Dữ liệu khởi tạo (Flyway)
 

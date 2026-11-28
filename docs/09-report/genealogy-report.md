@@ -2,7 +2,7 @@
 
 **Người viết:** TV1 Tuấn (nhận lại từ TV2 ngày 15/11/2026) | **Reviewer:** TV5 | **Đối chiếu:** `develop` tại `e9793a7`
 
-Báo cáo này dùng cho chương 3 (thiết kế CSDL), chương 4 (cài đặt) và chương 5 (kiểm thử) của báo cáo cuối kỳ (`report-outline.md`). Số liệu lấy từ các báo cáo kiểm thử đã có; mục nào chưa đo ghi "Chưa xác minh".
+Báo cáo này dùng cho chương 3 (thiết kế CSDL), chương 4 (cài đặt) và chương 5 (kiểm thử) của báo cáo cuối kỳ. Số liệu lấy từ các báo cáo kiểm thử đã có; mục nào chưa đo ghi "Chưa xác minh".
 
 ## 1. Phạm vi module
 
