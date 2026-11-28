@@ -23,7 +23,7 @@
 | TV4 | TV1 (Auth, Admin) |
 | TV5 | TV2 (Gia phả) |
 
-Khi task code sang cột **Testing**, người test chéo chạy test case của module đó, điền kết quả vào mẫu test case, và báo bug theo mục 5. (Bảng này giống bảng reviewer PR trong `quy-trinh-lam-viec.md` mục 2.3.)
+Khi task code sang cột **Testing**, người test chéo chạy test case của module đó, điền kết quả vào mẫu test case, và báo bug theo mục 5. (Bảng này cũng là bảng reviewer chéo của Pull Request.)
 
 ## 3. Những nhóm test bắt buộc
 

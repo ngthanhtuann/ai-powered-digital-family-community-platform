@@ -7,7 +7,6 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 
 | Thư mục / file | Nội dung | Người viết | Reviewer | Task Jira |
 |---|---|---|---|---|
-| `00-process/quy-trinh-lam-viec.md` | Quy trình làm việc: Jira, nhánh Git, Pull Request, khi nào task Done | TV1 Tuấn | TV4 | SCRUM-15 |
 | `01-srs/srs.md` | SRS: giới thiệu, bên liên quan, yêu cầu chức năng (mã FR), phi chức năng | TV1 Tuấn | TV4 | SCRUM-14 |
 | `01-srs/privacy.md` | Bảo mật và quyền riêng tư dữ liệu | TV1 Tuấn | TV4 | SCRUM-17 |
 | `01-srs/use-cases/auth.md` | Use case Auth, RBAC, Profile, Admin | TV1 Tuấn | TV4 | SCRUM-26 |
@@ -30,7 +29,7 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 | `decisions/` | Ghi quyết định kỹ thuật (ADR) | người quyết định | | SCRUM-24, 31, 84 |
 | `07-deploy/`, `08-user-guide/`, `09-report/` | Triển khai, hướng dẫn sử dụng, báo cáo cuối | Sprint 7-8 | | |
 
-> Cột Reviewer ghi người duyệt ở đầu mỗi tài liệu. Trên GitHub, các PR tài liệu Sprint 1-2 có Approve đều do TV1 duyệt, một số PR Sprint 1 được merge khi chưa có Approve. Từ Sprint 3, mỗi PR cần Approve của reviewer theo bảng test chéo ở `00-process/quy-trinh-lam-viec.md` mục 2.3.
+> Cột Reviewer ghi người duyệt ở đầu mỗi tài liệu. Trên GitHub, các PR tài liệu Sprint 1-2 có Approve đều do TV1 duyệt, một số PR Sprint 1 được merge khi chưa có Approve. Từ Sprint 3, mỗi PR cần Approve của reviewer theo bảng test chéo ở `06-test/test-plan.md` mục 2.
 
 ## Quy ước chung
 - File viết bằng **Markdown**, tên file **chữ thường, không dấu, nối bằng gạch ngang**.
@@ -40,6 +39,3 @@ Mọi tài liệu viết bằng Markdown và thay đổi **chỉ qua Pull Reques
 - Mã yêu cầu dùng thống nhất: `FR-<NHÓM>-<số>` (chức năng), `NFR-<số>` (phi chức năng), `UC-<NHÓM>-<số>` (use case).
 - Mọi thay đổi sau **Docs Gate** (cuối Sprint 2) phải cập nhật lại tài liệu gốc (ERD, OpenAPI, SRS) trước khi sửa code.
 
-## Quy trình làm việc
-Cách nhận task trên Jira, đặt tên nhánh và commit, mở Pull Request, và khi nào task được coi là Done:
-xem **[quy-trinh-lam-viec.md](00-process/quy-trinh-lam-viec.md)**.

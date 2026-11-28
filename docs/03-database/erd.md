@@ -1,9 +1,8 @@
 # ERD tổng hợp và quy ước đặt tên CSDL
 
-> **Người viết:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03)
-> **Phiên bản:** v0.10 (24/11/2026, SCRUM-146): thêm cột `branch.head_person_id` (V28, FK → `person`); ảnh sơ đồ chưa vẽ lại. Bản trước: v0.9 (23/11/2026, SCRUM-134, 135, 139): thêm bảng `password_reset_code` (V26, FK `user_id` → `users`), bảng `death_report` (V27, 3 FK trong module gia phả), loại thông báo `DEATH_REPORT`, cột `person.death_time` và loại thông báo `DEATH_NOTICE` (V25) vào `erd.dbml`, `erd.dot`, `data-dictionary.md`, mục 2; **ảnh sơ đồ chưa vẽ lại**, tổng 34 bảng. Bản trước: v0.8 (19/11/2026, SCRUM-131): vẽ lại ảnh theo `erd.dbml` hiện tại (migration V21 `event_participant.attended_at`, V22 hai bảng `ha_rate_limit_*`, V23 `post.audience`, V24 `comment.parent_id` tự trỏ và `notification.family_id`): `erd.png`, `erd.svg`, `erd-full.drawio.png`, `erd-full.svg`, `erd-auth.drawio.png`, `erd-community-events.drawio.png`; giữ ký hiệu và bố cục bản v0.6. Bản trước: v0.7 (14/11/2026): thêm 2 bảng kỹ thuật `ha_rate_limit_fixed`, `ha_rate_limit_sliding` (SCRUM-96, migration V22) vào nhóm auth, cập nhật `erd.dbml`, `erd.dot`, `data-dictionary.md` và mục 1, 2; **các ảnh sơ đồ (draw.io, svg) chưa vẽ lại**, tổng số bảng là 32. Bản trước: v0.6 (26/10/2026): chỉ vẽ lại sơ đồ (một sơ đồ tổng quan, một ERD tổng hợp rút gọn và 5 ERD theo module, ký hiệu chân chim, đen trắng, đủ cột theo `data-dictionary.md`); không đổi bảng, cột, khóa hay ràng buộc. Bản trước: v0.5 (18/10/2026) | **Trạng thái:** Đã đóng băng (họp DOCS GATE 18/10/2026, mục 7). Đã gộp **đủ 5/5 module, 30 bảng**. So với v0.4: bỏ 4 khóa ngoại của cột người thực hiện trong module auth (X17); `ai_embedding_chunk` thêm `branch_id`, `source_type` thêm `EVENT` theo `ai.md` đã merge (PR #35); đóng X6, X12, X14, X15, X17; bỏ X13 (đường dẫn API, không thuộc ERD); đổi tên ảnh và file nguồn không kèm số phiên bản.
-> **Nguồn:** `genealogy.md` (TV2), `community-events.md` (TV3), `heritage-directory-dashboard.md` (TV4), `auth.md` (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` (TV5, đã merge PR #35), quy ước ở `architecture.md` mục 7 và cập nhật của TV1 ngày 09/10/2026. Tất cả đối chiếu trên nhánh `develop` ngày 18/10/2026.
-> **Sản phẩm kèm theo:** ảnh tổng quan `../images/erd.png` và `../images/erd.svg`; ERD tổng hợp rút gọn `../images/erd-full.drawio.png` và `../images/erd-full.svg`; 5 ảnh ERD theo module `../images/erd-<module>.drawio.png` (xuất từ draw.io, kèm dữ liệu sơ đồ để mở lại sửa); file nguồn `erd.dbml` (dán vào dbdiagram.io) cùng thư mục với file này; `erd.dot` (Graphviz) là nguồn của ảnh v0.5, không còn dùng để sinh ảnh; `data-dictionary.md` (từ điển dữ liệu 30 bảng). Mỗi lần sửa thì ghi đè các file này và tăng số phiên bản ở dòng trên, không tạo file ảnh mới.
+> **Người viết:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28
+> **Phiên bản:** v0.11 (28/11/2026), khớp migration V1 đến V28: 34 bảng, 23 khóa ngoại trong module. Lịch sử các bản trước xem Git. | **Trạng thái:** Đã đóng băng từ 18/10/2026 (mục 7), thay đổi sau đó chỉ qua Flyway.
+> **File kèm theo:** `erd.dbml`, `erd.dot`, `data-dictionary.md` (cùng thư mục); ảnh trong `../images/`: `erd.png`, `erd.svg`, `erd-full.drawio.png`, `erd-full.svg` và 5 ảnh `erd-<module>.drawio.png` (mở bằng draw.io để sửa). Sửa thì ghi đè file cũ và tăng số phiên bản.
 ---
 
 ## 1. Quy ước bắt buộc
@@ -68,11 +67,11 @@
 
 | Module | Quan hệ |
 |---|---|
-| Gia phả | `branch.family_id` → `family`; `branch.parent_branch_id` → `branch`; `branch.origin_person_id` → `person`; `person.family_id` → `family`; `person.branch_id` → `branch`; `parent_child.parent_id`, `child_id` → `person`; `marriage.person1_id`, `person2_id` → `person` |
+| Gia phả | `branch.family_id` → `family`; `branch.parent_branch_id` → `branch`; `branch.origin_person_id` → `person`; `branch.head_person_id` → `person` (trưởng chi chọn tay, V28, BR-GEN-29); `person.family_id` → `family`; `person.branch_id` → `branch`; `parent_child.parent_id`, `child_id` → `person`; `marriage.person1_id`, `person2_id` → `person`; `death_report.family_id` → `family`; `death_report.person_id`, `successor_person_id` → `person` (V27, BR-GEN-24) |
 | Cộng đồng | `comment.post_id` → `post`; `comment.parent_id` → `comment` (trả lời một cấp, V24, BR-COM-14); `reaction.post_id` → `post`. `content_report` không có FK (`target_id` trỏ theo `target_type`) |
 | Sự kiện | `event_participant.event_id` → `event` |
 | Di sản, danh bạ | Không có khóa ngoại trong module (cả 5 bảng chỉ tham chiếu logic ra ngoài) |
-| Auth | `user_role.user_id` → `users`; `user_role.role_id` → `role`; `refresh_token.user_id` → `users`; `member_verification.user_id` → `users`. Cột người thực hiện (`users.created_by`, `users.updated_by`, `member_verification.reviewed_by`, `system_config.updated_by`) không có FK (X17) |
+| Auth | `user_role.user_id` → `users`; `user_role.role_id` → `role`; `refresh_token.user_id` → `users`; `member_verification.user_id` → `users`; `password_reset_code.user_id` → `users` (V26). Cột người thực hiện (`users.created_by`, `users.updated_by`, `member_verification.reviewed_by`, `system_config.updated_by`) không có FK (X17) |
 | AI | `ai_chat_message.session_id` → `ai_chat_session` |
 
 ## 4. Tham chiếu logic giữa các module (nét đứt)
@@ -111,7 +110,7 @@ Cách đọc chung: mỗi bảng ghi đủ cột theo `data-dictionary.md` với
 
 Bản `../images/erd.svg` để phóng to không vỡ.
 
-### 5.2 ERD tổng hợp (32 bảng, rút gọn)
+### 5.2 ERD tổng hợp (34 bảng, rút gọn)
 
 ![ERD tổng hợp](../images/erd-full.drawio.png)
 
@@ -137,7 +136,7 @@ Một hình để nhìn bao quát cả hệ thống: mỗi bảng chỉ hiện k
 
 ![ERD AI](../images/erd-ai.drawio.png)
 
-Ảnh vẽ lại ngày 19/11/2026 theo `erd.dbml` (đã cập nhật theo migration V1 đến V24, 32 bảng, 18 khóa ngoại trong module). Đối chiếu cũ ngày 26/10/2026 tại commit `4403ce0`: 16 bảng đã có migration (V1 đến V6: `users`, `role`, `user_role`, `refresh_token`, `member_verification`, `heritage_document`, `family_story`, `ai_embedding_chunk`, `family`, `branch`, `person`, `parent_child`, `marriage`, `post`, `comment`, `reaction`) khớp tên cột, kiểu, NULL và khóa với `data-dictionary.md`; 14 bảng còn lại chưa có migration.
+Ảnh vẽ lại ngày 28/11/2026 theo `erd.dbml` (đã cập nhật theo migration V1 đến V28, 34 bảng, 23 khóa ngoại trong module). Đối chiếu ngày 28/11/2026 tại commit `379801b`: dựng PostgreSQL 16 + pgvector từ 27 file migration (V1 đến V28, không có V18), cả 34 bảng khớp tên cột, kiểu, NULL, khóa ngoại và giá trị CHECK với `erd.dbml`, `data-dictionary.md` và bảng trong use case; `mvn -B verify` (534 test) chạy trên CSDL đó đạt. Đối chiếu cũ ngày 26/10/2026 tại commit `4403ce0`: 16 bảng đã có migration (V1 đến V6: `users`, `role`, `user_role`, `refresh_token`, `member_verification`, `heritage_document`, `family_story`, `ai_embedding_chunk`, `family`, `branch`, `person`, `parent_child`, `marriage`, `post`, `comment`, `reaction`) khớp tên cột, kiểu, NULL và khóa với `data-dictionary.md`; 14 bảng còn lại chưa có migration.
 
 ## 6. Kết quả kiểm tra xung đột (lần 3, cập nhật v0.5)
 

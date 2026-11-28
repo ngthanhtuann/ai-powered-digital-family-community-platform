@@ -289,7 +289,6 @@ Kịch bản demo: [`docs/09-report/demo-script.md`](docs/09-report/demo-script.
 | Tài liệu | Nội dung |
 | --- | --- |
 | [`docs/README.md`](docs/README.md) | Mục lục tài liệu, người viết, reviewer |
-| `docs/00-process/quy-trinh-lam-viec.md` | Quy trình Scrum, Jira, nhánh Git, Pull Request |
 | `docs/01-srs/srs.md`, `use-cases/`, `privacy.md` | Đặc tả yêu cầu, use case và quy tắc nghiệp vụ, quyền riêng tư |
 | `docs/02-design/` | Kiến trúc, sơ đồ lớp, quy trình nghiệp vụ, thuật toán xưng hô, AI/RAG, mobile |
 | `docs/03-database/` | ERD, từ điển dữ liệu |

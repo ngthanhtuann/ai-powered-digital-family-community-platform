@@ -75,14 +75,3 @@ Mật khẩu chung của tài khoản seed: `Demo@2026` (chỉ dùng trên máy 
 | 3 | Chưa chạy | Cả nhóm | Máy demo | | |
 
 Lần 1 chỉ chạy các bước Web của mục 3 với tài khoản `ha` (bảng tin, thông báo, trả lời bình luận, chọn người xem, danh bạ, trang cá nhân, form hồ sơ); chưa bấm giờ, chưa chạy Mobile, Dashboard, Quản trị. Lần 2 là kiểm thử khói qua API, không thay thế buổi tập: thời gian ghi ở bảng là thời gian máy gọi API, không phải thời lượng thuyết trình. Lần 3 chạy cả nhóm trên máy demo theo mục 3, bấm giờ và điền bảng.
-
-## 7. Phần trình bày của TV1 và 3 câu hỏi khó (SCRUM-73)
-
-**Nội dung 3–4 phút:** bài toán và kiến trúc (1 phút); module Auth/Admin: 4 vai trò, duyệt thành viên, chặn truy cập chéo gia đình (1 phút); module Gia phả: cây, thuật toán xưng hô, ai được sửa hồ sơ (1,5 phút).
-
-1. **Hỏi:** Làm sao tính "Hà là gì của Tổ" và vì sao không để AI tự suy ra?
-   **Trả lời:** Tìm tổ tiên chung gần nhất (LCA) của hai người bằng duyệt ngược cha mẹ tối đa 30 đời, lấy số đời mỗi bên rồi tra bảng xưng hô (nội/ngoại theo vai trò cha hay mẹ ở bước đầu, dâu/rể khi qua quan hệ hôn nhân). Kết quả tất định, có test cho 51 trường hợp (`RelationshipCaseCatalogTest`). LLM chỉ diễn đạt lại nhãn đã tính, vì LLM có thể bịa quan hệ.
-2. **Hỏi:** Người ở gia đình A có xem được dữ liệu gia đình B bằng cách đổi ID trên URL không?
-   **Trả lời:** Không. Mọi service kiểm tra quyền theo `family_id` của bản ghi so với membership của người gọi (thứ tự AUTH_002, AUTH_003, PERM_002, PERM_001), không chỉ ở controller. Có test IDOR cho từng API và test ma trận quyền `RbacMatrixIntegrationTest`.
-3. **Hỏi:** Trưởng họ có sửa được thông tin cá nhân của thành viên không?
-   **Trả lời:** Không với người đã có tài khoản: chỉ chính chủ sửa (BR-GEN-20), kể cả quản trị hệ thống. Trưởng chi, trưởng họ chỉ nhập thay cho người chưa có tài khoản (tổ tiên, trẻ nhỏ) và quản lý quan hệ, thêm/xóa người trong chi. Mọi thay đổi ghi nhật ký kiểm toán.

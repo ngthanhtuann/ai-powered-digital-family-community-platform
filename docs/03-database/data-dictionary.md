@@ -1,6 +1,6 @@
 # Từ điển dữ liệu
 
-> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.5 (khớp ERD v0.7, 32 bảng; thêm 2 bảng `ha_rate_limit_*` của SCRUM-96)
+> **Người tổng hợp:** TV2 (Nguyễn Minh Trí) | **Reviewer:** TV5 (Lê Nhựt) | **Task Jira:** SCRUM-28 (2-03) | **Phiên bản:** 0.6 (28/11/2026, khớp ERD v0.11 và migration V1 đến V28, 34 bảng; ghi chỉ mục UNIQUE của `death_report`). Bản trước: 0.5 (khớp ERD v0.7, 32 bảng; thêm 2 bảng `ha_rate_limit_*` của SCRUM-96)
 > Nguồn: `genealogy.md` (TV2, bản 14/10), `community-events.md` (TV3, đã merge, có `content_report`), `heritage-directory-dashboard.md` (TV4), `auth.md` mục 5 (TV1, đã merge PR #31; quy tắc cột người thực hiện theo PR #42), `ai.md` mục 5 (TV5, đã merge PR #35).
 > Mỗi bảng một khối. Quy ước: khóa chính UUID; `TIMESTAMPTZ`; xóa mềm `deleted_at`; khóa ngoại chỉ trong cùng module; cột "tham chiếu logic" chỉ lưu UUID có index, service kiểm tra.
 
@@ -292,6 +292,8 @@ Người sở hữu: **TV2 Trí**
 | created_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian tạo |
 | updated_at | TIMESTAMPTZ | NOT NULL DEFAULT now() | Thời gian cập nhật |
 | deleted_at | TIMESTAMPTZ | NULL | Xóa mềm |
+
+**Ràng buộc bổ sung:** UNIQUE (person_id) WHERE status = 'PENDING' AND deleted_at IS NULL (mỗi người chỉ một báo mất đang chờ, V27). Chỉ mục (family_id) WHERE deleted_at IS NULL.
 
 ### `marriage`
 

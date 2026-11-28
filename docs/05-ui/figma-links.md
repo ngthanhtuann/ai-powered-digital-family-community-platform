@@ -36,4 +36,4 @@ File cũ của TV5 ([Untitled](https://www.figma.com/design/tblrnrxE2SZWtuI3SNPO
 
 ## Không lưu ảnh wireframe
 
-Figma là nguồn duy nhất của wireframe. Không xuất ảnh khung vào `docs/images/` để tránh ảnh cũ lệch với Figma và làm repo nặng. Người ngoài nhóm mở link với quyền xem. Ảnh chụp màn hình cho báo cáo cuối kỳ lấy từ ứng dụng thật (`report-outline.md` mục 4).
+Figma là nguồn duy nhất của wireframe. Không xuất ảnh khung vào `docs/images/` để tránh ảnh cũ lệch với Figma và làm repo nặng. Người ngoài nhóm mở link với quyền xem. Ảnh chụp màn hình cho báo cáo cuối kỳ lấy từ ứng dụng thật.
